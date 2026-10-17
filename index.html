@@ -386,7 +386,7 @@ E.GENRES = {
     progs: { verse: [[0, 5, 2, 6], [0, 6, 5, 6], [0, 4, 5, 3]], chorus: [[5, 3, 0, 4], [3, 4, 0, 0], [0, 4, 5, 3]] } },
   blues: { name: 'Blues', bpm: [70, 110], def: 92, swing: 66, mode: 'major', L: 12, sevenths: 1, dom: true, melScale: 'blues', mel: { density: 0.45, len: 2.2, range: [62, 81] }, chordRhythm: 'shuffle', bass: 'walk',
     sections: [['intro', 12], ['verse', 12], ['verse', 12], ['chorus', 12], ['verse', 12], ['outro', 12]],
-    progs: { verse: [[0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], [0, 3, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4]], chorus: [[0, 3, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4]] } }
+    progs: { verse: [[0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], [0, 3, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], [0, 0, 0, 0, 3, 3, 0, 0, 4, 4, 0, 4], [0, 0, 0, 0, 3, 3, 0, 0, 1, 4, 0, 4], [0, 3, 0, 0, 3, 3, 0, 5, 1, 4, 0, 4]], chorus: [[0, 3, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], [0, 3, 0, 0, 3, 3, 0, 0, 1, 4, 0, 4], [0, 3, 0, 0, 3, 3, 0, 5, 1, 4, 0, 4]] } }
 };
 E.GENRES.free = { name: 'Free flow', bpm: [70, 140], def: 100, swing: 52, mode: 'either', L: 4, sevenths: 0.4, melScale: 'scale', mel: { density: 0.5, len: 2, range: [62, 81] }, chordRhythm: 'half', bass: 'kick', free: true,
   sections: [['intro', 8], ['verse', 16], ['prechorus', 4], ['chorus', 8], ['verse', 16], ['chorus', 8], ['outro', 8]],
@@ -526,7 +526,7 @@ function chordFromDeg(song, deg, r) {
 function chordFit(c, notes, steps, meter) {
   const pcs = E.chordPcs(c); let s = 0;
   for (const n of notes) {
-    const w = (n.d || 1) * (meter.strong.includes(n.s % steps) ? 2.2 : meter.medium.includes(n.s % steps) ? 1.4 : 0.7);
+    const w = Math.max(2, n.d || 1) * (meter.strong.includes(n.s % steps) ? 2.2 : meter.medium.includes(n.s % steps) ? 1.4 : 0.7);
     const pc = ((n.p % 12) + 12) % 12;
     if (pc === c.root) s += 1.3 * w; else if (pcs.includes(pc)) s += w; else s -= 0.6 * w;
   }
@@ -620,6 +620,13 @@ E.genBeat = function (song, type, ctx, seed) {
     setL(p, K, 0, 118); if (six) { setL(p, SN, 6, 112); setL(p, K, 9, r.chance(0.5) ? 84 : 0); } else { setL(p, SN, 4, 108); setL(p, SN, 8, 104); }
     for (let s = 0; s < 12; s += 2) setL(p, HH, s, s === 0 ? 82 : 56 + r.int(14));
     if (g === 'techno') { for (let s = 0; s < 12; s += 4) setL(p, K, s, 116); }
+  }
+  // a little colour on the quiet lanes, so a section with only hats and percussion still has choices
+  if (N === 16) {
+    if (r.chance(0.5)) { const st = 1 + 2 * r.int(8); if (!p[HH][st] && !p[OH][st]) setL(p, HH, st, 36 + r.int(14)); }
+    if (g !== 'techno' && r.chance(0.35) && !p[OH].some(Boolean)) setL(p, OH, r.pick([6, 14]), 66 + r.int(10));
+    if (r.chance(0.45)) { const st = r.pick([3, 5, 7, 11, 13]); if (!p[PC][st]) setL(p, PC, st, 40 + r.int(20)); }
+    if (r.chance(0.3)) { const acc = r.pick([2, 6, 10, 14]); if (p[HH][acc]) p[HH][acc] = Math.min(110, p[HH][acc] + 18); }
   }
   // bend kick to a leading user bass
   if (ctx.bassUser && !E.isEmpty('bass', ctx.bassUser)) {
@@ -843,9 +850,11 @@ E.hasOwn = (song, sec) => E.PARTS.some((p) => E.ownOf(song, sec, p));
 E.resolveSection = function (song, i, base) {
   const sec = song.sections[i]; base = base || E.resolveType(song, sec.type);
   if (!E.hasOwn(song, sec)) return base;
-  const out = Object.assign({}, base);
-  for (const p of E.PARTS) { const o = E.ownOf(song, sec, p); if (o) out[p] = o; }
-  if (E.ownOf(song, sec, 'chords') && !E.isEmpty('chords', out.chords)) out.ctxChords = out.chords;
+  // the own parts act as yours for this one section, so the machine parts here bend to them
+  const t = sec.type, tmp = Object.assign({}, song, { mat: Object.assign({}, song.mat, { [t]: Object.assign({}, song.mat[t]) }), parts: Object.assign({}, song.parts) });
+  for (const p of E.PARTS) { const o = E.ownOf(song, sec, p); if (!o) continue; tmp.parts[p] = Object.assign({}, song.parts[p], { mode: 'yours' }); tmp.mat[t][p] = { src: 'user', data: o }; }
+  const out = E.resolveType(tmp, t);
+  for (const p of E.PARTS) { const o = E.ownOf(song, sec, p); if (o && E.isEmpty(p, o)) out[p] = o; } // emptied on purpose: stays silent
   return out;
 };
 // a copy of what plays, with echo flags dropped so every note is real
@@ -2085,9 +2094,16 @@ function setMode(p, m) {
   });
 }
 function newVersion(p) {
+  const before = JSON.stringify(resolvedNow()[p] || null), start = snapshot();
+  let same = true;
+  // a throw that lands on the same thing as before is thrown again, up to 16 times
+  change(() => { for (let tries = 0; tries < 16 && same; tries++) { if (tries) st.song = JSON.parse(start); newVersionOnce(p); same = JSON.stringify(resolvedNow()[p] || null) === before; } });
+  if (same) toast('This is the only option that fits here for now. Change another part and the dice get more room.'); else ideaToast(p);
+}
+function newVersionOnce(p) {
   const sg = song(), P = sg.parts[p];
-  change(() => {
-    if (P.mode === 'yours') {
+  {
+    if (P.mode === 'yours' || D.ownOf(sg, secNow(), p)) {
       const t = curType(); const res = resolvedNow(); const seed = D.newSeed();
       const ctx = { chords: res.ctxChords, beat: res.beat };
       let m;
@@ -2096,8 +2112,7 @@ function newVersion(p) {
       else if (p === 'bass') m = D.genBass(sg, t, ctx, seed); else m = D.genMelody(sg, t, ctx, seed);
       const only = editTarget(p) !== 'std'; putHere(p, m); setHint('A fresh ' + PART_NAMES[p].toLowerCase() + ' idea for ' + (only ? sectionLabel(st.sec) + ' only' : 'every ' + D.TYPES[t].name + ' that follows ' + sectionLabel(st.sec)) + '. It stays yours to edit; undo brings back the old one.');
     } else { if (P.mode === 'off') P.mode = 'machine'; P.seed = D.newSeed(); setHint('New machine ' + PART_NAMES[p].toLowerCase() + '. Undo brings back the previous one.'); }
-  });
-  ideaToast(p);
+  }
 }
 function ideaToast(p) {
   toast('Fresh ' + PART_NAMES[p].toLowerCase() + ' idea.', { label: 'Undo', fn: () => { undo(); toast('Back to the previous ' + PART_NAMES[p].toLowerCase() + '.', { label: 'Redo', fn: () => { redo(); ideaToast(p); } }); } });
@@ -2200,7 +2215,7 @@ function beatRings() {
   const nearest = (x, y) => { const dx = x - 200, dy = y - 200; const r = Math.hypot(dx, dy); let a = Math.atan2(dy, dx) + Math.PI / 2; if (a < 0) a += Math.PI * 2; const step = Math.round(a / (Math.PI * 2) * N) % N; let li = -1, bd = 12; for (let k = 0; k < 8; k++) { const d = Math.abs(r - RING_R(k)); if (d < bd) { bd = d; li = k; } } return { li, step, r }; };
   svg.addEventListener('pointerdown', (e) => {
     const [x, y] = toLocal(e); const t = e.target;
-    if (t.classList && t.classList.contains('shadow')) { const li = +t.dataset.lane, st2 = +t.dataset.step; change(() => { const d = editable('beat'); const sh = shadowsFor('beat', true).find((q) => q.lane === li && q.s === st2); d.lanes[li][st2] = sh ? sh.v : 96; }, { keep: false }); setHint(D.hintBeat(song(), editable('beat'))); return; }
+    if (t.classList && t.classList.contains('shadow')) { const li = +t.dataset.lane, st2 = +t.dataset.step; change(() => { const d = editable('beat'); const sh = shadowsFor('beat', true).find((q) => q.lane === li && q.s === st2); d.lanes[li][st2] = sh ? sh.v : 96; }, { keep: false }); playLanePreview(li, 96); setHint(D.hintBeat(song(), editable('beat'))); return; }
     let li, step;
     if (t.classList && t.classList.contains('hit')) { li = +t.dataset.lane; step = +t.dataset.step; } else { const n = nearest(x, y); li = n.li; step = n.step; }
     if (li < 0) return;
@@ -2249,7 +2264,7 @@ function beatLines() {
   svg.addEventListener('pointerdown', (e) => {
     const t = e.target; if (!t.dataset || t.dataset.lane == null) return;
     const li = +t.dataset.lane, k = +t.dataset.step;
-    if (t.classList.contains('shadow')) { change(() => { const d = editable('beat'); d.lanes[li][k] = 96; }); return; }
+    if (t.classList.contains('shadow')) { change(() => { const d = editable('beat'); d.lanes[li][k] = 96; }); playLanePreview(li, 96); return; }
     svg.setPointerCapture(e.pointerId);
     const before = snapshot(); const d = editable('beat'); const existed = d.lanes[li][k] > 0;
     if (!existed) d.lanes[li][k] = [110, 80, 108, 96, 72, 80, 70, 96][li];
@@ -2443,6 +2458,7 @@ function echoNotes(part) {
 function adoptBar(part, bar) {
   const N = D.meter(song()).steps, take = echoNotes(part).filter((n) => Math.floor(n.s / N) === bar);
   change(() => { const copy = editTarget(part) === 'follow'; const d = editable(part); if (!copy) for (const n of take) d.notes.push({ s: n.s, d: n.d, p: n.p, v: n.v }); d.notes.sort((x, y) => x.s - y.s); });
+  take.slice(0, 4).forEach((n, k) => setTimeout(() => previewNote(part, n.p, n.v), k * 140));
   setHint('Bar ' + (bar + 1) + ' is yours now. Change it freely; the other empty bars keep repeating bar 1.');
 }
 function shownIndexToReal(d, shown, i) { if (d === shown) return i; const n = shown.notes[i]; if (!n) return -1; return d.notes.findIndex((q) => q.s === n.s && q.p === n.p); }
@@ -2642,9 +2658,10 @@ function tone(part, p, t, dur, v) {
   else { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = mtof(p); lp.frequency.setValueAtTime(3200, t); lp.frequency.setTargetAtTime(1400, t, 0.15); o.connect(lp); env(g, t, 0.004, amp * 0.13, dur, 0.07); o.start(t); o.stop(end); track(o, end); }
 }
 function barSec(sg) { return D.barTicks(sg) / D.PPQ * 60 / sg.bpm; }
-function playLanePreview(li, v) { if (!ensureAudio()) return; AU.ctx.resume(); if (!AU.playing) drum(li, AU.ctx.currentTime + 0.01, v); }
-function previewNote(part, p, v) { if (!ensureAudio()) return; AU.ctx.resume(); if (!AU.playing) tone(part, p, AU.ctx.currentTime + 0.01, 0.25, v || 92); }
-function previewChord(c) { if (!ensureAudio() || AU.playing) return; AU.ctx.resume(); D.voice(c, null, 52, 72).forEach((p) => tone('chords', p, AU.ctx.currentTime + 0.01, 0.8, 90)); }
+// what you tap, you hear: always, also on top of the music while it plays
+function playLanePreview(li, v) { if (!ensureAudio()) return; AU.ctx.resume(); drum(li, AU.ctx.currentTime + 0.01, v); }
+function previewNote(part, p, v) { if (!ensureAudio()) return; AU.ctx.resume(); tone(part, p, AU.ctx.currentTime + 0.01, 0.25, v || 92); }
+function previewChord(c) { if (!ensureAudio()) return; AU.ctx.resume(); D.voice(c, null, 52, 72).forEach((p) => tone('chords', p, AU.ctx.currentTime + 0.01, 0.8, 90)); }
 /* ---------- water ripples: eye candy behind the editor, never in the way ---------- */
 const RIP = { list: [], raf: 0, cv: null, calm: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches };
 const RIP_LIFE = { beat: 1.3, bass: 2.2, chords: 2.6, melody: 1.6 };
@@ -3223,7 +3240,7 @@ const demo = D.newSong('triphop', { seed: 20261017, name: 'Untitled' });
 st.song = demo; st.sec = 1; st.boot = true; st.fresh = true;
 render();
 openStart();
-window.DMMAPP = { st, AU, change, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, change, newVersion, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
