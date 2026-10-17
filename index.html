@@ -54,11 +54,14 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .ico{width:16px;height:16px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 
-.app{height:100%;display:grid;grid-template-rows:auto 1fr auto;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));padding-block:8px;gap:8px}
-.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
+.app{height:100%;display:grid;grid-template-rows:auto 1fr;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));padding-block:8px;gap:8px}
+.top{display:flex;flex-direction:column;align-items:stretch;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
 .brand{font:700 17px/1 var(--display);letter-spacing:.01em;white-space:nowrap;margin-right:4px}
 .brand b{color:var(--accent);font-weight:700}
 .top .grp{display:flex;align-items:center;gap:6px}
+.top .trow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.top .pp{display:flex;background:var(--raise);border-radius:8px;padding:2px}
+.top .pp button{border:0;background:transparent;padding:4px 10px;font-size:12px}
 .top label{font-size:12px;color:var(--muted)}
 .top .sep{width:1px;height:24px;background:var(--line)}
 .autotag{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 6px;cursor:pointer;user-select:none}
@@ -162,7 +165,12 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .slot.selp{box-shadow:0 0 0 1px var(--fg) inset}
 .slot .hd{display:flex;align-items:center;gap:7px}
 .slot .nm{font:700 15px/1 var(--display);cursor:pointer}
-.slot .badge{font-size:11px;border-radius:6px;padding:2px 6px;margin-left:auto}
+.slot .badge{font-size:11px;border-radius:6px;padding:2px 6px;margin-left:auto;white-space:nowrap}
+.slot .hd{cursor:pointer}
+.slot .hd .iconbtn{padding:3px 5px}
+.slot.closed{gap:5px;padding:6px 8px}
+.slot .chev svg{transform:rotate(90deg)}
+.slot.open .chev svg{transform:rotate(90deg) scaleX(-1)}
 .seg{display:grid;grid-template-columns:repeat(3,1fr);background:var(--raise);border-radius:8px;padding:2px;gap:2px}
 .seg button{border:0;background:transparent;padding:4px 0;font-size:12px;justify-content:center;border-radius:6px}
 .seg button.on{background:var(--panel);color:var(--fg);border-color:transparent;box-shadow:0 0 0 1px var(--line2)}
@@ -205,7 +213,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .dtab th{font-size:12px;color:var(--muted);font-weight:500}
 .dtab .fn{font:12px var(--mono);word-break:break-all}
 .scroller{overflow-x:auto}
-.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--bg);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;gap:10px;align-items:center;max-width:min(560px,calc(100% - 32px))}
+.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--bg);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;gap:10px;align-items:center;max-width:min(560px,calc(100% - 32px))}
 .toast button{background:transparent;color:var(--bg);border-color:var(--bg);padding:3px 8px}
 .dropveil{position:fixed;inset:0;z-index:80;border:3px dashed var(--accent);background:color-mix(in srgb,var(--bg) 70%,transparent);display:flex;align-items:center;justify-content:center;font:700 26px var(--display);pointer-events:none}
 .kbd{font:11px var(--mono);border:1px solid var(--line2);border-radius:5px;padding:1px 5px}
@@ -240,7 +248,6 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
     </section>
     <section class="pane right" id="right" aria-label="Parts"></section>
   </main>
-  <footer class="bottom" id="bottom"></footer>
 </div>
 <div id="overlay"></div>
 <div id="toastHost"></div>
@@ -1827,7 +1834,7 @@ function editable(part) {
 /* ---------- render ---------- */
 function render(keepEditor) {
   D.ensureTypes(song()); D.setSpelling(song().key);
-  renderTop(); renderLeft(); renderRight(); renderBottom();
+  renderTop(); renderLeft(); renderRight();
   if (!keepEditor) renderEditor(); else renderEditorDynamic();
   renderHint();
 }
@@ -1845,20 +1852,30 @@ function renderTop() {
   const scope = h('div', { class: 'scope', role: 'group', 'aria-label': 'What play plays' },
     h('button', { id: 'scopeSong', class: !st.loop ? 'on' : '', 'aria-pressed': !st.loop, title: 'Play the whole song', onclick: () => continueSong() }, 'Whole song'),
     h('button', { id: 'scopeSec', class: st.loop ? 'on' : '', 'aria-pressed': st.loop, title: 'Repeat only the selected section', onclick: () => { st.loop = true; st.held = false; renderTop(); renderLeft(); } }, 'Loop ' + sectionLabel(st.sec)));
+  const anyOff = D.PARTS.some((p) => sg.parts[p].mode === 'off' || (sg.parts[p].mode === 'yours' && !D.userSource(sg, p, curType())));
+  // row 1: the song itself. row 2: genre and everything you do with the song
   top.append(
-    h('div', { class: 'brand' }, 'Divine ', h('b', null, 'Music'), ' Machine'), name,
-    h('div', { class: 'sep' }),
-    h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Previous section', title: 'Previous section (left arrow)', onclick: () => skip(-1) }, ico('prev')), playBtn, h('button', { class: 'iconbtn', 'aria-label': 'Next section', title: 'Next section (right arrow)', onclick: () => skip(1) }, ico('next')),
-      scope, st.held ? h('button', { class: 'primary', id: 'continueSong', title: 'Go on with the whole song', onclick: () => continueSong() }, ico('play'), 'Continue song') : null),
-    h('div', { class: 'sep' }),
-    h('div', { class: 'grp' }, h('label', { for: 'bpm' }, 'Tempo'), bpm, h('span', { class: 'autotag ' + (sg.bpmAuto ? 'on' : ''), title: 'Auto: the machine sets the tempo from your file or the genre', onclick: () => change(() => { sg.bpmAuto = !sg.bpmAuto; if (sg.bpmAuto) sg.bpm = sg.importBpm || D.GENRES[sg.genre].def; }) }, 'auto')),
-    h('div', { class: 'grp' }, h('label', { for: 'bars' }, 'Bars'), bars),
-    h('div', { class: 'grp' }, h('label', { for: 'keyRoot' }, 'Key'), root, scale, h('span', { class: 'autotag ' + (sg.keyAuto ? 'on' : ''), title: 'Auto: the machine finds the key from what you put in', onclick: () => change(() => { sg.keyAuto = !sg.keyAuto; if (sg.keyAuto) autoKey(); }) }, 'auto')),
-    h('div', { class: 'grp' }, h('label', { for: 'meter' }, 'Metre'), meter),
-    h('div', { class: 'grp' }, h('label', { for: 'genre' }, 'Genre'), genre, sg.genre === 'free' ? h('button', { id: 'suggestBtn', title: 'Which genre does this sound like?', onclick: openSuggest }, ico('bulb'), 'Suggest') : null),
-    h('div', { class: 'grow' }),
-    h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Undo', title: 'Undo (Ctrl Z)', disabled: !st.hist.length, onclick: undo }, ico('undo')), h('button', { class: 'iconbtn', 'aria-label': 'Redo', title: 'Redo', disabled: !st.fut.length, onclick: redo }, ico('redo')),
-      h('button', { id: 'libBtn', onclick: openLibrary }, ico('books'), 'Library'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New'))
+    h('div', { class: 'trow' },
+      h('div', { class: 'brand' }, 'Divine ', h('b', null, 'Music'), ' Machine'), name,
+      h('div', { class: 'sep' }),
+      h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Previous section', title: 'Previous section (left arrow)', onclick: () => skip(-1) }, ico('prev')), playBtn, h('button', { class: 'iconbtn', 'aria-label': 'Next section', title: 'Next section (right arrow)', onclick: () => skip(1) }, ico('next')),
+        scope, st.held ? h('button', { class: 'primary', id: 'continueSong', title: 'Go on with the whole song', onclick: () => continueSong() }, ico('play'), 'Continue song') : null),
+      h('div', { class: 'sep' }),
+      h('div', { class: 'grp' }, h('label', { for: 'bpm' }, 'Tempo'), bpm, h('span', { class: 'autotag ' + (sg.bpmAuto ? 'on' : ''), title: 'Auto: the machine sets the tempo from your file or the genre', onclick: () => change(() => { sg.bpmAuto = !sg.bpmAuto; if (sg.bpmAuto) sg.bpm = sg.importBpm || D.GENRES[sg.genre].def; }) }, 'auto')),
+      h('div', { class: 'grp' }, h('label', { for: 'bars' }, 'Bars'), bars),
+      h('div', { class: 'grp' }, h('label', { for: 'keyRoot' }, 'Key'), root, scale, h('span', { class: 'autotag ' + (sg.keyAuto ? 'on' : ''), title: 'Auto: the machine finds the key from what you put in', onclick: () => change(() => { sg.keyAuto = !sg.keyAuto; if (sg.keyAuto) autoKey(); }) }, 'auto')),
+      h('div', { class: 'grp' }, h('label', { for: 'meter' }, 'Metre'), meter)),
+    h('div', { class: 'trow' },
+      h('div', { class: 'grp' }, h('label', { for: 'genre' }, 'Genre'), genre, sg.genre === 'free' ? h('button', { id: 'suggestBtn', title: 'Which genre does this sound like?', onclick: openSuggest }, ico('bulb'), 'Suggest') : null),
+      anyOff ? h('button', { class: 'primary', id: 'takeOver', onclick: takeOver }, ico('wand'), 'Machine, take it from here') : null,
+      h('div', { class: 'grow' }),
+      h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Undo', title: 'Undo (Ctrl Z)', disabled: !st.hist.length, onclick: undo }, ico('undo')), h('button', { class: 'iconbtn', 'aria-label': 'Redo', title: 'Redo', disabled: !st.fut.length, onclick: redo }, ico('redo'))),
+      h('div', { class: 'grp' }, h('button', { id: 'libBtn', onclick: openLibrary }, ico('books'), 'Library'), h('button', { id: 'saveLib', title: 'Save what plays here to your library', onclick: openSaveLib }, ico('bookmark'), 'Save')),
+      h('div', { class: 'pp', role: 'group', 'aria-label': 'Version to deliver' },
+        h('button', { class: !st.polished ? 'on' : '', title: 'Exactly what you made', onclick: () => { st.polished = false; renderTop(); } }, 'Pure'),
+        h('button', { class: st.polished ? 'on' : '', title: 'Theory checked and mix ready', onclick: () => { st.polished = true; renderTop(); } }, 'Polished')),
+      h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver'),
+      h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
   );
 }
 function setMeter(m) {
@@ -2039,32 +2056,39 @@ function updateSpiralDot() {
 }
 
 /* ---------- right: part slots ---------- */
+// which slot is open: the part you edit, unless you opened or closed one yourself in this view
+function openSlot() { return st.slotFor === st.view && st.slotOpen !== undefined ? st.slotOpen : (D.PARTS.includes(st.view) ? st.view : null); }
+function toggleSlot(p) { const now = openSlot(); st.slotFor = st.view; st.slotOpen = now === p ? null : p; renderRight(); }
 function renderRight() {
   const sg = song(), right = $('#right'); right.innerHTML = '';
+  if (st.lastView !== st.view) { st.slotFor = null; st.lastView = st.view; } // a new view opens its own part again
+  const open = openSlot();
   for (const p of D.PARTS) {
-    const P = sg.parts[p];
+    const P = sg.parts[p], isOpen = open === p;
     const lead = P.mode === 'yours' && !D.isEmpty(p, (D.userSource(sg, p, curType()) || {}).data);
     const badge = P.mode === 'yours' ? (lead ? 'yours, leads' : 'yours, empty') : P.mode === 'machine' ? 'machine bends' : 'off';
-    const plugSel = h('select', { id: 'plug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => change(() => { P.plugin = e.target.value; }, { keep: true }) }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === P.plugin }, D.PLUGINS[k].name)));
-    if (!D.pluginsFor(p).includes(P.plugin)) P.plugin = D.pluginsFor(p)[0];
-    const pl = D.PLUGINS[P.plugin];
-    const ujRow = pl.family && !pl.noPlayer ? h('div', { class: 'small' }, 'You get two files: Player (its own phrases) and Instrument (your exact notes).') : null;
-    const pad = h('div', { class: 'pad', role: 'slider', tabindex: 0, 'aria-label': PART_NAMES[p] + ' feel', 'aria-valuetext': feelText(P.feel), title: 'Left: ahead of the beat. Right: laid back. Top: tight. Bottom: loose.' });
-    const dot = h('i', { style: 'left:' + ((P.feel.x + 1) / 2 * 100) + '%;top:' + (P.feel.y * 100) + '%;background:var(--' + p + ')' });
-    pad.append(dot);
-    const lab = h('div', { class: 'lab' }, h('div', null, 'Feel'), h('div', { id: 'feel_' + p }, feelText(P.feel)));
-    bindPad(pad, dot, p, lab);
-    const card = h('div', { class: 'slot ' + (st.view === p ? 'selp' : ''), id: 'slot_' + p },
-      h('div', { class: 'hd' }, shapeIcon(p), h('span', { class: 'nm', tabindex: 0, role: 'button', onclick: () => { st.view = p; render(); }, onkeydown: (e) => { if (e.key === 'Enter') { st.view = p; render(); } } }, PART_NAMES[p]),
-        h('span', { class: 'badge', style: 'background:var(--' + p + '-t);color:var(--' + p + ')' }, badge)),
-      h('div', { class: 'seg', role: 'group', 'aria-label': PART_NAMES[p] + ' who makes it' },
-        ['yours', 'machine', 'off'].map((m) => h('button', { class: P.mode === m ? 'on' : '', 'aria-pressed': P.mode === m, onclick: () => setMode(p, m) }, { yours: 'Yours', machine: 'Machine', off: 'Off' }[m]))),
-      h('div', { class: 'row' }, h('span', { class: 'small' }, 'played by'), plugSel),
-      ujRow,
-      h('div', { class: 'feel' }, pad, lab, h('div', { class: 'grow' }),
-        h('button', { class: 'iconbtn', title: P.mode === 'yours' ? 'Fill this part here with a fresh idea from the machine' : 'New machine version', 'aria-label': 'New version of ' + PART_NAMES[p], onclick: () => newVersion(p) }, ico('dice')),
-        h('button', { class: 'iconbtn', title: 'Edit ' + PART_NAMES[p], 'aria-label': 'Edit ' + PART_NAMES[p], onclick: () => { st.view = p; render(); } }, ico('pencil')))
-    );
+    const head = h('div', { class: 'hd', onclick: (e) => { if (!e.target.closest('button')) toggleSlot(p); } }, shapeIcon(p),
+      h('span', { class: 'nm', tabindex: 0, role: 'button', 'aria-expanded': isOpen, onkeydown: (e) => { if (e.key === 'Enter') toggleSlot(p); } }, PART_NAMES[p]),
+      h('span', { class: 'badge', style: 'background:var(--' + p + '-t);color:var(--' + p + ')' }, badge),
+      h('button', { class: 'iconbtn', title: P.mode === 'yours' ? 'Fill this part here with a fresh idea from the machine' : 'New machine version', 'aria-label': 'New version of ' + PART_NAMES[p], onclick: () => newVersion(p) }, ico('dice')),
+      h('button', { class: 'iconbtn chev', 'aria-label': (isOpen ? 'Close ' : 'Open ') + PART_NAMES[p], onclick: () => toggleSlot(p) }, ico(isOpen ? 'arrowL' : 'arrowR')));
+    const seg = h('div', { class: 'seg', role: 'group', 'aria-label': PART_NAMES[p] + ' who makes it' },
+      ['yours', 'machine', 'off'].map((m) => h('button', { class: P.mode === m ? 'on' : '', 'aria-pressed': P.mode === m, onclick: () => setMode(p, m) }, { yours: 'Yours', machine: 'Machine', off: 'Off' }[m])));
+    const card = h('div', { class: 'slot ' + (st.view === p ? 'selp ' : '') + (isOpen ? 'open' : 'closed'), id: 'slot_' + p }, head, seg);
+    if (isOpen) {
+      if (!D.pluginsFor(p).includes(P.plugin)) P.plugin = D.pluginsFor(p)[0];
+      const plugSel = h('select', { id: 'plug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => change(() => { P.plugin = e.target.value; }, { keep: true }) }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === P.plugin }, D.PLUGINS[k].name)));
+      const pl = D.PLUGINS[P.plugin];
+      const pad = h('div', { class: 'pad', role: 'slider', tabindex: 0, 'aria-label': PART_NAMES[p] + ' feel', 'aria-valuetext': feelText(P.feel), title: 'Left: ahead of the beat. Right: laid back. Top: tight. Bottom: loose.' });
+      const dot = h('i', { style: 'left:' + ((P.feel.x + 1) / 2 * 100) + '%;top:' + (P.feel.y * 100) + '%;background:var(--' + p + ')' });
+      pad.append(dot);
+      const lab = h('div', { class: 'lab' }, h('div', null, 'Feel'), h('div', { id: 'feel_' + p }, feelText(P.feel)));
+      bindPad(pad, dot, p, lab);
+      card.append(h('div', { class: 'row' }, h('span', { class: 'small' }, 'played by'), plugSel),
+        pl.family && !pl.noPlayer ? h('div', { class: 'small' }, 'You get two files: Player (its own phrases) and Instrument (your exact notes).') : '',
+        h('div', { class: 'feel' }, pad, lab, h('div', { class: 'grow' }),
+          h('button', { class: 'iconbtn', title: 'Edit ' + PART_NAMES[p], 'aria-label': 'Edit ' + PART_NAMES[p], onclick: () => { st.view = p; render(); } }, ico('pencil'))));
+    }
     right.append(card);
   }
 }
@@ -2119,19 +2143,6 @@ function ideaToast(p) {
 }
 
 /* ---------- bottom ---------- */
-function renderBottom() {
-  const sg = song(), b = $('#bottom'); b.innerHTML = '';
-  const anyOff = D.PARTS.some((p) => sg.parts[p].mode === 'off' || (sg.parts[p].mode === 'yours' && !D.userSource(sg, p, curType())));
-  b.append(...[
-    anyOff ? h('button', { class: 'primary', id: 'takeOver', onclick: takeOver }, ico('wand'), 'Machine, take it from here') : null,
-    h('div', { class: 'pp', role: 'group', 'aria-label': 'Version to deliver' },
-      h('button', { class: !st.polished ? 'on' : '', title: 'Exactly what you made', onclick: () => { st.polished = false; renderBottom(); } }, 'Pure'),
-      h('button', { class: st.polished ? 'on' : '', title: 'Theory checked and mix ready', onclick: () => { st.polished = true; renderBottom(); } }, 'Polished')),
-    h('span', { id: 'fileHint' }, 'Files: ' + fileName(PART_NAMES[st.view === 'overview' ? 'bass' : st.view], deliveryNo(false), '', sg.parts[st.view === 'overview' ? 'bass' : st.view].plugin)),
-    h('button', { id: 'saveLib', onclick: openSaveLib }, ico('bookmark'), 'Save to library'),
-    h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver')
-  ].filter(Boolean));
-}
 function takeOver() {
   const grow = song().sections.length === 1;
   change(() => {
@@ -3079,7 +3090,7 @@ function openDeliver() {
   const active = D.PARTS.filter((p) => sg.parts[p].mode !== 'off' && D.renderSong(sg, p).length);
   for (const p of D.PARTS) {
     const on = active.includes(p);
-    const sel = h('select', { id: 'dplug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { sg.parts[p].plugin = e.target.value; saveSession(); renderRight(); renderBottom(); openDeliver(); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === sg.parts[p].plugin }, D.PLUGINS[k].name)));
+    const sel = h('select', { id: 'dplug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { sg.parts[p].plugin = e.target.value; saveSession(); renderRight(); renderTop(); openDeliver(); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === sg.parts[p].plugin }, D.PLUGINS[k].name)));
     const vers = on ? versionsOf(sg.parts[p].plugin) : [null];
     vers.forEach((v, vi) => tbl.append(h('tr', null, h('td', null, vi ? h('span', { class: 'small' }, '') : h('span', { style: 'display:inline-flex;gap:6px;align-items:center' }, shapeIcon(p), PART_NAMES[p])),
       h('td', null, vi ? h('span', { class: 'small' }, v + ' version') : on ? h('div', { style: 'display:grid;gap:4px' }, sel, v ? h('span', { class: 'small' }, v + ' version') : null) : h('span', { class: 'small' }, 'off or silent')),
@@ -3096,7 +3107,7 @@ function openDeliver() {
     h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' }, h('label', { for: 'dName', class: 'small' }, 'Name of the production'), nameIn),
     sg.genre === 'free' ? h('div', { class: 'freebox' }, h('h3', null, 'Your Free flow song'), suggestionBox(true)) : null,
     h('div', { class: 'row', style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' },
-      h('div', { class: 'pp seg', style: 'grid-template-columns:1fr 1fr;width:220px' }, h('button', { class: !st.polished ? 'on' : '', onclick: () => { st.polished = false; renderBottom(); openDeliver(); } }, 'Pure'), h('button', { class: st.polished ? 'on' : '', onclick: () => { st.polished = true; renderBottom(); openDeliver(); } }, 'Polished')),
+      h('div', { class: 'pp seg', style: 'grid-template-columns:1fr 1fr;width:220px' }, h('button', { class: !st.polished ? 'on' : '', onclick: () => { st.polished = false; renderTop(); openDeliver(); } }, 'Pure'), h('button', { class: st.polished ? 'on' : '', onclick: () => { st.polished = true; renderTop(); openDeliver(); } }, 'Polished')),
       h('span', { class: 'small' }, st.polished ? 'Polished: notes nudged into key and chords, each part in its own range, loudness balanced.' : 'Pure: exactly what you made, with your feel.')),
     h('div', { class: 'scroller' }, tbl),
     h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { class: 'primary', id: 'deliverAll', onclick: () => deliverFiles(active.flatMap((p) => versionsOf(sg.parts[p].plugin).map((v) => p + (v ? ':' + v : ''))).concat(['structure']), true) }, ico('download'), 'Download all as one .zip'),
@@ -3271,7 +3282,7 @@ async function deliverFiles(parts, asZip) {
   }
   if (asZip && files.length > 1) await saveFiles([{ name: 'DM_' + safe(sg.name) + '_All_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.zip', data: makeZip(files), zip: true }]);
   else await saveFiles(files);
-  renderBottom();
+  renderTop();
 }
 
 /* ---------- boot ---------- */
