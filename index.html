@@ -2023,7 +2023,7 @@ function renderEditor() {
   tabs.append(h('button', { class: 'tab ' + (st.view === 'overview' ? 'sel' : ''), role: 'tab', 'aria-selected': st.view === 'overview', onclick: () => { st.view = 'overview'; render(); } }, 'All parts'));
   for (const p of D.PARTS) tabs.append(h('button', { class: 'tab ' + (st.view === p ? 'sel' : ''), role: 'tab', 'aria-selected': st.view === p, onclick: () => { st.view = p; holdHere(); render(); } }, h('i', { class: 'dot', style: 'background:var(--' + p + ')' }), PART_NAMES[p]));
   const cnt = song().sections.filter((x) => x.type === curType()).length;
-  head.append(tabs, h('span', { class: 'editing', id: 'editingBadge' }, st.view === 'overview' ? 'Showing ' + sectionLabel(st.sec) : 'Editing ' + D.TYPES[curType()].name + (cnt > 1 ? ', all ' + cnt : '')), h('div', { class: 'grow' }));
+  head.append(tabs, h('span', { class: 'editing', id: 'editingBadge', style: '--accent:var(--' + (st.view === 'overview' ? song().sections[st.sec].type : curType()) + ')' }, st.view === 'overview' ? 'Showing ' + sectionLabel(st.sec) : 'Editing ' + D.TYPES[curType()].name + (cnt > 1 ? ', all ' + cnt : '')), h('div', { class: 'grow' }));
   if (st.view !== 'chords') head.append(h('div', { class: 'pp seg', style: 'grid-template-columns:1fr 1fr;width:140px' },
     h('button', { class: st.rings ? 'on' : '', onclick: () => { st.rings = true; renderEditor(); } }, 'Rings'), h('button', { class: !st.rings ? 'on' : '', onclick: () => { st.rings = false; renderEditor(); } }, 'Lines')));
   if (st.view !== 'overview') {
