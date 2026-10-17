@@ -2119,7 +2119,7 @@ function noteRings(part) {
       d.notes.push(n); d.notes.sort((a, b) => a.s - b.s); previewNote(part, n.p);
       drag = { n, d, before, x, y, s0: n.s, d0: n.d, ri0: pol.ri, moved: false, created: true, el: null };
     }
-    place();
+    if (drag.created) place();
   });
   const place = () => { const ne = noteArc(drag.n, { stroke: col, 'stroke-width': 10, opacity: 1, class: 'note' }); if (drag.el) drag.el.replaceWith(ne); else svg.insertBefore(ne, ph); drag.el = ne; };
   svg.addEventListener('pointermove', (e) => {
