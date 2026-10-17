@@ -440,6 +440,29 @@ E.scratchSong = function (genre, opts) {
   for (const p of E.PARTS) s.parts[p].mode = p === 'answer' ? 'machine' : 'off'; // the answer comes for free and waits for a melody
   return s;
 };
+// a fresh structure in the spirit of the genre: intro first, outro last, verses and choruses in between,
+// now and then a pre chorus, break, build, drop or fill; lengths in whole patterns
+E.randomStructure = function (song, seed) {
+  const r = rng(seed), g = song.genre, L = song.L, U = L === 12 ? 12 : 4;
+  const len = (t) => (t === 'fill' ? 1 + r.int(2) : L === 12 ? 12 * (t === 'verse' || t === 'chorus' ? 1 + r.int(2) : 1) : t === 'prechorus' || t === 'build' ? r.pick([4, 8]) : t === 'intro' || t === 'outro' ? r.pick([4, 8, 8, 16]) : r.pick([8, 8, 16, 16]));
+  const out = [['intro']];
+  if (g === 'techno') {
+    const rounds = 2 + r.int(2);
+    for (let k = 0; k < rounds; k++) { out.push(['build'], ['drop']); if (k < rounds - 1) out.push([r.pick(['break', 'break', 'verse'])]); }
+  } else {
+    const rounds = 2 + r.int(2), pre = g !== 'blues' && r.chance(0.5);
+    for (let k = 0; k < rounds; k++) {
+      out.push(['verse']); if (g === 'blues' && r.chance(0.4)) out.push(['verse']);
+      if (pre) out.push(['prechorus']);
+      out.push(['chorus']);
+      if (k === rounds - 2 && r.chance(0.6)) out.push([r.pick(['break', 'break', 'fill'])]);
+      else if (r.chance(0.2)) out.push(['fill']);
+    }
+    if (r.chance(0.3)) out.push(['chorus']);
+  }
+  out.push(['outro']);
+  return out.map(([t]) => ({ id: 's' + hash(seed, t, Math.random()), type: t, bars: Math.max(t === 'fill' ? 1 : U, len(t)) }));
+};
 // the genre's own structure, keeping the sections you made in front
 E.growStructure = function (song) {
   const g = E.GENRES[song.genre];
@@ -1944,6 +1967,7 @@ function renderTop() {
     h('div', { class: 'trow' },
       h('div', { class: 'grp' }, h('label', { for: 'genre' }, 'Genre'), genre, sg.genre === 'free' ? h('button', { id: 'suggestBtn', title: 'Which genre does this sound like?', onclick: openSuggest }, ico('bulb'), 'Suggest') : null),
       anyOff ? h('button', { class: 'primary', id: 'takeOver', onclick: takeOver }, ico('wand'), 'Machine, take it from here') : null,
+      h('button', { id: 'rollAll', title: 'New ideas for every part the machine plays; your own parts stay as they are', onclick: rollAll }, ico('dice'), 'Roll machine parts'),
       h('div', { class: 'grow' }),
       h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Undo', title: 'Undo (Ctrl Z)', disabled: !st.hist.length, onclick: undo }, ico('undo')), h('button', { class: 'iconbtn', 'aria-label': 'Redo', title: 'Redo', disabled: !st.fut.length, onclick: redo }, ico('redo'))),
       h('div', { class: 'grp' }, h('button', { id: 'libBtn', onclick: openLibrary }, ico('books'), 'Library'), h('button', { id: 'saveLib', title: 'Save what plays here to your library', onclick: openSaveLib }, ico('bookmark'), 'Save')),
@@ -2011,6 +2035,7 @@ function renderLeft() {
   sg.sections.forEach((x, i) => chips.append(h('div', { class: 'chip ' + (i === st.sec ? 'sel ' : '') + (AU.playing && at.i === i ? 'play' : ''), role: 'listitem', style: 'background:color-mix(in srgb,' + TYPE_COLOR(x.type) + ' 24%,var(--raise))' },
     h('button', { class: 'chipbtn', id: 'chip_' + i, title: 'Select ' + sectionLabel(i) + '; while playing, jump there' + (D.hasOwn(sg, x) ? '. Has its own version' : ''), onclick: () => playSection(i) }, D.TYPES[x.type].name, D.hasOwn(sg, x) ? h('span', { class: 'owndot', 'aria-label': 'own version' }) : null, h('span', { class: 'n' }, x.bars)),
     sg.sections.length > 1 ? h('button', { class: 'chipx', 'aria-label': 'Delete ' + sectionLabel(i), title: 'Delete this section', onclick: () => deleteSection(i) }, '\u00d7') : null)));
+  chips.append(h('button', { class: 'chip add', id: 'rollStructure', title: 'A new song structure in this genre; your parts stay', 'aria-label': 'New random structure', onclick: rollStructure }, ico('dice')));
   chips.append(h('button', { class: 'chip add ' + (st.adding ? 'sel' : ''), id: 'addSec', title: 'Add a section after the selected one', 'aria-label': 'Add section', 'aria-expanded': !!st.adding, onclick: () => { st.adding = !st.adding; renderLeft(); } }, ico('plus')));
   left.append(chips);
   if (st.adding) left.append(h('div', { class: 'typegrid', id: 'addGrid' }, h('div', { class: 'small full' }, 'Add after ' + sectionLabel(st.sec) + ':'), D.TYPE_ORDER.map((t) => h('button', { class: 'tbtn', style: 'border-color:' + TYPE_COLOR(t), onclick: () => addSection(t) }, D.TYPES[t].name)), h('button', { class: 'ghost full', onclick: () => { st.adding = false; renderLeft(); } }, 'Cancel')));
@@ -2215,6 +2240,20 @@ function newVersionOnce(p) {
       const only = editTarget(p) !== 'std'; putHere(p, m); setHint('A fresh ' + PART_NAMES[p].toLowerCase() + ' idea for ' + (only ? sectionLabel(st.sec) + ' only' : 'every ' + D.TYPES[t].name + ' that follows ' + sectionLabel(st.sec)) + '. It stays yours to edit; undo brings back the old one.');
     } else { if (P.mode === 'off') P.mode = 'machine'; P.seed = D.newSeed(); setHint('New machine ' + PART_NAMES[p].toLowerCase() + '. Undo brings back the previous one.'); }
   }
+}
+// one tap: every machine part gets a fresh idea; what is yours stays, the machine bends around it
+function rollAll() {
+  const parts = D.PARTS.filter((p) => song().parts[p].mode === 'machine');
+  if (!parts.length) { toast('Every part is yours or off, so there is nothing for the machine to roll. The dice in each slot still give ideas for your own parts.'); return; }
+  change(() => { for (const p of parts) song().parts[p].seed = D.newSeed(); });
+  toast('New ideas for ' + parts.map((p) => PART_NAMES[p].toLowerCase()).join(', ') + '. Your own parts stayed.', { label: 'Undo', fn: undo });
+}
+// a fresh structure; the music of each section type comes along
+function rollStructure() {
+  holdSel();
+  change(() => { const sg = song(); sg.sections = D.randomStructure(sg, D.newSeed()); st.sec = 0; st.adding = false; });
+  if (AU.playing && !AU.preview) jumpTo(0);
+  const sg = song(); toast('New structure: ' + sg.sections.length + ' sections, ' + D.totalBars(sg) + ' bars. Own versions of sections start fresh.', { label: 'Undo', fn: undo });
 }
 function ideaToast(p) {
   toast('Fresh ' + PART_NAMES[p].toLowerCase() + ' idea.', { label: 'Undo', fn: () => { undo(); toast('Back to the previous ' + PART_NAMES[p].toLowerCase() + '.', { label: 'Redo', fn: () => { redo(); ideaToast(p); } }); } });
@@ -3064,6 +3103,8 @@ function openHelp() {
       row('Sections', 'Tap a chip to select it; play starts from there. The panel sets length, type, which parts play here, Start from, Vary and ↺.'),
       row('Repeat bar 1', 'Make one bar of bass, pad, melody or answer; empty bars follow it along the chords. Chords: Fill empty bars.'),
       row('Dice', 'A new idea that fits the key and chords; it always lands on something different.'),
+      row('Roll machine parts', 'Top bar: every part the machine plays gets a new idea at once; your own parts stay.'),
+      row('Structure dice', 'Next to + under the chips: a new song structure in this genre.'),
       row('Played by', 'Choose a plugin per part. UJAM parts arrive with keys already in the right zones.'),
       row('Pure', 'Exactly what you made, with your feel.'),
       row('Polished', 'Notes nudged into the key and chords, parts in their own range, loudness balanced.'),
@@ -3394,7 +3435,7 @@ const demo = D.newSong('triphop', { seed: 20261017, name: 'Untitled' });
 st.song = demo; st.sec = 1; st.boot = true; st.fresh = true;
 render();
 openStart();
-window.DMMAPP = { st, AU, change, newVersion, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
