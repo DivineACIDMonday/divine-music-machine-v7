@@ -1793,7 +1793,7 @@ function renderLeft() {
   drawSpiral(sp);
   const chips = h('div', { class: 'chips', role: 'list' });
   sg.sections.forEach((x, i) => chips.append(h('div', { class: 'chip ' + (i === st.sec ? 'sel ' : '') + (AU.playing && at.i === i ? 'play' : ''), role: 'listitem', style: 'background:color-mix(in srgb,' + TYPE_COLOR(x.type) + ' 24%,var(--raise))' },
-    h('button', { class: 'chipbtn', id: 'chip_' + i, title: 'Play ' + sectionLabel(i) + ' from its start', onclick: () => playSection(i) }, D.TYPES[x.type].name, h('span', { class: 'n' }, x.bars)),
+    h('button', { class: 'chipbtn', id: 'chip_' + i, title: 'Select ' + sectionLabel(i) + '; while playing, jump there', onclick: () => playSection(i) }, D.TYPES[x.type].name, h('span', { class: 'n' }, x.bars)),
     sg.sections.length > 1 ? h('button', { class: 'chipx', 'aria-label': 'Delete ' + sectionLabel(i), title: 'Delete this section', onclick: () => deleteSection(i) }, '\u00d7') : null)));
   chips.append(h('button', { class: 'chip add ' + (st.adding ? 'sel' : ''), id: 'addSec', title: 'Add a section after the selected one', 'aria-label': 'Add section', 'aria-expanded': !!st.adding, onclick: () => { st.adding = !st.adding; renderLeft(); } }, ico('plus')));
   left.append(chips);
@@ -1813,7 +1813,7 @@ function renderLeft() {
     startFromRow(sg, sec),
     h('button', { 'aria-label': 'Move earlier', disabled: st.sec === 0, onclick: () => moveSection(-1) }, ico('arrowL'), 'Earlier'),
     h('button', { 'aria-label': 'Move later', disabled: st.sec === sg.sections.length - 1, onclick: () => moveSection(1) }, 'Later', ico('arrowR')),
-    h('div', { class: 'full small' }, sg.sections.filter((x) => x.type === sec.type).length > 1 ? 'All ' + D.TYPES[sec.type].name + ' sections sound the same: change one and you change them all.' : 'Tap a section above to hear it from its start.'),
+    h('div', { class: 'full small' }, sg.sections.filter((x) => x.type === sec.type).length > 1 ? 'All ' + D.TYPES[sec.type].name + ' sections sound the same: change one and you change them all.' : 'Tap a section to select it, press play to hear it. While playing, a tap jumps there.'),
     h('div', { class: 'full small faint' }, 'Song: ' + D.totalBars(sg) + ' bars, about ' + fmtDur(D.totalBars(sg) * D.meter(sg).beats * (D.meter(sg).unit === 8 ? 1.5 : 1) * 60 / sg.bpm) + '.')
   );
   left.append(ed);
@@ -1822,8 +1822,9 @@ function renderLeft() {
 function playSection(i) {
   const sg = song(); st.sec = i; st.chordBar = 0; st.ringBar = 0; st.adding = false;
   const b = D.sectionStart(sg, i);
-  if (AU.playing && !AU.preview) { jumpTo(b); render(); } else startPlay(b);
-  setHint('Playing ' + sectionLabel(i) + ' from its start.' + (st.loop ? ' Looping it.' : ''));
+  // while playing: jump there; when stopped: only select, you press play yourself
+  if (AU.playing && !AU.preview) { jumpTo(b); render(); setHint('Playing ' + sectionLabel(i) + ' from its start.' + (st.loop ? ' Looping it.' : '')); }
+  else { render(); setHint(sectionLabel(i) + ' selected. Press play to hear it from its start.'); }
 }
 // switch a part on or off in this one section
 function togglePartHere(part) {
@@ -2715,8 +2716,8 @@ function openHelp() {
       row('Rings', 'One ring per drum. Further out is louder. Kick outside, crash inside.'),
       row('Lines', 'Rows of the key are lit. Drag a note’s end to lengthen, hold it for loudness.'),
       row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
-      row('Spiral', 'Your song from the centre out. Tap a colour to hear it from its start.'),
-      row('Sections', 'Tap a chip to hear it. The panel sets length, type, which parts play here, and Start from.'),
+      row('Spiral', 'Your song from the centre out. Tap a colour to select that section; while playing, it jumps there.'),
+      row('Sections', 'Tap a chip to select it; play starts from there. The panel sets length, type, which parts play here, and Start from.'),
       row('Repeat bar 1', 'Make one bar of bass or melody; empty bars follow it along the chords. Chords: Fill empty bars.'),
       row('Played by', 'Choose a plugin per part. UJAM parts arrive with keys already in the right zones.'),
       row('Pure', 'Exactly what you made, with your feel.'),
