@@ -134,7 +134,9 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .tab{border-radius:8px;padding:5px 10px;font-weight:500}
 .tab .dot{width:9px;height:9px;border-radius:50%;display:inline-block}
 .tab.sel{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.edbody{flex:1;min-height:0;position:relative;display:flex;align-items:center;justify-content:center;padding:8px}
+.centre{position:relative}
+.ripples{position:absolute;pointer-events:none;z-index:0}
+.edbody{flex:1;min-height:0;position:relative;z-index:1;display:flex;align-items:center;justify-content:center;padding:8px}
 .edbody>svg,.chordwrap>svg.wheel{width:100%;height:100%;display:block;touch-action:none;user-select:none}
 .chordwrap>svg.wheel{flex:1;min-height:0}
 .chordwrap{display:flex;flex-direction:column;gap:10px;width:100%;height:100%}
@@ -2512,12 +2514,46 @@ function barSec(sg) { return D.barTicks(sg) / D.PPQ * 60 / sg.bpm; }
 function playLanePreview(li, v) { if (!ensureAudio()) return; AU.ctx.resume(); if (!AU.playing) drum(li, AU.ctx.currentTime + 0.01, v); }
 function previewNote(part, p, v) { if (!ensureAudio()) return; AU.ctx.resume(); if (!AU.playing) tone(part, p, AU.ctx.currentTime + 0.01, 0.25, v || 92); }
 function previewChord(c) { if (!ensureAudio() || AU.playing) return; AU.ctx.resume(); D.voice(c, null, 52, 72).forEach((p) => tone('chords', p, AU.ctx.currentTime + 0.01, 0.8, 90)); }
+/* ---------- water ripples: eye candy behind the editor, never in the way ---------- */
+const RIP = { list: [], raf: 0, cv: null, calm: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches };
+const RIP_LIFE = { beat: 1.3, bass: 2.2, chords: 2.6, melody: 1.6 };
+function addRipple(part, t, v) { if (RIP.calm) return; RIP.list.push({ part, t, v }); if (RIP.list.length > 90) RIP.list.splice(0, RIP.list.length - 90); if (!RIP.raf) RIP.raf = requestAnimationFrame(drawRipples); }
+function dropFutureRipples() { if (AU.ctx) { const now = AU.ctx.currentTime; RIP.list = RIP.list.filter((r) => r.t <= now); } }
+function drawRipples() {
+  RIP.raf = 0;
+  const body = $('#edbody'); if (!body || !AU.ctx) return;
+  let cv = RIP.cv; if (!cv || !cv.isConnected) { cv = RIP.cv = h('canvas', { class: 'ripples', 'aria-hidden': 'true' }); body.parentNode.insertBefore(cv, body); }
+  const dpr = window.devicePixelRatio || 1, W = body.clientWidth, H = body.clientHeight;
+  cv.style.left = body.offsetLeft + 'px'; cv.style.top = body.offsetTop + 'px'; cv.style.width = W + 'px'; cv.style.height = H + 'px';
+  if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const now = AU.ctx.currentTime, cx = W / 2, cy = H / 2, rMax = Math.hypot(W, H) * 0.55, r0 = Math.min(W, H) * 0.08;
+  RIP.list = RIP.list.filter((r) => now - r.t < RIP_LIFE[r.part]);
+  const col = {}; for (const p of D.PARTS) col[p] = cssv('--' + p);
+  for (const r of RIP.list) {
+    const k = (now - r.t) / RIP_LIFE[r.part]; if (k < 0) continue;
+    const e = 1 - Math.pow(1 - k, 2.2), rad = r0 + (rMax - r0) * e;
+    const a = 0.24 * (0.45 + 0.55 * r.v / 127) * Math.pow(1 - k, 1.6), lw = r.part === 'bass' || r.part === 'beat' ? 2.4 : 1.6;
+    g.strokeStyle = col[r.part];
+    g.globalAlpha = a * 0.3; g.lineWidth = lw * 4; g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.stroke();
+    g.globalAlpha = a; g.lineWidth = lw; g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.stroke();
+  }
+  g.globalAlpha = 1;
+  if (RIP.list.length) RIP.raf = requestAnimationFrame(drawRipples);
+}
 function scheduleBar(sg, bar, t0) {
   const R = D.makeRenderer(sg); const tps = sg.bpm / 60 * D.PPQ;
   for (const p of D.PARTS) {
     if (sg.parts[p].mode === 'off') continue;
     let notes; try { notes = R.bar(p, bar); } catch (e) { console.error(e); continue; }
-    for (const n of notes) { const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue; if (p === 'beat') drum(n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v); }
+    let lastT = -1;
+    for (const n of notes) {
+      const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue;
+      if (p === 'beat') drum(n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
+      // water ripples: kick, snare and clap for the beat, one per chord, every bass and melody note
+      if (!AU.preview && (p !== 'beat' || n.lane <= 3) && (p !== 'chords' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v);
+      lastT = t;
+    }
   }
 }
 function nextBarOf(sg, b) {
@@ -2564,12 +2600,12 @@ function startPlay(fromBar, sgOverride) {
 function stopAll(silent) {
   clearInterval(AU.timer); AU.timer = null; cancelAnimationFrame(AU.raf);
   if (AU.ctx) { const now = AU.ctx.currentTime; for (const n of AU.nodes) { try { n.node.stop(now + 0.01); } catch (e) {} } }
-  AU.nodes = []; const was = AU.playing; AU.playing = false; AU.queue = [];
+  AU.nodes = []; dropFutureRipples(); const was = AU.playing; AU.playing = false; AU.queue = [];
   if (!silent && was && !AU.preview) { renderTop(); renderLeft(); renderEditor(); }
   if (AU.preview) { AU.preview = false; AU.song = null; document.querySelectorAll('[data-prev]').forEach((b) => { b.replaceChildren(ico('play')); }); }
 }
 function togglePlay() { if (AU.playing) stopAll(); else startPlay(D.sectionStart(song(), st.sec)); }
-function jumpTo(bar) { if (!AU.playing) return; const now = AU.ctx.currentTime; for (const n of AU.nodes) { try { n.node.stop(now + 0.01); } catch (e) {} } AU.nodes = []; AU.queue = []; AU.nextBar = bar; AU.nextT = now + 0.05; AU.curBar = bar; AU.curFrac = 0; tick(); }
+function jumpTo(bar) { if (!AU.playing) return; dropFutureRipples(); const now = AU.ctx.currentTime; for (const n of AU.nodes) { try { n.node.stop(now + 0.01); } catch (e) {} } AU.nodes = []; AU.queue = []; AU.nextBar = bar; AU.nextT = now + 0.05; AU.curBar = bar; AU.curFrac = 0; tick(); }
 function skip(dir) {
   const sg = song(); let i;
   if (AU.playing) { const at = D.sectionAt(sg, AU.curBar); i = D.clamp((at ? at.i : st.sec) + dir, 0, sg.sections.length - 1); }
