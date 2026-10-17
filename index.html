@@ -9,12 +9,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: one instrument panel. Top bar = song settings, left = song spiral, centre = the editor, right = four part slots, bottom = hint and delivery. Dark first, like gear in a dim studio. */
+/* Layout: one instrument panel. Top bar = song settings, left = song spiral, centre = the editor, right = the part slots (one opens at a time), top bar also holds delivery. Dark first, like gear in a dim studio. */
 :root{
   --bg:#101219; --panel:#171a24; --raise:#1e2230; --line:#2a2f42; --line2:#3a4058;
   --fg:#ebe8f2; --muted:#9296ad; --faint:#636884;
-  --beat:#e8825a; --bass:#9488ec; --chords:#3cbf95; --melody:#ec6aa4;
-  --beat-t:#e8825a26; --bass-t:#9488ec26; --chords-t:#3cbf9526; --melody-t:#ec6aa426;
+  --beat:#e8825a; --bass:#9488ec; --chords:#3cbf95; --pad:#5cc3d8; --melody:#ec6aa4; --answer:#e6b450;
+  --beat-t:#e8825a26; --bass-t:#9488ec26; --chords-t:#3cbf9526; --pad-t:#5cc3d826; --melody-t:#ec6aa426; --answer-t:#e6b45026;
   --accent:#f0c674; --accent-ink:#1b1608; --ok:#5fd39a; --warn:#f0a35a;
   --intro:#d8b45a; --verse:#9488ec; --chorus:#e8825a; --break:#3cbf95; --build:#ec6aa4; --outro:#8c90a6; --prechorus:#6aa6ec; --drop:#e85a5a; --fill:#a8c95a;
   --display:"Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
@@ -25,16 +25,16 @@
 @media (prefers-color-scheme: light){ :root:not([data-theme="dark"]){
   --bg:#f3f2f7; --panel:#ffffff; --raise:#eceaf3; --line:#dcd9e6; --line2:#c4c0d4;
   --fg:#1b1a24; --muted:#5e5b72; --faint:#8d8aa2;
-  --beat:#c9572c; --bass:#5f50cf; --chords:#16916c; --melody:#c63c7e;
-  --beat-t:#c9572c1f; --bass-t:#5f50cf1f; --chords-t:#16916c1f; --melody-t:#c63c7e1f;
+  --beat:#c9572c; --bass:#5f50cf; --chords:#16916c; --pad:#1b87a0; --melody:#c63c7e; --answer:#a47410;
+  --beat-t:#c9572c1f; --bass-t:#5f50cf1f; --chords-t:#16916c1f; --pad-t:#1b87a01f; --melody-t:#c63c7e1f; --answer-t:#a474101f;
   --accent:#a8750f; --accent-ink:#ffffff; --ok:#1d8a57; --warn:#b4621b;
   --intro:#a8801b; --verse:#5f50cf; --chorus:#c9572c; --break:#16916c; --build:#c63c7e; --outro:#6e6b84; --prechorus:#2f6fbd; --drop:#c22f2f; --fill:#5f8a12;
   color-scheme:light; } }
 :root[data-theme="light"]{
   --bg:#f3f2f7; --panel:#ffffff; --raise:#eceaf3; --line:#dcd9e6; --line2:#c4c0d4;
   --fg:#1b1a24; --muted:#5e5b72; --faint:#8d8aa2;
-  --beat:#c9572c; --bass:#5f50cf; --chords:#16916c; --melody:#c63c7e;
-  --beat-t:#c9572c1f; --bass-t:#5f50cf1f; --chords-t:#16916c1f; --melody-t:#c63c7e1f;
+  --beat:#c9572c; --bass:#5f50cf; --chords:#16916c; --pad:#1b87a0; --melody:#c63c7e; --answer:#a47410;
+  --beat-t:#c9572c1f; --bass-t:#5f50cf1f; --chords-t:#16916c1f; --pad-t:#1b87a01f; --melody-t:#c63c7e1f; --answer-t:#a474101f;
   --accent:#a8750f; --accent-ink:#ffffff; --ok:#1d8a57; --warn:#b4621b;
   --intro:#a8801b; --verse:#5f50cf; --chorus:#c9572c; --break:#16916c; --build:#c63c7e; --outro:#6e6b84; --prechorus:#2f6fbd; --drop:#c22f2f; --fill:#5f8a12;
   color-scheme:light; }
@@ -121,7 +121,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .secedit .faint{color:var(--faint)}
 .chip.add.sel{border-color:var(--fg)}
 .owndot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-left:4px;vertical-align:middle;opacity:.8}
-.secparts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.secparts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 .secparts button{font-size:11.5px;padding:5px 2px}
 .cbar.echo{opacity:.55;border-style:dashed}
 .manuals{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
@@ -263,7 +263,9 @@ E.PPQ = 480;
 E.STEP = 120; // one sixteenth
 const NOTE = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 E.NOTE = NOTE;
-E.PARTS = ['beat', 'bass', 'chords', 'melody'];
+E.PARTS = ['beat', 'bass', 'chords', 'pad', 'melody'];
+// parts made of notes (not hits, not one chord per bar)
+E.NOTE_PARTS = ['bass', 'pad', 'melody'];
 E.LANES = [
   { id: 'kick', name: 'Kick', shape: 'circle' },
   { id: 'kick2', name: 'Kick 2', shape: 'ring' },
@@ -412,7 +414,7 @@ E.TYPES = {
   fill: { name: 'Fill', energy: 0.6, color: 'green' }
 };
 E.TYPE_ORDER = ['intro', 'verse', 'prechorus', 'chorus', 'drop', 'break', 'build', 'fill', 'outro'];
-E.ensureTypes = (song) => { for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; for (const p of E.PARTS) if (song.mat[t][p] === undefined) song.mat[t][p] = null; } };
+E.ensureTypes = (song) => { for (const p of E.PARTS) if (!song.parts[p]) song.parts[p] = { mode: 'off', lead: false, plugin: 'plain', ujMode: 'instrument', feel: E.defaultFeel(p, song.genre), seed: hash(song.seed, p) }; for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; for (const p of E.PARTS) if (song.mat[t][p] === undefined) song.mat[t][p] = null; } };
 
 /* ---------- song model ---------- */
 E.newSong = function (genre, opts) {
@@ -427,7 +429,7 @@ E.newSong = function (genre, opts) {
     sections: g.sections.map((s, i) => ({ id: 's' + i + '_' + (r.int(1e6)), type: s[0], bars: s[1] })),
     parts: {}, mat: {}, seed: r.int(4294967295)
   };
-  for (const p of E.PARTS) song.parts[p] = { mode: 'machine', lead: false, plugin: 'plain', ujMode: p === 'melody' ? 'instrument' : 'player', feel: E.defaultFeel(p, genre), seed: r.int(4294967295) };
+  for (const p of E.PARTS) song.parts[p] = { mode: 'machine', lead: false, plugin: 'plain', ujMode: p === 'beat' || p === 'bass' || p === 'chords' ? 'player' : 'instrument', feel: E.defaultFeel(p, genre), seed: r.int(4294967295) };
   for (const t of E.TYPE_ORDER) { song.mat[t] = {}; for (const p of E.PARTS) song.mat[t][p] = null; }
   return song;
 };
@@ -451,7 +453,7 @@ E.growStructure = function (song) {
   song.sections = out;
 };
 E.defaultFeel = (p, genre) => {
-  const base = { beat: { x: 0, y: 0.25 }, bass: { x: 0.15, y: 0.3 }, chords: { x: 0.1, y: 0.35 }, melody: { x: -0.05, y: 0.35 } }[p];
+  const base = { beat: { x: 0, y: 0.25 }, bass: { x: 0.15, y: 0.3 }, chords: { x: 0.1, y: 0.35 }, pad: { x: 0.2, y: 0.5 }, melody: { x: -0.05, y: 0.35 }, answer: { x: 0.05, y: 0.4 } }[p];
   const f = Object.assign({}, base);
   if (genre === 'triphop' || genre === 'hiphop') f.x += 0.15;
   if (genre === 'techno') { f.y = Math.max(0.05, f.y - 0.15); }
@@ -669,6 +671,31 @@ E.typeBeatFromCore = function (song, core, type, seed) {
   return { lanes: out };
 };
 
+/* ---------- pad generation: long soft chord tones under everything ---------- */
+E.genPad = function (song, type, ctx, seed) {
+  const r = rng(seed), N = E.meter(song).steps, L = song.L, e = E.TYPES[type].energy;
+  const chords = ctx.chords ? ctx.chords.bars : [];
+  const style = type === 'chorus' || type === 'drop' ? r.pick(['hold', 'pulse', 'hold']) : r.pick(['hold', 'hold', 'swell']);
+  const open = r.chance(0.4), color = song.genre !== 'blues' && r.chance(0.35);
+  const notes = []; let prev = null, prevC = null, held = [];
+  for (let b = 0; b < L; b++) {
+    const c = chords[b]; if (!c) { prev = null; prevC = null; held = []; continue; }
+    const same = prevC && prevC.root === c.root && prevC.q === c.q;
+    if (same && style !== 'pulse') { for (const n of held) n.d += N; prevC = c; continue; } // the same chord rings on
+    let v = E.voice(c, prev, 55, 76).slice();
+    if (open && v.length >= 3 && v[1] - 12 >= 48) v[1] -= 12;
+    if (color) { let p9 = (c.root + 2) % 12; let q = 74; while (q % 12 !== p9) q--; if (!v.includes(q) && q > v[v.length - 1] - 1) v.push(q); }
+    const vel = clamp(Math.round(56 + e * 18 + r.int(6)), 40, 90);
+    held = [];
+    if (style === 'pulse') for (const k of [0, N / 2]) for (const p of v) { const n = { s: b * N + k, d: N / 2, p, v: k ? vel - 6 : vel }; notes.push(n); }
+    else for (const p of v) { const n = { s: b * N, d: N, p, v: style === 'swell' ? vel - 8 : vel }; notes.push(n); held.push(n); }
+    prev = v; prevC = c;
+  }
+  return { notes: notes.sort((a, b) => a.s - b.s || a.p - b.p) };
+};
+// the machine's generator for each part made of notes
+E.genNotes = (part, song, type, ctx, seed) => (part === 'bass' ? E.genBass : part === 'pad' ? E.genPad : part === 'answer' ? E.genAnswer : E.genMelody)(song, type, ctx, seed);
+
 /* ---------- bass generation ---------- */
 function pitchNear(pc, centre) { let best = 0, bd = 99; for (let p = centre - 12; p <= centre + 12; p++) if (((p % 12) + 12) % 12 === pc && Math.abs(p - centre) < bd) { bd = Math.abs(p - centre); best = p; } return best; }
 E.genBass = function (song, type, ctx, seed) {
@@ -840,6 +867,11 @@ E.resolveType = function (song, type) {
   if (P.bass.mode === 'yours') out.bass = basF || E.emptyMat('bass', song);
   else if (P.bass.mode === 'machine') out.bass = E.genBass(song, type, ctx, seedOf('bass'));
   else out.bass = null;
+  // pad: long chord tones; yours or the machine's
+  const padU = userOf('pad'), padF = rep('pad', padU);
+  if (P.pad.mode === 'yours') out.pad = padF || E.emptyMat('pad', song);
+  else if (P.pad.mode === 'machine') out.pad = E.genPad(song, type, ctx, seedOf('pad'));
+  else out.pad = null;
   // melody
   if (P.melody.mode === 'yours') out.melody = melF || E.emptyMat('melody', song);
   else if (P.melody.mode === 'machine') out.melody = E.genMelody(song, type, ctx, seedOf('melody'));
@@ -1044,15 +1076,15 @@ E.suggestGenre = function (song) {
 
 /* ---------- arrangement: render one bar ---------- */
 const ACTIVE = {
-  intro: { beat: 1, bass: 0.5, chords: 1, melody: 0 },
-  verse: { beat: 1, bass: 1, chords: 1, melody: 1 },
-  chorus: { beat: 1, bass: 1, chords: 1, melody: 1 },
-  break: { beat: 1, bass: 0, chords: 1, melody: 0.5 },
-  build: { beat: 1, bass: 1, chords: 1, melody: 0.5 },
-  outro: { beat: 1, bass: 0.5, chords: 1, melody: 0 },
-  prechorus: { beat: 1, bass: 1, chords: 1, melody: 1 },
-  drop: { beat: 1, bass: 1, chords: 1, melody: 1 },
-  fill: { beat: 1, bass: 0, chords: 1, melody: 0 }
+  intro: { beat: 1, bass: 0.5, chords: 1, melody: 0, pad: 1 },
+  verse: { beat: 1, bass: 1, chords: 1, melody: 1, pad: 1 },
+  chorus: { beat: 1, bass: 1, chords: 1, melody: 1, pad: 1 },
+  break: { beat: 1, bass: 0, chords: 1, melody: 0.5, pad: 1 },
+  build: { beat: 1, bass: 1, chords: 1, melody: 0.5, pad: 1 },
+  outro: { beat: 1, bass: 0.5, chords: 1, melody: 0, pad: 1 },
+  prechorus: { beat: 1, bass: 1, chords: 1, melody: 1, pad: 1 },
+  drop: { beat: 1, bass: 1, chords: 1, melody: 1, pad: 1 },
+  fill: { beat: 1, bass: 0, chords: 1, melody: 0, pad: 0 }
 };
 E.partActive = function (song, part, type, inBar, bars) {
   const a = ACTIVE[type][part];
@@ -1134,6 +1166,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   } else if (lastBar) { // ending: everyone lands together on the one
     const home = res(si).ctxChords && res(si).ctxChords.bars[0] || { root: song.key.root, q: song.key.scale === 'major' ? 'M' : 'm' };
     if (part === 'chords') notes = E.voice(home, null, 52, 72).map((p) => ({ t: 0, d: BT - 30, p, v: 78 }));
+    else if (part === 'pad') notes = E.voice(home, null, 55, 76).map((p) => ({ t: 0, d: BT - 30, p, v: 64 }));
     else if (part === 'bass') notes = [{ t: 0, d: BT - 30, p: pitchNear(home.root, 38), v: 104 }];
     else { const lastMel = mat.notes.length ? mat.notes[mat.notes.length - 1].p : 72; notes = [{ t: 0, d: BT - 30, p: pitchNear(home.root, lastMel), v: 96 }]; }
   } else if (part === 'chords') {
@@ -1188,8 +1221,8 @@ E.applyFeel = function (song, part, notes, gbar, opts) {
 };
 
 /* ---------- polish (theory check + mix ready) ---------- */
-const RANGE = { bass: [28, 55], chords: [48, 74], melody: [60, 86] };
-const VEL = { beat: [40, 122], bass: [72, 112], chords: [56, 92], melody: [70, 116] };
+const RANGE = { bass: [28, 55], chords: [48, 74], pad: [50, 80], melody: [60, 86], answer: [55, 84] };
+const VEL = { beat: [40, 122], bass: [72, 112], chords: [56, 92], pad: [48, 82], melody: [70, 116], answer: [56, 96] };
 E.polishMaterial = function (song, part, mat, chords) {
   if (!mat || part === 'beat') return mat;
   const d = clone(mat);
@@ -1235,9 +1268,9 @@ E.polishedSong = function (song) {
   const s = clone(song);
   for (const t of E.TYPE_ORDER) {
     const res = E.resolveType(s, t);
-    for (const p of ['bass', 'melody']) { const m = s.mat[t][p]; if (m && m.src === 'user') m.data = E.polishMaterial(s, p, m.data, res.ctxChords); }
+    for (const p of E.NOTE_PARTS) { const m = s.mat[t][p]; if (m && m.src === 'user') m.data = E.polishMaterial(s, p, m.data, res.ctxChords); }
   }
-  s.sections.forEach((sec, i) => { if (!sec.own) return; const r2 = E.resolveSection(song, i); for (const p of ['bass', 'melody']) if (sec.own[p]) sec.own[p] = E.polishMaterial(s, p, sec.own[p], r2.ctxChords); });
+  s.sections.forEach((sec, i) => { if (!sec.own) return; const r2 = E.resolveSection(song, i); for (const p of E.NOTE_PARTS) if (sec.own[p]) sec.own[p] = E.polishMaterial(s, p, sec.own[p], r2.ctxChords); });
   return s;
 };
 
@@ -1275,7 +1308,7 @@ E.shadows = function (song, part, type, data, seedBump, ctxRes) {
   }
   // melodic: continue after the last note you placed, using the machine's own line as a guide
   const notes = data ? data.notes : [];
-  const gen = part === 'bass' ? E.genBass(song, type, ctx, seed) : E.genMelody(song, type, ctx, seed);
+  const gen = E.genNotes(part, song, type, ctx, seed);
   const lastEnd = notes.length ? Math.max(...notes.map((n) => n.s + n.d)) : 0;
   let cand = gen.notes.filter((n) => n.s >= lastEnd);
   if (notes.length && part === 'melody') {
@@ -1283,6 +1316,7 @@ E.shadows = function (song, part, type, data, seedBump, ctxRes) {
     const lp = notes[notes.length - 1].p; const sc = melodyScale(song);
     cand = cand.map((n) => { let p = n.p; while (p - lp > 7) p -= 12; while (lp - p > 7) p += 12; if (!sc.includes(((p % 12) + 12) % 12)) p += 1; return Object.assign({}, n, { p }); });
   }
+  if (part === 'pad') { const s0 = cand.length ? cand[0].s : -1; return cand.filter((n) => n.s === s0); } // one whole chord as a suggestion
   return cand.slice(0, part === 'bass' ? 4 : 3);
 };
 
@@ -1332,7 +1366,7 @@ E.nn = nn;
 E.noteLabel = (p) => NOTE[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 2);
 const VG = { family: 'guitar', play: [nn('C3'), nn('C6')], roles: { intro: nn('E0'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: null, end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C6')]], silence: nn('C0') };
 E.PLUGINS = {
-  plain: { name: 'Plain MIDI', parts: ['bass', 'chords', 'melody'] },
+  plain: { name: 'Plain MIDI', parts: ['bass', 'chords', 'pad', 'melody', 'answer'] },
   gm: { name: 'Plain MIDI (GM drums)', parts: ['beat'], drums: [36, 35, 38, 39, 42, 46, 37, 49] },
   xo: { name: 'XLN XO', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
   impact: { name: 'Impact XT', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
@@ -1343,8 +1377,8 @@ E.PLUGINS = {
   carbon: { name: 'Virtual Guitarist Carbon', family: 'guitar', parts: ['chords', 'melody', 'bass'], play: [nn('C4'), nn('C7')], roles: { intro: nn('E1'), verse: nn('C3'), chorus: nn('E3'), build: nn('F#1'), break: null, outro: nn('E1'), fill: null, end: nn('C#1') }, zones: [['common', nn('C1'), nn('B2')], ['style', nn('C3'), nn('B3')], ['play', nn('C4'), nn('C7')]], silence: nn('C1'), endHold: true },
   royal: { name: 'Virtual Bassist Royal', family: 'bass', parts: ['bass', 'melody', 'chords'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
   slap: { name: 'Virtual Bassist Slap', family: 'bass', parts: ['bass', 'melody', 'chords'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
-  score: { name: 'Virtual Pianist Score', family: 'piano', parts: ['chords', 'melody', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['play', nn('C2'), nn('C6')]], noPlayer: true },
-  usynth: { name: 'Usynth', family: 'synth', parts: ['chords', 'melody', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['patterns', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]], noPlayer: true }
+  score: { name: 'Virtual Pianist Score', family: 'piano', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['play', nn('C2'), nn('C6')]], noPlayer: true },
+  usynth: { name: 'Usynth', family: 'synth', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['patterns', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]], noPlayer: true }
 };
 E.pluginsFor = (part) => Object.keys(E.PLUGINS).filter((k) => E.PLUGINS[k].parts.includes(part));
 E.isUjam = (k) => !!(E.PLUGINS[k] && E.PLUGINS[k].family);
@@ -1684,7 +1718,7 @@ const ICONS = {
   spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', arrowL: '<path d="M15 6l-6 6 6 6"/>', arrowR: '<path d="M9 6l6 6-6 6"/>', plus: '<path d="M12 5v14M5 12h14"/>', file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.4 1 2.5h6c0-1.1.4-1.9 1-2.5A6 6 0 0 0 12 3z"/>', wand: '<path d="M4 20 15 9M14 4v2M19 9h2M17 5l1.5-1.5M18 12l1 1M11 5 10 4"/>', key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l2 2"/>'
 };
 const ico = (n) => { const t = document.createElement('span'); t.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[n] + '</svg>'; return t.firstChild; };
-const PART_NAMES = { beat: 'Beat', bass: 'Bass', chords: 'Chords', melody: 'Melody' };
+const PART_NAMES = { beat: 'Beat', bass: 'Bass', chords: 'Chords', pad: 'Pad', melody: 'Melody', answer: 'Answer' };
 const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 /* ---------- storage (never trusted) ---------- */
@@ -2107,6 +2141,7 @@ function shapeIcon(p) {
   if (p === 'beat') { svg.append(s('circle', { cx: 5, cy: 9, r: 3.5, fill: c }), s('polygon', { points: '13,4 17,13 9,13', fill: c })); }
   else if (p === 'bass') svg.append(s('rect', { x: 1, y: 7, width: 16, height: 5, rx: 2.5, fill: c }));
   else if (p === 'chords') svg.append(s('rect', { x: 1, y: 3, width: 7, height: 12, rx: 2, fill: c }), s('rect', { x: 10, y: 3, width: 7, height: 12, rx: 2, fill: c, opacity: 0.6 }));
+  else if (p === 'pad') [4, 9, 14].forEach((y, k) => svg.append(s('path', { d: 'M1 ' + y + ' q4 -3 8 0 t8 0', fill: 'none', stroke: c, 'stroke-width': 2, 'stroke-linecap': 'round', opacity: 1 - k * 0.25 })));
   else svg.append(s('rect', { x: 1, y: 11, width: 6, height: 4, rx: 2, fill: c }), s('rect', { x: 6, y: 6, width: 6, height: 4, rx: 2, fill: c }), s('rect', { x: 11, y: 2, width: 6, height: 4, rx: 2, fill: c }));
   svg.style.color = c; return svg;
 }
@@ -2133,7 +2168,7 @@ function newVersionOnce(p) {
       let m;
       if (p === 'beat') m = D.typeBeatFromCore(sg, D.genBeat(sg, 'chorus', ctx, seed), t, seed);
       else if (p === 'chords') { ctx.melodyUser = sg.parts.melody.mode === 'yours' ? res.melody : null; ctx.bassUser = sg.parts.bass.mode === 'yours' ? res.bass : null; m = D.genChords(sg, t, ctx, seed); }
-      else if (p === 'bass') m = D.genBass(sg, t, ctx, seed); else m = D.genMelody(sg, t, ctx, seed);
+      else m = D.genNotes(p, sg, t, ctx, seed);
       const only = editTarget(p) !== 'std'; putHere(p, m); setHint('A fresh ' + PART_NAMES[p].toLowerCase() + ' idea for ' + (only ? sectionLabel(st.sec) + ' only' : 'every ' + D.TYPES[t].name + ' that follows ' + sectionLabel(st.sec)) + '. It stays yours to edit; undo brings back the old one.');
     } else { if (P.mode === 'off') P.mode = 'machine'; P.seed = D.newSeed(); setHint('New machine ' + PART_NAMES[p].toLowerCase() + '. Undo brings back the previous one.'); }
   }
@@ -2164,7 +2199,7 @@ function renderEditor() {
   head.append(h('div', { class: 'pp seg', style: 'grid-template-columns:1fr 1fr;width:140px' },
     h('button', { class: st.rings ? 'on' : '', onclick: () => { st.rings = true; renderEditor(); } }, 'Rings'), h('button', { class: !st.rings ? 'on' : '', onclick: () => { st.rings = false; renderEditor(); } }, 'Lines')));
   if (st.view !== 'overview') {
-    if ((st.view === 'bass' || st.view === 'melody' || st.view === 'chords') && song().parts[st.view].mode === 'yours') {
+    if (st.view !== 'beat' && song().parts[st.view].mode === 'yours') {
       const P = song().parts[st.view], on = P.repeat !== false, ch = st.view === 'chords';
       head.append(h('button', { id: 'repeatBtn', class: on ? 'on' : '', 'aria-pressed': on, title: ch ? 'Empty bars get a chord from the machine' : 'Empty bars repeat your first bar, moved along with the chords', onclick: () => { change(() => { P.repeat = !on; }); setHint(on ? 'Off: empty bars stay silent.' : ch ? 'Empty bars now get a chord from the machine. They show as echoes; pick a chord to make a bar yours.' : 'Empty bars now repeat your first bar, moved along with the chords. The copies show as echoes; tap one to make that bar yours.'); } }, ico('loop'), ch ? 'Fill empty bars' : 'Repeat bar 1'));
     }
@@ -2292,7 +2327,7 @@ function beatLines() {
 function noteEditor(part) {
   const sg = song(), N = D.meter(sg).steps, L = sg.L, cols = N * L;
   const m = shownMat(part), data = m.data;
-  const [lo, hi] = part === 'bass' ? [28, 55] : [57, 86];
+  const [lo, hi] = part === 'bass' ? [28, 55] : part === 'pad' ? [48, 81] : [57, 86];
   const rows = hi - lo + 1;
   const CW = L === 12 ? 9 : 16, RH = 14, LX = 34;
   const W = LX + cols * CW + 4, H = rows * RH + 22;
@@ -2377,7 +2412,7 @@ function noteRings(part) {
   const sg = song(), N = D.meter(sg).steps, L = sg.L, m = shownMat(part), data = m.data;
   if (st.ringBar == null || st.ringBar >= L) st.ringBar = 0;
   const bar = st.ringBar;
-  const [lo, hi] = part === 'bass' ? [31, 55] : [60, 84];
+  const [lo, hi] = part === 'bass' ? [31, 55] : part === 'pad' ? [50, 79] : [60, 84];
   const scale = part === 'melody' ? D.melodyScale(sg) : D.scalePcs(sg.key);
   const pitches = []; for (let p = lo; p <= hi; p++) if (scale.includes(((p % 12) + 12) % 12)) pitches.push(p);
   const R = (i) => 44 + i * (144 / Math.max(1, pitches.length - 1));
@@ -2587,11 +2622,11 @@ function overviewRings() {
   const lb = AU.playing && !AU.preview && D.sectionAt(sg, AU.curBar) && D.sectionAt(sg, AU.curBar).i === st.sec ? D.sectionAt(sg, AU.curBar).inBar % sg.L : st.ringBar;
   const wrap = h('div', { class: 'ringwrap' });
   wrap.append(h('div', { class: 'bartabs', role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: sg.L }, (_, b) => h('button', { class: 'bt ' + (b === lb ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === lb, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (res.chords && res.chords.bars[b] ? ' \u00b7 ' + D.chordName(res.chords.bars[b]) : '')))));
-  const svg = s('svg', { viewBox: '0 0 400 400', id: 'overSvg', role: 'img', 'aria-label': 'All parts in one bar: beat outside, then bass, chords, melody in the centre. Tap a ring to edit that part.' });
+  const svg = s('svg', { viewBox: '0 0 400 400', id: 'overSvg', role: 'img', 'aria-label': 'All parts in one bar: beat outside, then bass, chords, pad, melody in the centre. Tap a ring to edit that part.' });
   const line = cssv('--line'), faint = cssv('--faint');
   const ang = (f) => -Math.PI / 2 + f * Math.PI * 2;
   const P = (r, f) => [200 + r * Math.cos(ang(f)), 200 + r * Math.sin(ang(f))];
-  const bands = { beat: [150, 190], bass: [118, 140], chords: [86, 110], melody: [30, 78] };
+  const bands = { beat: [150, 190], bass: [124, 144], chords: [100, 118], pad: [82, 94], melody: [30, 76] };
   for (const p of D.PARTS) { const [a, b] = bands[p]; const g = s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: 'transparent', 'stroke-width': b - a + 6, style: 'cursor:pointer', 'data-part': p }); g.addEventListener('click', () => { st.view = p; st.ringBar = lb; st.chordBar = lb; render(); setHint(PART_NAMES[p] + ', bar ' + (lb + 1) + '. Change it here.'); }); svg.append(g); svg.append(s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: line, 'stroke-width': 1, 'pointer-events': 'none' })); }
   const off = (p) => sg.parts[p].mode === 'off';
   // beat: kick, snare/clap, hats on three sub rings
@@ -2609,8 +2644,10 @@ function overviewRings() {
   if (res.bass && !off('bass')) { const col = cssv('--bass'); for (const n of res.bass.notes) { if (Math.floor(n.s / N) !== lb) continue; const f0 = (n.s % N) / N, f1 = Math.min(1, ((n.s % N) + n.d) / N); svg.append(arcPath(129, f0, f1 - 0.004, col, 12)); } }
   dimFrom('bass', mk); mk = svg.childNodes.length;
   const ch = res.chords && !off('chords') ? res.chords : null;
-  if (ch) { const c = ch.bars[lb]; if (c) { const col = cssv('--chords'); svg.append(arcPath(98, 0.003, 0.997, col, 18, 0.55)); const tp = P(98, 0.0); svg.append(s('text', { x: 200, y: 200 - 92, 'text-anchor': 'middle', fill: cssv('--fg'), 'font-size': 14, 'font-weight': 700, 'font-family': 'Bricolage Grotesque, sans-serif', 'pointer-events': 'none' }, D.chordName(c))); } }
+  if (ch) { const c = ch.bars[lb]; if (c) { const col = cssv('--chords'); svg.append(arcPath(109, 0.003, 0.997, col, 16, 0.55)); svg.append(s('text', { x: 200, y: 200 - 104, 'text-anchor': 'middle', fill: cssv('--fg'), 'font-size': 14, 'font-weight': 700, 'font-family': 'Bricolage Grotesque, sans-serif', 'pointer-events': 'none' }, D.chordName(c))); } }
   dimFrom('chords', mk); mk = svg.childNodes.length;
+  if (res.pad && !off('pad')) { const col = cssv('--pad'); const seen = new Set(); for (const n of res.pad.notes) { if (Math.floor(n.s / N) > lb || Math.floor((n.s + n.d - 1) / N) < lb) continue; const k = n.s + '_' + n.d; if (seen.has(k)) continue; seen.add(k); const f0 = Math.max(0, n.s - lb * N) / N, f1 = Math.min(1, (n.s + n.d - lb * N) / N); svg.append(arcPath(88, f0 + 0.004, f1 - 0.006, col, 9, 0.7)); } }
+  dimFrom('pad', mk); mk = svg.childNodes.length;
   if (res.melody && !off('melody')) { const col = cssv('--melody'); const ns = res.melody.notes.filter((n) => Math.floor(n.s / N) === lb); const ps = res.melody.notes.map((n) => n.p); const mn = Math.min(...ps, 60), mx = Math.max(...ps, 72); for (const n of ns) { const r = 34 + (n.p - mn) / Math.max(1, mx - mn) * 40; const f0 = (n.s % N) / N, f1 = Math.min(1, ((n.s % N) + n.d) / N); svg.append(arcPath(r, f0, f1 - 0.004, col, 6)); } }
   dimFrom('melody', mk);
   D.meter(sg).beatSteps.forEach((b) => { const a = P(26, b / N), c = P(196, b / N); svg.append(s('line', { x1: a[0], y1: a[1], x2: c[0], y2: c[1], stroke: line, 'stroke-width': 0.6, 'pointer-events': 'none' })); });
@@ -2629,7 +2666,7 @@ function arcPath(r, f0, f1, col, w, op) {
 function overviewLines() {
   const sg = song(), N = D.meter(sg).steps, L = sg.L, cols = N * L, res = resolvedNow();
   const CW = L === 12 ? 4 : 9, LX = 64, W = LX + cols * CW + 4;
-  const lanesH = { beat: 70, bass: 60, chords: 46, melody: 80 };
+  const lanesH = { beat: 70, bass: 60, chords: 46, pad: 46, melody: 80, answer: 60 };
   const H = 20 + Object.values(lanesH).reduce((a, b) => a + b + 12, 0);
   const svg = s('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', id: 'overSvg', role: 'img', 'aria-label': 'All parts as lines over the loop' });
   const line = cssv('--line'), mut = cssv('--muted');
@@ -2704,6 +2741,11 @@ function tone(part, p, t, dur, v) {
   const end = t + dur + 0.4;
   if (part === 'bass') { const o = ctx.createOscillator(), o2 = ctx.createOscillator(); o.type = 'sawtooth'; o2.type = 'sine'; o.frequency.value = mtof(p); o2.frequency.value = mtof(p); lp.frequency.setValueAtTime(900, t); lp.frequency.setTargetAtTime(320, t, 0.12); o.connect(lp); o2.connect(lp); env(g, t, 0.005, amp * 0.42, dur, 0.06); o.start(t); o2.start(t); o.stop(end); o2.stop(end); track(o, end); track(o2, end); }
   else if (part === 'chords') { const o = ctx.createOscillator(), o2 = ctx.createOscillator(); o.type = 'triangle'; o2.type = 'sawtooth'; o.frequency.value = mtof(p); o2.frequency.value = mtof(p) * 1.004; lp.frequency.value = 1500; const g2 = ctx.createGain(); g2.gain.value = 0.25; o.connect(lp); o2.connect(g2); g2.connect(lp); env(g, t, 0.02, amp * 0.12, dur, 0.12); o.start(t); o2.start(t); o.stop(end); o2.stop(end); track(o, end); track(o2, end); }
+  else if (part === 'pad') { // soft and slow: two detuned saws behind a dark filter, a gentle swell in and out
+    const o = ctx.createOscillator(), o2 = ctx.createOscillator(); o.type = 'sawtooth'; o2.type = 'sawtooth'; o.frequency.value = mtof(p) * 0.997; o2.frequency.value = mtof(p) * 1.003; lp.frequency.value = 1100; lp.Q.value = 0.4;
+    o.connect(lp); o2.connect(lp); const pend = t + dur + 0.9; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(amp * 0.07, t + Math.min(0.35, dur * 0.5)); g.gain.setTargetAtTime(0.0001, t + dur, 0.28);
+    o.start(t); o2.start(t); o.stop(pend); o2.stop(pend); track(o, pend); track(o2, pend); }
+  else if (part === 'answer') { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = mtof(p); lp.frequency.value = 2600; o.connect(lp); env(g, t, 0.01, amp * 0.2, dur, 0.12); o.start(t); o.stop(end); track(o, end); }
   else { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = mtof(p); lp.frequency.setValueAtTime(3200, t); lp.frequency.setTargetAtTime(1400, t, 0.15); o.connect(lp); env(g, t, 0.004, amp * 0.13, dur, 0.07); o.start(t); o.stop(end); track(o, end); }
 }
 function barSec(sg) { return D.barTicks(sg) / D.PPQ * 60 / sg.bpm; }
@@ -2713,7 +2755,7 @@ function previewNote(part, p, v) { if (!ensureAudio()) return; AU.ctx.resume(); 
 function previewChord(c) { if (!ensureAudio()) return; AU.ctx.resume(); D.voice(c, null, 52, 72).forEach((p) => tone('chords', p, AU.ctx.currentTime + 0.01, 0.8, 90)); }
 /* ---------- water ripples: eye candy behind the editor, never in the way ---------- */
 const RIP = { list: [], raf: 0, cv: null, calm: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches };
-const RIP_LIFE = { beat: 1.3, bass: 2.2, chords: 2.6, melody: 1.6 };
+const RIP_LIFE = { beat: 1.3, bass: 2.2, chords: 2.6, pad: 3.4, melody: 1.6, answer: 1.8 };
 function addRipple(part, t, v) { if (RIP.calm) return; RIP.list.push({ part, t, v }); if (RIP.list.length > 90) RIP.list.splice(0, RIP.list.length - 90); if (!RIP.raf) RIP.raf = requestAnimationFrame(drawRipples); }
 function dropFutureRipples() { if (AU.ctx) { const now = AU.ctx.currentTime; RIP.list = RIP.list.filter((r) => r.t <= now); } }
 function drawRipples() {
@@ -2751,7 +2793,7 @@ function scheduleBar(sg, bar, t0) {
       const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue;
       if (p === 'beat') drum(n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
       // water ripples: kick, snare and clap for the beat, one per chord, every bass and melody note
-      if (!AU.preview && (p !== 'beat' || n.lane <= 3) && (p !== 'chords' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v);
+      if (!AU.preview && (p !== 'beat' || n.lane <= 3) && (p !== 'chords' && p !== 'pad' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v);
       lastT = t;
     }
   }
@@ -3175,7 +3217,7 @@ async function importMidi(f) {
   groups.forEach((g) => { g.part = D.classify(g.notes); });
   const used = new Set(); groups.forEach((g) => { if (used.has(g.part)) g.part = groups.length > 1 ? 'skip' : g.part; else used.add(g.part); });
   const rows = groups.map((g, i) => h('tr', null, h('td', { class: 'fn' }, g.name), h('td', null, g.notes.length + ' notes'),
-    h('td', null, h('select', { id: 'imp_' + i, 'aria-label': 'This is', onchange: (e) => { g.part = e.target.value; } }, ['beat', 'bass', 'chords', 'melody', 'skip'].map((p) => h('option', { value: p, selected: g.part === p }, p === 'skip' ? 'Leave out' : PART_NAMES[p]))))));
+    h('td', null, h('select', { id: 'imp_' + i, 'aria-label': 'This is', onchange: (e) => { g.part = e.target.value; } }, ['beat', 'bass', 'chords', 'pad', 'melody', 'skip'].map((p) => h('option', { value: p, selected: g.part === p }, p === 'skip' ? 'Leave out' : PART_NAMES[p]))))));
   const bpm = mid.bpm ? Math.round(mid.bpm * 10) / 10 : null;
   overlay(h('div', { class: 'sheet', style: 'width:min(680px,100%)' },
     h('div', { class: 'hdr' }, h('h2', null, 'What is in ' + f.name + '?'), h('div', { class: 'grow' }), h('button', { class: 'ghost', onclick: closeOverlay }, 'Cancel')),
