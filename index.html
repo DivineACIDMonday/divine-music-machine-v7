@@ -68,6 +68,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .main{display:grid;grid-template-columns:230px minmax(0,1fr) 290px;gap:8px;min-height:0}
 .pane{background:var(--panel);border:1px solid var(--line);border-radius:12px;min-height:0;display:flex;flex-direction:column}
 .left{padding:10px;gap:8px;overflow:auto}
+.left>*{flex-shrink:0}
 .now{text-align:center}
 .now .sec{font:700 20px/1.1 var(--display)}
 .now .bar{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
