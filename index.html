@@ -1821,6 +1821,8 @@ function renderLeft() {
   left.append(ed);
 }
 // tap a section: hear it from its start, and the selection follows
+// keep the Loop button's name in step with the selected section without rebuilding the top bar
+function syncScope() { const b = $('#scopeSec'); if (b) b.textContent = 'Loop ' + sectionLabel(st.sec); }
 function playSection(i) {
   const sg = song(); st.sec = i; st.chordBar = 0; st.ringBar = 0; st.adding = false;
   const b = D.sectionStart(sg, i);
@@ -1910,7 +1912,7 @@ function updateSpiralDot() {
   const at = D.sectionAt(song(), AU.curBar); if (!at) return;
   const ns = $('#nowSec'), nb = $('#nowBar');
   // what you hear is what you see: the selection follows the song
-  if (!st.loop && at.i !== st.sec && !st.pd) { st.sec = at.i; st.chordBar = 0; st.ringBar = 0; renderLeft(); renderEditor(); return; }
+  if (!st.loop && at.i !== st.sec && !st.pd) { st.sec = at.i; st.chordBar = 0; st.ringBar = 0; renderLeft(); renderEditor(); syncScope(); setHint('Playing ' + sectionLabel(at.i) + '.'); return; }
   if (ns && ns.textContent !== sectionLabel(at.i)) renderLeft();
   else if (nb) nb.textContent = 'bar ' + (at.inBar + 1) + ' of ' + at.s.bars;
 }
@@ -2595,7 +2597,7 @@ function startPlay(fromBar, sgOverride) {
   AU.song = sgOverride || null; AU.preview = !!sgOverride;
   AU.playing = true; AU.nextBar = fromBar; AU.nextT = AU.ctx.currentTime + 0.08; AU.queue = []; AU.curBar = fromBar; AU.curFrac = 0;
   AU.timer = setInterval(tick, 25); tick(); cancelAnimationFrame(AU.raf); AU.raf = requestAnimationFrame(frame);
-  if (!AU.preview) { renderTop(); renderLeft(); renderEditor(); }
+  if (!AU.preview) { renderTop(); renderLeft(); renderEditor(); setHint('Playing ' + sectionLabel(D.sectionAt(song(), fromBar) ? D.sectionAt(song(), fromBar).i : st.sec) + (st.loop ? ', looping it.' : '.')); }
 }
 function stopAll(silent) {
   clearInterval(AU.timer); AU.timer = null; cancelAnimationFrame(AU.raf);
