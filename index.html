@@ -414,7 +414,7 @@ E.TYPES = {
   fill: { name: 'Fill', energy: 0.6, color: 'green' }
 };
 E.TYPE_ORDER = ['intro', 'verse', 'prechorus', 'chorus', 'drop', 'break', 'build', 'fill', 'outro'];
-E.ensureTypes = (song) => { for (const p of E.PARTS) if (!song.parts[p]) song.parts[p] = { mode: 'off', lead: false, plugin: 'plain', ujMode: 'instrument', feel: E.defaultFeel(p, song.genre), seed: hash(song.seed, p) }; for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; for (const p of E.PARTS) if (song.mat[t][p] === undefined) song.mat[t][p] = null; } };
+E.ensureTypes = (song) => { for (const p of E.PARTS) if (!song.parts[p]) song.parts[p] = { mode: p === 'answer' ? 'machine' : 'off', lead: false, plugin: 'plain', ujMode: 'instrument', feel: E.defaultFeel(p, song.genre), seed: hash(song.seed, p) }; for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; for (const p of E.PARTS) if (song.mat[t][p] === undefined) song.mat[t][p] = null; } };
 
 /* ---------- song model ---------- */
 E.newSong = function (genre, opts) {
@@ -437,7 +437,7 @@ E.newSong = function (genre, opts) {
 E.scratchSong = function (genre, opts) {
   const s = E.newSong(genre, opts);
   s.sections = [{ id: 's0_' + E.newSeed(), type: 'verse', bars: s.L === 12 ? 12 : 8 }];
-  for (const p of E.PARTS) s.parts[p].mode = 'off';
+  for (const p of E.PARTS) s.parts[p].mode = p === 'answer' ? 'machine' : 'off'; // the answer comes for free and waits for a melody
   return s;
 };
 // the genre's own structure, keeping the sections you made in front
@@ -824,7 +824,7 @@ E.genMelody = function (song, type, ctx, seed) {
 };
 /* ---------- answer melody: replies to the main melody in its rests ---------- */
 // it listens to where the melody breathes and answers there with a turn of the last phrase,
-// a third or a sixth lower, in the melody's own scale; with no melody it plays a quiet line of chord tones
+// a third or a sixth lower, in the melody's own scale; with no melody it stays silent
 E.genAnswer = function (song, type, ctx, seed) {
   const r = rng(seed), N = E.meter(song).steps, L = song.L, total = N * L;
   const mel = ctx.melodyOut || ctx.melodyUser;
@@ -855,8 +855,6 @@ E.genAnswer = function (song, type, ctx, seed) {
         t += d + (r.chance(0.3) ? 1 : 0);
       }
     }
-  } else if (ctx.chords) {
-    for (let b = 0; b < L; b++) { const c = ctx.chords.bars[b]; if (!c) continue; const tones = E.chordPcs(c); for (const k of [2, 6, 10, 14].filter((x) => x < N)) { if (r.chance(0.5)) continue; out.push({ s: b * N + k, d: 2, p: fit(60 + tones[r.int(tones.length)]), v: 58 + r.int(10) }); } }
   }
   return { notes: out.sort((x, y) => x.s - y.s) };
 };
@@ -1121,7 +1119,7 @@ E.suggestGenre = function (song) {
 /* ---------- arrangement: render one bar ---------- */
 const ACTIVE = {
   intro: { beat: 1, bass: 0.5, chords: 1, melody: 0, pad: 1, answer: 0 },
-  verse: { beat: 1, bass: 1, chords: 1, melody: 1, pad: 1, answer: 0.5 },
+  verse: { beat: 1, bass: 1, chords: 1, melody: 1, pad: 1, answer: 1 },
   chorus: { beat: 1, bass: 1, chords: 1, melody: 1, pad: 1, answer: 1 },
   break: { beat: 1, bass: 0, chords: 1, melody: 0.5, pad: 1, answer: 0.5 },
   build: { beat: 1, bass: 1, chords: 1, melody: 0.5, pad: 1, answer: 0.5 },
