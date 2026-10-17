@@ -182,11 +182,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .feel .lab{font-size:11px;color:var(--muted);line-height:1.25}
 .iconbtn{padding:5px 7px}
 
-.bottom{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
-.bottom .pp{display:flex;background:var(--raise);border-radius:8px;padding:2px}
-.bottom .pp button{border:0;background:transparent;padding:4px 10px;font-size:12px}
-.bottom .pp button.on,.pp button.on{background:var(--panel);color:var(--fg);box-shadow:0 0 0 1px var(--line2)}
-#fileHint{font:12px var(--mono);color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
+.pp button.on{background:var(--panel);color:var(--fg);box-shadow:0 0 0 1px var(--line2)}
 
 .overlay{position:fixed;inset:0;z-index:40;background:color-mix(in srgb,var(--bg) 82%,transparent);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
 .sheet{background:var(--panel);border:1px solid var(--line2);border-radius:16px;width:min(980px,100%);max-height:100%;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
@@ -529,9 +525,9 @@ E.isEmpty = function (part, m) {
 // which section type of a yours part holds the user's main material
 E.userSource = function (song, part, type) {
   const m = song.mat[type] && song.mat[type][part];
-  if (m && m.src === 'user' && !E.isEmpty(part, m.data)) return { type, data: m.data, own: true };
+  if (m && m.src === 'user' && (!E.isEmpty(part, m.data) || m.auto)) return { type, data: m.data, own: true, auto: !!m.auto }; // an untouched empty copy means silence here
   const pref = [type, 'verse', 'chorus', 'prechorus', 'drop', 'build', 'intro', 'break', 'fill', 'outro'];
-  for (const t of pref) { const x = song.mat[t] && song.mat[t][part]; if (x && x.src === 'user' && !E.isEmpty(part, x.data)) return { type: t, data: x.data, own: t === type }; }
+  for (const t of pref) { const x = song.mat[t] && song.mat[t][part]; if (x && x.src === 'user' && !E.isEmpty(part, x.data)) return { type: t, data: x.data, own: t === type, auto: !!x.auto }; }
   return null;
 };
 
@@ -893,9 +889,10 @@ function dedupeMono(notes) {
 E.resolveType = function (song, type) {
   const out = {}, ctx = {};
   const P = song.parts;
-  const userOf = (part) => { if (P[part].mode !== 'yours') return null; const u = E.userSource(song, part, type); return u ? E.deriveUser(song, part, u, type) : null; };
+  const autos = {};
+  const userOf = (part) => { if (P[part].mode !== 'yours') return null; const u = E.userSource(song, part, type); if (u && u.auto) autos[part] = true; return u ? E.deriveUser(song, part, u, type) : null; };
   const mel = userOf('melody'), bas = userOf('bass'), chu = userOf('chords'), bea = userOf('beat');
-  ctx.melodyUser = mel; ctx.bassUser = bas;
+  ctx.melodyUser = autos.melody ? null : mel; ctx.bassUser = autos.bass ? null : bas; // a copy you have not touched yet does not lead
   const seedOf = (part) => hash(P[part].seed, type, song.genre, song.key.root, song.key.scale, song.L, song.meter);
   // chords
   if (P.chords.mode === 'yours') {
@@ -914,12 +911,12 @@ E.resolveType = function (song, type) {
   else out.chords = null;
   ctx.chords = out.chords && !E.isEmpty('chords', out.chords) ? out.chords : E.genChords(song, type, ctx, seedOf('chords'));
   // your bass and melody: empty bars repeat your first bar, along the chords
-  const rep = (part, d) => (d && P[part].repeat !== false ? E.fillBars(song, part, d, ctx.chords) : d);
+  const rep = (part, d) => (d && P[part].repeat !== false && !autos[part] ? E.fillBars(song, part, d, ctx.chords) : d); // an untouched copy is complete already
   const basF = rep('bass', bas), melF = rep('melody', mel);
-  ctx.bassUser = basF; ctx.melodyUser = melF;
+  ctx.bassUser = autos.bass ? null : basF; ctx.melodyUser = autos.melody ? null : melF;
   // beat
   if (P.beat.mode === 'yours') out.beat = bea || E.emptyMat('beat', song);
-  else if (P.beat.mode === 'machine') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
+  else if (P.beat.mode === 'machine') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !autos.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
   else out.beat = null;
   ctx.beat = out.beat;
   // bass
@@ -1153,7 +1150,7 @@ const ACTIVE = {
 };
 E.partActive = function (song, part, type, inBar, bars) {
   const a = ACTIVE[type][part];
-  if (song.parts[part].mode === 'yours') { const u = E.userSource(song, part, type); if (u && u.own) return true; }
+  if (song.parts[part].mode === 'yours') { const u = E.userSource(song, part, type); if (u && u.own && !u.auto) return true; }
   if (a >= 1) return true; if (a <= 0) return false;
   if (type === 'intro') return inBar >= bars / 2;
   if (type === 'outro') return inBar < bars / 2;
@@ -1202,7 +1199,8 @@ E.renderBar = function (song, part, gbar, res, opts) {
   let notes = [];
   if (part === 'beat') {
     const lanes = mat.lanes.map((l) => l.slice());
-    const machine = song.parts.beat.mode === 'machine';
+    const bent = song.mat[type] && song.mat[type].beat;
+    const machine = song.parts.beat.mode === 'machine' || !!(bent && bent.auto && !E.ownOf(song, sec, 'beat')); // an untouched copy keeps the machine's touches
     if (lastBar) { // ending: one clean hit on the one
       const out = [{ t: 0, d: E.STEP, lane: K, v: 118 }];
       out.push({ t: 0, d: E.STEP * 2, lane: CR, v: 100 });
@@ -1223,7 +1221,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       for (let s = st; s < N; s++) if (lanes[K][s] && s !== st) lanes[K][s] = 0;
       if (nextSec && (nextSec.type === 'chorus' || nextSec.type === 'drop' || nextSec.type === 'break')) { lanes[OH][N - 1] = 0; lanes[HH][N - 1] = 0; }
     }
-    if ((type === 'build' || type === 'prechorus') && song.parts.beat.mode === 'machine') { // rising roll on the last bars
+    if ((type === 'build' || type === 'prechorus') && machine) { // rising roll on the last bars
       const left = sec.bars - inBar;
       if (left <= 2) for (let s = 0; s < N; s += (left === 1 ? 1 : 2)) lanes[SN][s] = Math.max(lanes[SN][s], 50 + Math.round(s / N * 50));
     }
@@ -1244,7 +1242,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       if (nb !== lb) continue;
       notes.push({ t: (n.s % N) * E.STEP, d: Math.max(30, n.d * E.STEP - 12), p: n.p, v: n.v });
     }
-    if (part === 'bass' && type === 'build' && song.parts.bass.mode === 'machine' && sec.bars - inBar <= 1) notes = notes.filter((n) => n.t < BT / 2);
+    if (part === 'bass' && type === 'build' && (song.parts.bass.mode === 'machine' || song.mat[type].bass && song.mat[type].bass.auto) && sec.bars - inBar <= 1) notes = notes.filter((n) => n.t < BT / 2);
   }
   return E.applyFeel(song, part, notes, gbar, opts);
 };
@@ -1905,9 +1903,10 @@ function shownMat(part) {
   return { data: r || D.emptyMat(part, song()), own: false, machine: song().parts[part].mode === 'machine' };
 }
 // make a part editable here; machine material becomes yours without changing the sound
-function editable(part) {
+// global: switching a whole part to Yours works on the standard, wherever you stand
+function editable(part, global) {
   const sg = song(), t = curType(), P = sg.parts[part];
-  const tg = editTarget(part), sec = secNow();
+  const tg = global ? 'std' : editTarget(part), sec = secNow();
   if (tg === 'own') return sec.own[part];
   if (tg === 'follow') { // the first change in a later section: it gets its own copy of what plays here
     const r = resolvedNow()[part];
@@ -1918,6 +1917,7 @@ function editable(part) {
   if (P.mode === 'yours') {
     const m = sg.mat[t][part];
     if (!m || m.src !== 'user') { const u = D.userSource(sg, part, t); D.setUser(sg, part, t, u ? D.clone(D.deriveUser(sg, part, u, t)) : D.emptyMat(part, sg)); }
+    if (!global) delete sg.mat[t][part].auto; // touched now: from here it leads and the machine bends to it
     return sg.mat[t][part].data;
   }
   const wasOff = P.mode === 'off';
@@ -1925,8 +1925,9 @@ function editable(part) {
   const keep = {};
   for (const ty of types) { const r = D.resolveType(sg, ty)[part]; keep[ty] = r ? D.clone(r) : D.emptyMat(part, sg); }
   P.mode = 'yours';
-  for (const ty of types) if (!(sg.mat[ty][part] && sg.mat[ty][part].src === 'user')) D.setUser(sg, part, ty, wasOff ? D.emptyMat(part, sg) : keep[ty]);
-  if (!wasOff) toast(PART_NAMES[part] + ' is yours now. It sounds the same; the other parts bend to it.');
+  for (const ty of types) if (!(sg.mat[ty][part] && sg.mat[ty][part].src === 'user')) { D.setUser(sg, part, ty, wasOff ? D.emptyMat(part, sg) : keep[ty]); if (!wasOff) sg.mat[ty][part].auto = true; }
+  if (!global) delete sg.mat[t][part].auto;
+  if (!wasOff) toast(PART_NAMES[part] + ' is yours now and sounds the same. Change it and the other parts bend to it.');
   return sg.mat[t][part].data;
 }
 
@@ -2216,7 +2217,7 @@ function shapeIcon(p) {
 function setMode(p, m) {
   const sg = song(), P = sg.parts[p]; if (P.mode === m) return;
   change(() => {
-    if (m === 'yours') { editable(p); st.view = p; if (D.isEmpty(p, sg.mat[curType()][p].data)) setHint('Start placing ' + PART_NAMES[p].toLowerCase() + ' notes. Dashed shapes are the machine’s suggestions: tap one to keep it.'); }
+    if (m === 'yours') { editable(p, true); st.view = p; if (D.isEmpty(p, shownMat(p).data)) setHint('Start placing ' + PART_NAMES[p].toLowerCase() + ' notes. Dashed shapes are the machine’s suggestions: tap one to keep it.'); }
     else { P.mode = m; if (m === 'machine') setHint('The machine plays ' + PART_NAMES[p].toLowerCase() + ' and bends to the parts that are yours.'); }
   });
 }
