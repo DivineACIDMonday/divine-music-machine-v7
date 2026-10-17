@@ -3257,8 +3257,9 @@ function openDeliver() {
     h('div', { class: 'scroller' }, tbl),
     h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { class: 'primary', id: 'deliverAll', onclick: () => deliverFiles(active.flatMap((p) => versionsOf(sg.parts[p].plugin).map((v) => p + (v ? ':' + v : ''))).concat(['structure']), true) }, ico('download'), 'Download all as one .zip'),
       h('span', { class: 'small' }, 'Everything as it is right now, in one .zip. The buttons per row download single .mid files. Drop them on bar 1 in Studio One.')),
-    ujUsed ? ujamPanel() : h('div', { class: 'small' }, 'Tip: choose a UJAM plugin under “Played by” and the file arrives with every key already in the right zone.'),
-    ujUsed ? h('details', null, h('summary', { style: 'cursor:pointer' }, 'Advanced: choose UJAM phrase keys yourself'), phraseKeysPanel()) : null);
+    // UJAM info only explains the files; folded away so the parts list keeps its room
+    ujUsed ? h('details', { id: 'ujDetails' }, h('summary', { style: 'cursor:pointer' }, 'UJAM: zones, octave fix and phrase keys'), ujamPanel(), h('details', null, h('summary', { style: 'cursor:pointer' }, 'Advanced: choose UJAM phrase keys yourself'), phraseKeysPanel()))
+      : h('div', { class: 'small' }, 'Tip: choose a UJAM plugin under “Played by” and the file arrives with every key already in the right zone.'));
   overlay(sheet);
 }
 function ujamPanel() {
