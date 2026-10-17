@@ -116,6 +116,15 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .secedit .barsval{flex:1;text-align:center;font-family:var(--display);font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
 .secedit .faint{color:var(--faint)}
 .chip.add.sel{border-color:var(--fg)}
+.secparts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px}
+.secparts button{font-size:11.5px;padding:5px 2px}
+.cbar.echo{opacity:.55;border-style:dashed}
+.manuals{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
+.manuals>span{display:inline-flex;align-items:center;gap:6px;color:var(--muted)}
+.manuals>span svg{width:15px;height:15px}
+.mlink{border:1px solid var(--line);border-radius:8px;padding:5px 10px;color:var(--fg);text-decoration:none;background:var(--raise)}
+.mlink:hover{border-color:var(--accent)}
+.manuals.small .mlink{padding:3px 8px}
 .copy{margin-top:8px;color:var(--faint);font-size:11px}
 .small{font-size:12px;color:var(--muted)}
 
@@ -785,7 +794,18 @@ E.resolveType = function (song, type) {
   ctx.melodyUser = mel; ctx.bassUser = bas;
   const seedOf = (part) => hash(P[part].seed, type, song.genre, song.key.root, song.key.scale, song.L, song.meter);
   // chords
-  if (P.chords.mode === 'yours') out.chords = chu || E.emptyMat('chords', song);
+  if (P.chords.mode === 'yours') {
+    out.chords = chu || E.emptyMat('chords', song);
+    // fill empty chord bars with the machine's chord for that bar, marked f: 1
+    if (chu && P.chords.repeat !== false && chu.bars.some(Boolean) && chu.bars.some((c) => !c)) {
+      // a genre progression, turned so it continues from your first chord
+      const gen = E.genChords(song, type, {}, seedOf('chords')).bars;
+      const first = chu.bars.findIndex(Boolean), mine = chu.bars[first];
+      let k = gen.findIndex((c) => c && c.root === mine.root); if (k < 0) k = first;
+      const at = (b) => gen[((b - first + k) % gen.length + gen.length) % gen.length];
+      out.chords = Object.assign({}, chu, { bars: chu.bars.map((c, b) => c || (at(b) ? Object.assign({}, at(b), { f: 1 }) : null)) });
+    }
+  }
   else if (P.chords.mode === 'machine') out.chords = E.genChords(song, type, ctx, seedOf('chords'));
   else out.chords = null;
   ctx.chords = out.chords && !E.isEmpty('chords', out.chords) ? out.chords : E.genChords(song, type, ctx, seedOf('chords'));
@@ -973,6 +993,12 @@ E.partActive = function (song, part, type, inBar, bars) {
   if (type === 'break' || type === 'build') return inBar >= bars / 2;
   return true;
 };
+E.partPlaysIn = function (song, sec, part) {
+  if (song.parts[part].mode === 'off') return false;
+  const choice = sec.play ? sec.play[part] : undefined; if (choice !== undefined) return choice;
+  for (let b = 0; b < sec.bars; b++) if (E.partActive(song, part, sec.type, b, sec.bars)) return true;
+  return false;
+};
 E.swingFor = function (song) {
   if (song.swingManual != null) return song.swingManual;
   const yoursLead = E.PARTS.some((p) => song.parts[p].mode === 'yours');
@@ -994,7 +1020,10 @@ E.renderBar = function (song, part, gbar, res, opts) {
   const lastBar = gbar === total - 1;
   const mat = res(type)[part];
   if (!mat || E.isEmpty(part, mat)) return [];
-  if (!E.partActive(song, part, type, inBar, sec.bars) && !lastBar) return [];
+  // your choice per section wins: a part switched off here stays silent, switched on always plays
+  const choice = sec.play ? sec.play[part] : undefined;
+  if (choice === false) return [];
+  if (choice !== true && !E.partActive(song, part, type, inBar, sec.bars) && !lastBar) return [];
   const lb = inBar % song.L;
   const r = rng(hash(song.seed, part, gbar));
   const nextSec = song.sections[si + 1];
@@ -1779,6 +1808,9 @@ function renderLeft() {
       h('div', { class: 'barsval', id: 'secBars' }, sec.bars + (sec.bars === 1 ? ' bar' : ' bars')),
       h('button', { class: 'icon', 'aria-label': 'Longer', title: 'Longer', disabled: sec.bars >= maxB, onclick: () => changeBars(1) }, ico('arrowR'))),
     h('label', { class: 'secrow full', for: 'secType' }, h('span', { class: 'small' }, 'Type'), typeSel),
+    h('div', { class: 'full small' }, 'Plays here:'),
+    h('div', { class: 'secparts full', role: 'group', 'aria-label': 'Parts that play in ' + sectionLabel(st.sec) }, D.PARTS.map((p) => { const on = D.partPlaysIn(sg, sec, p), off = sg.parts[p].mode === 'off'; return h('button', { id: 'here_' + p, class: on ? 'on' : '', 'aria-pressed': on, disabled: off, title: off ? PART_NAMES[p] + ' is off for the whole song' : (on ? 'Silence ' : 'Play ') + PART_NAMES[p].toLowerCase() + ' in ' + sectionLabel(st.sec), style: on ? 'background:var(--' + p + ');border-color:var(--' + p + ');color:var(--bg)' : '', onclick: () => togglePartHere(p) }, PART_NAMES[p]); })),
+    startFromRow(sg, sec),
     h('button', { 'aria-label': 'Move earlier', disabled: st.sec === 0, onclick: () => moveSection(-1) }, ico('arrowL'), 'Earlier'),
     h('button', { 'aria-label': 'Move later', disabled: st.sec === sg.sections.length - 1, onclick: () => moveSection(1) }, 'Later', ico('arrowR')),
     h('div', { class: 'full small' }, sg.sections.filter((x) => x.type === sec.type).length > 1 ? 'All ' + D.TYPES[sec.type].name + ' sections sound the same: change one and you change them all.' : 'Tap a section above to hear it from its start.'),
@@ -1792,6 +1824,27 @@ function playSection(i) {
   const b = D.sectionStart(sg, i);
   if (AU.playing && !AU.preview) { jumpTo(b); render(); } else startPlay(b);
   setHint('Playing ' + sectionLabel(i) + ' from its start.' + (st.loop ? ' Looping it.' : ''));
+}
+// switch a part on or off in this one section
+function togglePartHere(part) {
+  const sg = song(), sec = sg.sections[st.sec], was = D.partPlaysIn(sg, sec, part);
+  holdSel();
+  change(() => { const s2 = song().sections[st.sec]; s2.play = Object.assign({}, s2.play, { [part]: !was }); });
+  setHint(PART_NAMES[part] + (was ? ' is silent in ' : ' plays in ') + sectionLabel(st.sec) + ' now. Other sections stay as they are.');
+}
+// start a section type from your material in another type
+function startFromRow(sg, sec) {
+  const mine = D.PARTS.filter((p) => sg.parts[p].mode === 'yours');
+  const types = [...new Set(sg.sections.map((x) => x.type))].filter((t) => t !== sec.type && mine.some((p) => { const m = sg.mat[t][p]; return m && m.src === 'user' && !D.isEmpty(p, m.data); }));
+  if (!types.length) return null;
+  return h('label', { class: 'secrow full', for: 'secFrom' }, h('span', { class: 'small' }, 'Start'), h('select', { id: 'secFrom', 'aria-label': 'Start ' + D.TYPES[sec.type].name + ' from another section', onchange: (e) => { if (e.target.value) startFrom(e.target.value); } }, h('option', { value: '' }, 'from your\u2026'), types.map((t) => h('option', { value: t }, D.TYPES[t].name))));
+}
+function startFrom(from) {
+  const sg = song(), t = sg.sections[st.sec].type;
+  const parts = D.PARTS.filter((p) => { const m = sg.mat[from][p]; return sg.parts[p].mode === 'yours' && m && m.src === 'user' && !D.isEmpty(p, m.data); });
+  holdSel();
+  change(() => { for (const p of parts) D.setUser(song(), p, t, D.clone(song().mat[from][p].data)); });
+  toast(D.TYPES[t].name + ' now starts from your ' + D.TYPES[from].name + ' (' + parts.map((p) => PART_NAMES[p].toLowerCase()).join(', ') + '). Change it freely.', { label: 'Undo', fn: undo });
 }
 function changeBars(dir) {
   holdSel();
@@ -1969,7 +2022,10 @@ function renderEditor() {
   if (st.view !== 'chords') head.append(h('div', { class: 'pp seg', style: 'grid-template-columns:1fr 1fr;width:140px' },
     h('button', { class: st.rings ? 'on' : '', onclick: () => { st.rings = true; renderEditor(); } }, 'Rings'), h('button', { class: !st.rings ? 'on' : '', onclick: () => { st.rings = false; renderEditor(); } }, 'Lines')));
   if (st.view !== 'overview') {
-    if ((st.view === 'bass' || st.view === 'melody') && song().parts[st.view].mode === 'yours') { const P = song().parts[st.view], on = P.repeat !== false; head.append(h('button', { id: 'repeatBtn', class: on ? 'on' : '', 'aria-pressed': on, title: 'Empty bars repeat your first bar, moved along with the chords', onclick: () => { change(() => { P.repeat = !on; }); setHint(on ? 'Repeat is off: empty bars stay silent.' : 'Empty bars now repeat your first bar, moved along with the chords. The copies show as echoes; tap one to make that bar yours.'); } }, ico('loop'), 'Repeat bar 1')); }
+    if ((st.view === 'bass' || st.view === 'melody' || st.view === 'chords') && song().parts[st.view].mode === 'yours') {
+      const P = song().parts[st.view], on = P.repeat !== false, ch = st.view === 'chords';
+      head.append(h('button', { id: 'repeatBtn', class: on ? 'on' : '', 'aria-pressed': on, title: ch ? 'Empty bars get a chord from the machine' : 'Empty bars repeat your first bar, moved along with the chords', onclick: () => { change(() => { P.repeat = !on; }); setHint(on ? 'Off: empty bars stay silent.' : ch ? 'Empty bars now get a chord from the machine. They show as echoes; pick a chord to make a bar yours.' : 'Empty bars now repeat your first bar, moved along with the chords. The copies show as echoes; tap one to make that bar yours.'); } }, ico('loop'), ch ? 'Fill empty bars' : 'Repeat bar 1'));
+    }
     head.append(h('button', { class: st.shadows ? 'on' : '', 'aria-pressed': st.shadows, title: 'Show the machine’s suggestions as dashed shapes', onclick: () => { st.shadows = !st.shadows; renderEditor(); } }, ico('eye'), 'Shadows'));
     head.append(h('button', { title: 'Fill this part with a random idea that fits', onclick: () => newVersion(st.view) }, ico('dice'), 'Random'));
     head.append(h('button', { class: 'ghost', title: 'Clear this part in every ' + D.TYPES[curType()].name, onclick: clearPart }, ico('trash'), 'Clear'));
@@ -2290,9 +2346,9 @@ function chordEditor() {
   const sh = st.shadows ? shadowsFor('chords') : [];
   const bars = h('div', { class: 'chordbars', style: 'grid-template-columns:repeat(' + (L === 12 ? 6 : 4) + ',minmax(0,1fr))' });
   for (let b = 0; b < L; b++) {
-    const c = data.bars[b]; const shadow = !c && sh.find((x) => x.bar === b);
-    bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { st.chordBar = b; renderEditor(); if (c) previewChord(c); } },
-      c ? D.chordName(c) : shadow ? D.chordName(shadow.chord) + '?' : '?', h('small', null, 'bar ' + (b + 1) + (c && D.roman(sg.key, c) ? ' · ' + D.roman(sg.key, c) : ''))));
+    const c = data.bars[b]; const echo = !c && sg.parts.chords.mode === 'yours' ? (resolvedNow().chords.bars[b] || null) : null; const shadow = !c && !echo && sh.find((x) => x.bar === b);
+    bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow ' : '') + (echo ? 'echo' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { st.chordBar = b; renderEditor(); if (c) previewChord(c); } },
+      c ? D.chordName(c) : echo ? D.chordName(echo) : shadow ? D.chordName(shadow.chord) + '?' : '?', h('small', null, 'bar ' + (b + 1) + (c && D.roman(sg.key, c) ? ' · ' + D.roman(sg.key, c) : ''))));
   }
   wrap.append(bars);
   const cur = data.bars[st.chordBar];
@@ -2607,6 +2663,7 @@ function openStart() {
     h('div', { class: 'stepnum' }, 'Step 1 of 2'), h('h3', null, 'Pick a genre'),
     genres,
     h('div', { class: 'small' }, 'Not sure? Free flow follows wherever you go, and the machine tells you later what it sounds like.'),
+    manualLinks(true),
     h('div', { class: 'small faint copy' }, D.COPYRIGHT + '. All rights reserved.'),
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
   );
@@ -2643,6 +2700,11 @@ function newSong(genre, how, part) {
 }
 function loadSong(sg) { stopAll(true); st.boot = false; D.ensureTypes(sg); st.held = false; st.loop = false; st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.view = 'overview'; clampSec(); render(); }
 
+// the latest manual, published next to the app, in three languages
+const MANUALS = [['English', 'manuals/Divine-Music-Machine-Manual-EN.pdf'], ['Nederlands', 'manuals/Divine-Music-Machine-Handleiding-NL.pdf'], ['Deutsch', 'manuals/Divine-Music-Machine-Handbuch-DE.pdf']];
+function manualLinks(small) {
+  return h('div', { class: 'manuals' + (small ? ' small' : '') }, h('span', null, ico('file'), 'Manual (PDF):'), MANUALS.map(([name, href]) => h('a', { class: 'mlink', href, download: '', target: '_blank', rel: 'noopener' }, name)));
+}
 // help
 function openHelp() {
   const row = (k, v) => [h('div', null, h('span', { class: 'kbd' }, k)), h('div', null, v)];
@@ -2653,12 +2715,15 @@ function openHelp() {
       row('Rings', 'One ring per drum. Further out is louder. Kick outside, crash inside.'),
       row('Lines', 'Rows of the key are lit. Drag a note’s end to lengthen, hold it for loudness.'),
       row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
-      row('Spiral', 'Your song from the centre out. Tap a colour to jump there.'),
+      row('Spiral', 'Your song from the centre out. Tap a colour to hear it from its start.'),
+      row('Sections', 'Tap a chip to hear it. The panel sets length, type, which parts play here, and Start from.'),
+      row('Repeat bar 1', 'Make one bar of bass or melody; empty bars follow it along the chords. Chords: Fill empty bars.'),
       row('Played by', 'Choose a plugin per part. UJAM parts arrive with keys already in the right zones.'),
       row('Pure', 'Exactly what you made, with your feel.'),
       row('Polished', 'Notes nudged into the key and chords, parts in their own range, loudness balanced.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
+    manualLinks(),
     h('div', { class: 'small faint copy' }, 'Divine Music Machine. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
