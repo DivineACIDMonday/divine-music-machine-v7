@@ -2412,16 +2412,27 @@ function overviewRings() {
   for (const p of D.PARTS) { const [a, b] = bands[p]; const g = s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: 'transparent', 'stroke-width': b - a + 6, style: 'cursor:pointer', 'data-part': p }); g.addEventListener('click', () => { st.view = p; st.ringBar = lb; st.chordBar = lb; render(); setHint(PART_NAMES[p] + ', bar ' + (lb + 1) + '. Change it here.'); }); svg.append(g); svg.append(s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: line, 'stroke-width': 1, 'pointer-events': 'none' })); }
   const off = (p) => sg.parts[p].mode === 'off';
   // beat: kick, snare/clap, hats on three sub rings
+  // a part that rests in this section (or in the bar you hear) is drawn faint, so you never see what you do not hear
+  const secO = sg.sections[st.sec], atO = AU.playing && !AU.preview ? D.sectionAt(sg, AU.curBar) : null, inB = atO && atO.i === st.sec ? atO.inBar : null;
+  const silent = (p) => { if (!D.partPlaysIn(sg, secO, p)) return true; if (secO.play && secO.play[p] !== undefined) return false; return inB != null && !D.partActive(sg, p, secO.type, inB, secO.bars); };
+  const resting = [];
+  const dimFrom = (p, m) => { if (off(p) || !silent(p)) return; resting.push(PART_NAMES[p].toLowerCase()); for (const el of [...svg.childNodes].slice(m)) el.setAttribute('opacity', 0.16); };
+  let mk = svg.childNodes.length;
   if (res.beat && !off('beat')) {
     const col = cssv('--beat'); const sub = [[0, 186], [1, 186], [2, 170], [3, 170], [4, 154], [5, 154], [6, 160], [7, 178]];
     res.beat.lanes.forEach((l, li) => l.forEach((v, k) => { if (!v) return; const pt = P(sub[li][1], k / N); const el = laneShape(li, pt[0], pt[1], 4 + v / 127 * 4, { fill: col, 'pointer-events': 'none' }); svg.append(el); }));
   }
+  dimFrom('beat', mk); mk = svg.childNodes.length;
   if (res.bass && !off('bass')) { const col = cssv('--bass'); for (const n of res.bass.notes) { if (Math.floor(n.s / N) !== lb) continue; const f0 = (n.s % N) / N, f1 = Math.min(1, ((n.s % N) + n.d) / N); svg.append(arcPath(129, f0, f1 - 0.004, col, 12)); } }
+  dimFrom('bass', mk); mk = svg.childNodes.length;
   const ch = res.chords && !off('chords') ? res.chords : null;
   if (ch) { const c = ch.bars[lb]; if (c) { const col = cssv('--chords'); svg.append(arcPath(98, 0.003, 0.997, col, 18, 0.55)); const tp = P(98, 0.0); svg.append(s('text', { x: 200, y: 200 - 92, 'text-anchor': 'middle', fill: cssv('--fg'), 'font-size': 14, 'font-weight': 700, 'font-family': 'Bricolage Grotesque, sans-serif', 'pointer-events': 'none' }, D.chordName(c))); } }
+  dimFrom('chords', mk); mk = svg.childNodes.length;
   if (res.melody && !off('melody')) { const col = cssv('--melody'); const ns = res.melody.notes.filter((n) => Math.floor(n.s / N) === lb); const ps = res.melody.notes.map((n) => n.p); const mn = Math.min(...ps, 60), mx = Math.max(...ps, 72); for (const n of ns) { const r = 34 + (n.p - mn) / Math.max(1, mx - mn) * 40; const f0 = (n.s % N) / N, f1 = Math.min(1, ((n.s % N) + n.d) / N); svg.append(arcPath(r, f0, f1 - 0.004, col, 6)); } }
+  dimFrom('melody', mk);
   D.meter(sg).beatSteps.forEach((b) => { const a = P(26, b / N), c = P(196, b / N); svg.append(s('line', { x1: a[0], y1: a[1], x2: c[0], y2: c[1], stroke: line, 'stroke-width': 0.6, 'pointer-events': 'none' })); });
   svg.append(s('text', { x: 200, y: 204, 'text-anchor': 'middle', fill: faint, 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none' }, 'bar ' + (lb + 1)));
+  if (resting.length) svg.append(s('text', { x: 200, y: 226, 'text-anchor': 'middle', fill: faint, 'font-size': 8.5, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none', id: 'restNote' }, resting.join(' + ') + ' rests'));
   svg.append(s('line', { id: 'ringHead', x1: 200, y1: 200, x2: 200, y2: 6, stroke: cssv('--fg'), 'stroke-width': 2, opacity: AU.playing ? 0.85 : 0, 'pointer-events': 'none' }));
   wrap.append(svg);
   return wrap;
