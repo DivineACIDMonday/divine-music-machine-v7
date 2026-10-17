@@ -1,6 +1,9 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}img{max-width:100%}</style></head><body>
+<html lang="en"><head><meta charset="utf-8"><meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved."><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>[hidden]{display:none!important}img{max-width:100%}</style></head><body>
 <title>Divine Music Machine</title>
+<!-- Divine Music Machine. (c) 2026 Divine Monday. All rights reserved. -->
+<meta name="author" content="Divine Monday">
+<meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -78,7 +81,6 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .typegrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 .typegrid .full{grid-column:1/-1}
 .tbtn{font-size:11.5px;padding:5px 4px;justify-content:center;border-left-width:3px}
-.tbtn.on{background:var(--fg);color:var(--bg)}
 .scope{display:flex;background:var(--raise);border-radius:8px;padding:2px;gap:2px}
 .scope button{border:0;background:transparent;font-size:12px;padding:5px 9px;white-space:nowrap}
 .scope button.on{background:var(--panel);color:var(--fg);box-shadow:0 0 0 1px var(--accent)}
@@ -105,6 +107,15 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .secedit{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:var(--raise);border-radius:10px;padding:8px}
 .secedit .full{grid-column:1/-1}
 .secedit button{justify-content:center;padding:5px 6px}
+.secedit .sechead{display:flex;align-items:center;gap:8px;font-size:14px}
+.secedit .swatch{width:10px;height:10px;border-radius:3px;flex:none}
+.secedit .secrow{display:flex;align-items:center;gap:6px}
+.secedit .secrow select{flex:1;min-width:0}
+.secedit .secrow .small{min-width:34px}
+.secedit .barsval{flex:1;text-align:center;font-family:var(--display);font-weight:600;font-size:15px;font-variant-numeric:tabular-nums}
+.secedit .faint{color:var(--faint)}
+.chip.add.sel{border-color:var(--fg)}
+.copy{margin-top:8px;color:var(--faint);font-size:11px}
 .small{font-size:12px;color:var(--muted)}
 
 .centre{overflow:hidden}
@@ -551,7 +562,6 @@ E.genChords = function (song, type, ctx, seed) {
 };
 
 /* ---------- beat generation ---------- */
-function steps16to(meter, s) { return s; }
 function setL(p, l, s, v) { if (s >= 0 && s < p[l].length) p[l][s] = v; }
 E.genBeat = function (song, type, ctx, seed) {
   const r = rng(seed);
@@ -804,12 +814,7 @@ E.deriveUser = function (song, part, u, type) {
   if (part === 'bass' && type === 'break') d.notes = d.notes.filter((n) => n.s % E.meter(song).steps === 0);
   return d;
 };
-// what an edit to a part in a section type means: get / set user material
-E.getEditable = function (song, part, type) {
-  const slot = song.mat[type][part];
-  if (slot && slot.src === 'user') return slot.data;
-  return null;
-};
+// store your own material for a part in a section type
 E.setUser = function (song, part, type, data) { song.mat[type][part] = { src: 'user', data }; };
 
 /* ---------- switching genre moves your parts along ---------- */
@@ -1242,6 +1247,8 @@ E.applyMask = function (song, part, notes, pluginKey, settings) {
 /* ---------- MIDI write ---------- */
 function vlq(n) { const b = [n & 0x7f]; n >>= 7; while (n) { b.unshift((n & 0x7f) | 0x80); n >>= 7; } return b; }
 function str(s) { const o = []; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); o.push(c < 128 ? c : 63); } return o; }
+E.COPYRIGHT = '\u00a9 ' + new Date().getFullYear() + ' Divine Monday';
+E.COPYRIGHT_MIDI = 'Copyright ' + new Date().getFullYear() + ' Divine Monday';
 E.writeMidi = function (tracks, meta) {
   // tracks: [{name, channel, notes:[{t,d,p,v}], markers?:[{t,text}]}]
   const PPQ = E.PPQ;
@@ -1254,6 +1261,7 @@ E.writeMidi = function (tracks, meta) {
   const den = { 4: 2, 8: 3 }[m.den];
   const cev = [{ t: 0, b: [0xff, 0x51, 3, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] }, { t: 0, b: [0xff, 0x58, 4, m.num, den, m.den === 8 ? 12 : 24, 8] }];
   if (meta.title) cev.unshift({ t: 0, b: [0xff, 0x03].concat(vlq(str(meta.title).length), str(meta.title)) });
+  const cr = str(meta.copyright || E.COPYRIGHT_MIDI); cev.unshift({ t: 0, b: [0xff, 0x02].concat(vlq(cr.length), cr) });
   (meta.markers || []).forEach((mk) => { const s = str(mk.text); cev.push({ t: mk.t, b: [0xff, 0x06].concat(vlq(s.length), s) }); });
   chunks.push(trackBytes(cev));
   for (const tr of tracks) {
@@ -1548,6 +1556,8 @@ function afterChange(opts) {
   opts = opts || {};
   if (st.view !== 'overview') holdHere();
   clampSec();
+  // a looped section that got shorter or moved: go back to its start
+  if (AU.playing && !AU.preview && st.loop) { const s0 = D.sectionStart(song(), st.sec), s1 = s0 + song().sections[st.sec].bars; if (AU.curBar < s0 || AU.curBar >= s1) jumpTo(s0); }
   saveSession();
   render(opts.keep);
 }
@@ -1557,6 +1567,13 @@ function holdHere() {
   const at = D.sectionAt(song(), AU.curBar); if (!at) return;
   st.sec = at.i; st.loop = true; st.held = true;
   toast('Holding ' + sectionLabel(at.i) + ' so you can edit. Press Continue song when you are ready.');
+}
+// editing the structure while the song plays: stay on the section you are changing
+function holdSel() {
+  if (!AU.playing || AU.preview || st.loop) return;
+  st.loop = true; st.held = true;
+  const at = D.sectionAt(song(), AU.curBar); if (!at || at.i !== st.sec) jumpTo(D.sectionStart(song(), st.sec));
+  toast('Holding ' + sectionLabel(st.sec) + ' while you shape it. Press Continue song when you are ready.');
 }
 function continueSong() { st.loop = false; st.held = false; renderTop(); renderLeft(); renderEditor(); }
 function undo() { if (!st.hist.length) return; st.fut.push(snapshot()); st.song = JSON.parse(st.hist.pop()); afterChange(); toast('Undone'); }
@@ -1694,22 +1711,57 @@ function renderLeft() {
   drawSpiral(sp);
   const chips = h('div', { class: 'chips', role: 'list' });
   sg.sections.forEach((x, i) => chips.append(h('div', { class: 'chip ' + (i === st.sec ? 'sel ' : '') + (AU.playing && at.i === i ? 'play' : ''), role: 'listitem', style: 'background:color-mix(in srgb,' + TYPE_COLOR(x.type) + ' 24%,var(--raise))' },
-    h('button', { class: 'chipbtn', id: 'chip_' + i, onclick: () => selectSection(i, true) }, D.TYPES[x.type].name, h('span', { class: 'n' }, x.bars)),
+    h('button', { class: 'chipbtn', id: 'chip_' + i, title: 'Play ' + sectionLabel(i) + ' from its start', onclick: () => playSection(i) }, D.TYPES[x.type].name, h('span', { class: 'n' }, x.bars)),
     sg.sections.length > 1 ? h('button', { class: 'chipx', 'aria-label': 'Delete ' + sectionLabel(i), title: 'Delete this section', onclick: () => deleteSection(i) }, '\u00d7') : null)));
-  chips.append(h('button', { class: 'chip add', id: 'addSec', title: 'Add a section after the selected one', 'aria-label': 'Add section', onclick: () => { st.adding = !st.adding; renderLeft(); } }, ico('plus')));
+  chips.append(h('button', { class: 'chip add ' + (st.adding ? 'sel' : ''), id: 'addSec', title: 'Add a section after the selected one', 'aria-label': 'Add section', 'aria-expanded': !!st.adding, onclick: () => { st.adding = !st.adding; renderLeft(); } }, ico('plus')));
   left.append(chips);
-  if (st.adding) left.append(h('div', { class: 'typegrid', id: 'addGrid' }, h('div', { class: 'small full' }, 'Add after ' + sectionLabel(st.sec) + ':'), D.TYPE_ORDER.map((t) => h('button', { class: 'tbtn', style: 'border-color:' + TYPE_COLOR(t), onclick: () => addSection(t) }, D.TYPES[t].name))));
+  if (st.adding) left.append(h('div', { class: 'typegrid', id: 'addGrid' }, h('div', { class: 'small full' }, 'Add after ' + sectionLabel(st.sec) + ':'), D.TYPE_ORDER.map((t) => h('button', { class: 'tbtn', style: 'border-color:' + TYPE_COLOR(t), onclick: () => addSection(t) }, D.TYPES[t].name)), h('button', { class: 'ghost full', onclick: () => { st.adding = false; renderLeft(); } }, 'Cancel')));
   const sec = sg.sections[st.sec];
+  const minB = sec.type === 'fill' ? 1 : Math.min(sg.L, sec.bars), maxB = sec.type === 'fill' ? 2 : 64;
+  const typeSel = h('select', { id: 'secType', 'aria-label': 'Type of ' + sectionLabel(st.sec), onchange: (e) => changeType(e.target.value) }, D.TYPE_ORDER.map((t) => h('option', { value: t, selected: t === sec.type }, D.TYPES[t].name)));
   const ed = h('div', { class: 'secedit' },
-    h('div', { class: 'full small' }, 'Replace ' + sectionLabel(st.sec) + ' with:'),
-    h('div', { class: 'typegrid full', id: 'replaceGrid' }, D.TYPE_ORDER.map((t) => h('button', { class: 'tbtn ' + (t === sec.type ? 'on' : ''), 'aria-pressed': t === sec.type, style: 'border-color:' + TYPE_COLOR(t), onclick: () => { if (t !== sec.type) change(() => { sec.type = t; if (t === 'fill' && sec.bars > 2) sec.bars = 1; }); } }, D.TYPES[t].name))),
-    h('button', { 'aria-label': 'Shorter', onclick: () => change(() => { sec.bars = Math.max(1, sec.bars - (sec.bars > sg.L ? sg.L : 1)); }) }, '\u2212 bars'),
-    h('button', { 'aria-label': 'Longer', onclick: () => change(() => { sec.bars = Math.min(256, sec.bars + (sec.bars >= sg.L ? sg.L : 1)); }) }, '+ bars'),
-    h('button', { 'aria-label': 'Move earlier', disabled: st.sec === 0, onclick: () => change(() => { const a = sg.sections; [a[st.sec - 1], a[st.sec]] = [a[st.sec], a[st.sec - 1]]; st.sec--; }) }, ico('arrowL'), 'Move'),
-    h('button', { 'aria-label': 'Move later', disabled: st.sec === sg.sections.length - 1, onclick: () => change(() => { const a = sg.sections; [a[st.sec + 1], a[st.sec]] = [a[st.sec], a[st.sec + 1]]; st.sec++; }) }, 'Move', ico('arrowR')),
-    h('div', { class: 'full small' }, sec.bars + (sec.bars === 1 ? ' bar here.' : ' bars here.') + ' Edits apply to every ' + D.TYPES[sec.type].name + '. Song: ' + D.totalBars(sg) + ' bars, about ' + fmtDur(D.totalBars(sg) * D.meter(sg).beats * (D.meter(sg).unit === 8 ? 1.5 : 1) * 60 / sg.bpm) + '.')
+    h('div', { class: 'sechead full' }, h('span', { class: 'swatch', style: 'background:' + TYPE_COLOR(sec.type) }), h('b', null, sectionLabel(st.sec))),
+    h('div', { class: 'secrow full' },
+      h('button', { class: 'icon', 'aria-label': 'Shorter', title: 'Shorter', disabled: sec.bars <= minB, onclick: () => changeBars(-1) }, ico('arrowL')),
+      h('div', { class: 'barsval', id: 'secBars' }, sec.bars + (sec.bars === 1 ? ' bar' : ' bars')),
+      h('button', { class: 'icon', 'aria-label': 'Longer', title: 'Longer', disabled: sec.bars >= maxB, onclick: () => changeBars(1) }, ico('arrowR'))),
+    h('label', { class: 'secrow full', for: 'secType' }, h('span', { class: 'small' }, 'Type'), typeSel),
+    h('button', { 'aria-label': 'Move earlier', disabled: st.sec === 0, onclick: () => moveSection(-1) }, ico('arrowL'), 'Earlier'),
+    h('button', { 'aria-label': 'Move later', disabled: st.sec === sg.sections.length - 1, onclick: () => moveSection(1) }, 'Later', ico('arrowR')),
+    h('div', { class: 'full small' }, sg.sections.filter((x) => x.type === sec.type).length > 1 ? 'All ' + D.TYPES[sec.type].name + ' sections sound the same: change one and you change them all.' : 'Tap a section above to hear it from its start.'),
+    h('div', { class: 'full small faint' }, 'Song: ' + D.totalBars(sg) + ' bars, about ' + fmtDur(D.totalBars(sg) * D.meter(sg).beats * (D.meter(sg).unit === 8 ? 1.5 : 1) * 60 / sg.bpm) + '.')
   );
   left.append(ed);
+}
+// tap a section: hear it from its start, and the selection follows
+function playSection(i) {
+  const sg = song(); st.sec = i; st.chordBar = 0; st.ringBar = 0; st.adding = false;
+  const b = D.sectionStart(sg, i);
+  if (AU.playing && !AU.preview) { jumpTo(b); render(); } else startPlay(b);
+  setHint('Playing ' + sectionLabel(i) + ' from its start.' + (st.loop ? ' Looping it.' : ''));
+}
+function changeBars(dir) {
+  holdSel();
+  change(() => {
+    const sg = song(), sec = sg.sections[st.sec], L = sg.L;
+    if (sec.type === 'fill') { sec.bars = D.clamp(sec.bars + dir, 1, 2); return; }
+    let n;
+    if (dir > 0) n = sec.bars < L ? L : (Math.floor(sec.bars / L) + 1) * L;
+    else n = sec.bars % L ? Math.floor(sec.bars / L) * L : sec.bars - L;
+    sec.bars = D.clamp(n, Math.min(L, sec.bars), 64);
+  });
+}
+function changeType(t) {
+  const sg = song(), sec = sg.sections[st.sec], was = sectionLabel(st.sec);
+  if (t === sec.type) return;
+  holdSel();
+  change(() => { const old = sec.type; sec.type = t; if (t === 'fill') sec.bars = 1; else if (old === 'fill') sec.bars = sg.L === 12 ? 12 : sg.L * 2; });
+  toast(was + ' is now ' + sectionLabel(st.sec) + '.', { label: 'Undo', fn: undo });
+}
+function moveSection(dir) {
+  holdSel();
+  change(() => { const a = song().sections, j = st.sec + dir; [a[j], a[st.sec]] = [a[st.sec], a[j]]; st.sec = j; });
+  if (AU.playing && !AU.preview) jumpTo(D.sectionStart(song(), st.sec));
 }
 function deleteSection(i) {
   const name = sectionLabel(i);
@@ -1720,10 +1772,10 @@ function fmtDur(sec) { const m = Math.floor(sec / 60), x = Math.round(sec % 60);
 function sectionLabel(i) { const sg = song(), t = sg.sections[i].type; const k = sg.sections.slice(0, i + 1).filter((x) => x.type === t).length; const many = sg.sections.filter((x) => x.type === t).length > 1; return D.TYPES[t].name + (many ? ' ' + k : ''); }
 function addSection(type) {
   st.adding = false;
-  change(() => { const sg = song(); const bars = type === 'fill' ? 1 : type === 'prechorus' ? 4 : sg.L === 12 ? 12 : 8; sg.sections.splice(st.sec + 1, 0, { id: 's' + D.newSeed(), type, bars }); st.sec++; });
+  change(() => { const sg = song(); const bars = type === 'fill' ? 1 : sg.L === 12 ? 12 : type === 'prechorus' ? sg.L : sg.L * 2; sg.sections.splice(st.sec + 1, 0, { id: 's' + D.newSeed(), type, bars }); st.sec++; });
+  if (AU.playing && !AU.preview) { holdSel(); jumpTo(D.sectionStart(song(), st.sec)); }
   setHint(D.TYPES[type].name + ' added. ' + ({ fill: 'A fill section is one bar of drum fill that leads into what comes next.', drop: 'A drop hits hardest: everything plays, crash on the one.', prechorus: 'A pre chorus builds tension toward the chorus.' }[type] || 'Tap it to edit what plays there.'));
 }
-function selectSection(i, jump) { st.sec = i; st.chordBar = 0; if (jump && AU.playing) jumpTo(D.sectionStart(song(), i)); render(); }
 function spiralPoint(t) { const turns = 3.1, a = t * turns * Math.PI * 2 - Math.PI / 2, r = 14 + 76 * t; return [100 + r * Math.cos(a), 100 + r * Math.sin(a)]; }
 function drawSpiral(sp) {
   const sg = song(), tot = D.totalBars(sg); let b0 = 0;
@@ -1740,7 +1792,7 @@ function drawSpiral(sp) {
     const r = sp.getBoundingClientRect(); const x = (e.clientX - r.left) / r.width * 200, y = (e.clientY - r.top) / r.height * 200;
     let best = 0, bd = 1e9; for (let k = 0; k <= 400; k++) { const q = spiralPoint(k / 400); const d = (q[0] - x) ** 2 + (q[1] - y) ** 2; if (d < bd) { bd = d; best = k / 400; } }
     const bar = Math.min(tot - 1, Math.floor(best * tot)); const at = D.sectionAt(sg, bar);
-    st.sec = at.i; if (AU.playing) jumpTo(D.sectionStart(sg, at.i)); render();
+    playSection(at.i);
   };
 }
 function updateSpiralDot() {
@@ -1748,6 +1800,8 @@ function updateSpiralDot() {
   const p = spiralPoint(Math.min(0.999, (AU.curBar + AU.curFrac) / tot)); dot.setAttribute('cx', p[0].toFixed(1)); dot.setAttribute('cy', p[1].toFixed(1));
   const at = D.sectionAt(song(), AU.curBar); if (!at) return;
   const ns = $('#nowSec'), nb = $('#nowBar');
+  // what you hear is what you see: the selection follows the song
+  if (!st.loop && at.i !== st.sec && !st.pd) { st.sec = at.i; st.chordBar = 0; st.ringBar = 0; renderLeft(); renderEditor(); return; }
   if (ns && ns.textContent !== sectionLabel(at.i)) renderLeft();
   else if (nb) nb.textContent = 'bar ' + (at.inBar + 1) + ' of ' + at.s.bars;
 }
@@ -1874,7 +1928,6 @@ function renderEditor() {
 }
 function renderEditorDynamic() { renderEditor(); }
 function clearPart() { const p = st.view; change(() => { editable(p); D.setUser(song(), p, curType(), D.emptyMat(p, song())); }); setHint('Cleared. Shadows show where the machine would start.'); }
-function playStep() { if (!AU.playing) return -1; const at = D.sectionAt(song(), AU.curBar); if (!at || at.i !== st.sec && !st.loop) { /* still show */ } return Math.floor(AU.curFrac * D.meter(song()).steps); }
 
 // --- shapes for drum lanes
 function laneShape(li, x, y, r, attrs) {
@@ -1943,14 +1996,13 @@ function beatRings() {
   });
   const up = () => {
     if (!drag) return; const d = drag.d;
-    if (!drag.moved && drag.existed) tapOrRemove('b' + drag.li + '_' + drag.step, () => { d.lanes[drag.li][drag.step] = 0; });
+    if (!drag.moved && drag.existed && !tapOrRemove('b' + drag.li + '_' + drag.step, () => { d.lanes[drag.li][drag.step] = 0; })) listenOnly(drag.before);
     else if (!drag.moved) setHint(D.hintBeat(song(), d));
     commitDrag(drag.before); drag = null;
   };
   svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
   return svg;
 }
-function redrawBeatOnly() { const b = $('#edbody'); b.innerHTML = ''; b.append(st.rings ? beatRings() : beatLines()); }
 
 // --- beat lines
 function beatLines() {
@@ -1979,7 +2031,7 @@ function beatLines() {
   });
   const placeLine = () => { const v = drag.d.lanes[drag.li][drag.k]; const x = 60 + drag.k * 40 + 20, y = 20 + drag.li * 44 + 22 - (v - 90) / 127 * 14; const ne = laneShape(drag.li, x, y, 6 + v / 127 * 7, { fill: col, class: 'hit', 'data-lane': drag.li, 'data-step': drag.k }); if (drag.el) drag.el.replaceWith(ne); else svg.append(ne); drag.el = ne; };
   svg.addEventListener('pointermove', (e) => { if (!drag) return; const dy = drag.y - e.clientY; if (Math.abs(dy) > 3) drag.moved = true; if (drag.moved) { drag.d.lanes[drag.li][drag.k] = D.clamp(Math.round(drag.v0 + dy * 1.6), 15, 127); setHint('Loudness ' + drag.d.lanes[drag.li][drag.k] + ' of 127. Drag up for louder.'); placeLine(); } });
-  const up = () => { if (!drag) return; const d = drag.d; if (!drag.moved && drag.existed) tapOrRemove('b' + drag.li + '_' + drag.k, () => { d.lanes[drag.li][drag.k] = 0; }); else if (!drag.moved) setHint(D.hintBeat(song(), d)); commitDrag(drag.before); drag = null; };
+  const up = () => { if (!drag) return; const d = drag.d; if (!drag.moved && drag.existed) { if (!tapOrRemove('b' + drag.li + '_' + drag.k, () => { d.lanes[drag.li][drag.k] = 0; })) listenOnly(drag.before); } else if (!drag.moved) setHint(D.hintBeat(song(), d)); commitDrag(drag.before); drag = null; };
   svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
   return svg;
 }
@@ -2049,7 +2101,7 @@ function noteEditor(part) {
   const end = () => {
     clearTimeout(lpT); if (!drag) return;
     const d = drag.d; const n = drag.n;
-    if (!drag.moved && !drag.created && n) tapOrRemove('n' + n.s + '_' + n.p, () => { d.notes.splice(d.notes.indexOf(n), 1); }, () => setHint(D.hintNote(song(), resolvedNow().ctxChords, part, n)));
+    if (!drag.moved && !drag.created && n) { if (!tapOrRemove('n' + n.s + '_' + n.p, () => { d.notes.splice(d.notes.indexOf(n), 1); }, () => setHint(D.hintNote(song(), resolvedNow().ctxChords, part, n)))) listenOnly(drag.before); }
     else if (n) setHint(D.hintNote(song(), resolvedNow().ctxChords, part, n));
     d.notes.sort((a, b) => a.s - b.s); cleanMono(d, part);
     commitDrag(drag.before); drag = null;
@@ -2065,6 +2117,8 @@ function tapOrRemove(key, remove, onListen) {
   st.lastTap = { key, t: now }; if (onListen) onListen(); else setHint('That is how it sounds. Double tap to remove it, drag to change it.');
   return false;
 }
+// a tap that only listened must not take the part over from the machine
+function listenOnly(before) { if (snapshot() !== before) { st.song = JSON.parse(before); render(); } }
 function commitDrag(before) { if (snapshot() !== before) { st.hist.push(before); st.fut = []; afterChange(); } }
 function noteRings(part) {
   const sg = song(), N = D.meter(sg).steps, L = sg.L, m = shownMat(part), data = m.data;
@@ -2135,7 +2189,7 @@ function noteRings(part) {
   });
   const up = () => {
     clearTimeout(lpT); if (!drag) return; const d = drag.d, n = drag.n;
-    if (!drag.moved && !drag.created) tapOrRemove('n' + n.s + '_' + n.p, () => { d.notes.splice(d.notes.indexOf(n), 1); }, () => setHint(D.hintNote(song(), resolvedNow().ctxChords, part, n)));
+    if (!drag.moved && !drag.created) { if (!tapOrRemove('n' + n.s + '_' + n.p, () => { d.notes.splice(d.notes.indexOf(n), 1); }, () => setHint(D.hintNote(song(), resolvedNow().ctxChords, part, n)))) listenOnly(drag.before); }
     else setHint(D.hintNote(song(), resolvedNow().ctxChords, part, n));
     d.notes.sort((a, b) => a.s - b.s); cleanMono(d, part);
     commitDrag(drag.before); drag = null;
@@ -2146,7 +2200,6 @@ function noteRings(part) {
 }
 function shownIndexToReal(d, shown, i) { if (d === shown) return i; const n = shown.notes[i]; if (!n) return -1; return d.notes.findIndex((q) => q.s === n.s && q.p === n.p); }
 function cleanMono(d, part) { if (part !== 'bass') return; d.notes.sort((a, b) => a.s - b.s); for (let i = 0; i < d.notes.length - 1; i++) { const a = d.notes[i], b = d.notes[i + 1]; if (a.s + a.d > b.s && a.s !== b.s) a.d = Math.max(1, b.s - a.s); } }
-function redrawNotesOnly(part) { const b = $('#edbody'); b.innerHTML = ''; b.append(noteEditor(part)); }
 function openVelocity(e, part, n, before) {
   const body = $('#edbody'); const br = body.getBoundingClientRect();
   const box = h('div', { class: 'vfader', style: 'left:' + Math.min(br.width - 70, Math.max(4, e.clientX - br.left + 12)) + 'px;top:' + Math.max(4, Math.min(br.height - 170, e.clientY - br.top - 70)) + 'px' });
@@ -2486,6 +2539,7 @@ function openStart() {
     h('div', { class: 'stepnum' }, 'Step 1 of 2'), h('h3', null, 'Pick a genre'),
     genres,
     h('div', { class: 'small' }, 'Not sure? Free flow follows wherever you go, and the machine tells you later what it sounds like.'),
+    h('div', { class: 'small faint copy' }, D.COPYRIGHT + '. All rights reserved.'),
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
   );
   overlay(sheet, { sticky: st.boot });
@@ -2536,7 +2590,8 @@ function openHelp() {
       row('Pure', 'Exactly what you made, with your feel.'),
       row('Polished', 'Notes nudged into the key and chords, parts in their own range, loudness balanced.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
-    h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.')));
+    h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
+    h('div', { class: 'small faint copy' }, 'Divine Music Machine. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -2605,7 +2660,7 @@ function openLibrary() {
   overlay(h('div', { class: 'sheet' },
     h('div', { class: 'hdr' }, h('h2', null, 'Library'), h('div', { class: 'grow' }), h('button', { class: 'ghost', onclick: closeOverlay }, 'Close')),
     h('div', { class: 'row', style: 'display:flex;gap:8px;flex-wrap:wrap' }, q, h('div', { class: 'grow' }),
-      h('button', { onclick: () => saveFiles([{ name: 'DM_Library_' + new Date().toISOString().slice(0, 10) + '.json', data: JSON.stringify({ app: 'Divine Music Machine', v: 1, items: st.lib }) }]) }, ico('download'), 'Save library file'),
+      h('button', { onclick: () => saveFiles([{ name: 'DM_Library_' + new Date().toISOString().slice(0, 10) + '.json', data: JSON.stringify({ app: 'Divine Music Machine', copyright: D.COPYRIGHT, v: 1, items: st.lib }) }]) }, ico('download'), 'Save library file'),
       h('button', { onclick: () => $('#libIn').click() }, ico('upload'), 'Load library file')),
     list,
     h('div', { class: 'small' }, '“To machine” puts it in the selected section as yours, moved into your song’s key; everything else bends to it.')));
@@ -2828,6 +2883,10 @@ window.addEventListener('dragenter', (e) => { if (!e.dataTransfer || ![...e.data
 window.addEventListener('dragleave', () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth && veil) { veil.remove(); veil = null; } });
 window.addEventListener('dragover', (e) => { e.preventDefault(); });
 window.addEventListener('drop', (e) => { e.preventDefault(); dragDepth = 0; if (veil) { veil.remove(); veil = null; } const fs = [...(e.dataTransfer && e.dataTransfer.files || [])]; if (!fs.length) return; if (!st.song) newSong(st.pendingGenre || 'triphop', 'machine'); closeOverlay(); handleFiles(fs); });
+// no screen redraws in the middle of a drag
+window.addEventListener('pointerdown', () => { st.pd = true; }, true);
+window.addEventListener('pointerup', () => { st.pd = false; }, true);
+window.addEventListener('pointercancel', () => { st.pd = false; }, true);
 window.addEventListener('keydown', (e) => {
   const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
   if (e.key === 'Escape' && $('#overlay').innerHTML) { if (!st.boot) closeOverlay(); return; }
