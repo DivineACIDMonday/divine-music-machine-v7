@@ -2529,7 +2529,10 @@ function drawRipples() {
   cv.style.left = body.offsetLeft + 'px'; cv.style.top = body.offsetTop + 'px'; cv.style.width = W + 'px'; cv.style.height = H + 'px';
   if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
-  const now = AU.ctx.currentTime, cx = W / 2, cy = H / 2, rMax = Math.hypot(W, H) * 0.55, r0 = Math.min(W, H) * 0.08;
+  // centre on the rings themselves, not on the box (bar buttons push the rings down)
+  let cx = W / 2, cy = H / 2; const ring = body.querySelector('svg[viewBox="0 0 400 400"]');
+  if (ring) { const a = ring.getBoundingClientRect(), o = body.getBoundingClientRect(); if (a.width) { cx = a.left - o.left + a.width / 2; cy = a.top - o.top + a.height / 2; } }
+  const now = AU.ctx.currentTime, rMax = Math.hypot(W, H) * 0.55, r0 = Math.min(W, H) * 0.08;
   RIP.list = RIP.list.filter((r) => now - r.t < RIP_LIFE[r.part]);
   const col = {}; for (const p of D.PARTS) col[p] = cssv('--' + p);
   for (const r of RIP.list) {
