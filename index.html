@@ -2244,7 +2244,7 @@ function noteRings(part) {
   const ringOf = (p) => { let bi = 0, bd = 99; pitches.forEach((q, i) => { if (Math.abs(q - p) < bd) { bd = Math.abs(q - p); bi = i; } }); return bi; };
   const wrap = h('div', { class: 'ringwrap' });
   const chords = resolvedNow().ctxChords;
-  wrap.append(h('div', { class: 'bartabs', role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; renderEditor(); } }, 'Bar ' + (b + 1) + (chords && chords.bars[b] ? ' \u00b7 ' + D.chordName(chords.bars[b]) : '')))));
+  wrap.append(h('div', { class: 'bartabs', role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); } }, 'Bar ' + (b + 1) + (chords && chords.bars[b] ? ' \u00b7 ' + D.chordName(chords.bars[b]) : '')))));
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'noteSvg', role: 'img', 'aria-label': PART_NAMES[part] + ' rings for bar ' + (bar + 1) + ': one ring per note of the key, high notes outside' });
   const col = cssv('--' + part), line = cssv('--line'), faint = cssv('--faint'), mut = cssv('--muted'), tint = cssv('--' + part + '-t');
   const ang = (st2) => -Math.PI / 2 + st2 / N * Math.PI * 2;
@@ -2348,7 +2348,7 @@ function chordEditor() {
   const bars = h('div', { class: 'chordbars', style: 'grid-template-columns:repeat(' + (L === 12 ? 6 : 4) + ',minmax(0,1fr))' });
   for (let b = 0; b < L; b++) {
     const c = data.bars[b]; const echo = !c && sg.parts.chords.mode === 'yours' ? (resolvedNow().chords.bars[b] || null) : null; const shadow = !c && !echo && sh.find((x) => x.bar === b);
-    bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow ' : '') + (echo ? 'echo' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { st.chordBar = b; renderEditor(); if (c) previewChord(c); } },
+    bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow ' : '') + (echo ? 'echo' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { st.chordBar = b; st.ringBar = b; renderEditor(); if (c) previewChord(c); } },
       c ? D.chordName(c) : echo ? D.chordName(echo) : shadow ? D.chordName(shadow.chord) + '?' : '?', h('small', null, 'bar ' + (b + 1) + (c && D.roman(sg.key, c) ? ' · ' + D.roman(sg.key, c) : ''))));
   }
   wrap.append(bars);
@@ -2396,13 +2396,16 @@ function setVariant(v) {
 // --- overview
 function overviewRings() {
   const sg = song(), N = D.meter(sg).steps, res = resolvedNow();
-  const lb = AU.playing && D.sectionAt(sg, AU.curBar) && D.sectionAt(sg, AU.curBar).i === st.sec ? D.sectionAt(sg, AU.curBar).inBar % sg.L : 0;
+  if (st.ringBar == null || st.ringBar >= sg.L) st.ringBar = 0;
+  const lb = AU.playing && !AU.preview && D.sectionAt(sg, AU.curBar) && D.sectionAt(sg, AU.curBar).i === st.sec ? D.sectionAt(sg, AU.curBar).inBar % sg.L : st.ringBar;
+  const wrap = h('div', { class: 'ringwrap' });
+  wrap.append(h('div', { class: 'bartabs', role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: sg.L }, (_, b) => h('button', { class: 'bt ' + (b === lb ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === lb, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (res.chords && res.chords.bars[b] ? ' \u00b7 ' + D.chordName(res.chords.bars[b]) : '')))));
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'overSvg', role: 'img', 'aria-label': 'All parts in one bar: beat outside, then bass, chords, melody in the centre. Tap a ring to edit that part.' });
   const line = cssv('--line'), faint = cssv('--faint');
   const ang = (f) => -Math.PI / 2 + f * Math.PI * 2;
   const P = (r, f) => [200 + r * Math.cos(ang(f)), 200 + r * Math.sin(ang(f))];
   const bands = { beat: [150, 190], bass: [118, 140], chords: [86, 110], melody: [30, 78] };
-  for (const p of D.PARTS) { const [a, b] = bands[p]; const g = s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: 'transparent', 'stroke-width': b - a + 6, style: 'cursor:pointer', 'data-part': p }); g.addEventListener('click', () => { st.view = p; render(); }); svg.append(g); svg.append(s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: line, 'stroke-width': 1, 'pointer-events': 'none' })); }
+  for (const p of D.PARTS) { const [a, b] = bands[p]; const g = s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: 'transparent', 'stroke-width': b - a + 6, style: 'cursor:pointer', 'data-part': p }); g.addEventListener('click', () => { st.view = p; st.ringBar = lb; st.chordBar = lb; render(); setHint(PART_NAMES[p] + ', bar ' + (lb + 1) + '. Change it here.'); }); svg.append(g); svg.append(s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: line, 'stroke-width': 1, 'pointer-events': 'none' })); }
   const off = (p) => sg.parts[p].mode === 'off';
   // beat: kick, snare/clap, hats on three sub rings
   if (res.beat && !off('beat')) {
@@ -2416,7 +2419,8 @@ function overviewRings() {
   D.meter(sg).beatSteps.forEach((b) => { const a = P(26, b / N), c = P(196, b / N); svg.append(s('line', { x1: a[0], y1: a[1], x2: c[0], y2: c[1], stroke: line, 'stroke-width': 0.6, 'pointer-events': 'none' })); });
   svg.append(s('text', { x: 200, y: 204, 'text-anchor': 'middle', fill: faint, 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none' }, 'bar ' + (lb + 1)));
   svg.append(s('line', { id: 'ringHead', x1: 200, y1: 200, x2: 200, y2: 6, stroke: cssv('--fg'), 'stroke-width': 2, opacity: AU.playing ? 0.85 : 0, 'pointer-events': 'none' }));
-  return svg;
+  wrap.append(svg);
+  return wrap;
 }
 function arcPath(r, f0, f1, col, w, op) {
   if (f1 <= f0) f1 = f0 + 0.01;
