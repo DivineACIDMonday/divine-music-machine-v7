@@ -1834,7 +1834,7 @@ function holdSel() {
   const at = D.sectionAt(song(), AU.curBar); if (!at || at.i !== st.sec) jumpTo(D.sectionStart(song(), st.sec));
   toast('Holding ' + sectionLabel(st.sec) + ' while you shape it. Press Continue song when you are ready.');
 }
-function continueSong() { st.loop = false; st.held = false; renderTop(); renderLeft(); renderEditor(); }
+function continueSong() { st.loop = false; st.loopBar = false; st.held = false; renderTop(); renderLeft(); renderEditor(); }
 function undo() { if (!st.hist.length) return; st.fut.push(snapshot()); st.song = JSON.parse(st.hist.pop()); afterChange(); toast('Undone'); }
 function redo() { if (!st.fut.length) return; st.hist.push(snapshot()); st.song = JSON.parse(st.fut.pop()); afterChange(); toast('Redone'); }
 let saveT = null;
@@ -1954,7 +1954,8 @@ function renderTop() {
   const genre = h('select', { id: 'genre', 'aria-label': 'Genre', onchange: (e) => change(() => setGenre(e.target.value)) }, D.GENRE_ALL.map((g) => h('option', { value: g, selected: g === sg.genre }, D.GENRES[g].name)));
   const scope = h('div', { class: 'scope', role: 'group', 'aria-label': 'What play plays' },
     h('button', { id: 'scopeSong', class: !st.loop ? 'on' : '', 'aria-pressed': !st.loop, title: 'Play the whole song', onclick: () => continueSong() }, 'Whole song'),
-    h('button', { id: 'scopeSec', class: st.loop ? 'on' : '', 'aria-pressed': st.loop, title: 'Repeat only the selected section', onclick: () => { st.loop = true; st.held = false; renderTop(); renderLeft(); } }, 'Loop ' + sectionLabel(st.sec)));
+    h('button', { id: 'scopeSec', class: st.loop && !st.loopBar ? 'on' : '', 'aria-pressed': st.loop && !st.loopBar, title: 'Repeat only the selected section', onclick: () => { st.loop = true; st.loopBar = false; st.held = false; renderTop(); renderLeft(); } }, 'Loop ' + sectionLabel(st.sec)),
+    h('button', { id: 'scopeBar', class: st.loop && st.loopBar ? 'on' : '', 'aria-pressed': st.loop && st.loopBar, title: 'Repeat only the bar you are looking at', onclick: () => { st.loop = true; st.loopBar = true; st.held = false; followBar(); renderTop(); renderLeft(); } }, 'Loop bar ' + (barInSec() + 1)));
   const anyOff = D.PARTS.some((p) => sg.parts[p].mode === 'off' || (sg.parts[p].mode === 'yours' && !D.userSource(sg, p, curType())));
   // row 1: the song itself. row 2: genre and everything you do with the song
   top.append(
@@ -2066,7 +2067,11 @@ function renderLeft() {
 }
 // tap a section: hear it from its start, and the selection follows
 // keep the Loop button's name in step with the selected section without rebuilding the top bar
-function syncScope() { const b = $('#scopeSec'); if (b) b.textContent = 'Loop ' + sectionLabel(st.sec); }
+function syncScope() { const b = $('#scopeSec'); if (b) b.textContent = 'Loop ' + sectionLabel(st.sec); const c = $('#scopeBar'); if (c) c.textContent = 'Loop bar ' + (barInSec() + 1); }
+// one bar on repeat: the bar you look at in the editor, inside the selected section
+function barInSec() { const sec = song().sections[st.sec]; return Math.min(st.ringBar || 0, Math.min(song().L, sec.bars) - 1); }
+function loopBarAt() { return D.sectionStart(song(), st.sec) + barInSec(); }
+function followBar() { syncScope(); if (st.loop && st.loopBar && AU.playing && !AU.preview && AU.curBar !== loopBarAt()) jumpTo(loopBarAt()); }
 function playSection(i) {
   const sg = song(); st.sec = i; st.chordBar = 0; st.ringBar = 0; st.adding = false;
   const b = D.sectionStart(sg, i);
@@ -2509,7 +2514,7 @@ function noteRings(part) {
   const ringOf = (p) => { let bi = 0, bd = 99; pitches.forEach((q, i) => { if (Math.abs(q - p) < bd) { bd = Math.abs(q - p); bi = i; } }); return bi; };
   const wrap = h('div', { class: 'ringwrap' });
   const chords = resolvedNow().ctxChords;
-  wrap.append(h('div', { class: 'bartabs' + (L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); } }, 'Bar ' + (b + 1) + (chords && chords.bars[b] ? ' \u00b7 ' + D.chordName(chords.bars[b]) : '')))));
+  wrap.append(h('div', { class: 'bartabs' + (L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); followBar(); } }, 'Bar ' + (b + 1) + (chords && chords.bars[b] ? ' \u00b7 ' + D.chordName(chords.bars[b]) : '')))));
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'noteSvg', role: 'img', 'aria-label': PART_NAMES[part] + ' rings for bar ' + (bar + 1) + ': one ring per note of the key, high notes outside' });
   const col = cssv('--' + part), line = cssv('--line'), faint = cssv('--faint'), mut = cssv('--muted'), tint = cssv('--' + part + '-t');
   const ang = (st2) => -Math.PI / 2 + st2 / N * Math.PI * 2;
@@ -2626,7 +2631,7 @@ function chordEditor() {
   const bars = h('div', { class: 'chordbars', style: 'grid-template-columns:repeat(4,minmax(0,1fr))' }); // a 12 bar blues reads as three lines of four
   for (let b = 0; b < L; b++) {
     const c = data.bars[b], echo = echoOf(b), shadow = shadowOf(b);
-    bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow ' : '') + (echo ? 'echo' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { st.chordBar = b; st.ringBar = b; renderEditor(); if (c) previewChord(c); } },
+    bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow ' : '') + (echo ? 'echo' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { st.chordBar = b; st.ringBar = b; renderEditor(); followBar(); if (c) previewChord(c); } },
       c ? D.chordName(c) : echo ? D.chordName(echo) : shadow ? D.chordName(shadow.chord) + '?' : '?', h('small', null, 'bar ' + (b + 1) + (c && D.roman(sg.key, c) ? ' · ' + D.roman(sg.key, c) : ''))));
   }
   wrap.append(bars);
@@ -2638,7 +2643,7 @@ function chordEditor() {
   const chordFor = (b, d) => { const was = data.bars[b] || data.bars[b - 1]; const seven = was ? variantOf(was) === 'seventh' : (D.GENRES[sg.genre].sevenths || 0) >= 0.5; let ch = D.diatonic(sg.key, d, seven); if (was && (was.q === 'sus2' || was.q === 'sus4')) ch = { root: ch.root, q: was.q, deg: d }; if (E_dom()) ch = { root: ch.root, q: '7', deg: d }; return ch; };
   const setCell = (b, d, adopt) => {
     const c = data.bars[b];
-    st.chordBar = b; st.ringBar = b;
+    st.chordBar = b; st.ringBar = b; followBar();
     if (c && c.deg === d && !adopt) { previewChord(c); if (tapOrRemove('c' + b + '_' + d, () => change(() => { editable('chords').bars[b] = null; }), () => setHint(D.chordName(c) + ' in bar ' + (b + 1) + '. Double tap to empty this bar.'))) return; renderEditor(); return; }
     const ch = adopt || chordFor(b, d); const prevC = b > 0 ? data.bars[b - 1] : null;
     change(() => { editable('chords').bars[b] = Object.assign({}, ch, { f: undefined }); });
@@ -2712,7 +2717,7 @@ function overviewRings() {
   if (st.ringBar == null || st.ringBar >= sg.L) st.ringBar = 0;
   const lb = AU.playing && !AU.preview && D.sectionAt(sg, AU.curBar) && D.sectionAt(sg, AU.curBar).i === st.sec ? D.sectionAt(sg, AU.curBar).inBar % sg.L : st.ringBar;
   const wrap = h('div', { class: 'ringwrap' });
-  wrap.append(h('div', { class: 'bartabs' + (sg.L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: sg.L }, (_, b) => h('button', { class: 'bt ' + (b === lb ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === lb, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (res.chords && res.chords.bars[b] ? ' \u00b7 ' + D.chordName(res.chords.bars[b]) : '')))));
+  wrap.append(h('div', { class: 'bartabs' + (sg.L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: sg.L }, (_, b) => h('button', { class: 'bt ' + (b === lb ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === lb, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); followBar(); setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (res.chords && res.chords.bars[b] ? ' \u00b7 ' + D.chordName(res.chords.bars[b]) : '')))));
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'overSvg', role: 'img', 'aria-label': 'All parts in one bar: beat outside, then bass, chords, pad, melody, and the answer in the centre. Tap a ring to edit that part.' });
   const line = cssv('--line'), faint = cssv('--faint');
   const ang = (f) => -Math.PI / 2 + f * Math.PI * 2;
@@ -2905,6 +2910,7 @@ function scheduleBar(sg, bar, t0) {
 function nextBarOf(sg, b) {
   const tot = D.totalBars(sg);
   if (AU.preview) return (b + 1) % tot;
+  if (st.loop && st.loopBar) return loopBarAt();
   if (st.loop) { const s0 = D.sectionStart(sg, st.sec), s1 = s0 + sg.sections[st.sec].bars; if (b + 1 >= s1 || b < s0) return s0; return b + 1; }
   return b + 1 >= tot ? 0 : b + 1;
 }
@@ -2952,7 +2958,7 @@ function stopAll(silent) {
   if (!silent && was && !AU.preview) { renderTop(); renderLeft(); renderEditor(); }
   if (AU.preview) { AU.preview = false; AU.song = null; document.querySelectorAll('[data-prev]').forEach((b) => { b.replaceChildren(ico('play')); }); }
 }
-function togglePlay() { if (AU.playing) stopAll(); else startPlay(D.sectionStart(song(), st.sec)); }
+function togglePlay() { if (AU.playing) stopAll(); else startPlay(st.loop && st.loopBar ? loopBarAt() : D.sectionStart(song(), st.sec)); }
 function jumpTo(bar) { if (!AU.playing) return; dropFutureRipples(); const now = AU.ctx.currentTime; for (const n of AU.nodes) { try { n.node.stop(now + 0.01); } catch (e) {} } AU.nodes = []; AU.queue = []; AU.nextBar = bar; AU.nextT = now + 0.05; AU.curBar = bar; AU.curFrac = 0; tick(); }
 function skip(dir) {
   const sg = song(); let i;
