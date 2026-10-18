@@ -1350,12 +1350,19 @@ E.EVERY = { 1: 'every bar', 2: 'every 2 bars', 4: 'every 4 bars', cr: 'call 3, a
 E.SWAP_TO = [1, 0, 3, 2, 6, 4, 4, 5]; // kick<>kick 2, snare<>clap, hihat>perc, open hat>hihat, perc>hihat, crash>open hat
 function euclid(k, n, rot) { const o = new Array(n).fill(0); if (k <= 0) return o; for (let i = 0; i < n; i++) if (Math.floor((i + 1) * k / n) !== Math.floor(i * k / n)) o[(i + rot) % n] = 1; return o; }
 E.varyLane = function (lanes, li, kind, amt, r, N) {
-  const l = lanes[li], top = Math.max(...l) || 90, on = () => l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0);
+  const l = lanes[li], top = Math.max(...l) || 90;
+  // rhythm respect: the kick on the one and the backbeat (beats 2 and 4) are never taken away or moved
+  const prot = li === K ? [0] : (li === SN || li === CP) && N % 4 === 0 ? [N / 4, N * 3 / 4] : [], keep = prot.filter((s) => l[s]).map((s) => [s, l[s]]);
+  const on = () => l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0 && !prot.includes(s));
+  E.varyLaneRaw(lanes, li, kind, amt, r, N, l, top, on);
+  if (kind !== 'swap') keep.forEach(([s, v]) => { l[s] = Math.max(l[s], v); });
+};
+E.varyLaneRaw = function (lanes, li, kind, amt, r, N, l, top, on) {
   const okK = (s) => !(li === K && lanes[SN][s] >= 90); // never a kick on a hard snare
   const ops = amt >= 3 ? 3 + r.int(2) : amt === 2 ? 2 : r.chance(0.75) ? 1 : 0;
   if (kind === 'displace') { const k = amt >= 3 ? 1 + r.int(3) : 1, d = r.chance(0.5) ? k : N - k, c = l.slice(); for (let s = 0; s < N; s++) l[(s + d) % N] = c[s]; return; }
   if (kind === 'euclid') { const n0 = on().length || 3, k = clamp(n0 + r.int(2 * amt + 1) - amt, 1, N - 1), e = euclid(k, N, r.int(N)); const v = Math.round(l.filter(Boolean).reduce((a, x) => a + x, 0) / Math.max(1, l.filter(Boolean).length)) || 90; for (let s = 0; s < N; s++) l[s] = e[s] && okK(s) ? v : 0; return; }
-  if (kind === 'swap') { const to = lanes[E.SWAP_TO[li]]; if (!to) return; const ss = on(), take = amt >= 3 ? ss : ss.filter(() => r.chance(amt === 2 ? 0.6 : 0.35)); for (const s of take) { to[s] = Math.max(to[s], l[s]); l[s] = 0; } return; }
+  if (kind === 'swap') { const to = lanes[E.SWAP_TO[li]]; if (!to) return; const ss = l.map((v, x) => (v ? x : -1)).filter((x) => x >= 0), take = amt >= 3 ? ss : ss.filter(() => r.chance(amt === 2 ? 0.6 : 0.35)); for (const s of take) { to[s] = Math.max(to[s], l[s]); l[s] = 0; } return; }
   if (kind === 'accent') { const ss = on(); ss.forEach((s) => { l[s] = clamp(Math.round(l[s] * (r.chance(0.3 + 0.1 * amt) ? 1.25 : 0.62 + 0.1 * (3 - amt))), 20, 124); }); return; }
   for (let i = 0; i < ops; i++) {
     const k = kind === 'mix' ? r.pick(['ghost', 'shift', 'thin', 'roll']) : kind;
@@ -2628,6 +2635,9 @@ function laneMixer() {
   wrap.append(h('div', { class: 'mixtop' },
     h('span', { class: 'small' }, 'Tap a cell: that drum off or on in that bar. 🎲 varies a drum, ↗ lets it grow, ⋯ for all choices. Bar 1 stays your base.'),
     h('div', { class: 'grow' }),
+    h('button', { id: 'mixRandom', class: 'primary', title: 'Variations and progressions over every drum that plays in ' + sectionLabel(st.sec) + ', with respect for rhythm', onclick: () => randomizeMix(st.mixLevel || 2) }, ico('dice'), 'Randomize mix'),
+    h('div', { class: 'seg mmamt', role: 'group', 'aria-label': 'How much' }, [[1, 'subtle'], [2, 'medium'], [3, 'wild']].map(([k, t]) => h('button', { id: 'mixLevel_' + k, class: (st.mixLevel || 2) === k ? 'on' : '', onclick: () => { st.mixLevel = k; renderEditor(); } }, t))),
+    h('button', { class: 'ghost', id: 'mixPlain', disabled: !sec.laneFx, title: 'Every drum plays as written again', onclick: () => { change(() => { delete sec.laneFx; }, { keep: true }); renderEditor(); setHint('Every drum in ' + sectionLabel(st.sec) + ' plays as written again.'); } }, '\u00d7 All plain'),
     h('button', { id: 'newFlow', disabled: !anyRnd, title: anyRnd ? 'New variations for every drum with a 🎲 in ' + sectionLabel(st.sec) + '; your base stays' : 'Give a drum a 🎲 first', onclick: () => { change(() => { for (const k of Object.keys(sec.laneFx)) if (sec.laneFx[k].rnd) sec.laneFx[k] = Object.assign({}, sec.laneFx[k], { rnd: D.newSeed() }); }, { keep: true }); renderEditor(); setHint('New flow: same base, a new way through ' + sectionLabel(st.sec) + '.'); } }, ico('dice'), 'New flow')));
   const tbl = h('div', { class: 'mixgrid', id: 'mixGrid', style: 'grid-template-columns:178px repeat(' + n + ',minmax(18px,1fr))' });
   tbl.append(h('span'));
@@ -2649,6 +2659,45 @@ function laneMixer() {
   });
   wrap.append(tbl);
   return wrap;
+}
+// the mix randomizer: variations and progressions over every drum that plays here, with respect for rhythm.
+// every drum keeps its role, variations land in phrases, never too busy, calm sections stay calm, one ending at most
+const ROLES = {
+  0: { kinds: ['ghost', 'shift'], every: [4, 'cr'], maxAmt: 1, progs: ['in'], weight: 0.5 },
+  1: { kinds: ['ghost', 'shift', 'displace'], every: [2, 4], maxAmt: 2, progs: ['in', 'swell'], weight: 0.6 },
+  2: { kinds: ['ghost', 'roll', 'accent'], every: [2, 4], maxAmt: 2, progs: ['swell'], weight: 0.8 },
+  3: { kinds: ['ghost', 'roll', 'swap', 'accent'], every: [2, 4, 'cr'], maxAmt: 2, progs: ['swell', 'stair'], weight: 0.8 },
+  4: { kinds: ['accent', 'thin', 'roll', 'euclid', 'ghost', 'mix'], every: [1, 2, 'cr'], maxAmt: 3, progs: ['open', 'walk', 'wave', 'in', 'stair'], weight: 1.4 },
+  5: { kinds: ['thin', 'accent', 'displace'], every: [2, 4], maxAmt: 2, progs: ['wave', 'swell', 'fade'], weight: 1 },
+  6: { kinds: ['euclid', 'displace', 'mix', 'ghost'], every: ['cr', 2, 4], maxAmt: 3, progs: ['walk', 'wave', 'in', 'stair'], weight: 1.3 }
+};
+function randomizeMix(level) {
+  const sg = song(), sec = secNow(), n = sec.bars, r = D.rng(D.newSeed()), s0 = D.sectionStart(sg, st.sec), R = D.makeRenderer(sg);
+  const plays = D.LANES.map(() => false);
+  for (let b = 0; b < n; b++) { const keep = sec.laneFx; sec.laneFx = null; let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true, }); } catch (e) { x = null; } sec.laneFx = keep; if (x && x.lanes) x.lanes.forEach((l, li) => { if (l.some(Boolean)) plays[li] = true; }); }
+  const cand = Object.keys(ROLES).map(Number).filter((li) => plays[li]);
+  if (!cand.length) { toast('Nothing plays in ' + sectionLabel(st.sec) + ' yet. Make a base in bar 1 first.'); return; }
+  const calm = ['intro', 'outro', 'break'].includes(sec.type), cap = Math.max(1, level - (calm ? 1 : 0));
+  const want = Math.min(cand.length, level === 1 ? 1 + r.int(2) : level === 2 ? 2 + r.int(2) : 3);
+  const pool = cand.slice(), chosen = [];
+  while (chosen.length < want && pool.length) { const tot = pool.reduce((a, li) => a + ROLES[li].weight, 0); let x = r() * tot, i = 0; for (; i < pool.length - 1; i++) { x -= ROLES[pool[i]].weight; if (x <= 0) break; } chosen.push(pool.splice(i, 1)[0]); }
+  const fx = {}; let wild = false;
+  for (const li of chosen) {
+    const ro = ROLES[li]; let amt = Math.min(ro.maxAmt, 1 + r.int(cap)); if (amt === 3) { if (wild) amt = 2; wild = true; }
+    let every = r.pick(ro.every); if (every === 'cr' && n < 8) every = 4; if (n < 4) every = 1;
+    fx[li] = { rnd: D.newSeed(), kind: r.pick(ro.kinds), amt, every };
+    if (level === 3 && n >= 8 && r.chance(0.3)) fx[li].from = Math.floor(n / 2); // only the second half grows wild
+  }
+  const progLanes = cand.filter((li) => r.chance(level === 1 ? 0.2 : 0.35)).slice(0, level);
+  for (const li of progLanes) { fx[li] = Object.assign(fx[li] || {}, { prog: r.pick(ROLES[li].progs) }); }
+  if (level > 1 && n >= 4 && r.chance(0.5)) { // one ending, into whatever comes next
+    const next = sg.sections[st.sec + 1], up = next && D.TYPES[next.type].energy > D.TYPES[sec.type].energy;
+    const li = [4, 2, 6].find((x) => plays[x] && !(fx[x] && fx[x].prog)); if (li != null) fx[li] = Object.assign(fx[li] || {}, { prog: up ? 'end16' : 'endout' });
+  }
+  change(() => { if (Object.keys(fx).length) sec.laneFx = fx; else delete sec.laneFx; }, { keep: true });
+  st.mixLevel = level; renderEditor();
+  const words = Object.entries(fx).map(([li, f]) => D.LANES[li].name.toLowerCase() + ' ' + [f.kind ? D.VARKINDS[f.kind].toLowerCase() : '', f.prog ? D.PROGS[f.prog].split(':')[0].toLowerCase() : ''].filter(Boolean).join(' + '));
+  toast('Mix: ' + words.join(', ') + '.', { label: 'Undo', fn: undo });
 }
 // every choice for one drum: what the variation does, how strong, how often, which bars, favorites
 function laneMore(li, ln, fx, n, from, to, fxChange) {
@@ -3585,7 +3634,7 @@ function openHelp() {
       row('Sections', 'Drag the chips to reorder. + adds one, the dice by the spiral gives a whole new arrangement.'),
       row('Groove', 'Per section in the panel on the left: straight, Dilla, ghost notes, shuffle, pushed or laid back. Into next picks the fill into the next section.'),
       row('Lanes', 'On the right: swing on or off per drum, slide it earlier or later. Machine touches and Kick varies add a drummer’s small changes.'),
-      row('Mixer', 'Every drum, every bar of the section: tap to switch it off or on. 🎲 lets one drum vary, ↗ lets it grow. ⋯ opens every choice: the kind of variation, subtle to wild, how often (call and answer too), which bars, and ♥ to keep a way of varying for later tracks. New flow gives every 🎲 of the section a new variation.'),
+      row('Mixer', 'Every drum, every bar of the section: tap to switch it off or on. 🎲 lets one drum vary, ↗ lets it grow. ⋯ opens every choice: the kind of variation, subtle to wild, how often (call and answer too), which bars, and ♥ to keep a way of varying for later tracks. New flow gives every 🎲 of the section a new variation. Randomize mix does it all at once, subtle to wild, with respect for rhythm: the kick on the one and the backbeat always stay.'),
       row('Pads 1 to 8', 'Tap a drum to hear it. While it plays, tapping puts the hit in the bar you hear.'),
       row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
       row('Spiral', 'Your song from the centre out. Tap a colour to select that section; while playing, it jumps there.'),
@@ -4071,7 +4120,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
