@@ -2246,6 +2246,11 @@ function editingText(part) {
 }
 // own versions in the section panel: status, Vary and back to the standard
 function ownRow(sg, sec) {
+  const rows = ownRowBase(sg, sec), many = sg.sections.filter((x) => x.type === sec.type).length > 1;
+  if (many && sg.parts.beat.mode !== 'off') rows.push(h('button', { id: 'copyBeatAll', class: 'full', title: 'The beat of ' + sectionLabel(st.sec) + ', with every bar you changed, becomes the beat of every ' + D.TYPES[sec.type].name, onclick: copyBeatToType }, ico('loop'), 'Copy beat of ' + sectionLabel(st.sec) + ' to every ' + D.TYPES[sec.type].name));
+  return rows;
+}
+function ownRowBase(sg, sec) {
   const first = D.isFirstOfType(sg, st.sec), many = sg.sections.filter((x) => x.type === sec.type).length > 1;
   const own = D.PARTS.filter((p) => D.ownOf(sg, sec, p));
   if (first && !own.length) return [h('div', { class: 'full small', id: 'ownState' }, many ? sectionLabel(st.sec) + ' is the standard: the other ' + D.TYPES[sec.type].name + ' sections follow it until you change them.' : 'Tap a section to select it, press play to hear it. While playing, a tap jumps there.')];
@@ -2253,6 +2258,31 @@ function ownRow(sg, sec) {
   return [h('div', { class: 'full small', id: 'ownState' }, state),
     first ? null : h('button', { id: 'varyBtn', title: 'A light variation of ' + firstLabel(st.sec) + ' for this section', onclick: varySection }, ico('spark'), 'Vary'),
     own.length ? h('button', { id: 'followBtn', class: first ? 'full' : '', title: 'Drop the own version and follow the standard again', onclick: followStandard }, '\u21ba ' + (first ? 'Use standard' : 'Follow ' + firstLabel(st.sec))) : null].filter(Boolean);
+}
+// the beat of this section, base and changed bars, becomes the beat of every section of its type
+function copyBeatToType() {
+  const sg = song(), i = st.sec, sec = sg.sections[i], t = sec.type, label = sectionLabel(i), typ = D.TYPES[t].name;
+  const base = D.solidCopy('beat', sectionMat('beat').data);
+  const bars = {}; const bo = sec.barOwn && sec.barOwn.beat || {}; for (const k of Object.keys(bo)) if (+k < sec.bars && bo[k]) bars[k] = bo[k];
+  // exactly as you hear it: every bar of this section as it plays now (the last bar keeps its fill into whatever comes next)
+  const s0 = D.sectionStart(sg, i), heard = (song2, g) => { const x = D.renderBar(song2, 'beat', g, D.makeRenderer(song2).res, { lanes: true }); return x && x.lanes ? x.lanes : null; };
+  const before = []; for (let k = 0; k < sec.bars - 1; k++) before.push(heard(sg, s0 + k));
+  const n = sg.sections.filter((x) => x.type === t).length;
+  change(() => {
+    if (sg.parts.beat.mode !== 'yours') { const keep = st.scope; st.scope = 'all'; try { editable('beat', true); } finally { st.scope = keep; } } // yours everywhere, sounding the same
+    D.setUser(sg, 'beat', t, D.clone(base));
+    const put = () => { for (const x of sg.sections) {
+      if (x.type !== t) continue;
+      if (x.own && x.own.beat) { x.own = Object.assign({}, x.own); delete x.own.beat; }
+      const mine = {}; for (const k of Object.keys(bars)) if (+k < x.bars) mine[k] = D.clone(bars[k]);
+      x.barOwn = Object.assign({}, x.barOwn, { beat: mine });
+    } };
+    put();
+    // a bar that sounded different from the base (the machine's little touches) keeps that sound, in every copy
+    before.forEach((lanes, k) => { if (!lanes || bars[k]) return; const now = heard(sg, s0 + k); if (JSON.stringify(now) !== JSON.stringify(lanes)) bars[k] = { lanes: lanes.map((l) => l.slice()) }; });
+    put();
+  });
+  toast('Every ' + typ + ' (' + n + ') has the beat of ' + label + ' now, with ' + Object.keys(bars).length + ' changed bar' + (Object.keys(bars).length === 1 ? '' : 's') + '.', { label: 'Undo', fn: undo });
 }
 function varySection() {
   const label = sectionLabel(st.sec), from = firstLabel(st.sec);
@@ -4086,7 +4116,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, shownMat, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
