@@ -1279,7 +1279,8 @@ E.renderBar = function (song, part, gbar, res, opts) {
     // groove: ghost notes, soft snares around the backbeat
     if (E.grooveOf(song, sec).ghosts) { const g = rng(hash('ghost', song.seed, gbar)); for (let s2 = 1; s2 < N; s2++) { if (lanes[SN][s2] || lanes[CP][s2] || s2 % 2 === 0) continue; const near = lanes[SN][s2 + 1] >= 80 || lanes[SN][s2 - 1] >= 80 || lanes[CP][s2 + 1] >= 80; if (near ? g.chance(0.7) : g.chance(0.18)) lanes[SN][s2] = 30 + g.int(10); } }
     // the fill you chose into the next section (auto: the machine's own, only before a new kind of section)
-    const fk = isLastOfSec && nextSec ? sec.fill || 'auto' : 'auto';
+    const dflt = song.dgm ? 'none' : 'auto'; // the groove machine adds nothing by itself: a fill only where you choose one
+    const fk = isLastOfSec && nextSec ? sec.fill || dflt : dflt;
     if (fk !== 'auto' && fk !== 'none') E.applyFill(song, lanes, fk, N, r);
     if (inBar === 0 && sec !== song.sections[0]) { const prev = song.sections[si - 1]; if (prev && (prev.fill === 'gift' || prev.fill === 'crash') && lanes[CR]) lanes[CR][0] = 110; }
     if (fk === 'auto' && (type === 'fill' || isLastOfSec && nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && song.parts.beat.mode !== 'off' && type !== 'break') {
@@ -2558,8 +2559,8 @@ function grooveRows(sg, sec) {
   const last = st.sec === sg.sections.length - 1;
   const gSel = h('select', { id: 'secGroove', 'aria-label': 'Groove of this section', onchange: (e) => { change(() => { if (e.target.value === 'genre') delete sec.groove; else sec.groove = e.target.value; }); setHint(sectionLabel(st.sec) + ' grooves ' + D.GROOVES[e.target.value].name.toLowerCase() + ' now. You hear it from the next bar.'); } },
     Object.entries(D.GROOVES).map(([k, g]) => h('option', { value: k, selected: (sec.groove || 'genre') === k }, g.name)));
-  const fSel = h('select', { id: 'secFill', 'aria-label': 'Fill into the next section', disabled: last, onchange: (e) => { change(() => { if (e.target.value === 'auto') delete sec.fill; else sec.fill = e.target.value; }); setHint(last ? '' : 'Into ' + sectionLabel(st.sec + 1) + ': ' + D.FILLS[e.target.value].toLowerCase() + '.'); } },
-    Object.entries(D.FILLS).map(([k, name]) => h('option', { value: k, selected: (sec.fill || 'auto') === k }, name)));
+  const fSel = h('select', { id: 'secFill', 'aria-label': 'Fill into the next section', disabled: last, onchange: (e) => { change(() => { if (e.target.value === 'none') delete sec.fill; else sec.fill = e.target.value; }); setHint(last ? '' : 'Into ' + sectionLabel(st.sec + 1) + ': ' + D.FILLS[e.target.value].toLowerCase() + '.'); } },
+    Object.entries(D.FILLS).map(([k, name]) => h('option', { value: k, selected: (sec.fill || 'none') === k }, name)));
   return [h('label', { class: 'secrow full', for: 'secGroove' }, h('span', { class: 'small' }, 'Groove'), gSel),
     h('label', { class: 'secrow full', for: 'secFill', title: last ? 'The last section ends the song' : 'What the beat does in the last bar, into ' + sectionLabel(st.sec + 1) }, h('span', { class: 'small' }, 'Into next'), fSel)];
 }
