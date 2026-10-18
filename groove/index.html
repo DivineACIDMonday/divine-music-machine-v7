@@ -3367,6 +3367,22 @@ function buildPartFile(part, polished, plugin, mode) {
   const name = PART_NAMES[part] + (plugin !== 'plain' && plugin !== 'gm' ? ' for ' + D.PLUGINS[plugin].name + (mode ? ' ' + mode : '') : '');
   return D.writeMidi([{ name, channel: part === 'beat' ? 9 : 0, notes: masked }], { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
 }
+// one MIDI file per drum, for a multi out setup (Impact, XO): each lane on its own track in your DAW
+function buildLaneFile(li) {
+  const sg = song(), plugin = sg.parts.beat.plugin;
+  const notes = D.renderSong(sg, 'beat', {}).filter((n) => n.lane === li);
+  if (!notes.length) return null;
+  const masked = D.applyMask(sg, 'beat', notes, plugin, { octave: st.settings.octave, roles: rolesOverride() });
+  return D.writeMidi([{ name: D.LANES[li].name, channel: 9, notes: masked }], { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + D.LANES[li].name, markers: markers(sg) });
+}
+async function deliverLanes() {
+  const sg = song(), no = deliveryNo(true), files = [];
+  D.LANES.forEach((ln, li) => { const data = buildLaneFile(li); if (data) files.push({ name: fileName('Beat_' + (li + 1) + '_' + ln.name.replace(/\s+/g, ''), no, '', sg.parts.beat.plugin), data }); });
+  if (!files.length) { toast('Nothing plays yet, so there is no MIDI to make.'); return; }
+  files.push({ name: fileName('Structure', no), data: D.writeMidi([], { bpm: sg.bpm, meter: sg.meter, title: sg.name, markers: markers(sg) }) });
+  await saveFiles([{ name: 'DM_' + safe(sg.name) + '_Lanes_' + Math.round(sg.bpm) + 'bpm_' + no + '.zip', data: makeZip(files), zip: true }]);
+  renderTop();
+}
 // UJAM parts with phrases come as two files: Player and Instrument
 function versionsOf(plugin) { const pl = D.PLUGINS[plugin]; return pl && pl.family && !pl.noPlayer ? ['Player', 'Instrument'] : [null]; }
 function rolesOverride() {
@@ -3469,6 +3485,10 @@ function openHelp() {
       row('Change', 'Choose where your change lands: this bar, this section or every section of its type.'),
       row('Shadows', 'Dashed shapes are the machine’s suggestions. Tap to keep. They update after every change.'),
       row('Sections', 'Drag the chips to reorder. + adds one, the dice by the spiral gives a whole new arrangement.'),
+      row('Groove', 'Per section in the panel on the left: straight, Dilla, ghost notes, shuffle, pushed or laid back. Into next picks the fill into the next section.'),
+      row('Lanes', 'On the right: swing on or off per drum, slide it earlier or later. Machine touches and Kick varies add a drummer’s small changes.'),
+      row('Mixer', 'Every drum, every bar of the section: tap to switch it off or on.'),
+      row('Pads 1 to 8', 'Tap a drum to hear it. While it plays, tapping puts the hit in the bar you hear.'),
       row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
       row('Spiral', 'Your song from the centre out. Tap a colour to select that section; while playing, it jumps there.'),
       row('Sections', 'Tap a chip to select it; play starts from there. The panel sets length, type, which parts play here, Start from, Vary and ↺.'),
@@ -3642,6 +3662,8 @@ function openDeliver() {
     h('div', { class: 'scroller' }, tbl),
     h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { class: 'primary', id: 'deliverAll', onclick: () => deliverFiles(active.flatMap((p) => versionsOf(sg.parts[p].plugin).map((v) => p + (v ? ':' + v : ''))).concat(['structure']), true) }, ico('download'), 'Download all as one .zip'),
       h('span', { class: 'small' }, 'Everything as it is right now, in one .zip. The buttons per row download single .mid files. Drop them on bar 1 in Studio One.')),
+    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { id: 'deliverLanes', onclick: deliverLanes }, ico('download'), 'One MIDI per lane (.zip)'),
+      h('span', { class: 'small' }, 'Every drum in its own file, for a multi out setup: kick, snare, hats each on their own track.')),
 
     // UJAM info only explains the files; folded away so the parts list keeps its room
     ujUsed ? h('details', { id: 'ujDetails' }, h('summary', { style: 'cursor:pointer' }, 'UJAM: zones, octave fix and phrase keys'), ujamPanel(), h('details', null, h('summary', { style: 'cursor:pointer' }, 'Advanced: choose UJAM phrase keys yourself'), phraseKeysPanel()))
@@ -3951,7 +3973,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
