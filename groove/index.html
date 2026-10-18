@@ -87,6 +87,12 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .ltogs button.on{background:var(--fg);color:var(--bg)}
 .mixwrap{display:flex;flex-direction:column;gap:8px;width:100%;overflow:auto;padding:4px}
 .mixgrid{display:grid;gap:3px;align-items:center}
+.mixhead{display:flex;gap:3px;align-items:center}
+.mixfx{padding:2px 5px;min-height:0;font-size:12px}
+.mixfx .ico{width:14px;height:14px}
+.mixfx.on{background:var(--beat);color:var(--bg);border-color:var(--beat)}
+.mixprog{font-size:11px;padding:2px 4px;width:96px;margin-left:auto}
+.mixhead .mixname{width:66px;flex:none}
 .mixgrid .mixname{font-size:12px;padding:3px 6px;text-align:left;justify-content:flex-start}
 .mixgrid .mixbar{font-size:10.5px;padding:2px 0;min-height:0}
 .mixgrid .mixbar.on{background:var(--fg);color:var(--bg)}
@@ -1287,6 +1293,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       const left = sec.bars - inBar;
       if (left <= 2) for (let s = 0; s < N; s += (left === 1 ? 1 : 2)) lanes[SN][s] = Math.max(lanes[SN][s], 50 + Math.round(s / N * 50));
     }
+    E.laneFxApply(song, sec, inBar, lanes, N);
     E.muteLanes(sec, inBar, lanes);
     if (opts.lanes) return { lanes }; // the grid asks what this bar really plays
     lanes.forEach((l, li) => l.forEach((v, s) => { if (v > 0) notes.push({ t: s * E.STEP, d: E.STEP, lane: li, v }); }));
@@ -1326,6 +1333,33 @@ E.touchBar = function (lanes, r, N, kickVar, inBar) {
   if (r.chance(0.3)) { const hs = odd.filter((s) => lanes[HH][s] && lanes[HH][s] < 90); if (hs.length) lanes[HH][r.pick(hs)] = 0; }
   if (inBar % 4 === 3 && r.chance(0.5)) { const s = r.pick([N - 2, Math.floor(N / 2) - 2].filter((x) => x > 0)); if (lanes[HH][s] && !lanes[OH][s]) { lanes[OH][s] = lanes[HH][s]; lanes[HH][s] = 0; } }
   if (kickVar && inBar % 2 === 1 && r.chance(0.55)) { const cands = [3, 6, 7, 10, 11, 14].filter((s) => s < N && !lanes[K][s] && !lanes[K][s - 1] && !lanes[K][s + 1] && !(lanes[SN][s] >= 90)); if (cands.length) lanes[K][r.pick(cands)] = 70 + r.int(20); }
+};
+// per drum, through the whole section: sec.laneFx[lane] = { rnd: seed (variation), prog: how it grows }
+E.PROGS = { none: 'No progression', in: 'In: thin to full', out: 'Out: full to thin', swell: 'Swell: softer to louder', fade: 'Fade: louder to softer', stair: '2 steps up, 1 back' };
+E.laneFxApply = function (song, sec, b, lanes, N) {
+  const fx = sec.laneFx; if (!fx) return;
+  const n = Math.max(1, sec.bars - 1), stair = (k) => k - 2 * Math.floor(k / 3), stairMax = Math.max(1, stair(sec.bars - 1), stair(Math.max(0, sec.bars - 2)));
+  for (const li of Object.keys(fx)) {
+    const f = fx[li], l = lanes[li]; if (!f || !l) continue;
+    if (f.rnd && b > 0) { // a variation of this drum only; bar 1 stays your base
+      const r = rng(hash('lanefx', f.rnd, li, b));
+      if (r.chance(0.8)) {
+        const on = l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0), odd = []; for (let s = 1; s < N; s += 2) if (!l[s]) odd.push(s);
+        const pick = r.int(3);
+        if (pick === 0 && odd.length) { const s = r.pick(odd); if (!(+li === K && lanes[SN][s] >= 90)) l[s] = Math.max(28, Math.round((Math.max(...l) || 90) * 0.5)); }
+        else if (pick === 1 && on.length > 1) { const weak = on.filter((s) => s % 4 !== 0); if (weak.length) l[r.pick(weak)] = 0; }
+        else { const cand = on.filter((x) => x % 4 !== 0); const s = cand.length ? r.pick(cand) : null; if (s != null) { const t = s + r.pick([-1, 1]); if (t > 0 && t < N && !l[t] && !(+li === K && lanes[SN][t] >= 90)) { l[t] = l[s]; l[s] = 0; } } }
+      }
+    }
+    if (f.prog && f.prog !== 'none') {
+      const p = f.prog === 'stair' ? stair(b) / stairMax : b / n;
+      if (f.prog === 'in' || f.prog === 'out' || f.prog === 'stair') { // keep the strongest hits, more or fewer of them
+        const keep = f.prog === 'out' ? 1 - 0.75 * p : 0.25 + 0.75 * p;
+        const on = l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0).sort((a, c) => (a % 4 === 0 ? 0 : a % 2 === 0 ? 1 : 2) - (c % 4 === 0 ? 0 : c % 2 === 0 ? 1 : 2) || l[c] - l[a] || a - c);
+        const k = Math.max(on.length ? 1 : 0, Math.ceil(on.length * keep)); on.slice(k).forEach((s) => { l[s] = 0; });
+      } else { const g = f.prog === 'swell' ? 0.45 + 0.55 * p : 1 - 0.55 * p; l.forEach((v, s) => { if (v) l[s] = clamp(Math.round(v * g), 12, 127); }); }
+    }
+  }
 };
 // the lane mixer: sec.laneOff[bar] is a bit mask of lanes switched off in that bar
 E.laneIsOff = (sec, b, li) => !!(sec && sec.laneOff && (sec.laneOff[b] || 0) & (1 << li));
@@ -2041,6 +2075,7 @@ function copyBeatToType() {
       if (x.own && x.own.beat) { x.own = Object.assign({}, x.own); delete x.own.beat; }
       const mine = {}; for (const k of Object.keys(bars)) if (+k < x.bars) mine[k] = D.clone(bars[k]);
       x.barOwn = Object.assign({}, x.barOwn, { beat: mine });
+      if (sec.laneFx) x.laneFx = D.clone(sec.laneFx); else delete x.laneFx;
       const offs = {}; if (sec.laneOff) for (const k of Object.keys(sec.laneOff)) if (+k < x.bars && sec.laneOff[k]) offs[k] = sec.laneOff[k]; if (Object.keys(offs).length) x.laneOff = offs; else delete x.laneOff;
     } };
     put();
@@ -2552,19 +2587,27 @@ function fmtShift(v) { return v === 0 ? 'on grid' : (v < 0 ? v + ' ms' : '+' + v
 /* ---------- lane mixer: every lane, every bar of the section, on or off ---------- */
 function laneMixer() {
   const sg = song(), sec = secNow(), n = sec.bars, s0 = D.sectionStart(sg, st.sec), R = D.makeRenderer(sg);
-  const has = []; for (let b = 0; b < n; b++) { const keep = sec.laneOff; sec.laneOff = null; let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } sec.laneOff = keep; has.push(D.LANES.map((_, li) => !!(x && x.lanes && x.lanes[li].some(Boolean)))); }
+  const has = [], cnt = []; for (let b = 0; b < n; b++) { const keep = sec.laneOff; sec.laneOff = null; let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } sec.laneOff = keep; has.push(D.LANES.map((_, li) => !!(x && x.lanes && x.lanes[li].some(Boolean)))); cnt.push(D.LANES.map((_, li) => (x && x.lanes ? x.lanes[li].reduce((a, v) => a + v, 0) : 0))); }
+  const peak = D.LANES.map((_, li) => Math.max(1, ...cnt.map((c) => c[li])));
+  const fxOf = (li) => (sec.laneFx && sec.laneFx[li]) || {};
+  const setFx = (li, patch) => { sec.laneFx = Object.assign({}, sec.laneFx); const f = Object.assign({}, sec.laneFx[li], patch); if (!f.rnd) delete f.rnd; if (!f.prog || f.prog === 'none') delete f.prog; if (Object.keys(f).length) sec.laneFx[li] = f; else delete sec.laneFx[li]; if (!Object.keys(sec.laneFx).length) delete sec.laneFx; };
   const wrap = h('div', { class: 'mixwrap' });
-  wrap.append(h('div', { class: 'small' }, 'Tap a cell to switch that drum off or on in that bar. Tap a drum name for the whole ' + sectionLabel(st.sec) + '. Less is often more.'));
-  const tbl = h('div', { class: 'mixgrid', id: 'mixGrid', style: 'grid-template-columns:72px repeat(' + n + ',minmax(18px,1fr))' });
+  wrap.append(h('div', { class: 'small' }, 'Tap a cell to switch that drum off or on in that bar. Tap a drum name for the whole ' + sectionLabel(st.sec) + '. 🎲 lets one drum vary through the section, ↗ lets it grow. Bar 1 stays your base.'));
+  const tbl = h('div', { class: 'mixgrid', id: 'mixGrid', style: 'grid-template-columns:196px repeat(' + n + ',minmax(18px,1fr))' });
   tbl.append(h('span'));
   for (let b = 0; b < n; b++) tbl.append(h('button', { class: 'mixbar ' + (b === selBar() ? 'on' : ''), title: 'Bar ' + (b + 1), onclick: () => { selectBar(b); renderEditor(); followBar(); } }, String(b + 1)));
   const toggle = (b, li) => { const m = (sec.laneOff && sec.laneOff[b]) || 0; const v = m ^ (1 << li); sec.laneOff = Object.assign({}, sec.laneOff); if (v) sec.laneOff[b] = v; else delete sec.laneOff[b]; if (!Object.keys(sec.laneOff).length) delete sec.laneOff; };
   D.LANES.forEach((ln, li) => {
     const allOff = Array.from({ length: n }, (_, b) => D.laneIsOff(sec, b, li)).every(Boolean);
-    tbl.append(h('button', { class: 'mixname', title: (allOff ? 'Switch ' : 'Mute ') + ln.name + ' in all of ' + sectionLabel(st.sec), onclick: () => { change(() => { for (let b = 0; b < n; b++) if (D.laneIsOff(sec, b, li) === allOff) toggle(b, li); }, { keep: true }); renderEditor(); } }, ln.name));
+    const fx = fxOf(li);
+    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : ''), id: 'mixRnd_' + li, title: fx.rnd ? 'Another variation of ' + ln.name + ' (shift click: none)' : 'Let ' + ln.name + ' vary through ' + sectionLabel(st.sec), 'aria-label': 'Vary ' + ln.name, onclick: (e) => { change(() => setFx(li, { rnd: e.shiftKey ? 0 : D.newSeed() }), { keep: true }); renderEditor(); setHint(e.shiftKey ? ln.name + ' plays as written again.' : ln.name + ' varies through ' + sectionLabel(st.sec) + '. Tap 🎲 again for another variation.'); } }, ico('dice'));
+    const undoRnd = fx.rnd ? h('button', { class: 'mixfx', id: 'mixRndOff_' + li, title: 'No variation for ' + ln.name, 'aria-label': 'No variation for ' + ln.name, onclick: () => { change(() => setFx(li, { rnd: 0 }), { keep: true }); renderEditor(); } }, '\u00d7') : null;
+    const prog = h('select', { class: 'mixprog', id: 'mixProg_' + li, 'aria-label': ln.name + ' progression through the section', onchange: (e) => { change(() => setFx(li, { prog: e.target.value }), { keep: true }); renderEditor(); setHint(ln.name + ': ' + D.PROGS[e.target.value].toLowerCase() + '.'); } },
+      Object.entries(D.PROGS).map(([k, t]) => h('option', { value: k, selected: (fx.prog || 'none') === k }, k === 'none' ? '\u2197 none' : '\u2197 ' + t.split(':')[0])));
+    tbl.append(h('div', { class: 'mixhead' }, h('button', { class: 'mixname', title: (allOff ? 'Switch ' : 'Mute ') + ln.name + ' in all of ' + sectionLabel(st.sec), onclick: () => { change(() => { for (let b = 0; b < n; b++) if (D.laneIsOff(sec, b, li) === allOff) toggle(b, li); }, { keep: true }); renderEditor(); } }, ln.name), dice, undoRnd, prog));
     for (let b = 0; b < n; b++) {
       const off = D.laneIsOff(sec, b, li), plays = has[b][li];
-      tbl.append(h('button', { class: 'mixcell ' + (off ? 'off ' : '') + (plays ? 'plays' : 'empty'), 'aria-pressed': !off, 'aria-label': ln.name + ', bar ' + (b + 1) + (off ? ', off' : plays ? ', on' : ', nothing to play'), 'data-lane': li, 'data-bar': b, onclick: () => { change(() => toggle(b, li), { keep: true }); renderEditor(); if (!off && plays) setHint(ln.name + ' is silent in bar ' + (b + 1) + ' now.'); } }));
+      tbl.append(h('button', { class: 'mixcell ' + (off ? 'off ' : '') + (plays ? 'plays' : 'empty'), style: plays && !off ? 'opacity:' + (0.35 + 0.65 * cnt[b][li] / peak[li]).toFixed(2) : null, 'aria-pressed': !off, 'aria-label': ln.name + ', bar ' + (b + 1) + (off ? ', off' : plays ? ', on' : ', nothing to play'), 'data-lane': li, 'data-bar': b, onclick: () => { change(() => toggle(b, li), { keep: true }); renderEditor(); if (!off && plays) setHint(ln.name + ' is silent in bar ' + (b + 1) + ' now.'); } }));
     }
   });
   wrap.append(tbl);
@@ -3487,7 +3530,7 @@ function openHelp() {
       row('Sections', 'Drag the chips to reorder. + adds one, the dice by the spiral gives a whole new arrangement.'),
       row('Groove', 'Per section in the panel on the left: straight, Dilla, ghost notes, shuffle, pushed or laid back. Into next picks the fill into the next section.'),
       row('Lanes', 'On the right: swing on or off per drum, slide it earlier or later. Machine touches and Kick varies add a drummer’s small changes.'),
-      row('Mixer', 'Every drum, every bar of the section: tap to switch it off or on.'),
+      row('Mixer', 'Every drum, every bar of the section: tap to switch it off or on. The dice lets one drum vary through the section; ↗ lets it grow: in, out, swell, fade, or 2 steps up and 1 back.'),
       row('Pads 1 to 8', 'Tap a drum to hear it. While it plays, tapping puts the hit in the bar you hear.'),
       row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
       row('Spiral', 'Your song from the centre out. Tap a colour to select that section; while playing, it jumps there.'),
