@@ -188,6 +188,8 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .pp button.on{background:var(--panel);color:var(--fg);box-shadow:0 0 0 1px var(--line2)}
 
 .overlay{position:fixed;inset:0;z-index:40;background:color-mix(in srgb,var(--bg) 82%,transparent);display:flex;align-items:center;justify-content:center;padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.sheet.listen .lspiral{width:min(260px,70vw);height:auto}
+.bigplay{font-size:18px;padding:12px 34px;border-radius:999px}
 .sheet{background:var(--panel);border:1px solid var(--line2);border-radius:16px;width:min(980px,100%);max-height:100%;overflow:auto;padding:18px;display:flex;flex-direction:column;gap:14px}
 .sheet h2{font:700 24px/1.1 var(--display);margin:0;text-wrap:balance}
 .sheet h3{font:700 15px/1.2 var(--display);margin:0}
@@ -2095,7 +2097,7 @@ const ICONS = {
   books: '<path d="M4 19V5a2 2 0 0 1 2-2h4v18H6a2 2 0 0 1-2-2zM10 3h4v18h-4zM15 4l4-1 3 17-4 1z"/>', help: '<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .9-1 1.7M12 17h.01"/>',
   dice: '<rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8" cy="8" r="1.2"/><circle cx="16" cy="16" r="1.2"/><circle cx="12" cy="12" r="1.2"/>', eye: '<path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   download: '<path d="M12 3v12m0 0-5-5m5 5 5-5M4 20h16"/>', upload: '<path d="M12 21V9m0 0-5 5m5-5 5 5M4 4h16"/>', bookmark: '<path d="M6 3h12v18l-6-4-6 4z"/>', pencil: '<path d="M4 20h4L19 9l-4-4L4 16z"/>',
-  spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', arrowL: '<path d="M15 6l-6 6 6 6"/>', arrowR: '<path d="M9 6l6 6-6 6"/>', plus: '<path d="M12 5v14M5 12h14"/>', file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.4 1 2.5h6c0-1.1.4-1.9 1-2.5A6 6 0 0 0 12 3z"/>', wand: '<path d="M4 20 15 9M14 4v2M19 9h2M17 5l1.5-1.5M18 12l1 1M11 5 10 4"/>', key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l2 2"/>'
+  spark: '<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M6 18l2.5-2.5M15.5 8.5 18 6"/>', x: '<path d="M6 6l12 12M18 6 6 18"/>', trash: '<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>', arrowL: '<path d="M15 6l-6 6 6 6"/>', arrowR: '<path d="M9 6l6 6-6 6"/>', plus: '<path d="M12 5v14M5 12h14"/>', file: '<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4"/>', bulb: '<path d="M9 18h6M10 21h4M12 3a6 6 0 0 0-4 10.5c.6.6 1 1.4 1 2.5h6c0-1.1.4-1.9 1-2.5A6 6 0 0 0 12 3z"/>', wand: '<path d="M4 20 15 9M14 4v2M19 9h2M17 5l1.5-1.5M18 12l1 1M11 5 10 4"/>', key: '<circle cx="8" cy="15" r="4"/><path d="m11 12 9-9M17 6l3 3M14 9l2 2"/>', share: '<circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.6-4.4M8.2 13.2l7.6 4.4"/>'
 };
 const ico = (n) => { const t = document.createElement('span'); t.innerHTML = '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">' + ICONS[n] + '</svg>'; return t.firstChild; };
 const PART_NAMES = { beat: 'Beat', bass: 'Bass', chords: 'Chords', pad: 'Pad', melody: 'Melody', answer: 'Answer' };
@@ -2152,7 +2154,7 @@ function continueSong() { st.loop = false; st.loopBar = false; st.held = false; 
 function undo() { if (!st.hist.length) return; st.fut.push(snapshot()); st.song = JSON.parse(st.hist.pop()); afterChange(); toast('Undone'); }
 function redo() { if (!st.fut.length) return; st.hist.push(snapshot()); st.song = JSON.parse(st.fut.pop()); afterChange(); toast('Redone'); }
 let saveT = null;
-function saveSession() { clearTimeout(saveT); saveT = setTimeout(() => store.set('dmm-session-v1', st.song), 400); }
+function saveSession() { clearTimeout(saveT); saveT = setTimeout(() => { store.set('dmm-session-v1', st.song); linkInAddressBar(); }, 400); }
 function clampSec() { const n = song().sections.length; if (st.sec >= n) st.sec = n - 1; if (st.sec < 0) st.sec = 0; if (st.chordBar >= song().L) st.chordBar = 0; }
 
 /* ---------- toasts and hints ---------- */
@@ -2294,6 +2296,7 @@ function renderTop() {
       h('div', { class: 'pp', role: 'group', 'aria-label': 'Version to deliver' },
         h('button', { class: !st.polished ? 'on' : '', title: 'Exactly what you made', onclick: () => { st.polished = false; renderTop(); } }, 'Pure'),
         h('button', { class: st.polished ? 'on' : '', title: 'Theory checked and mix ready', onclick: () => { st.polished = true; renderTop(); } }, 'Polished')),
+      h('button', { id: 'shareBtn', title: 'Send your song as a link: whoever opens it can listen and download the MP3 and MIDI', onclick: shareSong }, ico('share'), 'Share'),
       h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver'),
       h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
   );
@@ -3604,7 +3607,7 @@ function openDeliver() {
   const sg = song(); const no = deliveryNo(false);
   const tbl = h('table', { class: 'dtab' });
   tbl.append(h('tr', null, h('th', null, 'Part'), h('th', null, 'Played by'), h('th', null, 'File'), h('th', null, '')));
-  const active = D.PARTS.filter((p) => sg.parts[p].mode !== 'off' && D.renderSong(sg, p).length);
+  const active = activeParts(sg);
   for (const p of D.PARTS) {
     const on = active.includes(p);
     const sel = h('select', { id: 'dplug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { sg.parts[p].plugin = e.target.value; saveSession(); renderRight(); renderTop(); openDeliver(); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === sg.parts[p].plugin }, D.PLUGINS[k].name)));
@@ -3786,7 +3789,7 @@ window.addEventListener('pointerup', () => { st.pd = false; }, true);
 window.addEventListener('pointercancel', () => { st.pd = false; }, true);
 window.addEventListener('keydown', (e) => {
   const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
-  if (e.key === 'Escape' && $('#overlay').innerHTML) { if (!st.boot) closeOverlay(); return; }
+  if (e.key === 'Escape' && $('#overlay').innerHTML) { if (!st.boot && !st.listening) closeOverlay(); return; }
   if ($('#overlay').innerHTML) return;
   if (e.code === 'Space') { e.preventDefault(); togglePlay(); }
   else if (e.key === 'ArrowLeft') { e.preventDefault(); skip(-1); } else if (e.key === 'ArrowRight') { e.preventDefault(); skip(1); }
@@ -3810,7 +3813,7 @@ st.song = null;
 const demo = D.newSong('triphop', { seed: 20261017, name: 'Untitled' });
 st.song = demo; st.sec = 1; st.boot = true; st.fresh = true;
 render();
-openStart();
+if (!openSharedFromLink()) openStart();
 /* ---------- MP3: the whole song as you hear it in the app, rendered offline and encoded here ---------- */
 function mp3Name() { return fileName('Song', deliveryNo(false)).replace(/\.mid$/, '.mp3'); }
 async function renderSongAudio(sg, onProgress) {
@@ -3858,7 +3861,89 @@ async function downloadMp3(btn) {
   } catch (e) { console.error(e); toast('The MP3 could not be made in this browser.'); }
   finally { if (btn) btn.disabled = false; set('Download as MP3'); }
 }
-window.DMMAPP = { st, AU, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+/* ---------- share: the link is the song ---------- */
+function activeParts(sg) { return D.PARTS.filter((p) => sg.parts[p].mode !== 'off' && D.renderSong(sg, p).length); }
+function allDeliverParts(sg) { return activeParts(sg).flatMap((p) => versionsOf(sg.parts[p].plugin).map((v) => p + (v ? ':' + v : ''))).concat(['structure']); }
+function b64u(u8) { let t = ''; for (let i = 0; i < u8.length; i += 0x8000) t += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function unb64u(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const b = atob(t), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
+async function streamBytes(u8, Kind, fmt) { const cs = new Kind(fmt); const w = cs.writable.getWriter(); w.write(u8); w.close(); return new Uint8Array(await new Response(cs.readable).arrayBuffer()); }
+// a song packed small: '1' + deflated json, or 'j' + plain json where the browser cannot compress
+async function packSong(sg) {
+  const json = new TextEncoder().encode(JSON.stringify({ s: sg, p: st.polished ? 1 : 0 }));
+  if (window.CompressionStream) { try { return '1' + b64u(await streamBytes(json, CompressionStream, 'deflate-raw')); } catch (e) { /* plain below */ } }
+  return 'j' + b64u(json);
+}
+async function unpackSong(code) {
+  const kind = code[0], raw = unb64u(code.slice(1));
+  const bytes = kind === '1' ? await streamBytes(raw, DecompressionStream, 'deflate-raw') : kind === 'j' ? raw : null;
+  if (!bytes) throw new Error('unknown link');
+  const o = JSON.parse(new TextDecoder().decode(bytes));
+  if (!o || !o.s || !o.s.sections || !o.s.parts || !o.s.mat) throw new Error('no song in link');
+  return o;
+}
+function shareBase() { return !IN_CLAUDE && /^https?:$/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.host) ? location.origin + location.pathname : 'https://divineacidmonday.github.io/divine-music-machine-v7/'; }
+async function songLink(sg) { return shareBase() + '#s=' + (await packSong(sg || song())); }
+// your song lives in the address bar too, so copying the address shares the song
+async function linkInAddressBar() {
+  if (IN_CLAUDE || !history.replaceState || !/^https?:$/.test(location.protocol) || st.boot || st.listening || !song()) return;
+  try { const code = await packSong(song()); store.set('dmm-mylink-v1', code); history.replaceState(null, '', location.pathname + location.search + '#s=' + code); } catch (e) { /* the address just stays as it is */ }
+}
+async function shareSong() {
+  const sg = song(); if (!activeParts(sg).length) { toast('Nothing plays yet, so there is nothing to share.'); return; }
+  let url; try { url = await songLink(sg); } catch (e) { toast('The link could not be made in this browser.'); return; }
+  const title = (sg.name || 'Untitled') + ' · Divine Music Machine';
+  if (navigator.share && /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) { try { await navigator.share({ title, text: 'Listen to my song ' + (sg.name || '') + ':', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  let copied = false; try { await navigator.clipboard.writeText(url); copied = true; } catch (e) { /* show the box below */ }
+  const box = h('input', { type: 'text', id: 'shareLink', value: url, readonly: true, 'aria-label': 'Link to your song', style: 'width:100%;font-family:var(--mono,monospace);font-size:12px', onfocus: (e) => e.target.select() });
+  overlay(h('div', { class: 'sheet', style: 'width:min(560px,100%)' },
+    h('div', { class: 'hdr' }, h('h2', null, 'Share your song'), h('div', { class: 'grow' }), h('button', { class: 'ghost', onclick: closeOverlay }, 'Close')),
+    h('p', { style: 'margin:0' }, copied ? 'The link is copied. Paste it in WhatsApp, a mail or a message.' : 'Copy this link and paste it in WhatsApp, a mail or a message.'),
+    box,
+    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' }, h('button', { class: 'primary', id: 'copyLink', onclick: async () => { try { await navigator.clipboard.writeText(url); toast('Link copied.'); } catch (e) { box.focus(); box.select(); document.execCommand && document.execCommand('copy'); toast('Link copied.'); } } }, ico('share'), 'Copy link')),
+    h('p', { class: 'small', style: 'margin:0' }, 'Whoever opens it hears your song and can download the MP3 and the MIDI files. The link holds the song as it is now; after a change, share again.')));
+  if (copied) toast('Link copied.');
+}
+// someone opened a shared link: a calm listening page on top of the app
+function openSharedFromLink() {
+  const m = /^#s=([A-Za-z0-9_\-]+)$/.exec(location.hash || ''); if (!m) return false;
+  const code = m[1];
+  const mine = store.get('dmm-mylink-v1', null) === code;
+  unpackSong(code).then((o) => {
+    loadSong(o.s); st.polished = !!o.p; renderTop();
+    if (mine) { toast('Welcome back to ' + (o.s.name || 'your song') + '.'); return; } // your own address: just keep working
+    openListen();
+  }).catch(() => { toast('This share link is broken or incomplete. Ask for the link again.'); history.replaceState && history.replaceState(null, '', location.pathname + location.search); openStart(); });
+  return true;
+}
+function openListen() {
+  st.listening = true; const sg = song();
+  const sp = s('svg', { viewBox: '0 0 200 200', class: 'lspiral', role: 'img', 'aria-label': 'The song as a spiral' });
+  const tot = D.totalBars(sg); let b0 = 0;
+  sg.sections.forEach((x) => { const pts = []; const n = Math.max(6, Math.round(x.bars * 3)); for (let k = 0; k <= n; k++) pts.push(spiralPoint((b0 + x.bars * k / n) / tot)); sp.append(s('polyline', { points: pts.map((q) => q.map((v) => v.toFixed(1)).join(',')).join(' '), fill: 'none', stroke: cssv('--' + x.type), 'stroke-width': 9, opacity: 0.85 })); b0 += x.bars; });
+  const p0 = spiralPoint(0); const dot = s('circle', { id: 'lsDot', cx: p0[0], cy: p0[1], r: 7, fill: cssv('--bg'), stroke: cssv('--fg'), 'stroke-width': 2.5 }); sp.append(dot);
+  const secs = Math.round(tot * barSec(sg)), mins = Math.floor(secs / 60) + ':' + String(secs % 60).padStart(2, '0');
+  const playLab = h('span', null, 'Play');
+  const play = h('button', { class: 'primary bigplay', id: 'listenPlay', onclick: () => { if (AU.playing) stopAll(); else { st.loop = false; st.loopBar = false; st.sec = 0; startPlay(0); } } }, ico('play'), playLab);
+  const mp3 = h('button', { id: 'listenMp3', onclick: (e) => downloadMp3(e.currentTarget) }, ico('download'), h('span', { class: 'lab' }, 'Download as MP3'));
+  const midi = h('button', { id: 'listenMidi', onclick: () => deliverFiles(allDeliverParts(song()), true) }, ico('download'), 'Download MIDI (.zip)');
+  const own = h('button', { class: 'ghost', id: 'listenOwn', onclick: () => { stopAll(true); st.listening = false; closeOverlay(); store.set('dmm-session-v1', st.song); linkInAddressBar(); toast('This is your own copy now. Change anything you like.'); } }, 'Make your own', ico('arrowR'));
+  overlay(h('div', { class: 'sheet listen', style: 'width:min(460px,100%);align-items:center;text-align:center' },
+    h('div', { class: 'small' }, 'Someone shared a song with you'),
+    h('h2', { style: 'margin:0' }, sg.name || 'Untitled'),
+    h('div', { class: 'small' }, D.GENRES[sg.genre].name + ' · ' + Math.round(sg.bpm) + ' bpm · ' + D.pcName(sg.key.root) + ' ' + sg.key.scale + ' · ' + mins),
+    sp, play,
+    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center' }, mp3, midi),
+    h('div', { class: 'small' }, 'MIDI: one file per part plus the song structure, ready for your DAW.'),
+    own, h('div', { class: 'small faint copy' }, 'Made with the Divine Music Machine')), { sticky: true });
+  const loop = () => {
+    if (!st.listening) return;
+    const d = $('#lsDot'); if (d) { const q = spiralPoint(Math.min(0.999, AU.playing ? (AU.curBar + AU.curFrac) / tot : 0)); d.setAttribute('cx', q[0].toFixed(1)); d.setAttribute('cy', q[1].toFixed(1)); }
+    const want = AU.playing ? 'Pause' : 'Play'; if (playLab.textContent !== want) { playLab.textContent = want; play.firstChild.replaceWith(ico(AU.playing ? 'pause' : 'play')); }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+}
+window.DMMAPP = { st, AU, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
