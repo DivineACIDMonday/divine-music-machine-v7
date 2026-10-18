@@ -2213,6 +2213,10 @@ function barIsEmpty(part) {
 function scopeKey(part) { return secNow().id + '|' + part + '|' + selBar(); }
 function scopeNow(part) {
   if (st.scope === 'classic') return D.isFirstOfType(song(), st.sec) ? 'all' : 'sec'; // the old way: the pattern, a later section gets its own copy
+  if (part === 'beat') { // the beat: bar 1 is the base of the section, every other bar is the base plus your change
+    if (selBar() === 0) return st.scope === 'sec' || st.scope === 'all' ? st.scope : D.isFirstOfType(song(), st.sec) ? 'all' : 'sec';
+    return st.scope || 'bar';
+  }
   if (st.scope) return st.scope;
   if (st.autoLock && st.autoLock.key === scopeKey(part)) return st.autoLock.scope;
   return barIsEmpty(part) ? (D.isFirstOfType(song(), st.sec) ? 'all' : 'sec') : 'bar';
@@ -2761,19 +2765,33 @@ function barTabs(part, shownBar) {
   const chordAt = (b) => { const bo = D.barOwnOf(sg, sec, 'chords', b); const c = bo ? bo.bars[b % L] : chords && chords.bars[b % L]; return c ? ' \u00b7 ' + D.chordName(c) : ''; };
   return h('div', { class: 'bartabs' + (L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: n }, (_, b) => h('button', { class: 'bt ' + (b === on ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === on, title: own(b) ? 'Bar ' + (b + 1) + ' has its own version' : 'Bar ' + (b + 1), onclick: () => { selectBar(b); renderEditor(); followBar(); if (part === 'overview') setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (chords ? chordAt(b) : ''), own(b) ? h('span', { class: 'owndot', 'aria-label': 'own version' }) : null)));
 }
+// bar 1 of the beat had a version of its own: make it the base of the whole section
+function makeBar1Base() {
+  const sec = secNow(), bo = D.barOwnOf(song(), sec, 'beat', 0); if (!bo) return;
+  const lanes = bo.lanes.map((l) => l.slice()), same = (x) => JSON.stringify(x.lanes) === JSON.stringify(lanes);
+  change(() => {
+    delete sec.barOwn.beat[0]; selectBar(0);
+    const keep = st.scope; st.scope = null;
+    try { const d = editable('beat'); d.lanes.forEach((l, i) => { l.splice(0, l.length, ...(lanes[i] || l.map(() => 0))); }); } finally { st.scope = keep; }
+    for (const k of Object.keys(sec.barOwn.beat)) if (sec.barOwn.beat[k] && same(sec.barOwn.beat[k])) delete sec.barOwn.beat[k]; // bars that were just a copy follow the base now
+  });
+  setHint('Bar 1 is the base of ' + sectionLabel(st.sec) + ' now: it plays in every bar. Bars with a dot keep their own version.');
+}
 // where your next change lands: this bar, this section, or every section of this type
 function scopeSeg(part) {
   const sg = song(), sec = secNow(), tg = editTarget(part), many = sameTypeCount(st.sec) > 1, typ = D.TYPES[curType()].name, b = selBar();
   if (sg.parts[part].mode === 'off') return null;
   const barOwn = tg === 'bar', secOwn = !!D.ownOf(sg, sec, part);
   const eff = tg === 'bar' || tg === 'newbar' ? 'bar' : tg === 'own' || tg === 'follow' || !many ? 'sec' : 'all';
-  const opts = [['bar', 'Bar ' + (b + 1) + ' only', 'Your next change lands only in bar ' + (b + 1) + ' of ' + sectionLabel(st.sec)],
-    ['sec', many ? sectionLabel(st.sec) + ' only' : 'Whole ' + sectionLabel(st.sec), 'Your next change lands in every bar of ' + sectionLabel(st.sec) + (many ? ', the other ' + typ + ' sections stay as they are' : '')]];
-  if (many) opts.push(['all', 'Every ' + typ, 'Your next change lands in every ' + typ + ' that follows the standard']);
+  const base = part === 'beat' && b === 0; // bar 1 of the beat is the base of the section
+  const opts = base ? [] : [['bar', 'Bar ' + (b + 1) + ' only', 'Your next change lands only in bar ' + (b + 1) + ' of ' + sectionLabel(st.sec)]];
+  opts.push(['sec', base ? (many ? 'Base · ' + sectionLabel(st.sec) + ' only' : 'Base · all bars') : many ? sectionLabel(st.sec) + ' only' : 'Whole ' + sectionLabel(st.sec), base ? 'Bar 1 is the base: your change plays in every bar of ' + sectionLabel(st.sec) + ' that has no version of its own' : 'Your next change lands in every bar of ' + sectionLabel(st.sec) + (many ? ', the other ' + typ + ' sections stay as they are' : '')]);
+  if (many) opts.push(['all', base ? 'Base · every ' + typ : 'Every ' + typ, base ? 'Bar 1 is the base of every ' + typ + ' that follows the standard' : 'Your next change lands in every ' + typ + ' that follows the standard']);
   const seg = h('div', { class: 'editscope', role: 'group', 'aria-label': 'Where your change lands', id: 'scopeSeg' }, h('span', { class: 'small' }, 'Change:'),
     opts.map(([k, lab, tip]) => { const dis = (barOwn && k !== 'bar') || (secOwn && k === 'all'); return h('button', { id: 'scope_' + k, class: eff === k ? 'on' : '', 'aria-pressed': eff === k, disabled: dis, title: dis ? (barOwn ? 'Bar ' + (b + 1) + ' has its own version. Tap ↺ to let it follow the section again first.' : sectionLabel(st.sec) + ' has its own version. Use ↺ in the section panel first.') : tip, onclick: () => { st.scope = k; renderEditor(); setHint(tip + '.'); } }, lab); }));
   const frag = [seg];
-  if (barOwn) frag.push(h('button', { id: 'barFollow', class: 'ghost', title: 'Drop the own version of this bar; it plays like the rest of the section again', onclick: () => { change(() => { delete sec.barOwn[part][b]; }); setHint('Bar ' + (b + 1) + ' follows ' + sectionLabel(st.sec) + ' again.'); } }, '\u21ba Bar ' + (b + 1) + ' follows'));
+  if (barOwn && base) frag.push(h('button', { id: 'makeBase', class: 'primary', title: 'Put this rhythm in every bar of ' + sectionLabel(st.sec) + '; bars you changed keep their own version', onclick: makeBar1Base }, 'Make bar 1 the base'));
+  else if (barOwn) frag.push(h('button', { id: 'barFollow', class: 'ghost', title: 'Drop the own version of this bar; it plays like the rest of the section again', onclick: () => { change(() => { delete sec.barOwn[part][b]; }); setHint('Bar ' + (b + 1) + ' follows ' + sectionLabel(st.sec) + ' again.'); } }, '\u21ba Bar ' + (b + 1) + ' follows'));
   return frag;
 }
 // --- beat rings
