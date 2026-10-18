@@ -1208,6 +1208,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (lastBar) { // ending: one clean hit on the one
       const out = [{ t: 0, d: E.STEP, lane: K, v: 118 }];
       out.push({ t: 0, d: E.STEP * 2, lane: CR, v: 100 });
+      if (opts.lanes) { const ln = mat.lanes.map((l) => l.map(() => 0)); ln[K][0] = 118; if (ln[CR]) ln[CR][0] = 100; return { lanes: ln }; }
       return E.applyFeel(song, part, out, gbar, opts);
     }
     if (machine && type !== 'break') {
@@ -1229,6 +1230,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       const left = sec.bars - inBar;
       if (left <= 2) for (let s = 0; s < N; s += (left === 1 ? 1 : 2)) lanes[SN][s] = Math.max(lanes[SN][s], 50 + Math.round(s / N * 50));
     }
+    if (opts.lanes) return { lanes }; // the grid asks what this bar really plays
     lanes.forEach((l, li) => l.forEach((v, s) => { if (v > 0) notes.push({ t: s * E.STEP, d: E.STEP, lane: li, v }); }));
   } else if (lastBar) { // ending: everyone lands together on the one
     const home = res(si).ctxChords && res(si).ctxChords.bars[0] || { root: song.key.root, q: song.key.scale === 'major' ? 'M' : 'm' };
@@ -2304,7 +2306,7 @@ function renderEditor() {
   }
   const body = $('#edbody'); body.innerHTML = '';
   if (st.view === 'overview') body.append(st.rings ? overviewRings() : overviewLines());
-  else if (st.view === 'beat') body.append(st.rings ? beatRings() : beatLines());
+  else if (st.view === 'beat') body.append(beatWrap(st.rings ? beatRings() : beatLines()));
   else if (st.view === 'chords') body.append(chordEditor());
   else body.append(st.rings ? noteRings(st.view) : noteEditor(st.view));
 }
@@ -2325,6 +2327,24 @@ function laneShape(li, x, y, r, attrs) {
   return s('polygon', Object.assign({ points: pts.map((v) => v.toFixed(1)).join(',') }, a));
 }
 
+// what the machine adds on top in the chosen bar (fills, small touches), shown as soft shapes
+function beatTouches(data) {
+  const sg = song(); if (sg.parts.beat.mode === 'off') return { hits: [], fill: false };
+  let r; try { r = D.renderBar(sg, 'beat', loopBarAt(), D.makeRenderer(sg).res, { lanes: true }); } catch (e) { return { hits: [], fill: false }; }
+  if (!r || !r.lanes) return { hits: [], fill: false };
+  const hits = []; r.lanes.forEach((l, li) => l.forEach((v, k) => { if (v > 0 && !(data.lanes[li] && data.lanes[li][k] > 0)) hits.push({ lane: li, s: k, v }); }));
+  const sec = secNow(), next = sg.sections[st.sec + 1];
+  const fill = hits.some((x) => x.lane === 2 || x.lane === 3) && (sec.type === 'fill' || barInSec() === sec.bars - 1);
+  return { hits, fill, next: next && (D.TYPES[next.type] || {}).name };
+}
+function touchLabel(t) { return 'Bar ' + (barInSec() + 1) + ': ' + (t.fill ? 'machine fill' + (t.next ? ' into ' + t.next : '') : 'machine touches'); }
+// the beat is one pattern; the bar tabs show what the machine adds in each bar (fills)
+function beatWrap(svg) {
+  const sg = song(), L = Math.min(sg.L, secNow().bars), bar = barInSec();
+  const wrap = h('div', { class: 'ringwrap' });
+  if (L > 1) wrap.append(h('div', { class: 'bartabs' + (L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); followBar(); } }, 'Bar ' + (b + 1)))));
+  wrap.append(svg); return wrap;
+}
 // --- beat rings
 const RING_R = (li) => 182 - li * 19;
 function beatRings() {
@@ -2345,6 +2365,10 @@ function beatRings() {
   svg.append(lab, lab2);
   // shadows
   if (st.shadows) for (const sh of shadowsFor('beat')) { const p = pos(sh.lane, sh.s); const el = laneShape(sh.lane, p[0], p[1], 7, { fill: 'none', stroke: col, 'stroke-width': 1.5, 'stroke-dasharray': '3 2', class: 'shadow', 'pointer-events': 'all', 'data-lane': sh.lane, 'data-step': sh.s, style: 'cursor:pointer' }); el.setAttribute('fill', 'none'); el.setAttribute('stroke', col); svg.append(el); }
+  // what the machine adds in this bar
+  const tc = beatTouches(data);
+  for (const x of tc.hits) { const p = pos(x.lane, x.s, (x.v - 90) / 127 * 18); svg.append(laneShape(x.lane, p[0], p[1], 5 + x.v / 127 * 5, { fill: col, opacity: 0.32, class: 'touch', 'pointer-events': 'none' })); }
+  if (tc.hits.length) svg.append(s('text', { x: 200, y: 228, 'text-anchor': 'middle', fill: col, 'font-size': 10.5, 'font-family': 'Figtree, sans-serif', class: 'touchlab' }, touchLabel(tc)));
   // hits
   data.lanes.forEach((l, li) => l.forEach((v, st2) => { if (!v) return; const extra = (v - 90) / 127 * 18; const p = pos(li, st2, extra); svg.append(laneShape(li, p[0], p[1], 5 + v / 127 * 5, { fill: col, opacity: m.own || song().parts.beat.mode !== 'yours' ? (song().parts.beat.mode === 'machine' ? 0.75 : 1) : 0.6, class: 'hit', 'data-lane': li, 'data-step': st2 })); }));
   // playhead
@@ -2399,6 +2423,9 @@ function beatLines() {
     for (let k = 0; k < N; k++) { const x = 60 + k * 40 + 20; svg.append(s('rect', { x: x - 17, y: y - 19, width: 34, height: 38, rx: 6, fill: D.meter(sg).beatSteps.includes(k) ? cssv('--raise') : 'transparent', class: 'cell', 'data-lane': li, 'data-step': k })); }
   }
   if (st.shadows) for (const sh of shadowsFor('beat')) { const x = 60 + sh.s * 40 + 20, y = 20 + sh.lane * 44 + 22; const el = laneShape(sh.lane, x, y, 9, { class: 'shadow', 'pointer-events': 'all', 'data-lane': sh.lane, 'data-step': sh.s, style: 'cursor:pointer' }); el.setAttribute('fill', 'none'); el.setAttribute('stroke', col); el.setAttribute('stroke-dasharray', '3 2'); el.setAttribute('stroke-width', 1.5); svg.append(el); }
+  const tc = beatTouches(data);
+  for (const x of tc.hits) { const cx = 60 + x.s * 40 + 20, cy = 20 + x.lane * 44 + 22 - (x.v - 90) / 127 * 14; svg.append(laneShape(x.lane, cx, cy, 6 + x.v / 127 * 7, { fill: col, opacity: 0.32, class: 'touch', 'pointer-events': 'none' })); }
+  if (tc.hits.length) svg.append(s('text', { x: W - 8, y: 13, 'text-anchor': 'end', fill: col, 'font-size': 12, 'font-family': 'Figtree, sans-serif', class: 'touchlab' }, touchLabel(tc)));
   data.lanes.forEach((l, li) => l.forEach((v, k) => { if (!v) return; const x = 60 + k * 40 + 20, y = 20 + li * 44 + 22 - (v - 90) / 127 * 14; svg.append(laneShape(li, x, y, 6 + v / 127 * 7, { fill: col, class: 'hit', 'data-lane': li, 'data-step': k, opacity: song().parts.beat.mode === 'machine' ? 0.75 : 1 })); }));
   svg.append(s('line', { id: 'lineHead', x1: 60, y1: 10, x2: 60, y2: H - 4, stroke: cssv('--fg'), 'stroke-width': 2, opacity: AU.playing ? 0.8 : 0 }));
   let drag = null;
