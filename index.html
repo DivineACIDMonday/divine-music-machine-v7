@@ -100,7 +100,13 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .ringwrap>svg{flex:1;min-height:0;width:100%;display:block;touch-action:none;user-select:none}
 .bartabs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
 .bartabs.rows4{display:grid;grid-template-columns:repeat(4,auto);justify-content:center}
-.bt{font-size:12px;padding:4px 9px}
+.bt{font-size:12px;padding:4px 9px;position:relative}
+.bt .owndot{position:absolute;top:2px;right:2px;margin:0}
+.editscope{display:inline-flex;gap:3px;align-items:center;flex-wrap:wrap;padding:2px 4px;border:1px solid var(--line2);border-radius:10px}
+.editscope>.small{padding:0 4px}
+.editscope button{font-size:12.5px;padding:5px 9px}
+.editscope button.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.editscope button:disabled{opacity:.4}
 .bt.on{background:var(--fg);color:var(--bg)}
 .bt.now{box-shadow:inset 0 -2px 0 var(--accent)}
 .suggest{display:grid;gap:8px}
@@ -840,11 +846,9 @@ E.isEmpty = function (part, m) {
 };
 // which section type of a yours part holds the user's main material
 E.userSource = function (song, part, type) {
+  // only your material for this very section type counts; a type you never touched plays the machine's version, nothing is borrowed
   const m = song.mat[type] && song.mat[type][part];
-  // your own material for this type always plays, also when you emptied it; only a blank start (from scratch) borrows from another section
-  if (m && m.src === 'user' && !(m.blank && !m.auto && E.isEmpty(part, m.data))) return { type, data: m.data, own: true, auto: !!m.auto, lead: !!m.lead };
-  const pref = [type, 'verse', 'chorus', 'prechorus', 'drop', 'build', 'intro', 'break', 'fill', 'outro'];
-  for (const t of pref) { const x = song.mat[t] && song.mat[t][part]; if (x && x.src === 'user' && !E.isEmpty(part, x.data)) return { type: t, data: x.data, own: t === type, auto: !!x.auto, lead: !!x.lead }; }
+  if (m && m.src === 'user') return { type, data: m.data, own: true, auto: !!m.auto, lead: !!m.lead };
   return null;
 };
 
@@ -1212,8 +1216,8 @@ E.resolveType = function (song, type) {
   ctx.melodyUser = quiet.melody ? null : mel; ctx.bassUser = quiet.bass ? null : bas; // a copy you have not touched yet does not lead
   const seedOf = (part) => hash(P[part].seed, type, song.genre, song.key.root, song.key.scale, song.L, song.meter);
   // chords
-  if (P.chords.mode === 'yours') {
-    out.chords = chu || E.emptyMat('chords', song);
+  if (P.chords.mode === 'yours' && chu) {
+    out.chords = chu;
     // fill empty chord bars with the machine's chord for that bar, marked f: 1
     if (chu && P.chords.repeat !== false && chu.bars.some(Boolean) && chu.bars.some((c) => !c)) {
       // a genre progression, turned so it continues from your first chord
@@ -1224,7 +1228,7 @@ E.resolveType = function (song, type) {
       out.chords = Object.assign({}, chu, { bars: chu.bars.map((c, b) => c || (at(b) ? Object.assign({}, at(b), { f: 1 }) : null)) });
     }
   }
-  else if (P.chords.mode === 'machine') out.chords = E.genChords(song, type, ctx, seedOf('chords'));
+  else if (P.chords.mode !== 'off') out.chords = E.genChords(song, type, ctx, seedOf('chords'));
   else out.chords = null;
   ctx.chords = out.chords && !E.isEmpty('chords', out.chords) ? out.chords : E.genChords(song, type, ctx, seedOf('chords'));
   // your bass and melody: empty bars repeat your first bar, along the chords
@@ -1232,28 +1236,28 @@ E.resolveType = function (song, type) {
   const basF = rep('bass', bas), melF = rep('melody', mel);
   ctx.bassUser = quiet.bass ? null : basF; ctx.melodyUser = quiet.melody ? null : melF;
   // beat
-  if (P.beat.mode === 'yours') out.beat = bea || E.emptyMat('beat', song);
-  else if (P.beat.mode === 'machine') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !quiet.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
+  if (P.beat.mode === 'yours' && bea) out.beat = bea;
+  else if (P.beat.mode !== 'off') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !quiet.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
   else out.beat = null;
   ctx.beat = out.beat;
   // bass
-  if (P.bass.mode === 'yours') out.bass = basF || E.emptyMat('bass', song);
-  else if (P.bass.mode === 'machine') out.bass = E.genBass(song, type, ctx, seedOf('bass'));
+  if (P.bass.mode === 'yours' && basF) out.bass = basF;
+  else if (P.bass.mode !== 'off') out.bass = E.genBass(song, type, ctx, seedOf('bass'));
   else out.bass = null;
   // pad: long chord tones; yours or the machine's
   const padU = userOf('pad'), padF = rep('pad', padU);
-  if (P.pad.mode === 'yours') out.pad = padF || E.emptyMat('pad', song);
-  else if (P.pad.mode === 'machine') out.pad = E.genPad(song, type, ctx, seedOf('pad'));
+  if (P.pad.mode === 'yours' && padF) out.pad = padF;
+  else if (P.pad.mode !== 'off') out.pad = E.genPad(song, type, ctx, seedOf('pad'));
   else out.pad = null;
   // melody
-  if (P.melody.mode === 'yours') out.melody = melF || E.emptyMat('melody', song);
-  else if (P.melody.mode === 'machine') out.melody = E.genMelody(song, type, ctx, seedOf('melody'));
+  if (P.melody.mode === 'yours' && melF) out.melody = melF;
+  else if (P.melody.mode !== 'off') out.melody = E.genMelody(song, type, ctx, seedOf('melody'));
   else out.melody = null;
   // answer: replies to the melody as it sounds here
   ctx.melodyOut = out.melody;
   const ansU = userOf('answer'), ansF = rep('answer', ansU);
-  if (P.answer.mode === 'yours') out.answer = ansF || E.emptyMat('answer', song);
-  else if (P.answer.mode === 'machine') out.answer = E.genAnswer(song, type, ctx, seedOf('answer'));
+  if (P.answer.mode === 'yours' && ansF) out.answer = ansF;
+  else if (P.answer.mode !== 'off') out.answer = E.genAnswer(song, type, ctx, seedOf('answer'));
   else out.answer = null;
   out.ctxChords = ctx.chords;
   return out;
@@ -1263,6 +1267,11 @@ E.isFirstOfType = (song, i) => !song.sections.slice(0, i).some((x) => x.type ===
 E.firstOfType = (song, type) => song.sections.findIndex((x) => x.type === type);
 // own material of a part in one section, or null when it follows the standard
 E.ownOf = (song, sec, part) => (sec && sec.own && sec.own[part] && song.parts[part].mode !== 'off' ? sec.own[part] : null);
+// your version of one single bar of one section (b = bar inside the section), or null
+E.barOwnOf = (song, sec, part, b) => (sec && sec.barOwn && sec.barOwn[part] && sec.barOwn[part][b] && song.parts[part].mode !== 'off' ? sec.barOwn[part][b] : null);
+E.hasBarOwn = (song, sec, part) => !!(sec && sec.barOwn && sec.barOwn[part] && Object.keys(sec.barOwn[part]).some((b) => +b < sec.bars && sec.barOwn[part][b]) && song.parts[part].mode !== 'off');
+// is this part the machine's in this section (machine mode, an untouched copy, or a type you never touched)?
+E.machineish = (song, sec, part) => { if (E.ownOf(song, sec, part)) return false; const P = song.parts[part]; if (P.mode === 'machine') return true; const m = song.mat[sec.type] && song.mat[sec.type][part]; return P.mode === 'yours' && (!m || m.src !== 'user' || !!m.auto); };
 E.hasOwn = (song, sec) => E.PARTS.some((p) => E.ownOf(song, sec, p));
 // what one section plays: the standard of its type, with its own parts swapped in
 E.resolveSection = function (song, i, base) {
@@ -1483,8 +1492,9 @@ E.partPlaysIn = function (song, sec, part) {
 };
 E.swingFor = function (song) {
   if (song.swingManual != null) return song.swingManual;
-  const yoursLead = E.PARTS.some((p) => song.parts[p].mode === 'yours');
-  return yoursLead ? 50 : E.GENRES[song.genre].swing;
+  // the genre's swing, also for parts you made yourself; only music played in from a file keeps its own timing
+  const fromFile = !!song.importBpm && E.PARTS.some((p) => song.parts[p].mode === 'yours');
+  return fromFile ? 50 : E.GENRES[song.genre].swing;
 };
 // cache resolved types per render pass
 E.makeRenderer = function (song) {
@@ -1502,13 +1512,15 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (song.parts[part].mode === 'off') return [];
   const total = E.totalBars(song);
   const lastBar = gbar === total - 1;
-  const mat = res(si)[part];
+  // a bar you changed on its own plays exactly as you made it
+  const bo = E.barOwnOf(song, sec, part, inBar);
+  const mat = bo || res(si)[part];
   if (!mat || E.isEmpty(part, mat)) return [];
   // your choice per section wins: a part switched off here stays silent, switched on always plays
   const choice = sec.play ? sec.play[part] : undefined;
   if (choice === false) return [];
   // material you made for this one section always plays there
-  if (choice !== true && !E.ownOf(song, sec, part) && !E.partActive(song, part, type, inBar, sec.bars) && !lastBar) return [];
+  if (!bo && choice !== true && !E.ownOf(song, sec, part) && !E.partActive(song, part, type, inBar, sec.bars) && !lastBar) return [];
   const lb = inBar % song.L;
   const r = rng(hash(song.seed, part, gbar));
   const nextSec = song.sections[si + 1];
@@ -1516,8 +1528,12 @@ E.renderBar = function (song, part, gbar, res, opts) {
   let notes = [];
   if (part === 'beat') {
     const lanes = mat.lanes.map((l) => l.slice());
-    const bent = song.mat[type] && song.mat[type].beat;
-    const machine = song.parts.beat.mode === 'machine' || !!(bent && bent.auto && !E.ownOf(song, sec, 'beat')); // an untouched copy keeps the machine's touches
+    if (bo) { // your own bar: no fills or touches on top
+      if (opts.lanes) return { lanes };
+      lanes.forEach((l, li) => l.forEach((v, s) => { if (v > 0) notes.push({ t: s * E.STEP, d: E.STEP, lane: li, v }); }));
+      return E.applyFeel(song, part, notes, gbar, opts);
+    }
+    const machine = E.machineish(song, sec, 'beat'); // the machine's own material (or an untouched copy) keeps its touches
     if (lastBar) { // ending: one clean hit on the one
       const out = [{ t: 0, d: E.STEP, lane: K, v: 118 }];
       out.push({ t: 0, d: E.STEP * 2, lane: CR, v: 100 });
@@ -1545,7 +1561,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     }
     if (opts.lanes) return { lanes }; // the grid asks what this bar really plays
     lanes.forEach((l, li) => l.forEach((v, s) => { if (v > 0) notes.push({ t: s * E.STEP, d: E.STEP, lane: li, v }); }));
-  } else if (lastBar) { // ending: everyone lands together on the one
+  } else if (lastBar && !bo) { // ending: everyone lands together on the one
     const home = res(si).ctxChords && res(si).ctxChords.bars[0] || { root: song.key.root, q: song.key.scale === 'major' ? 'M' : 'm' };
     if (part === 'chords') notes = E.voice(home, null, 52, 72).map((p) => ({ t: 0, d: BT - 30, p, v: 78 }));
     else if (part === 'pad') notes = E.voice(home, null, 55, 76).map((p) => ({ t: 0, d: BT - 30, p, v: 64 }));
@@ -1561,7 +1577,16 @@ E.renderBar = function (song, part, gbar, res, opts) {
       if (nb !== lb) continue;
       notes.push({ t: (n.s % N) * E.STEP, d: Math.max(30, n.d * E.STEP - 12), p: n.p, v: n.v });
     }
-    if (part === 'bass' && type === 'build' && (song.parts.bass.mode === 'machine' || song.mat[type].bass && song.mat[type].bass.auto) && sec.bars - inBar <= 1) notes = notes.filter((n) => n.t < BT / 2);
+    if (!bo && part === 'bass' && type === 'build' && E.machineish(song, sec, 'bass') && sec.bars - inBar <= 1) notes = notes.filter((n) => n.t < BT / 2);
+    // a chord you changed in this one bar: the machine's pad and bass follow it there
+    const cbo = !bo && (part === 'pad' || part === 'bass') && E.barOwnOf(song, sec, 'chords', inBar);
+    if (cbo && notes.length && E.machineish(song, sec, part)) {
+      const oc = res(si).ctxChords && res(si).ctxChords.bars[lb], nc = cbo.bars[lb];
+      if (oc && nc && (oc.root !== nc.root || oc.q !== nc.q)) {
+        if (part === 'pad') { const v = notes[0].v; notes = E.voice(nc, null, 55, 76).map((p) => ({ t: 0, d: BT - 30, p, v })); }
+        else { let d = ((nc.root - oc.root) % 12 + 12) % 12; if (d > 6) d -= 12; notes = notes.map((n) => Object.assign({}, n, { p: n.p + d })); }
+      }
+    }
   }
   return E.applyFeel(song, part, notes, gbar, opts);
 };
@@ -2111,7 +2136,7 @@ const store = {
 
 /* ---------- state ---------- */
 const st = {
-  song: null, view: 'overview', rings: true, shadows: true, sec: 0, chordBar: 0, loop: false, polished: true,
+  song: null, view: 'overview', rings: true, shadows: true, sec: 0, chordBar: 0, loop: false, polished: true, scope: /[?&]scope=classic/.test(location.search) ? 'classic' : null,
   hist: [], fut: [], hint: '', settings: store.get('dmm-settings-v1', { octave: 0, roles: {}, scans: {} }),
   lib: store.get('dmm-library-v1', []), shadowBump: 0, playBar: 0
 };
@@ -2134,6 +2159,7 @@ function afterChange(opts) {
   if (AU.playing && !AU.preview && st.loop) { const s0 = D.sectionStart(song(), st.sec), s1 = s0 + song().sections[st.sec].bars; if (AU.curBar < s0 || AU.curBar >= s1) jumpTo(s0); }
   saveSession();
   render(opts.keep);
+  if (st.madeBarOwn) { const mb = st.madeBarOwn; st.madeBarOwn = null; setHint('Only bar ' + (mb.b + 1) + ' of ' + sectionLabel(st.sec) + ' changed. Everything else stays as it was.'); }
   if (st.madeOwn) { const mo = st.madeOwn; st.madeOwn = null; const i = song().sections.findIndex((x) => x.id === mo.id); if (i >= 0 && D.ownOf(song(), song().sections[i], mo.part)) toast(sectionLabel(i) + ' has its own ' + PART_NAMES[mo.part].toLowerCase() + ' now; ' + firstLabel(i) + ' and the rest stay as they are. The ↺ in the section panel follows ' + firstLabel(i) + ' again.'); }
 }
 // while the whole song plays and you start editing, keep looping the section you are in
@@ -2169,19 +2195,50 @@ function setHint(t) { st.hint = t || ''; renderHint(); }
 /* ---------- editing helpers ---------- */
 function resolvedNow() { return D.resolveSection(song(), st.sec); }
 const secNow = () => song().sections[Math.min(st.sec, song().sections.length - 1)];
-// where an edit of this part lands: 'own' (this section only), 'std' (the standard, others follow) or 'follow' (next edit makes it own)
+// the bar you look at and change: a bar of the selected section (0 based); its place in the repeating pattern
+function selBar() { const sec = secNow(); return Math.max(0, Math.min(st.ringBar || 0, sec.bars - 1)); }
+function patBar() { return selBar() % song().L; }
+function selectBar(b) { if (b !== st.ringBar) st.autoLock = null; st.ringBar = b; st.chordBar = b % song().L; }
+// pick a bar of the pattern (from a chord strip or a lines column): the same place in the repeat you are looking at
+function selectPatternBar(j) { const L = song().L, sec = secNow(); let b = Math.floor(selBar() / L) * L + j; if (b >= sec.bars) b = Math.min(j, sec.bars - 1); selectBar(b); }
+// where the next change lands when you have not picked it yourself:
+// a bar that already plays something: only that bar changes; an empty bar: you are building, so it goes in the pattern and repeats.
+// the choice holds while you keep working in the same bar, so building a bar never splits halfway
+function barIsEmpty(part) {
+  const d = shownMat(part).data, k = patBar(), N = D.meter(song()).steps;
+  if (part === 'beat') return d.lanes.every((l) => l.every((v) => !v));
+  if (part === 'chords') { const r = resolvedNow().chords; return !d.bars[k] && !(r && r.bars[k]); }
+  return !d.notes.some((n) => Math.floor(n.s / N) === k) && !echoNotes(part).some((n) => Math.floor(n.s / N) === k);
+}
+function scopeKey(part) { return secNow().id + '|' + part + '|' + selBar(); }
+function scopeNow(part) {
+  if (st.scope === 'classic') return D.isFirstOfType(song(), st.sec) ? 'all' : 'sec'; // the old way: the pattern, a later section gets its own copy
+  if (st.scope) return st.scope;
+  if (st.autoLock && st.autoLock.key === scopeKey(part)) return st.autoLock.scope;
+  return barIsEmpty(part) ? (D.isFirstOfType(song(), st.sec) ? 'all' : 'sec') : 'bar';
+}
+const sameTypeCount = (i) => { const sg = song(); return sg.sections.filter((x) => x.type === sg.sections[i].type).length; };
+// where an edit of this part lands:
+// 'bar' (this bar has its own version), 'newbar' (the next edit gives this bar its own version),
+// 'own' (this section only), 'follow' (the next edit gives this section its own version) or 'std' (every section of this type)
 function editTarget(part, i) {
   const sg = song(); i = i == null ? st.sec : i; const sec = sg.sections[i];
+  if (i === st.sec && D.barOwnOf(sg, sec, part, selBar())) return 'bar';
+  const sc = i === st.sec ? scopeNow(part) : 'all';
+  if (sg.parts[part].mode !== 'off' && i === st.sec && sc === 'bar') return 'newbar';
   if (D.ownOf(sg, sec, part)) return 'own';
-  if (sg.parts[part].mode === 'off' || D.isFirstOfType(sg, i)) return 'std';
-  return 'follow';
+  if (sg.parts[part].mode === 'off') return sc === 'bar' ? 'newbar' : 'std';
+  if (sc === 'sec' && sameTypeCount(i) > 1) return 'follow';
+  return 'std';
 }
 const firstLabel = (i) => sectionLabel(D.firstOfType(song(), song().sections[i].type));
 // what an edit of this part changes, in words
 function followersOf(part, i) { const sg = song(), t = sg.sections[i].type; return sg.sections.filter((x, j) => j !== i && x.type === t && !D.ownOf(sg, x, part)).length; }
 function editingText(part) {
-  if (editTarget(part) !== 'std' || song().parts[part].mode === 'off') return 'Editing ' + sectionLabel(st.sec) + (D.isFirstOfType(song(), st.sec) && !D.ownOf(song(), secNow(), part) ? '' : ' only');
-  const f = followersOf(part, st.sec); return 'Editing ' + sectionLabel(st.sec) + (f ? ' + ' + f + ' following' : '');
+  const tg = editTarget(part);
+  if (tg === 'bar' || tg === 'newbar') return 'Editing ' + sectionLabel(st.sec) + ' · bar ' + (selBar() + 1) + ' only';
+  if (tg === 'own' || tg === 'follow') return 'Editing ' + sectionLabel(st.sec) + ' only';
+  const f = followersOf(part, st.sec); return f ? 'Editing ' + sectionLabel(st.sec) + ' + ' + f + ' following' : 'Editing ' + sectionLabel(st.sec);
 }
 // own versions in the section panel: status, Vary and back to the standard
 function ownRow(sg, sec) {
@@ -2204,28 +2261,58 @@ function varySection() {
 }
 function followStandard() {
   const label = sectionLabel(st.sec), from = firstLabel(st.sec);
-  change(() => { delete secNow().own; });
+  change(() => { delete secNow().own; delete secNow().barOwn; });
   toast(label + ' follows ' + from + ' again.', { label: 'Undo', fn: undo });
 }
 // put material where this section edits it
-function putHere(part, data) { const sec = secNow(); editable(part); if (sec.own && sec.own[part]) sec.own[part] = data; else D.setUser(song(), part, curType(), data); }
+function putHere(part, data) {
+  const sec = secNow(), tg = editTarget(part); editable(part);
+  if (tg === 'bar' || tg === 'newbar') sec.barOwn[part][selBar()] = data;
+  else if (sec.own && sec.own[part]) sec.own[part] = data;
+  else D.setUser(song(), part, curType(), data);
+}
 // material the editor shows: yours for this section type, else what the machine plays here
-function shownMat(part) {
+// what the section plays for this part, before any bar of its own
+function sectionMat(part) {
   const own = D.ownOf(song(), secNow(), part); if (own) return { data: own, own: true, unique: true };
   const t = curType(), m = song().mat[t][part];
-  if (song().parts[part].mode === 'yours') {
-    if (m && m.src === 'user' && !(m.blank && !m.auto && D.isEmpty(part, m.data))) return { data: m.data, own: true };
-    const u = D.userSource(song(), part, t);
-    return { data: u ? D.deriveUser(song(), part, u, t) : D.emptyMat(part, song()), own: false, from: u && u.type };
-  }
+  if (song().parts[part].mode === 'yours' && m && m.src === 'user') return { data: m.data, own: true };
   const r = resolvedNow()[part];
-  return { data: r || D.emptyMat(part, song()), own: false, machine: song().parts[part].mode === 'machine' };
+  return { data: r || D.emptyMat(part, song()), own: false, machine: song().parts[part].mode !== 'yours' || !m };
+}
+// what you see in the editor: the section, with the selected bar shown as it really plays when it has its own version
+function shownMat(part) {
+  const bo = D.barOwnOf(song(), secNow(), part, selBar());
+  if (!bo) return sectionMat(part);
+  if (part === 'beat') return { data: bo, own: true, unique: true, bar: true };
+  const base = sectionMat(part).data, k = patBar(), N = D.meter(song()).steps;
+  if (part === 'chords') return { data: { bars: base.bars.map((c, i) => (i === k ? bo.bars[k] : c)) }, own: true, unique: true, bar: true };
+  const inK = (n) => Math.floor(n.s / N) === k;
+  return { data: Object.assign({}, base, { notes: base.notes.filter((n) => !inK(n)).concat(bo.notes.filter(inK)).sort((x, y) => x.s - y.s) }), own: true, unique: true, bar: true };
+}
+// a copy of exactly what this bar plays now, so your first change keeps everything else you heard
+function barNowData(part) {
+  const sg = song();
+  if (part === 'beat') {
+    let r = null; try { r = D.renderBar(sg, 'beat', D.sectionStart(sg, st.sec) + selBar(), D.makeRenderer(sg).res, { lanes: true }); } catch (e) { r = null; }
+    return { lanes: (r && r.lanes ? r.lanes : sectionMat('beat').data.lanes).map((l) => l.slice()) };
+  }
+  return D.solidCopy(part, sectionMat(part).data);
 }
 // make a part editable here; machine material becomes yours without changing the sound
 // global: switching a whole part to Yours works on the standard, wherever you stand
 function editable(part, global) {
   const sg = song(), t = curType(), P = sg.parts[part];
+  if (!global && !st.scope) st.autoLock = { key: scopeKey(part), scope: scopeNow(part) };
   const tg = global ? 'std' : editTarget(part), sec = secNow();
+  if (tg === 'bar') return sec.barOwn[part][selBar()];
+  if (tg === 'newbar') { // the first change in this bar: it gets its own copy of what plays here, nothing else changes
+    if (P.mode === 'off') editable(part, true); // switching a part on starts it empty everywhere
+    const b = selBar(), cur = barNowData(part);
+    sec.barOwn = Object.assign({}, sec.barOwn, { [part]: Object.assign({}, sec.barOwn && sec.barOwn[part], { [b]: cur }) });
+    st.madeBarOwn = { part, id: sec.id, b };
+    return cur;
+  }
   if (tg === 'own') return sec.own[part];
   if (tg === 'follow') { // the first change in a later section: it gets its own copy of what plays here
     const r = resolvedNow()[part];
@@ -2235,8 +2322,7 @@ function editable(part, global) {
   }
   if (P.mode === 'yours') {
     const m = sg.mat[t][part];
-    if (!m || m.src !== 'user') { const u = D.userSource(sg, part, t); D.setUser(sg, part, t, u ? D.clone(D.deriveUser(sg, part, u, t)) : D.emptyMat(part, sg)); }
-    delete sg.mat[t][part].blank;
+    if (!m || m.src !== 'user') { const r = D.resolveType(sg, t)[part]; D.setUser(sg, part, t, r ? D.solidCopy(part, r) : D.emptyMat(part, sg)); sg.mat[t][part].auto = true; } // a type you never touched: start from what the machine plays there
     if (!global) { delete sg.mat[t][part].auto; delete sg.mat[t][part].lead; } // touched now: from here it leads and the machine bends to it
     return sg.mat[t][part].data;
   }
@@ -2273,7 +2359,7 @@ function renderTop() {
     h('button', { id: 'scopeSong', class: !st.loop ? 'on' : '', 'aria-pressed': !st.loop, title: 'Play the whole song', onclick: () => continueSong() }, 'Whole song'),
     h('button', { id: 'scopeSec', class: st.loop && !st.loopBar ? 'on' : '', 'aria-pressed': st.loop && !st.loopBar, title: 'Repeat only the selected section', onclick: () => { st.loop = true; st.loopBar = false; st.held = false; renderTop(); renderLeft(); } }, 'Loop ' + sectionLabel(st.sec)),
     h('button', { id: 'scopeBar', class: st.loop && st.loopBar ? 'on' : '', 'aria-pressed': st.loop && st.loopBar, title: 'Repeat only the bar you are looking at', onclick: () => { st.loop = true; st.loopBar = true; st.held = false; followBar(); renderTop(); renderLeft(); } }, 'Loop bar ' + (barInSec() + 1)));
-  const anyOff = D.PARTS.some((p) => sg.parts[p].mode === 'off' || (sg.parts[p].mode === 'yours' && !D.userSource(sg, p, curType())));
+  const anyOff = D.PARTS.some((p) => sg.parts[p].mode === 'off');
   // row 1: the song itself. row 2: genre and everything you do with the song
   top.append(
     h('div', { class: 'trow' },
@@ -2387,7 +2473,7 @@ function renderLeft() {
 // keep the Loop button's name in step with the selected section without rebuilding the top bar
 function syncScope() { const b = $('#scopeSec'); if (b) b.textContent = 'Loop ' + sectionLabel(st.sec); const c = $('#scopeBar'); if (c) c.textContent = 'Loop bar ' + (barInSec() + 1); }
 // one bar on repeat: the bar you look at in the editor, inside the selected section
-function barInSec() { const sec = song().sections[st.sec]; return Math.min(st.ringBar || 0, Math.min(song().L, sec.bars) - 1); }
+function barInSec() { return selBar(); }
 function loopBarAt() { return D.sectionStart(song(), st.sec) + barInSec(); }
 function followBar() { syncScope(); if (st.loop && st.loopBar && AU.playing && !AU.preview && AU.curBar !== loopBarAt()) jumpTo(loopBarAt()); }
 function playSection(i) {
@@ -2499,7 +2585,7 @@ function renderRight() {
     const head = h('div', { class: 'hd', onclick: (e) => { if (!e.target.closest('button')) toggleSlot(p); } }, shapeIcon(p),
       h('span', { class: 'nm', tabindex: 0, role: 'button', 'aria-expanded': isOpen, onkeydown: (e) => { if (e.key === 'Enter') toggleSlot(p); } }, PART_NAMES[p]),
       h('span', { class: 'badge', style: 'background:var(--' + p + '-t);color:var(--' + p + ')' }, badge),
-      h('button', { class: 'iconbtn', title: P.mode === 'yours' ? 'Fill this part here with a fresh idea from the machine' : 'New machine version', 'aria-label': 'New version of ' + PART_NAMES[p], onclick: () => newVersion(p) }, ico('dice')),
+      h('button', { class: 'iconbtn', title: P.mode === 'yours' ? 'Fill this part here with a fresh idea from the machine' : 'New machine version', 'aria-label': 'New version of ' + PART_NAMES[p], onclick: () => newVersion(p, true) }, ico('dice')),
       h('button', { class: 'iconbtn chev', 'aria-label': (isOpen ? 'Close ' : 'Open ') + PART_NAMES[p], onclick: () => toggleSlot(p) }, ico(isOpen ? 'arrowL' : 'arrowR')));
     const seg = h('div', { class: 'seg', role: 'group', 'aria-label': PART_NAMES[p] + ' who makes it' },
       ['yours', 'machine', 'off'].map((m) => h('button', { class: P.mode === m ? 'on' : '', 'aria-pressed': P.mode === m, onclick: () => setMode(p, m) }, { yours: 'Yours', machine: 'Machine', off: 'Off' }[m])));
@@ -2548,24 +2634,29 @@ function setMode(p, m) {
     else { P.mode = m; if (m === 'machine') setHint('The machine plays ' + PART_NAMES[p].toLowerCase() + ' and bends to the parts that are yours.'); }
   });
 }
-function newVersion(p) {
-  const before = JSON.stringify(resolvedNow()[p] || null), start = snapshot();
+function newVersion(p, whole) {
+  const keep = st.scope; if (whole) st.scope = D.isFirstOfType(song(), st.sec) ? 'all' : 'sec'; // the dice in a slot: the whole part here
+  try { newVersionScoped(p); } finally { st.scope = keep; }
+}
+function newVersionScoped(p) {
+  const seen = () => JSON.stringify(shownMat(p).data || null), before = seen(), start = snapshot();
   let same = true;
   // a throw that lands on the same thing as before is thrown again, up to 16 times
-  change(() => { for (let tries = 0; tries < 16 && same; tries++) { if (tries) st.song = JSON.parse(start); newVersionOnce(p); same = JSON.stringify(resolvedNow()[p] || null) === before; } });
+  change(() => { for (let tries = 0; tries < 16 && same; tries++) { if (tries) st.song = JSON.parse(start); newVersionOnce(p); same = seen() === before; } });
   if (same) toast('This is the only option that fits here for now. Change another part and the dice get more room.'); else ideaToast(p);
 }
 function newVersionOnce(p) {
   const sg = song(), P = sg.parts[p];
   {
-    if (P.mode === 'yours' || D.ownOf(sg, secNow(), p)) {
+    const tg = editTarget(p);
+    if (P.mode === 'yours' || tg !== 'std') {
       const t = curType(); const res = resolvedNow(); const seed = D.newSeed();
       const ctx = { chords: res.ctxChords, beat: res.beat };
       let m;
       if (p === 'beat') m = D.typeBeatFromCore(sg, D.genBeat(sg, 'chorus', ctx, seed), t, seed);
       else if (p === 'chords') { ctx.melodyUser = sg.parts.melody.mode === 'yours' ? res.melody : null; ctx.bassUser = sg.parts.bass.mode === 'yours' ? res.bass : null; m = D.genChords(sg, t, ctx, seed); }
       else m = D.genNotes(p, sg, t, ctx, seed);
-      const only = editTarget(p) !== 'std'; putHere(p, m); setHint('A fresh ' + PART_NAMES[p].toLowerCase() + ' idea for ' + (only ? sectionLabel(st.sec) + ' only' : 'every ' + D.TYPES[t].name + ' that follows ' + sectionLabel(st.sec)) + '. It stays yours to edit; undo brings back the old one.');
+      const where = editingText(p).replace(/^Editing /, ''); putHere(p, m); setHint('A fresh ' + PART_NAMES[p].toLowerCase() + ' idea for ' + where + '. It stays yours to edit; undo brings back the old one.');
     } else { yoursLead(sg); if (P.mode === 'off') P.mode = 'machine'; P.seed = D.newSeed(); setHint('New machine ' + PART_NAMES[p].toLowerCase() + '. Undo brings back the previous one.'); }
   }
 }
@@ -2594,7 +2685,7 @@ function takeOver() {
   const grow = song().sections.length === 1;
   change(() => {
     const sg = song();
-    for (const p of D.PARTS) { const P = sg.parts[p]; if (P.mode === 'off') P.mode = 'machine'; else if (P.mode === 'yours' && !D.userSource(sg, p, curType())) P.mode = 'machine'; }
+    for (const p of D.PARTS) { const P = sg.parts[p]; if (P.mode === 'off') P.mode = 'machine'; }
     if (grow) { const keep = sg.sections[0]; D.growStructure(sg); st.sec = sg.sections.indexOf(keep); }
     st.view = 'overview';
   });
@@ -2607,7 +2698,9 @@ function renderEditor() {
   const tabs = h('div', { class: 'tabs', role: 'tablist' });
   tabs.append(h('button', { class: 'tab ' + (st.view === 'overview' ? 'sel' : ''), role: 'tab', 'aria-selected': st.view === 'overview', onclick: () => { st.view = 'overview'; render(); } }, 'All parts'));
   for (const p of D.PARTS) tabs.append(h('button', { class: 'tab ' + (st.view === p ? 'sel' : ''), role: 'tab', 'aria-selected': st.view === p, onclick: () => { st.view = p; holdHere(); render(); } }, h('i', { class: 'dot', style: 'background:var(--' + p + ')' }), PART_NAMES[p]));
-  head.append(tabs, h('span', { class: 'editing', id: 'editingBadge', style: '--accent:var(--' + curType() + ')' }, st.view === 'overview' ? 'Showing ' + sectionLabel(st.sec) : editingText(st.view)), h('div', { class: 'grow' }));
+  head.append(tabs, h('span', { class: 'editing', id: 'editingBadge', style: '--accent:var(--' + curType() + ')' }, st.view === 'overview' ? 'Showing ' + sectionLabel(st.sec) : editingText(st.view)));
+  if (st.view !== 'overview') { const sc = scopeSeg(st.view); if (sc) head.append(...sc); }
+  head.append(h('div', { class: 'grow' }));
   head.append(h('div', { class: 'pp seg', style: 'grid-template-columns:1fr 1fr;width:140px' },
     h('button', { class: st.rings ? 'on' : '', onclick: () => { st.rings = true; renderEditor(); } }, 'Rings'), h('button', { class: !st.rings ? 'on' : '', onclick: () => { st.rings = false; renderEditor(); } }, 'Lines')));
   if (st.view !== 'overview') {
@@ -2623,10 +2716,14 @@ function renderEditor() {
   if (st.view === 'overview') body.append(st.rings ? overviewRings() : overviewLines());
   else if (st.view === 'beat') body.append(beatWrap(st.rings ? beatRings() : beatLines()));
   else if (st.view === 'chords') body.append(chordEditor());
-  else body.append(st.rings ? noteRings(st.view) : noteEditor(st.view));
+  else body.append(st.rings ? noteRings(st.view) : beatWrap(noteEditor(st.view), st.view));
 }
 function renderEditorDynamic() { renderEditor(); }
-function clearPart() { const p = st.view; change(() => { editable(p); D.setUser(song(), p, curType(), D.emptyMat(p, song())); }); setHint('Cleared. Shadows show where the machine would start.'); }
+function clearPart() {
+  const p = st.view, tg = editTarget(p);
+  change(() => { const d = editable(p); if (d.lanes) d.lanes.forEach((l) => l.fill(0)); if (d.bars) d.bars = d.bars.map(() => null); if (d.notes) { if (tg === 'bar' || tg === 'newbar') { const N = D.meter(song()).steps, k = patBar(); d.notes = d.notes.filter((n) => Math.floor(n.s / N) !== k); } else d.notes = []; } });
+  setHint('Cleared: ' + editingText(p).replace(/^Editing /, '') + '. Shadows show where the machine would start.');
+}
 
 // --- shapes for drum lanes
 function laneShape(li, x, y, r, attrs) {
@@ -2654,11 +2751,30 @@ function beatTouches(data) {
 }
 function touchLabel(t) { return 'Bar ' + (barInSec() + 1) + ': ' + (t.fill ? 'machine fill' + (t.next ? ' into ' + t.next : '') : 'machine touches'); }
 // the beat is one pattern; the bar tabs show what the machine adds in each bar (fills)
-function beatWrap(svg) {
-  const sg = song(), L = Math.min(sg.L, secNow().bars), bar = barInSec();
-  const wrap = h('div', { class: 'ringwrap' });
-  if (L > 1) wrap.append(h('div', { class: 'bartabs' + (L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); followBar(); } }, 'Bar ' + (b + 1)))));
-  wrap.append(svg); return wrap;
+function beatWrap(svg, part) { const wrap = h('div', { class: 'ringwrap' }); const t = barTabs(part || 'beat'); if (t) wrap.append(t); wrap.append(svg); return wrap; }
+// one tab per bar of the selected section; a dot marks a bar that has its own version
+function barTabs(part, shownBar) {
+  const sg = song(), sec = secNow(), n = sec.bars, L = sg.L; if (n < 2) return null;
+  const on = shownBar == null ? selBar() : shownBar;
+  const chords = part !== 'beat' && n <= 12 ? resolvedNow().ctxChords : null;
+  const own = (b) => (part === 'overview' ? D.PARTS.some((p) => D.barOwnOf(sg, sec, p, b)) : !!D.barOwnOf(sg, sec, part, b));
+  const chordAt = (b) => { const bo = D.barOwnOf(sg, sec, 'chords', b); const c = bo ? bo.bars[b % L] : chords && chords.bars[b % L]; return c ? ' \u00b7 ' + D.chordName(c) : ''; };
+  return h('div', { class: 'bartabs' + (L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: n }, (_, b) => h('button', { class: 'bt ' + (b === on ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === on, title: own(b) ? 'Bar ' + (b + 1) + ' has its own version' : 'Bar ' + (b + 1), onclick: () => { selectBar(b); renderEditor(); followBar(); if (part === 'overview') setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (chords ? chordAt(b) : ''), own(b) ? h('span', { class: 'owndot', 'aria-label': 'own version' }) : null)));
+}
+// where your next change lands: this bar, this section, or every section of this type
+function scopeSeg(part) {
+  const sg = song(), sec = secNow(), tg = editTarget(part), many = sameTypeCount(st.sec) > 1, typ = D.TYPES[curType()].name, b = selBar();
+  if (sg.parts[part].mode === 'off') return null;
+  const barOwn = tg === 'bar', secOwn = !!D.ownOf(sg, sec, part);
+  const eff = tg === 'bar' || tg === 'newbar' ? 'bar' : tg === 'own' || tg === 'follow' || !many ? 'sec' : 'all';
+  const opts = [['bar', 'Bar ' + (b + 1) + ' only', 'Your next change lands only in bar ' + (b + 1) + ' of ' + sectionLabel(st.sec)],
+    ['sec', many ? sectionLabel(st.sec) + ' only' : 'Whole ' + sectionLabel(st.sec), 'Your next change lands in every bar of ' + sectionLabel(st.sec) + (many ? ', the other ' + typ + ' sections stay as they are' : '')]];
+  if (many) opts.push(['all', 'Every ' + typ, 'Your next change lands in every ' + typ + ' that follows the standard']);
+  const seg = h('div', { class: 'editscope', role: 'group', 'aria-label': 'Where your change lands', id: 'scopeSeg' }, h('span', { class: 'small' }, 'Change:'),
+    opts.map(([k, lab, tip]) => { const dis = (barOwn && k !== 'bar') || (secOwn && k === 'all'); return h('button', { id: 'scope_' + k, class: eff === k ? 'on' : '', 'aria-pressed': eff === k, disabled: dis, title: dis ? (barOwn ? 'Bar ' + (b + 1) + ' has its own version. Tap ↺ to let it follow the section again first.' : sectionLabel(st.sec) + ' has its own version. Use ↺ in the section panel first.') : tip, onclick: () => { st.scope = k; renderEditor(); setHint(tip + '.'); } }, lab); }));
+  const frag = [seg];
+  if (barOwn) frag.push(h('button', { id: 'barFollow', class: 'ghost', title: 'Drop the own version of this bar; it plays like the rest of the section again', onclick: () => { change(() => { delete sec.barOwn[part][b]; }); setHint('Bar ' + (b + 1) + ' follows ' + sectionLabel(st.sec) + ' again.'); } }, '\u21ba Bar ' + (b + 1) + ' follows'));
+  return frag;
 }
 // --- beat rings
 const RING_R = (li) => 182 - li * 19;
@@ -2782,6 +2898,8 @@ function noteEditor(part) {
   for (let c = 0; c <= cols; c++) if (c % (N) === 0 || D.meter(sg).beatSteps.includes(c % N)) { const grp = L === 12 && c % (4 * N) === 0; svg.append(s('line', { x1: LX + c * CW, y1: 14, x2: LX + c * CW, y2: H, stroke: c % N === 0 ? cssv('--line2') : line, 'stroke-width': grp ? 3 : c % N === 0 ? 1.5 : 0.6 })); }
   for (let b = 0; b < L; b++) { const c = chords && chords.bars[b]; svg.append(s('text', { x: LX + b * N * CW + 4, y: 12, fill: cssv('--chords'), 'font-size': 11, 'font-family': 'Figtree, sans-serif', 'font-weight': 600 }, (b + 1) + (c ? '  ' + D.chordName(c) : ''))); }
   const nx = (st2) => LX + st2 * CW, ny = (p) => 18 + (hi - p) * RH;
+  const barEdit = () => ['bar', 'newbar'].includes(editTarget(part));
+  if (barEdit()) svg.append(s('rect', { x: LX + patBar() * N * CW, y: 14, width: N * CW, height: H - 14, fill: 'none', stroke: col, 'stroke-width': 2, rx: 4, 'pointer-events': 'none', class: 'barframe' }));
   for (const n of echoNotes(part)) { if (n.p < lo || n.p > hi) continue; svg.append(s('rect', { x: nx(n.s) + 1, y: ny(n.p) + 1, width: Math.max(4, n.d * CW - 2), height: RH - 2, rx: 4, fill: col, opacity: 0.28, stroke: col, 'stroke-width': 1, class: 'echo', 'data-b': Math.floor(n.s / N), style: 'cursor:pointer' })); }
   if (st.shadows) for (const n of shadowsFor(part)) { if (n.p < lo || n.p > hi) continue; svg.append(s('rect', { x: nx(n.s) + 1, y: ny(n.p) + 1, width: Math.max(4, n.d * CW - 2), height: RH - 2, rx: 4, fill: 'none', stroke: col, 'stroke-dasharray': '3 2', 'stroke-width': 1.4, class: 'shadow', 'pointer-events': 'all', 'data-s': n.s, 'data-p': n.p, 'data-d': n.d, style: 'cursor:pointer' })); }
   const own = song().parts[part].mode === 'yours';
@@ -2797,8 +2915,10 @@ function noteEditor(part) {
     if (t.classList && t.classList.contains('echo')) { adoptBar(part, +t.dataset.b); return; }
     if (t.classList.contains('shadow')) { change(() => { const d = editable(part); const n = { s: +t.dataset.s, d: +t.dataset.d, p: +t.dataset.p, v: 92 }; d.notes.push(n); d.notes.sort((a, b) => a.s - b.s); setHint(D.hintNote(song(), resolvedNow().ctxChords, part, n)); }); previewNote(part, +t.dataset.p); return; }
     svg.setPointerCapture(e.pointerId);
-    const before = snapshot(); const d = editable(part);
     const step = D.clamp(Math.floor((x - LX) / CW), 0, cols - 1), p = D.clamp(hi - Math.floor((y - 18) / RH), lo, hi);
+    if (scopeNow(part) === 'bar' && Math.floor(step / N) !== patBar()) selectPatternBar(Math.floor(step / N)); // a tap in another bar edits that bar
+    const before = snapshot(); const d = editable(part);
+    const kb = barEdit() ? patBar() : -1; // a change of one bar stays inside that bar
     let idx = -1;
     if (t.classList.contains('note')) idx = shownIndexToReal(d, data, +t.dataset.i);
     if (idx < 0) idx = d.notes.findIndex((n) => n.p === p && step >= n.s && step < n.s + n.d);
@@ -2813,15 +2933,16 @@ function noteEditor(part) {
       drag = { mode: 'resize', idx: d.notes.indexOf(n), x, y, s0: n.s, p0: n.p, d0: n.d, moved: false, before, created: true, n, d };
       previewNote(part, p);
     }
-    drag.el = t.classList.contains('note') ? t : null; placeNote();
+    drag.kb = kb; drag.el = t.classList.contains('note') ? t : null; placeNote();
   });
   const placeNote = () => { const n = drag.n; if (!drag.el) { drag.el = s('rect', { rx: 4, fill: col, class: 'note' }); svg.insertBefore(drag.el, svg.querySelector('#lineHead')); } drag.el.setAttribute('x', nx(n.s) + 1); drag.el.setAttribute('y', ny(n.p) + 1); drag.el.setAttribute('width', Math.max(4, n.d * CW - 2)); drag.el.setAttribute('height', RH - 2); drag.el.setAttribute('opacity', 1); };
   svg.addEventListener('pointermove', (e) => {
     if (!drag) return; const [x, y] = toLocal(e); const n = drag.n; if (!n) return;
     const dx = Math.round((x - drag.x) / CW), dp = -Math.round((y - drag.y) / RH);
     if (dx || dp) { drag.moved = true; clearTimeout(lpT); }
-    if (drag.mode === 'resize') n.d = D.clamp(drag.d0 + dx, 1, cols - n.s);
-    else { n.s = D.clamp(drag.s0 + dx, 0, cols - n.d); const np = D.clamp(drag.p0 + dp, lo, hi); if (np !== n.p) { n.p = np; previewNote(part, np); } }
+    const s0 = drag.kb >= 0 ? drag.kb * N : 0, s1 = drag.kb >= 0 ? (drag.kb + 1) * N : cols;
+    if (drag.mode === 'resize') n.d = D.clamp(drag.d0 + dx, 1, s1 - n.s);
+    else { n.s = D.clamp(drag.s0 + dx, s0, s1 - n.d); const np = D.clamp(drag.p0 + dp, lo, hi); if (np !== n.p) { n.p = np; previewNote(part, np); } }
     placeNote();
   });
   const end = () => {
@@ -2848,8 +2969,7 @@ function listenOnly(before) { st.madeOwn = null; if (snapshot() !== before) { st
 function commitDrag(before) { if (snapshot() !== before) { st.hist.push(before); st.fut = []; afterChange(); } }
 function noteRings(part) {
   const sg = song(), N = D.meter(sg).steps, L = sg.L, m = shownMat(part), data = m.data;
-  if (st.ringBar == null || st.ringBar >= L) st.ringBar = 0;
-  const bar = st.ringBar;
+  const bar = patBar();
   const [lo, hi] = part === 'bass' ? [31, 55] : part === 'pad' ? [50, 79] : part === 'answer' ? [55, 79] : [60, 84];
   const scale = part === 'melody' || part === 'answer' ? D.melodyScale(sg) : D.scalePcs(sg.key);
   const pitches = []; for (let p = lo; p <= hi; p++) if (scale.includes(((p % 12) + 12) % 12)) pitches.push(p);
@@ -2857,7 +2977,7 @@ function noteRings(part) {
   const ringOf = (p) => { let bi = 0, bd = 99; pitches.forEach((q, i) => { if (Math.abs(q - p) < bd) { bd = Math.abs(q - p); bi = i; } }); return bi; };
   const wrap = h('div', { class: 'ringwrap' });
   const chords = resolvedNow().ctxChords;
-  wrap.append(h('div', { class: 'bartabs' + (L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); followBar(); } }, 'Bar ' + (b + 1) + (chords && chords.bars[b] ? ' \u00b7 ' + D.chordName(chords.bars[b]) : '')))));
+  { const t = barTabs(part); if (t) wrap.append(t); }
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'noteSvg', role: 'img', 'aria-label': PART_NAMES[part] + ' rings for bar ' + (bar + 1) + ': one ring per note of the key, high notes outside' });
   const col = cssv('--' + part), line = cssv('--line'), faint = cssv('--faint'), mut = cssv('--muted'), tint = cssv('--' + part + '-t');
   const ang = (st2) => -Math.PI / 2 + st2 / N * Math.PI * 2;
@@ -2937,11 +3057,12 @@ function noteRings(part) {
 // repeat bar 1: the copies the machine plays in your empty bars, shown as echoes
 function echoNotes(part) {
   const sg = song(); if (sg.parts[part].mode !== 'yours' || sg.parts[part].repeat === false) return [];
-  const r = resolvedNow()[part]; return r && r.notes ? r.notes.filter((n) => n.f) : [];
+  const r = resolvedNow()[part]; const N = D.meter(sg).steps, k = D.barOwnOf(sg, secNow(), part, selBar()) ? patBar() : -1;
+  return r && r.notes ? r.notes.filter((n) => n.f && Math.floor(n.s / N) !== k) : [];
 }
 function adoptBar(part, bar) {
   const N = D.meter(song()).steps, take = echoNotes(part).filter((n) => Math.floor(n.s / N) === bar);
-  change(() => { const copy = editTarget(part) === 'follow'; const d = editable(part); if (!copy) for (const n of take) d.notes.push({ s: n.s, d: n.d, p: n.p, v: n.v }); d.notes.sort((x, y) => x.s - y.s); });
+  change(() => { const copy = ['follow', 'newbar'].includes(editTarget(part)); const d = editable(part); if (!copy) for (const n of take) d.notes.push({ s: n.s, d: n.d, p: n.p, v: n.v }); d.notes.sort((x, y) => x.s - y.s); });
   take.slice(0, 4).forEach((n, k) => setTimeout(() => previewNote(part, n.p, n.v), k * 140));
   setHint('Bar ' + (bar + 1) + ' is yours now. Change it freely; the other empty bars keep repeating bar 1.');
 }
@@ -2971,11 +3092,13 @@ function chordEditor() {
   const echoOf = (b) => (!data.bars[b] && sg.parts.chords.mode === 'yours' && res && res.bars[b] && res.bars[b].f ? res.bars[b] : null);
   const shadowOf = (b) => (!data.bars[b] && !echoOf(b) ? (sh.find((x) => x.bar === b) || null) : null);
   // the row of bars: what plays where, tap one to select it
+  if (secNow().bars > L) { const t = barTabs('chords'); if (t) wrap.append(t); }
   const bars = h('div', { class: 'chordbars', style: 'grid-template-columns:repeat(4,minmax(0,1fr))' }); // a 12 bar blues reads as three lines of four
   for (let b = 0; b < L; b++) {
     const c = data.bars[b], echo = echoOf(b), shadow = shadowOf(b);
-    bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow ' : '') + (echo ? 'echo' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { st.chordBar = b; st.ringBar = b; renderEditor(); followBar(); if (c) previewChord(c); } },
-      c ? D.chordName(c) : echo ? D.chordName(echo) : shadow ? D.chordName(shadow.chord) + '?' : '?', h('small', null, 'bar ' + (b + 1) + (c && D.roman(sg.key, c) ? ' · ' + D.roman(sg.key, c) : ''))));
+    const sb = Math.floor(selBar() / L) * L + b, ownB = sb < secNow().bars && D.barOwnOf(sg, secNow(), 'chords', sb);
+    bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow ' : '') + (echo ? 'echo' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { selectPatternBar(b); renderEditor(); followBar(); if (c) previewChord(c); } },
+      c ? D.chordName(c) : echo ? D.chordName(echo) : shadow ? D.chordName(shadow.chord) + '?' : '?', h('small', null, 'bar ' + (b + 1) + (c && D.roman(sg.key, c) ? ' · ' + D.roman(sg.key, c) : ''), ownB ? h('span', { class: 'owndot', 'aria-label': 'own version' }) : null)));
   }
   wrap.append(bars);
   const cur = data.bars[st.chordBar];
@@ -2986,7 +3109,7 @@ function chordEditor() {
   const chordFor = (b, d) => { const was = data.bars[b] || data.bars[b - 1]; const seven = was ? variantOf(was) === 'seventh' : (D.GENRES[sg.genre].sevenths || 0) >= 0.5; let ch = D.diatonic(sg.key, d, seven); if (was && (was.q === 'sus2' || was.q === 'sus4')) ch = { root: ch.root, q: was.q, deg: d }; if (E_dom()) ch = { root: ch.root, q: '7', deg: d }; return ch; };
   const setCell = (b, d, adopt) => {
     const c = data.bars[b];
-    st.chordBar = b; st.ringBar = b; followBar();
+    selectPatternBar(b); followBar();
     if (c && c.deg === d && !adopt) { previewChord(c); if (tapOrRemove('c' + b + '_' + d, () => change(() => { editable('chords').bars[b] = null; }), () => setHint(D.chordName(c) + ' in bar ' + (b + 1) + '. Double tap to empty this bar.'))) return; renderEditor(); return; }
     const ch = adopt || chordFor(b, d); const prevC = b > 0 ? data.bars[b - 1] : null;
     change(() => { editable('chords').bars[b] = Object.assign({}, ch, { f: undefined }); });
@@ -3056,22 +3179,24 @@ function setVariant(v) {
 
 // --- overview
 function overviewRings() {
-  const sg = song(), N = D.meter(sg).steps, res = resolvedNow();
-  if (st.ringBar == null || st.ringBar >= sg.L) st.ringBar = 0;
-  const lb = AU.playing && !AU.preview && D.sectionAt(sg, AU.curBar) && D.sectionAt(sg, AU.curBar).i === st.sec ? D.sectionAt(sg, AU.curBar).inBar % sg.L : st.ringBar;
+  const sg = song(), N = D.meter(sg).steps, res0 = resolvedNow(), secV = secNow();
+  const atP = AU.playing && !AU.preview ? D.sectionAt(sg, AU.curBar) : null;
+  const sbar = atP && atP.i === st.sec ? atP.inBar : selBar(), lb = sbar % sg.L; // the bar of the section, and its place in the pattern
+  // each part as it plays in this very bar: a bar with its own version shows that version
+  const res = Object.assign({}, res0); for (const p of D.PARTS) { const bo = D.barOwnOf(sg, secV, p, sbar); if (bo) res[p] = bo; }
   const wrap = h('div', { class: 'ringwrap' });
-  wrap.append(h('div', { class: 'bartabs' + (sg.L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: sg.L }, (_, b) => h('button', { class: 'bt ' + (b === lb ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === lb, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); followBar(); setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (res.chords && res.chords.bars[b] ? ' \u00b7 ' + D.chordName(res.chords.bars[b]) : '')))));
+  { const t = barTabs('overview', sbar); if (t) wrap.append(t); }
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'overSvg', role: 'img', 'aria-label': 'All parts in one bar: beat outside, then bass, chords, pad, melody, and the answer in the centre. Tap a ring to edit that part.' });
   const line = cssv('--line'), faint = cssv('--faint');
   const ang = (f) => -Math.PI / 2 + f * Math.PI * 2;
   const P = (r, f) => [200 + r * Math.cos(ang(f)), 200 + r * Math.sin(ang(f))];
   const bands = { beat: [150, 190], bass: [124, 144], chords: [100, 118], pad: [82, 94], melody: [48, 76], answer: [26, 44] };
-  for (const p of D.PARTS) { const [a, b] = bands[p]; const g = s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: 'transparent', 'stroke-width': b - a + 6, style: 'cursor:pointer', 'data-part': p }); g.addEventListener('click', () => { st.view = p; st.ringBar = lb; st.chordBar = lb; render(); setHint(PART_NAMES[p] + ', bar ' + (lb + 1) + '. Change it here.'); }); svg.append(g); svg.append(s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: line, 'stroke-width': 1, 'pointer-events': 'none' })); }
+  for (const p of D.PARTS) { const [a, b] = bands[p]; const g = s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: 'transparent', 'stroke-width': b - a + 6, style: 'cursor:pointer', 'data-part': p }); g.addEventListener('click', () => { st.view = p; selectBar(sbar); render(); setHint(PART_NAMES[p] + ', bar ' + (sbar + 1) + '. Change it here.'); }); svg.append(g); svg.append(s('circle', { cx: 200, cy: 200, r: (a + b) / 2, fill: 'none', stroke: line, 'stroke-width': 1, 'pointer-events': 'none' })); }
   const off = (p) => sg.parts[p].mode === 'off';
   // beat: kick, snare/clap, hats on three sub rings
   // a part that rests in this section (or in the bar you hear) is drawn faint, so you never see what you do not hear
   const secO = sg.sections[st.sec], atO = AU.playing && !AU.preview ? D.sectionAt(sg, AU.curBar) : null, inB = atO && atO.i === st.sec ? atO.inBar : null;
-  const silent = (p) => { if (!D.partPlaysIn(sg, secO, p)) return true; if (secO.play && secO.play[p] !== undefined || D.ownOf(sg, secO, p)) return false; return inB != null && !D.partActive(sg, p, secO.type, inB, secO.bars); };
+  const silent = (p) => { if (!D.partPlaysIn(sg, secO, p)) return true; if (secO.play && secO.play[p] !== undefined || D.ownOf(sg, secO, p) || D.barOwnOf(sg, secO, p, sbar)) return false; return inB != null && !D.partActive(sg, p, secO.type, inB, secO.bars); };
   const resting = [];
   const dimFrom = (p, m) => { if (off(p) || !silent(p)) return; resting.push(PART_NAMES[p].toLowerCase()); for (const el of [...svg.childNodes].slice(m)) el.setAttribute('opacity', 0.16); };
   let mk = svg.childNodes.length;
@@ -3092,7 +3217,7 @@ function overviewRings() {
   if (res.answer && !off('answer')) { const col = cssv('--answer'); const ns = res.answer.notes.filter((n) => Math.floor(n.s / N) === lb); const ps = res.answer.notes.map((n) => n.p); const mn = Math.min(...ps, 55), mx = Math.max(...ps, 72); for (const n of ns) { const r = 30 + (n.p - mn) / Math.max(1, mx - mn) * 12; const f0 = (n.s % N) / N, f1 = Math.min(1, ((n.s % N) + n.d) / N); svg.append(arcPath(r, f0, f1 - 0.004, col, 6)); } }
   dimFrom('answer', mk);
   D.meter(sg).beatSteps.forEach((b) => { const a = P(26, b / N), c = P(196, b / N); svg.append(s('line', { x1: a[0], y1: a[1], x2: c[0], y2: c[1], stroke: line, 'stroke-width': 0.6, 'pointer-events': 'none' })); });
-  svg.append(s('text', { x: 200, y: 204, 'text-anchor': 'middle', fill: faint, 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none' }, 'bar ' + (lb + 1)));
+  svg.append(s('text', { x: 200, y: 204, 'text-anchor': 'middle', fill: faint, 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none' }, 'bar ' + (sbar + 1)));
   if (resting.length) svg.append(s('text', { x: 200, y: 226, 'text-anchor': 'middle', fill: faint, 'font-size': 8.5, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none', id: 'restNote' }, resting.join(' + ') + ' rests'));
   svg.append(s('line', { id: 'ringHead', x1: 200, y1: 200, x2: 200, y2: 6, stroke: cssv('--fg'), 'stroke-width': 2, opacity: AU.playing ? 0.85 : 0, 'pointer-events': 'none' }));
   wrap.append(svg);
@@ -3283,7 +3408,7 @@ function movePlayheads(newBar) {
     lh.setAttribute('opacity', inSec ? 0.8 : 0.2);
   }
   if (newBar && st.view === 'overview' && st.rings) { const b = $('#edbody'); if (b && !b.querySelector('.vfader')) { b.innerHTML = ''; b.append(overviewRings()); } }
-  if (newBar) document.querySelectorAll('.bt').forEach((x, i) => x.classList.toggle('now', inSec && i === at.inBar % sg.L));
+  if (newBar) document.querySelectorAll('.bt').forEach((x, i) => x.classList.toggle('now', inSec && i === at.inBar));
   if (newBar && st.view === 'chords') { document.querySelectorAll('.cbar').forEach((x, i) => x.classList.toggle('now', inSec && i === at.inBar % sg.L)); }
 }
 function startPlay(fromBar, sgOverride) {
@@ -3943,7 +4068,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, shownMat, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
