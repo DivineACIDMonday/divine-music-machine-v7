@@ -4062,9 +4062,10 @@ async function unpackSong(code) {
 function shareBase() { return !IN_CLAUDE && /^https?:$/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.host) ? location.origin + location.pathname : 'https://divineacidmonday.github.io/divine-groove-machine/'; }
 async function songLink(sg) { return shareBase() + '#s=' + (await packSong(sg || song())); }
 // your song lives in the address bar too, so copying the address shares the song
+// the groove machine keeps the address short: the song lives in your browser, a link to share comes only from Share
 async function linkInAddressBar() {
-  if (IN_CLAUDE || !history.replaceState || !/^https?:$/.test(location.protocol) || st.boot || st.listening || !song()) return;
-  try { const code = await packSong(song()); store.set('dgm-mylink-v1', code); history.replaceState(null, '', location.pathname + location.search + '#s=' + code); } catch (e) { /* the address just stays as it is */ }
+  if (IN_CLAUDE || !history.replaceState || st.listening) return;
+  if (/^#s=/.test(location.hash || '')) history.replaceState(null, '', location.pathname + location.search);
 }
 async function shareSong() {
   const sg = song(); if (!activeParts(sg).length) { toast('Nothing plays yet, so there is nothing to share.'); return; }
@@ -4088,7 +4089,7 @@ function openSharedFromLink() {
   const mine = store.get('dgm-mylink-v1', null) === code;
   unpackSong(code).then((o) => {
     loadSong(o.s); st.polished = !!o.p; renderTop();
-    if (mine) { toast('Welcome back to ' + (o.s.name || 'your song') + '.'); return; } // your own address: just keep working
+    if (mine) { linkInAddressBar(); toast('Welcome back to ' + (o.s.name || 'your song') + '.'); return; } // your own address: just keep working
     openListen();
   }).catch(() => { toast('This share link is broken or incomplete. Ask for the link again.'); history.replaceState && history.replaceState(null, '', location.pathname + location.search); openStart(); });
   return true;
