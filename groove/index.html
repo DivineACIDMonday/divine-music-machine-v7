@@ -3955,7 +3955,7 @@ async function unpackSong(code) {
   if (!o || !o.s || !o.s.sections || !o.s.parts || !o.s.mat) throw new Error('no song in link');
   return o;
 }
-function shareBase() { return !IN_CLAUDE && /^https?:$/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.host) ? location.origin + location.pathname : 'https://divineacidmonday.github.io/divine-music-machine-v7/groove/'; }
+function shareBase() { return !IN_CLAUDE && /^https?:$/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.host) ? location.origin + location.pathname : 'https://divineacidmonday.github.io/divine-groove-machine/'; }
 async function songLink(sg) { return shareBase() + '#s=' + (await packSong(sg || song())); }
 // your song lives in the address bar too, so copying the address shares the song
 async function linkInAddressBar() {
