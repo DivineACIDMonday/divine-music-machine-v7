@@ -3131,13 +3131,15 @@ function openSaveLib() {
     const item = { id: 'L' + Date.now().toString(36) + D.newSeed().toString(36).slice(0, 4), kind, part, created: Date.now(), genre: sg.genre, bpm: Math.round(sg.bpm), key: D.clone(sg.key), meter: sg.meter, L: sg.L, type: t };
     const from = sg.name && sg.name !== 'Untitled' ? sg.name + ': ' : ''; // the song it came from, so you find it back
     item.song = sg.name;
-    if (kind === 'part') { item.data = D.clone(res[part] || D.emptyMat(part, sg)); item.name = from + PART_NAMES[part] + ', ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
+    if (kind === 'song') { item.data = D.clone(sg); item.bars = D.totalBars(sg); item.name = (sg.name && sg.name !== 'Untitled' ? sg.name : 'Song') + ', whole song, ' + D.GENRES[sg.genre].name; }
+    else if (kind === 'part') { item.data = D.clone(res[part] || D.emptyMat(part, sg)); item.name = from + PART_NAMES[part] + ', ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
     else { item.data = {}; for (const p of D.PARTS) if (res[p] && D.partPlaysIn(sg, secNow(), p) && !D.isEmpty(p, res[p])) item.data[p] = D.clone(res[p]); item.name = from + 'Whole ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
     st.lib.unshift(item); persistLib(); closeOverlay(); toast('Saved to library: ' + item.name, { label: 'Open library', fn: openLibrary });
   };
   overlay(h('div', { class: 'sheet', style: 'width:min(560px,100%)' }, h('div', { class: 'hdr' }, h('h2', null, 'Save to library'), h('div', { class: 'grow' }), h('button', { class: 'ghost', onclick: closeOverlay }, 'Cancel')),
-    h('div', { class: 'small' }, 'From ' + sectionLabel(st.sec) + ' as it sounds now.'),
+    h('div', { class: 'small' }, 'The whole song, or ' + sectionLabel(st.sec) + ' as it sounds now.'),
     h('div', { class: 'doors' },
+      h('button', { class: 'door', id: 'saveSong', onclick: () => mk('song') }, ico('books'), h('b', null, 'Whole song'), h('span', null, 'The spiral with every section and part, to open again later.')),
       h('button', { class: 'door', id: 'saveWhole', onclick: () => mk('section') }, ico('bookmark'), h('b', null, 'Whole section'), h('span', null, 'All parts that play here.')),
       D.PARTS.filter((p) => sg.parts[p].mode !== 'off').map((p) => h('button', { class: 'door', id: 'save_' + p, onclick: () => mk('part', p) }, shapeIcon(p), h('b', null, 'Only ' + PART_NAMES[p].toLowerCase()), h('span', null, p === 'beat' ? 'For example just these hihats and kicks.' : 'Just this line.'))))));
 }
@@ -3153,11 +3155,13 @@ function libFigure(item) {
     else if (p === 'chords') d.bars.forEach((c, b) => { if (c) svg.append(s('rect', { x: 2 + b * 86 / d.bars.length, y: y0, width: 86 / d.bars.length - 2, height: hgt, rx: 2, fill: col, opacity: b % 2 ? 0.6 : 0.9 })); });
     else { const span = item.L * N; const ps = d.notes.map((n) => n.p); const mn = Math.min(...ps), mx = Math.max(...ps); d.notes.forEach((n) => svg.append(s('rect', { x: 2 + n.s / span * 86, y: y0 + hgt - 2 - (n.p - mn) / Math.max(1, mx - mn) * (hgt - 3), width: Math.max(1.5, n.d / span * 86), height: 2.5, rx: 1, fill: col }))); }
   };
-  if (item.kind === 'part') drawPart(item.part, item.data, 2, 24);
+  if (item.kind === 'song') { const secs = item.data.sections, tot = secs.reduce((a, x) => a + x.bars, 0); let x0 = 2; secs.forEach((x) => { const w = x.bars / tot * 86; svg.append(s('rect', { x: x0, y: 6, width: Math.max(1, w - 1), height: 16, rx: 2, fill: cssv('--' + x.type) })); x0 += w; }); }
+  else if (item.kind === 'part') drawPart(item.part, item.data, 2, 24);
   else { const ps = Object.keys(item.data); ps.forEach((p, i) => drawPart(p, item.data[p], 1 + i * (26 / ps.length), 26 / ps.length - 1)); }
   return svg;
 }
 function itemSong(item) {
+  if (item.kind === 'song') { const sg = D.clone(item.data); D.ensureTypes(sg); return sg; }
   const sg = D.newSong(item.genre, { seed: 7 });
   sg.key = D.clone(item.key); sg.meter = item.meter; sg.L = item.L; sg.bpm = item.bpm; sg.name = song() ? song().name : 'Library';
   sg.sections = [{ id: 'x', type: 'verse', bars: item.L }, { id: 'y', type: 'verse', bars: 1 }];
@@ -3183,8 +3187,8 @@ function openLibrary() {
       list.append(h('div', { class: 'lrow' },
         playB, libFigure(it),
         h('div', null, h('input', { type: 'text', value: it.name, 'aria-label': 'Name', onchange: (e) => { it.name = e.target.value || it.name; persistLib(); } }),
-          h('div', { class: 'meta' }, (isPart ? PART_NAMES[it.part] : 'Whole section') + ' · ' + D.GENRES[it.genre].name + ' · ' + it.bpm + ' bpm · ' + D.keyName(it.key) + ' · ' + it.meter)),
-        h('div', { class: 'acts' }, h('button', { onclick: () => toMachine(it) }, 'To machine'), plug, h('button', { class: 'iconbtn', 'aria-label': 'Download', title: 'Download', onclick: () => downloadItem(it, plug.value) }, ico('download')), del)));
+          h('div', { class: 'meta' }, (isPart ? PART_NAMES[it.part] : it.kind === 'song' ? 'Whole song, ' + it.bars + ' bars' : 'Whole section') + ' · ' + D.GENRES[it.genre].name + ' · ' + it.bpm + ' bpm · ' + D.keyName(it.key) + ' · ' + it.meter)),
+        h('div', { class: 'acts' }, h('button', { onclick: () => toMachine(it) }, it.kind === 'song' ? 'Open' : 'To machine'), it.kind === 'song' ? '' : plug, h('button', { class: 'iconbtn', 'aria-label': 'Download', title: 'Download', onclick: () => downloadItem(it, plug.value) }, ico('download')), del)));
     }
   };
   draw();
@@ -3194,7 +3198,7 @@ function openLibrary() {
       h('button', { onclick: () => saveFiles([{ name: 'DM_Library_' + new Date().toISOString().slice(0, 10) + '.json', data: JSON.stringify({ app: 'Divine Music Machine', copyright: D.COPYRIGHT, v: 1, items: st.lib }) }]) }, ico('download'), 'Save library file'),
       h('button', { onclick: () => $('#libIn').click() }, ico('upload'), 'Load library file')),
     list,
-    h('div', { class: 'small' }, '“To machine” puts it in the selected section as yours, moved into your song’s key; everything else bends to it.')));
+    h('div', { class: 'small' }, '“To machine” puts a part or section in the selected section as yours, moved into your song’s key; everything else bends to it. “Open” opens a whole song again; undo brings back the one you had.')));
 }
 function transposeTo(item, data, part) {
   const sg = song(); const d = D.clone(data);
@@ -3213,6 +3217,10 @@ function fitLoop(item, part, d) {
   d.notes = out; return d;
 }
 function toMachine(item) {
+  if (item.kind === 'song') { // open the whole song again; undo brings back the one you had
+    change(() => { st.song = D.clone(item.data); D.ensureTypes(st.song); st.sec = 0; st.view = 'overview'; st.loop = false; });
+    closeOverlay(); setHint(item.name + ' is open. Undo brings back the song you had.'); return;
+  }
   change(() => {
     const sg = song(), t = curType();
     const put = (p, data) => putHere(p, fitLoop(item, p, transposeTo(item, data, p)));
@@ -3223,6 +3231,12 @@ function toMachine(item) {
   closeOverlay(); setHint(item.name + ' is now in ' + (D.hasOwn(song(), secNow()) ? sectionLabel(st.sec) + ' only' : 'every ' + D.TYPES[curType()].name + ' that follows ' + sectionLabel(st.sec)) + ', as yours.');
 }
 function downloadItem(item, plugin) {
+  if (item.kind === 'song') { // every part of the song plus its structure, in one zip
+    const sg = itemSong(item), files = [];
+    for (const p of D.PARTS) { if (sg.parts[p].mode === 'off') continue; const notes = D.renderSong(sg, p, { polished: true }); if (!notes.length) continue; files.push({ name: 'DM_Lib_' + safe(item.name).slice(0, 40) + '_' + PART_NAMES[p] + '_' + item.bpm + 'bpm.mid', data: D.writeMidi([{ name: PART_NAMES[p], channel: p === 'beat' ? 9 : 0, notes: D.applyMask(sg, p, notes, p === 'beat' ? sg.parts.beat.plugin : 'plain', {}) }], { bpm: sg.bpm, meter: sg.meter, title: item.name, markers: markers(sg) }) }); }
+    files.push({ name: 'DM_Lib_' + safe(item.name).slice(0, 40) + '_Structure.mid', data: D.writeMidi([], { bpm: sg.bpm, meter: sg.meter, title: item.name, markers: markers(sg) }) });
+    saveFiles([{ name: 'DM_Lib_' + safe(item.name).slice(0, 40) + '_' + item.bpm + 'bpm.zip', data: makeZip(files), zip: true }]); return;
+  }
   const sg = itemSong(item); const files = [];
   const parts = item.kind === 'part' ? [item.part] : Object.keys(item.data);
   for (const p of parts) {
