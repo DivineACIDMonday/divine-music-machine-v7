@@ -77,6 +77,14 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .now .sec{font:700 20px/1.1 var(--display)}
 .now .bar{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 #spiral{width:100%;max-width:210px;aspect-ratio:1;align-self:center;cursor:pointer;touch-action:none}
+.lanes .lrow{display:grid;grid-template-columns:62px 26px 1fr 58px;gap:6px;align-items:center;font-size:12px}
+.lanes .lname{color:var(--muted)}
+.lanes .lsw{padding:2px 0;font-size:11px;min-height:0}
+.lanes .lsw.on{background:var(--beat);color:var(--bg);border-color:var(--beat)}
+.lanes .lval{font-size:11px;color:var(--muted);text-align:right;font-variant-numeric:tabular-nums}
+.lanes input[type=range]{width:100%;accent-color:var(--beat)}
+.ltogs{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.ltogs button.on{background:var(--fg);color:var(--bg)}
 .chips{display:flex;flex-wrap:wrap;gap:4px;position:relative}
 .chip.dragging{opacity:.35}
 .dragghost{position:fixed;z-index:60;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.35);transform:rotate(-2deg)}
@@ -967,7 +975,7 @@ E.hasBarOwn = (song, sec, part) => !!(sec && sec.barOwn && sec.barOwn[part] && O
 E.machineish = (song, sec, part) => { if (E.ownOf(song, sec, part)) return false; const P = song.parts[part]; if (P.mode === 'machine') return true; const m = song.mat[sec.type] && song.mat[sec.type][part]; return P.mode === 'yours' && (!m || m.src !== 'user' || !!m.auto); };
 // the groove machine: only the beat, always yours; keep = an existing groove keeps its hits
 E.makeGroove = function (song, keep) {
-  song.dgm = true;
+  song.dgm = true; if (!song.laneFeel) song.laneFeel = E.LANE_FEEL0();
   for (const p of E.PARTS) if (p !== 'beat') song.parts[p].mode = 'off';
   song.parts.beat.mode = 'yours';
   for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; const m = song.mat[t].beat; if (!keep || !m || m.src !== 'user') song.mat[t].beat = { src: 'user', data: E.emptyMat('beat', song) }; }
@@ -1241,6 +1249,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       if (opts.lanes) { const ln = mat.lanes.map((l) => l.map(() => 0)); ln[K][0] = 118; if (ln[CR]) ln[CR][0] = 100; return { lanes: ln }; }
       return E.applyFeel(song, part, out, gbar, opts);
     }
+    if (song.touches && !machine && inBar > 0 && type !== 'break') E.touchBar(lanes, r, N, song.kickVar, inBar); // bar 1 stays the base as you wrote it
     if (machine && type !== 'break') {
       // small per-bar variation, keep the core recognizable
       if (lb % 2 === 1 && r.chance(0.5)) { const s = 2 + r.int(N - 3); if (!lanes[HH][s] && s % 2 === 1) lanes[HH][s] = 34 + r.int(14); }
@@ -1248,8 +1257,13 @@ E.renderBar = function (song, part, gbar, res, opts) {
     }
     if (inBar === 0 && (type === 'chorus' || type === 'drop' || type === 'build' && song.genre === 'techno') && lanes[CR]) lanes[CR][0] = 104;
     else if (lanes[CR] && machine) lanes[CR] = lanes[CR].map(() => 0);
-    // fills: last bar before a new section
-    if ((type === 'fill' || isLastOfSec && nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && song.parts.beat.mode !== 'off' && type !== 'break') {
+    // groove: ghost notes, soft snares around the backbeat
+    if (E.grooveOf(song, sec).ghosts) { const g = rng(hash('ghost', song.seed, gbar)); for (let s2 = 1; s2 < N; s2++) { if (lanes[SN][s2] || lanes[CP][s2] || s2 % 2 === 0) continue; const near = lanes[SN][s2 + 1] >= 80 || lanes[SN][s2 - 1] >= 80 || lanes[CP][s2 + 1] >= 80; if (near ? g.chance(0.7) : g.chance(0.18)) lanes[SN][s2] = 30 + g.int(10); } }
+    // the fill you chose into the next section (auto: the machine's own, only before a new kind of section)
+    const fk = isLastOfSec && nextSec ? sec.fill || 'auto' : 'auto';
+    if (fk !== 'auto' && fk !== 'none') E.applyFill(song, lanes, fk, N, r);
+    if (inBar === 0 && sec !== song.sections[0]) { const prev = song.sections[si - 1]; if (prev && (prev.fill === 'gift' || prev.fill === 'crash') && lanes[CR]) lanes[CR][0] = 110; }
+    if (fk === 'auto' && (type === 'fill' || isLastOfSec && nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && song.parts.beat.mode !== 'off' && type !== 'break') {
       const st = Math.floor(N / 2);
       const fl = song.genre === 'techno' ? CP : SN;
       for (let s = st; s < N; s++) { const v = clamp(48 + Math.round((s - st) / (N - st) * 60) + r.int(8), 30, 120); if (s % (song.genre === 'techno' || type === 'build' ? 1 : 2) === 0 || s >= N - 2) lanes[fl][s] = Math.max(lanes[fl][s], v); }
@@ -1291,6 +1305,24 @@ E.renderBar = function (song, part, gbar, res, opts) {
   }
   return E.applyFeel(song, part, notes, gbar, opts);
 };
+// a drummer's small changes from bar to bar, on top of your base: a ghost hat, a dropped hat, an open hat, now and then a kick
+E.touchBar = function (lanes, r, N, kickVar, inBar) {
+  const odd = []; for (let s = 1; s < N; s += 2) odd.push(s);
+  if (r.chance(0.6)) { const s = r.pick(odd); if (!lanes[HH][s] && !lanes[OH][s]) lanes[HH][s] = 32 + r.int(16); }
+  if (r.chance(0.3)) { const hs = odd.filter((s) => lanes[HH][s] && lanes[HH][s] < 90); if (hs.length) lanes[HH][r.pick(hs)] = 0; }
+  if (inBar % 4 === 3 && r.chance(0.5)) { const s = r.pick([N - 2, Math.floor(N / 2) - 2].filter((x) => x > 0)); if (lanes[HH][s] && !lanes[OH][s]) { lanes[OH][s] = lanes[HH][s]; lanes[HH][s] = 0; } }
+  if (kickVar && inBar % 2 === 1 && r.chance(0.55)) { const cands = [3, 6, 7, 10, 11, 14].filter((s) => s < N && !lanes[K][s] && !lanes[K][s - 1] && !lanes[K][s + 1] && !(lanes[SN][s] >= 90)); if (cands.length) lanes[K][r.pick(cands)] = 70 + r.int(20); }
+};
+// a chosen fill on the last bar of a section
+E.FILLS = { auto: 'Machine fill', none: 'No fill', roll: 'Snare roll', build: 'Build-up roll', drop: 'Kick drops out', stop: 'Stop on the last beat', gift: 'Gift: silence, then crash', crash: 'Crash into next' };
+E.applyFill = function (song, lanes, kind, N, r) {
+  const half = Math.floor(N / 2), q = Math.floor(N * 3 / 4);
+  if (kind === 'roll') { for (let s = half; s < N; s++) if (s % 2 === 0 || s >= N - 2) lanes[SN][s] = Math.max(lanes[SN][s], clamp(56 + Math.round((s - half) / (N - half) * 56), 30, 118)); for (let s = half + 1; s < N; s++) lanes[K][s] = 0; }
+  else if (kind === 'build') { for (let s = 0; s < N; s++) lanes[SN][s] = Math.max(lanes[SN][s], clamp(40 + Math.round(s / N * 80), 30, 122)); }
+  else if (kind === 'drop') { lanes[K] = lanes[K].map(() => 0); if (lanes[K2]) lanes[K2] = lanes[K2].map(() => 0); }
+  else if (kind === 'stop') { lanes.forEach((l) => { for (let s = q; s < N; s++) l[s] = 0; }); }
+  else if (kind === 'gift') { lanes.forEach((l) => { for (let s = half; s < N; s++) l[s] = 0; }); }
+};
 E.chordRhythm = function (song, c, prev, r, type, first) {
   const N = E.meter(song).steps, BT = N * E.STEP;
   const voicing = E.voice(c, null, 52, 72);
@@ -1309,19 +1341,34 @@ E.chordRhythm = function (song, c, prev, r, type, first) {
 };
 
 /* ---------- feel: swing, timing, velocity ---------- */
+// groove personalities per section: swing, where each drum sits against the grid (ms, + is late), how loose, ghost notes
+// lanes: 0 kick, 1 kick 2, 2 snare, 3 clap, 4 hihat, 5 open hat, 6 perc, 7 crash
+E.GROOVES = {
+  genre: { name: 'Genre feel' },
+  straight: { name: 'Straight', swing: 50 },
+  dilla: { name: 'Dilla, lazy', swing: 55, shift: [0, 0, 22, 18, -6, -4, 8, 0], loose: 0.55 },
+  ghosts: { name: 'Ghost notes', swing: 53, ghosts: true },
+  shuffle: { name: 'Chicago shuffle', swing: 66 },
+  pushed: { name: 'Pushed, ahead', swing: 52, shift: [-8, -8, -10, -10, -12, -10, -8, 0] },
+  laidback: { name: 'Laid back', swing: 56, shift: [4, 4, 20, 16, 8, 8, 10, 0] }
+};
+E.grooveOf = (song, sec) => (sec && sec.groove && E.GROOVES[sec.groove]) || E.GROOVES.genre;
+E.LANE_FEEL0 = () => E.LANES.map(() => ({ swing: true, shift: 0 }));
 E.applyFeel = function (song, part, notes, gbar, opts) {
   if (opts.raw) return notes;
   const f = song.parts[part].feel || { x: 0, y: 0 };
-  const sw = E.swingFor(song);
+  const at = part === 'beat' && song.dgm ? E.sectionAt(song, gbar) : null, gr = at ? E.grooveOf(song, at.s) : null, lf = part === 'beat' && song.laneFeel;
+  const sw = gr && gr.swing != null ? gr.swing : E.swingFor(song);
   const tpms = (song.bpm / 60) * E.PPQ / 1000; // ticks per ms
   const r = rng(hash('feel', song.seed, part, gbar));
   const out = notes.map((n) => {
     let t = n.t;
     const st = Math.round(n.t / E.STEP);
-    if (sw > 50 && st % 2 === 1 && Math.abs(n.t - st * E.STEP) < 2) t += Math.round(((sw - 50) / 50) * E.STEP);
-    const shift = f.x * 22 * tpms; // laid back is positive
-    const jit = (r() * 2 - 1) * f.y * 14 * tpms;
-    t = Math.round(t + shift + jit);
+    const L = n.lane != null && lf ? lf[n.lane] : null;
+    if (sw > 50 && st % 2 === 1 && Math.abs(n.t - st * E.STEP) < 2 && !(L && L.swing === false)) t += Math.round(((sw - 50) / 50) * E.STEP);
+    const shift = (f.x * 22 + (gr && gr.shift && n.lane != null ? gr.shift[n.lane] || 0 : 0) + (L ? L.shift || 0 : 0)) * tpms; // laid back is positive
+    const jit = (r() * 2 - 1) * Math.max(f.y, gr && gr.loose || 0) * 14 * tpms;
+    t = Math.round(t + shift + jit); if (gbar === 0 && t < 0) t = 0;
     const vs = Math.round((r() * 2 - 1) * f.y * 16);
     return Object.assign({}, n, { t, v: clamp(n.v + vs, 1, 127) });
   });
@@ -2451,6 +2498,36 @@ function takeOver() {
   });
   setHint('The machine filled the rest around what is yours' + (grow ? ' and grew a full song structure' : '') + '. Change anything; it bends again.');
 }
+
+/* ---------- groove: per section and per lane ---------- */
+// in the section panel: the groove of this section and the fill into the next one
+function grooveRows(sg, sec) {
+  const last = st.sec === sg.sections.length - 1;
+  const gSel = h('select', { id: 'secGroove', 'aria-label': 'Groove of this section', onchange: (e) => { change(() => { if (e.target.value === 'genre') delete sec.groove; else sec.groove = e.target.value; }); setHint(sectionLabel(st.sec) + ' grooves ' + D.GROOVES[e.target.value].name.toLowerCase() + ' now. You hear it from the next bar.'); } },
+    Object.entries(D.GROOVES).map(([k, g]) => h('option', { value: k, selected: (sec.groove || 'genre') === k }, g.name)));
+  const fSel = h('select', { id: 'secFill', 'aria-label': 'Fill into the next section', disabled: last, onchange: (e) => { change(() => { if (e.target.value === 'auto') delete sec.fill; else sec.fill = e.target.value; }); setHint(last ? '' : 'Into ' + sectionLabel(st.sec + 1) + ': ' + D.FILLS[e.target.value].toLowerCase() + '.'); } },
+    Object.entries(D.FILLS).map(([k, name]) => h('option', { value: k, selected: (sec.fill || 'auto') === k }, name)));
+  return [h('label', { class: 'secrow full', for: 'secGroove' }, h('span', { class: 'small' }, 'Groove'), gSel),
+    h('label', { class: 'secrow full', for: 'secFill', title: last ? 'The last section ends the song' : 'What the beat does in the last bar, into ' + sectionLabel(st.sec + 1) }, h('span', { class: 'small' }, 'Into next'), fSel)];
+}
+// right: every lane with its swing and its place against the grid, plus the machine's touches
+function lanePanel() {
+  const sg = song(); if (!sg.laneFeel) sg.laneFeel = D.LANE_FEEL0();
+  const rows = D.LANES.map((ln, li) => {
+    const L = sg.laneFeel[li];
+    const sw = h('button', { class: 'lsw ' + (L.swing !== false ? 'on' : ''), 'aria-pressed': L.swing !== false, title: 'Swing on this lane', id: 'lsw_' + li, onclick: () => change(() => { L.swing = L.swing === false; }, { keep: true }) }, 'S');
+    const val = h('span', { class: 'lval', id: 'lval_' + li }, fmtShift(L.shift || 0));
+    const sl = h('input', { type: 'range', min: -30, max: 30, step: 1, value: L.shift || 0, 'aria-label': ln.name + ': early or late, in ms', id: 'lsh_' + li, oninput: (e) => { val.textContent = fmtShift(+e.target.value); }, onchange: (e) => change(() => { L.shift = +e.target.value; }, { keep: true }) });
+    return h('div', { class: 'lrow' }, h('span', { class: 'lname' }, ln.name), sw, sl, val);
+  });
+  const tog = (id, key, label, tip) => h('button', { id, class: sg[key] ? 'on' : '', 'aria-pressed': !!sg[key], title: tip, onclick: () => { change(() => { sg[key] = !sg[key]; }, { keep: true }); } }, label);
+  return h('div', { class: 'slot open lanes', id: 'lanePanel' },
+    h('div', { class: 'hd' }, h('span', { class: 'nm' }, 'Lanes')),
+    h('div', { class: 'small' }, 'S = swing on that lane. Slide left to play earlier, right to play later.'),
+    ...rows,
+    h('div', { class: 'ltogs' }, tog('touchesBtn', 'touches', 'Machine touches', 'Small changes from bar to bar, like a drummer: a ghost hat here and there'), tog('kickVarBtn', 'kickVar', 'Kick varies', 'Let the kick move now and then too')));
+}
+function fmtShift(v) { return v === 0 ? 'on grid' : (v < 0 ? v + ' ms' : '+' + v + ' ms'); }
 
 /* ---------- editor ---------- */
 function renderEditor() {
