@@ -88,11 +88,17 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .mixwrap{display:flex;flex-direction:column;gap:8px;width:100%;overflow:auto;padding:4px}
 .mixgrid{display:grid;gap:3px;align-items:center}
 .mixhead{display:flex;gap:3px;align-items:center}
+.mixtop{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.mixmore{display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;padding:8px 10px;margin:2px 0 6px;border:1px solid var(--beat);border-radius:10px;background:color-mix(in srgb,var(--beat) 8%,var(--panel))}
+.mmrow{display:inline-flex;gap:6px;align-items:center}
+.mmamt button{font-size:11.5px;padding:3px 8px}
+.mmamt button.on{background:var(--beat);color:var(--bg)}
+.mixcell.inrange{box-shadow:inset 0 0 0 2px var(--fg)}
 .mixfx{padding:2px 5px;min-height:0;font-size:12px}
 .mixfx .ico{width:14px;height:14px}
 .mixfx.on{background:var(--beat);color:var(--bg);border-color:var(--beat)}
-.mixprog{font-size:11px;padding:2px 4px;width:96px;margin-left:auto}
-.mixhead .mixname{width:66px;flex:none}
+.mixprog{font-size:11px;padding:2px 2px;width:78px}
+.mixhead .mixname{width:60px;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:11.5px}
 .mixgrid .mixname{font-size:12px;padding:3px 6px;text-align:left;justify-content:flex-start}
 .mixgrid .mixbar{font-size:10.5px;padding:2px 0;min-height:0}
 .mixgrid .mixbar.on{background:var(--fg);color:var(--bg)}
@@ -1335,30 +1341,54 @@ E.touchBar = function (lanes, r, N, kickVar, inBar) {
   if (inBar % 4 === 3 && r.chance(0.5)) { const s = r.pick([N - 2, Math.floor(N / 2) - 2].filter((x) => x > 0)); if (lanes[HH][s] && !lanes[OH][s]) { lanes[OH][s] = lanes[HH][s]; lanes[HH][s] = 0; } }
   if (kickVar && inBar % 2 === 1 && r.chance(0.55)) { const cands = [3, 6, 7, 10, 11, 14].filter((s) => s < N && !lanes[K][s] && !lanes[K][s - 1] && !lanes[K][s + 1] && !(lanes[SN][s] >= 90)); if (cands.length) lanes[K][r.pick(cands)] = 70 + r.int(20); }
 };
-// per drum, through the whole section: sec.laneFx[lane] = { rnd: seed (variation), prog: how it grows }
-E.PROGS = { none: 'No progression', in: 'In: thin to full', out: 'Out: full to thin', swell: 'Swell: softer to louder', fade: 'Fade: louder to softer', stair: '2 steps up, 1 back' };
+// per drum, through the section: sec.laneFx[lane] = {
+//   rnd: seed, kind: what the variation does, amt: 1 subtle, 2 medium, 3 wild, every: 1, 2, 4 or 'cr' (call 3 bars, response 5),
+//   prog: how it grows, from/to: only these bars of the section (0 based, inclusive) }
+E.PROGS = { none: 'No progression', in: 'In: thin to full', out: 'Out: full to thin', swell: 'Swell: softer to louder', fade: 'Fade: louder to softer', stair: '2 steps up, 1 back', wave: 'Wave: up, down, up', walk: 'Accent walks', open: 'Opens: closed to open hat', end16: 'Ends in 16ths', endout: 'Drops out at the end' };
+E.VARKINDS = { mix: 'Mixed', ghost: 'Ghost notes', shift: 'Shift', thin: 'Thin out', accent: 'Accents', roll: 'Rolls and flams', displace: 'Displace', euclid: 'Euclid', swap: 'Swap drum' };
+E.EVERY = { 1: 'every bar', 2: 'every 2 bars', 4: 'every 4 bars', cr: 'call 3, answer 5' };
+E.SWAP_TO = [1, 0, 3, 2, 6, 4, 4, 5]; // kick<>kick 2, snare<>clap, hihat>perc, open hat>hihat, perc>hihat, crash>open hat
+function euclid(k, n, rot) { const o = new Array(n).fill(0); if (k <= 0) return o; for (let i = 0; i < n; i++) if (Math.floor((i + 1) * k / n) !== Math.floor(i * k / n)) o[(i + rot) % n] = 1; return o; }
+E.varyLane = function (lanes, li, kind, amt, r, N) {
+  const l = lanes[li], top = Math.max(...l) || 90, on = () => l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0);
+  const okK = (s) => !(li === K && lanes[SN][s] >= 90); // never a kick on a hard snare
+  const ops = amt >= 3 ? 3 + r.int(2) : amt === 2 ? 2 : r.chance(0.75) ? 1 : 0;
+  if (kind === 'displace') { const k = amt >= 3 ? 1 + r.int(3) : 1, d = r.chance(0.5) ? k : N - k, c = l.slice(); for (let s = 0; s < N; s++) l[(s + d) % N] = c[s]; return; }
+  if (kind === 'euclid') { const n0 = on().length || 3, k = clamp(n0 + r.int(2 * amt + 1) - amt, 1, N - 1), e = euclid(k, N, r.int(N)); const v = Math.round(l.filter(Boolean).reduce((a, x) => a + x, 0) / Math.max(1, l.filter(Boolean).length)) || 90; for (let s = 0; s < N; s++) l[s] = e[s] && okK(s) ? v : 0; return; }
+  if (kind === 'swap') { const to = lanes[E.SWAP_TO[li]]; if (!to) return; const ss = on(), take = amt >= 3 ? ss : ss.filter(() => r.chance(amt === 2 ? 0.6 : 0.35)); for (const s of take) { to[s] = Math.max(to[s], l[s]); l[s] = 0; } return; }
+  if (kind === 'accent') { const ss = on(); ss.forEach((s) => { l[s] = clamp(Math.round(l[s] * (r.chance(0.3 + 0.1 * amt) ? 1.25 : 0.62 + 0.1 * (3 - amt))), 20, 124); }); return; }
+  for (let i = 0; i < ops; i++) {
+    const k = kind === 'mix' ? r.pick(['ghost', 'shift', 'thin', 'roll']) : kind;
+    const odd = []; for (let s = 1; s < N; s += 2) if (!l[s] && okK(s)) odd.push(s);
+    if (k === 'ghost' && odd.length) l[r.pick(odd)] = Math.max(24, Math.round(top * (0.32 + 0.06 * r.int(3))));
+    else if (k === 'thin') { const w = on().filter((s) => (amt >= 3 ? s !== 0 : s % 4 !== 0)); if (w.length > (amt >= 3 ? 0 : 1)) l[r.pick(w)] = 0; }
+    else if (k === 'shift') { const w = on().filter((s) => s % 4 !== 0); if (w.length) { const s = r.pick(w), t = s + r.pick([-1, 1]); if (t > 0 && t < N && !l[t] && okK(t)) { l[t] = l[s]; l[s] = 0; } } }
+    else if (k === 'roll') { const w = on().filter((s) => s + 1 < N && !l[s + 1] && okK(s + 1)); if (w.length) { const s = r.pick(w); l[s + 1] = Math.round(l[s] * 0.7); if (amt >= 3 && s + 2 < N && !l[s + 2] && okK(s + 2)) l[s + 2] = Math.round(l[s] * 0.85); } }
+  }
+};
 E.laneFxApply = function (song, sec, b, lanes, N) {
   const fx = sec.laneFx; if (!fx) return;
-  const n = Math.max(1, sec.bars - 1), stair = (k) => k - 2 * Math.floor(k / 3), stairMax = Math.max(1, stair(sec.bars - 1), stair(Math.max(0, sec.bars - 2)));
-  for (const li of Object.keys(fx)) {
-    const f = fx[li], l = lanes[li]; if (!f || !l) continue;
-    if (f.rnd && b > 0) { // a variation of this drum only; bar 1 stays your base
-      const r = rng(hash('lanefx', f.rnd, li, b));
-      if (r.chance(0.8)) {
-        const on = l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0), odd = []; for (let s = 1; s < N; s += 2) if (!l[s]) odd.push(s);
-        const pick = r.int(3);
-        if (pick === 0 && odd.length) { const s = r.pick(odd); if (!(+li === K && lanes[SN][s] >= 90)) l[s] = Math.max(28, Math.round((Math.max(...l) || 90) * 0.5)); }
-        else if (pick === 1 && on.length > 1) { const weak = on.filter((s) => s % 4 !== 0); if (weak.length) l[r.pick(weak)] = 0; }
-        else { const cand = on.filter((x) => x % 4 !== 0); const s = cand.length ? r.pick(cand) : null; if (s != null) { const t = s + r.pick([-1, 1]); if (t > 0 && t < N && !l[t] && !(+li === K && lanes[SN][t] >= 90)) { l[t] = l[s]; l[s] = 0; } } }
-      }
+  for (const key of Object.keys(fx)) {
+    const li = +key, f = fx[key], l = lanes[li]; if (!f || !l) continue;
+    const from = f.from != null ? clamp(f.from, 0, sec.bars - 1) : 0, to = f.to != null ? clamp(f.to, from, sec.bars - 1) : sec.bars - 1;
+    if (b < from || b > to) continue; // only the bars you chose
+    const span = Math.max(1, to - from), k = b - from;
+    if (f.rnd && b > 0) { // the variation; bar 1 stays your base
+      const ev = f.every || 1, cr = ev === 'cr';
+      const hit = cr ? k % 8 >= 3 : ev === 2 ? k % 2 === 1 : ev === 4 ? k % 4 === 3 : true;
+      if (hit) E.varyLane(lanes, li, f.kind || 'mix', f.amt || 1, rng(hash('lanefx', f.rnd, li, cr ? Math.floor(k / 8) : b)), N); // call and response: the answer is one phrase
     }
     if (f.prog && f.prog !== 'none') {
-      const p = f.prog === 'stair' ? stair(b) / stairMax : b / n;
-      if (f.prog === 'in' || f.prog === 'out' || f.prog === 'stair') { // keep the strongest hits, more or fewer of them
-        const keep = f.prog === 'out' ? 1 - 0.75 * p : 0.25 + 0.75 * p;
-        const on = l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0).sort((a, c) => (a % 4 === 0 ? 0 : a % 2 === 0 ? 1 : 2) - (c % 4 === 0 ? 0 : c % 2 === 0 ? 1 : 2) || l[c] - l[a] || a - c);
-        const k = Math.max(on.length ? 1 : 0, Math.ceil(on.length * keep)); on.slice(k).forEach((s) => { l[s] = 0; });
-      } else { const g = f.prog === 'swell' ? 0.45 + 0.55 * p : 1 - 0.55 * p; l.forEach((v, s) => { if (v) l[s] = clamp(Math.round(v * g), 12, 127); }); }
+      const stair = (x) => x - 2 * Math.floor(x / 3), smax = Math.max(1, stair(span), stair(Math.max(0, span - 1)));
+      const p = f.prog === 'stair' ? stair(k) / smax : f.prog === 'wave' ? 0.5 - 0.5 * Math.cos(k / span * Math.PI * 3) : k / span;
+      const keepBy = (keep) => { const on = l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0).sort((a, c) => (a % 4 === 0 ? 0 : a % 2 === 0 ? 1 : 2) - (c % 4 === 0 ? 0 : c % 2 === 0 ? 1 : 2) || l[c] - l[a] || a - c); const n = Math.max(on.length ? 1 : 0, Math.ceil(on.length * keep)); on.slice(n).forEach((s) => { l[s] = 0; }); };
+      if (f.prog === 'in' || f.prog === 'stair' || f.prog === 'wave') keepBy(0.25 + 0.75 * p);
+      else if (f.prog === 'out') keepBy(1 - 0.75 * p);
+      else if (f.prog === 'swell' || f.prog === 'fade') { const g = f.prog === 'swell' ? 0.45 + 0.55 * p : 1 - 0.55 * p; l.forEach((v, s) => { if (v) l[s] = clamp(Math.round(v * g), 12, 127); }); }
+      else if (f.prog === 'walk') { const on = l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0); if (on.length) { const acc = on[k % on.length]; on.forEach((s) => { l[s] = s === acc ? clamp(Math.round(l[s] * 1.3), 20, 124) : clamp(Math.round(l[s] * 0.7), 14, 127); }); } }
+      else if (f.prog === 'open') { const o = lanes[OH]; if (o) { const on = l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0 && s % 4 !== 0).sort((a, c) => (a % 4 === 2 ? 0 : 1) - (c % 4 === 2 ? 0 : 1) || a - c); const n = Math.round(on.length * p); /* the offbeats open first */ on.slice(0, n).forEach((s) => { o[s] = Math.max(o[s], l[s]); l[s] = 0; }); } }
+      else if (f.prog === 'end16' && b >= to - 1) { const v = Math.max(...l) || 90; for (let s = 0; s < N; s++) if (!l[s] && (b === to || s >= N / 2) && !(li === K && lanes[SN][s] >= 90)) l[s] = clamp(Math.round(v * (0.5 + 0.5 * s / N)), 20, 124); }
+      else if (f.prog === 'endout' && b >= to - 1) l.fill(0);
     }
   }
 };
@@ -2591,28 +2621,52 @@ function laneMixer() {
   const has = [], cnt = []; for (let b = 0; b < n; b++) { const keep = sec.laneOff; sec.laneOff = null; let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } sec.laneOff = keep; has.push(D.LANES.map((_, li) => !!(x && x.lanes && x.lanes[li].some(Boolean)))); cnt.push(D.LANES.map((_, li) => (x && x.lanes ? x.lanes[li].reduce((a, v) => a + v, 0) : 0))); }
   const peak = D.LANES.map((_, li) => Math.max(1, ...cnt.map((c) => c[li])));
   const fxOf = (li) => (sec.laneFx && sec.laneFx[li]) || {};
-  const setFx = (li, patch) => { sec.laneFx = Object.assign({}, sec.laneFx); const f = Object.assign({}, sec.laneFx[li], patch); if (!f.rnd) delete f.rnd; if (!f.prog || f.prog === 'none') delete f.prog; if (Object.keys(f).length) sec.laneFx[li] = f; else delete sec.laneFx[li]; if (!Object.keys(sec.laneFx).length) delete sec.laneFx; };
+  const setFx = (li, patch) => { sec.laneFx = Object.assign({}, sec.laneFx); const f = Object.assign({}, sec.laneFx[li], patch); for (const k of Object.keys(f)) if (f[k] == null || f[k] === '' || (k === 'rnd' && !f[k]) || (k === 'prog' && f[k] === 'none')) delete f[k]; if (!f.rnd) { delete f.kind; delete f.amt; delete f.every; } if (!f.rnd && !f.prog) { delete f.from; delete f.to; } if (Object.keys(f).length) sec.laneFx[li] = f; else delete sec.laneFx[li]; if (!Object.keys(sec.laneFx).length) delete sec.laneFx; };
+  const fxChange = (li, patch, msg) => { change(() => setFx(li, patch), { keep: true }); renderEditor(); if (msg) setHint(msg); };
   const wrap = h('div', { class: 'mixwrap' });
-  wrap.append(h('div', { class: 'small' }, 'Tap a cell to switch that drum off or on in that bar. Tap a drum name for the whole ' + sectionLabel(st.sec) + '. 🎲 lets one drum vary through the section, ↗ lets it grow. Bar 1 stays your base.'));
-  const tbl = h('div', { class: 'mixgrid', id: 'mixGrid', style: 'grid-template-columns:196px repeat(' + n + ',minmax(18px,1fr))' });
+  const anyRnd = sec.laneFx && Object.values(sec.laneFx).some((f) => f.rnd);
+  wrap.append(h('div', { class: 'mixtop' },
+    h('span', { class: 'small' }, 'Tap a cell: that drum off or on in that bar. 🎲 varies a drum, ↗ lets it grow, ⋯ for all choices. Bar 1 stays your base.'),
+    h('div', { class: 'grow' }),
+    h('button', { id: 'newFlow', disabled: !anyRnd, title: anyRnd ? 'New variations for every drum with a 🎲 in ' + sectionLabel(st.sec) + '; your base stays' : 'Give a drum a 🎲 first', onclick: () => { change(() => { for (const k of Object.keys(sec.laneFx)) if (sec.laneFx[k].rnd) sec.laneFx[k] = Object.assign({}, sec.laneFx[k], { rnd: D.newSeed() }); }, { keep: true }); renderEditor(); setHint('New flow: same base, a new way through ' + sectionLabel(st.sec) + '.'); } }, ico('dice'), 'New flow')));
+  const tbl = h('div', { class: 'mixgrid', id: 'mixGrid', style: 'grid-template-columns:178px repeat(' + n + ',minmax(18px,1fr))' });
   tbl.append(h('span'));
   for (let b = 0; b < n; b++) tbl.append(h('button', { class: 'mixbar ' + (b === selBar() ? 'on' : ''), title: 'Bar ' + (b + 1), onclick: () => { selectBar(b); renderEditor(); followBar(); } }, String(b + 1)));
   const toggle = (b, li) => { const m = (sec.laneOff && sec.laneOff[b]) || 0; const v = m ^ (1 << li); sec.laneOff = Object.assign({}, sec.laneOff); if (v) sec.laneOff[b] = v; else delete sec.laneOff[b]; if (!Object.keys(sec.laneOff).length) delete sec.laneOff; };
   D.LANES.forEach((ln, li) => {
-    const allOff = Array.from({ length: n }, (_, b) => D.laneIsOff(sec, b, li)).every(Boolean);
-    const fx = fxOf(li);
-    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : ''), id: 'mixRnd_' + li, title: fx.rnd ? 'Another variation of ' + ln.name + ' (shift click: none)' : 'Let ' + ln.name + ' vary through ' + sectionLabel(st.sec), 'aria-label': 'Vary ' + ln.name, onclick: (e) => { change(() => setFx(li, { rnd: e.shiftKey ? 0 : D.newSeed() }), { keep: true }); renderEditor(); setHint(e.shiftKey ? ln.name + ' plays as written again.' : ln.name + ' varies through ' + sectionLabel(st.sec) + '. Tap 🎲 again for another variation.'); } }, ico('dice'));
-    const undoRnd = fx.rnd ? h('button', { class: 'mixfx', id: 'mixRndOff_' + li, title: 'No variation for ' + ln.name, 'aria-label': 'No variation for ' + ln.name, onclick: () => { change(() => setFx(li, { rnd: 0 }), { keep: true }); renderEditor(); } }, '\u00d7') : null;
-    const prog = h('select', { class: 'mixprog', id: 'mixProg_' + li, 'aria-label': ln.name + ' progression through the section', onchange: (e) => { change(() => setFx(li, { prog: e.target.value }), { keep: true }); renderEditor(); setHint(ln.name + ': ' + D.PROGS[e.target.value].toLowerCase() + '.'); } },
-      Object.entries(D.PROGS).map(([k, t]) => h('option', { value: k, selected: (fx.prog || 'none') === k }, k === 'none' ? '\u2197 none' : '\u2197 ' + t.split(':')[0])));
-    tbl.append(h('div', { class: 'mixhead' }, h('button', { class: 'mixname', title: (allOff ? 'Switch ' : 'Mute ') + ln.name + ' in all of ' + sectionLabel(st.sec), onclick: () => { change(() => { for (let b = 0; b < n; b++) if (D.laneIsOff(sec, b, li) === allOff) toggle(b, li); }, { keep: true }); renderEditor(); } }, ln.name), dice, undoRnd, prog));
+    const allOff = Array.from({ length: n }, (_, b) => D.laneIsOff(sec, b, li)).every(Boolean), fx = fxOf(li), open = st.mixOpen === li;
+    const from = fx.from != null ? fx.from : 0, to = fx.to != null ? fx.to : n - 1, ranged = fx.from != null || fx.to != null;
+    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : ''), id: 'mixRnd_' + li, title: fx.rnd ? 'Another variation of ' + ln.name : 'Let ' + ln.name + ' vary', 'aria-label': 'Vary ' + ln.name, onclick: () => fxChange(li, { rnd: D.newSeed() }, ln.name + ' varies: ' + D.VARKINDS[fx.kind || 'mix'].toLowerCase() + ', ' + D.EVERY[fx.every || 1] + '. Tap 🎲 again for another.') }, ico('dice'));
+    const prog = h('select', { class: 'mixprog', id: 'mixProg_' + li, 'aria-label': ln.name + ' progression', onchange: (e) => fxChange(li, { prog: e.target.value }, ln.name + ': ' + D.PROGS[e.target.value].toLowerCase() + '.') },
+      Object.entries(D.PROGS).map(([k, t]) => h('option', { value: k, selected: (fx.prog || 'none') === k }, '↗ ' + (k === 'none' ? 'none' : t.split(':')[0]))));
+    const more = h('button', { class: 'mixfx ' + (open ? 'on' : ''), id: 'mixMore_' + li, title: 'All choices for ' + ln.name, 'aria-expanded': open, onclick: () => { st.mixOpen = open ? null : li; renderEditor(); } }, '⋯');
+    tbl.append(h('div', { class: 'mixhead' }, h('button', { class: 'mixname', title: (allOff ? 'Switch ' : 'Mute ') + ln.name + ' in all of ' + sectionLabel(st.sec), onclick: () => { change(() => { for (let b = 0; b < n; b++) if (D.laneIsOff(sec, b, li) === allOff) toggle(b, li); }, { keep: true }); renderEditor(); } }, ln.name), dice, prog, more));
     for (let b = 0; b < n; b++) {
-      const off = D.laneIsOff(sec, b, li), plays = has[b][li];
-      tbl.append(h('button', { class: 'mixcell ' + (off ? 'off ' : '') + (plays ? 'plays' : 'empty'), style: plays && !off ? 'opacity:' + (0.35 + 0.65 * cnt[b][li] / peak[li]).toFixed(2) : null, 'aria-pressed': !off, 'aria-label': ln.name + ', bar ' + (b + 1) + (off ? ', off' : plays ? ', on' : ', nothing to play'), 'data-lane': li, 'data-bar': b, onclick: () => { change(() => toggle(b, li), { keep: true }); renderEditor(); if (!off && plays) setHint(ln.name + ' is silent in bar ' + (b + 1) + ' now.'); } }));
+      const off = D.laneIsOff(sec, b, li), plays = has[b][li], inR = ranged && b >= from && b <= to;
+      tbl.append(h('button', { class: 'mixcell ' + (off ? 'off ' : '') + (plays ? 'plays' : 'empty') + (inR ? ' inrange' : ''), style: plays && !off ? 'opacity:' + (0.35 + 0.65 * cnt[b][li] / peak[li]).toFixed(2) : null, 'aria-pressed': !off, 'aria-label': ln.name + ', bar ' + (b + 1) + (off ? ', off' : plays ? ', on' : ', nothing to play'), 'data-lane': li, 'data-bar': b, onclick: () => { change(() => toggle(b, li), { keep: true }); renderEditor(); if (!off && plays) setHint(ln.name + ' is silent in bar ' + (b + 1) + ' now.'); } }));
     }
+    if (open) tbl.append(laneMore(li, ln, fx, n, from, to, fxChange));
   });
   wrap.append(tbl);
   return wrap;
+}
+// every choice for one drum: what the variation does, how strong, how often, which bars, favorites
+function laneMore(li, ln, fx, n, from, to, fxChange) {
+  const favs = store.get('dgm-favs-v1', []);
+  const sel = (id, label, opts, val, fn) => h('label', { class: 'mmrow' }, h('span', { class: 'small' }, label), h('select', { id, onchange: (e) => fn(e.target.value) }, Object.entries(opts).map(([k, t]) => h('option', { value: k, selected: String(val) === String(k) }, t))));
+  const bars = Object.fromEntries(Array.from({ length: n }, (_, b) => [b, 'bar ' + (b + 1)]));
+  const amt = fx.amt || 1;
+  return h('div', { class: 'mixmore', id: 'mixMorePanel', style: 'grid-column:1 / -1' },
+    h('b', null, ln.name),
+    sel('mmKind_' + li, 'Variation', D.VARKINDS, fx.kind || 'mix', (v) => fxChange(li, { kind: v, rnd: fx.rnd || D.newSeed() }, ln.name + ': ' + D.VARKINDS[v].toLowerCase() + (v === 'swap' ? ', plays as ' + D.LANES[D.SWAP_TO[li]].name.toLowerCase() + ' now and then' : '') + '.')),
+    h('div', { class: 'mmrow' }, h('span', { class: 'small' }, 'Strength'), h('div', { class: 'seg mmamt' }, [[1, 'subtle'], [2, 'medium'], [3, 'wild']].map(([k, t]) => h('button', { id: 'mmAmt_' + li + '_' + k, class: amt === k ? 'on' : '', onclick: () => fxChange(li, { amt: k, rnd: fx.rnd || D.newSeed() }, ln.name + ' varies ' + t + '.') }, t)))),
+    sel('mmEvery_' + li, 'How often', D.EVERY, fx.every || 1, (v) => fxChange(li, { every: v === 'cr' ? 'cr' : +v, rnd: fx.rnd || D.newSeed() }, ln.name + ' varies ' + D.EVERY[v] + '.')),
+    sel('mmFrom_' + li, 'From', bars, from, (v) => fxChange(li, { from: +v, to: Math.max(+v, to) }, ln.name + ': only bars ' + (+v + 1) + ' to ' + (Math.max(+v, to) + 1) + '.')),
+    sel('mmTo_' + li, 'To', bars, to, (v) => fxChange(li, { to: +v, from: Math.min(+v, from) }, ln.name + ': only bars ' + (Math.min(+v, from) + 1) + ' to ' + (+v + 1) + '.')),
+    h('div', { class: 'mmrow' },
+      h('button', { id: 'mmFav_' + li, disabled: !fx.rnd && !fx.prog, title: 'Keep this way of varying for later tracks', onclick: () => { const name = [D.VARKINDS[fx.kind || 'mix'], ['', 'subtle', 'medium', 'wild'][fx.amt || 1], D.EVERY[fx.every || 1], fx.prog ? D.PROGS[fx.prog].split(':')[0] : ''].filter(Boolean).join(', '); const keep = { kind: fx.kind, amt: fx.amt, every: fx.every, prog: fx.prog, rnd: fx.rnd }; const list = store.get('dgm-favs-v1', []).filter((x) => x.name !== name); list.unshift({ name, fx: keep }); store.set('dgm-favs-v1', list.slice(0, 30)); renderEditor(); setHint('♥ Kept: ' + name + '.'); } }, '♥ Keep'),
+      favs.length ? h('select', { id: 'mmFavs_' + li, 'aria-label': 'Use a kept variation', onchange: (e) => { const f = favs[+e.target.value]; if (f) fxChange(li, Object.assign({ kind: null, amt: null, every: null, prog: null }, f.fx), ln.name + ': ' + f.name + '.'); } }, h('option', { value: '' }, '♥ Use a kept one'), favs.map((f, i) => h('option', { value: i }, f.name))) : null,
+      h('button', { class: 'ghost', id: 'mmClear_' + li, title: 'No variation and no progression for ' + ln.name, onclick: () => fxChange(li, { rnd: 0, prog: 'none', from: null, to: null }, ln.name + ' plays as written again.') }, '× Plain')));
 }
 /* ---------- tap it in: pads under the beat, or keys 1 to 8 while it plays ---------- */
 function tapPads() {
@@ -3531,7 +3585,7 @@ function openHelp() {
       row('Sections', 'Drag the chips to reorder. + adds one, the dice by the spiral gives a whole new arrangement.'),
       row('Groove', 'Per section in the panel on the left: straight, Dilla, ghost notes, shuffle, pushed or laid back. Into next picks the fill into the next section.'),
       row('Lanes', 'On the right: swing on or off per drum, slide it earlier or later. Machine touches and Kick varies add a drummer’s small changes.'),
-      row('Mixer', 'Every drum, every bar of the section: tap to switch it off or on. The dice lets one drum vary through the section; ↗ lets it grow: in, out, swell, fade, or 2 steps up and 1 back.'),
+      row('Mixer', 'Every drum, every bar of the section: tap to switch it off or on. 🎲 lets one drum vary, ↗ lets it grow. ⋯ opens every choice: the kind of variation, subtle to wild, how often (call and answer too), which bars, and ♥ to keep a way of varying for later tracks. New flow gives every 🎲 of the section a new variation.'),
       row('Pads 1 to 8', 'Tap a drum to hear it. While it plays, tapping puts the hit in the bar you hear.'),
       row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
       row('Spiral', 'Your song from the centre out. Tap a colour to select that section; while playing, it jumps there.'),
