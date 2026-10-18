@@ -1615,6 +1615,7 @@ E.PLUGINS = {
   xo: { name: 'XLN XO', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
   impact: { name: 'Impact XT', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
   tekno: { name: 'BABY Audio Tekno', parts: ['beat'], drums: [36, 37, 38, 45, 40, 42, 46, 53] },
+  beatmaker: { name: 'UJAM Beatmaker', parts: ['beat'], drums: [36, 37, 38, 39, 42, 46, 47, 49] }, // instrument mode: BD 1, BD 2, Snare 1, Clap, HH 1, HH 3, fx 1, Cymbals 1
   silk2: Object.assign({ name: 'Virtual Guitarist Silk 2', parts: ['chords', 'melody', 'bass'] }, clone(VG)),
   iron2: Object.assign({ name: 'Virtual Guitarist Iron 2', parts: ['chords', 'melody', 'bass'] }, clone(VG)),
   cinedream: Object.assign({ name: 'Virtual Guitarist Cinedream', parts: ['chords', 'melody', 'bass'] }, clone(VG)),
@@ -3503,8 +3504,8 @@ function deliveryNo(bump) {
   if (bump) { const hh = songHash(); if (st.lastDeliveredHash !== hh || !st.sessionNo) { n++; store.set('dgm-counter-v1', n); st.sessionNo = n; st.lastDeliveredHash = hh; } return String(st.sessionNo).padStart(3, '0'); }
   return String(st.lastDeliveredHash === songHash() && st.sessionNo ? st.sessionNo : n + 1).padStart(3, '0');
 }
-const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
-function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
+const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
+function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + no + '.mid'; } // a beat has no key
 function markers(sg) { let b = 0; const BT = D.barTicks(sg); return sg.sections.map((x, i) => { const m = { t: b * BT, text: sectionLabelFor(sg, i) }; b += x.bars; return m; }); }
 function sectionLabelFor(sg, i) { const t = sg.sections[i].type; const k = sg.sections.slice(0, i + 1).filter((x) => x.type === t).length; return D.TYPES[t].name + ' ' + k; }
 function buildPartFile(part, polished, plugin, mode) {
@@ -3527,7 +3528,8 @@ async function deliverLanes() {
   D.LANES.forEach((ln, li) => { const data = buildLaneFile(li); if (data) files.push({ name: fileName('Beat_' + (li + 1) + '_' + ln.name.replace(/\s+/g, ''), no, '', sg.parts.beat.plugin), data }); });
   if (!files.length) { toast('Nothing plays yet, so there is no MIDI to make.'); return; }
   files.push({ name: fileName('Structure', no), data: D.writeMidi([], { bpm: sg.bpm, meter: sg.meter, title: sg.name, markers: markers(sg) }) });
-  await saveFiles([{ name: 'DM_' + safe(sg.name) + '_Lanes_' + Math.round(sg.bpm) + 'bpm_' + no + '.zip', data: makeZip(files), zip: true }]);
+  files.pop(); // the markers are inside every lane file already
+  await saveFiles(files);
   renderTop();
 }
 // UJAM parts with phrases come as two files: Player and Instrument
@@ -3557,6 +3559,7 @@ async function saveFiles(files) {
     catch (e) { if (e && e.code === 'declined') toast('Download cancelled.'); else toast('Download did not work: ' + ((e && e.message) || 'unknown reason')); return false; }
   }
   for (let i = 0; i < files.length; i++) {
+    if (i) await new Promise((r) => setTimeout(r, 350)); // browsers drop downloads that come too fast
     const f = files[i]; const blob = new Blob([f.data], { type: /\.json$/.test(f.name) ? 'application/json' : /\.zip$/.test(f.name) ? 'application/zip' : 'audio/midi' });
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = f.name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000);
     if (i < files.length - 1) await new Promise((r) => setTimeout(r, 450));
@@ -3788,7 +3791,7 @@ function openDeliver() {
   const tbl = h('table', { class: 'dtab' });
   tbl.append(h('tr', null, h('th', null, 'Part'), h('th', null, 'Played by'), h('th', null, 'File'), h('th', null, '')));
   const active = activeParts(sg);
-  for (const p of D.PARTS) {
+  for (const p of ['beat']) { // the groove machine: only the beat
     const on = active.includes(p);
     const sel = h('select', { id: 'dplug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { sg.parts[p].plugin = e.target.value; saveSession(); renderRight(); renderTop(); openDeliver(); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === sg.parts[p].plugin }, D.PLUGINS[k].name)));
     const vers = on ? versionsOf(sg.parts[p].plugin) : [null];
@@ -3807,10 +3810,10 @@ function openDeliver() {
     h('div', { style: 'display:flex;gap:8px;align-items:center;flex-wrap:wrap' }, h('label', { for: 'dName', class: 'small' }, 'Name of the production'), nameIn),
     sg.genre === 'free' ? h('div', { class: 'freebox' }, h('h3', null, 'Your Free flow song'), suggestionBox(true)) : null,
     h('div', { class: 'scroller' }, tbl),
-    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { class: 'primary', id: 'deliverAll', onclick: () => deliverFiles(active.flatMap((p) => versionsOf(sg.parts[p].plugin).map((v) => p + (v ? ':' + v : ''))).concat(['structure']), true) }, ico('download'), 'Download all as one .zip'),
-      h('span', { class: 'small' }, 'Everything as it is right now, in one .zip. The buttons per row download single .mid files. Drop them on bar 1 in Studio One.')),
-    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { id: 'deliverLanes', onclick: deliverLanes }, ico('download'), 'One MIDI per lane (.zip)'),
-      h('span', { class: 'small' }, 'Every drum in its own file, for a multi out setup: kick, snare, hats each on their own track.')),
+    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { class: 'primary', id: 'deliverAll', onclick: () => deliverFiles(['beat']) }, ico('download'), 'Download beat (.mid)'),
+      h('span', { class: 'small' }, 'One .mid file, the section markers inside. Drop it on bar 1 in Studio One.')),
+    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { id: 'deliverLanes', onclick: deliverLanes }, ico('download'), 'One MIDI per lane'),
+      h('span', { class: 'small' }, 'Every drum in its own .mid file, for a multi out setup: kick, snare, hats each on their own track.')),
 
     // UJAM info only explains the files; folded away so the parts list keeps its room
     ujUsed ? h('details', { id: 'ujDetails' }, h('summary', { style: 'cursor:pointer' }, 'UJAM: zones, octave fix and phrase keys'), ujamPanel(), h('details', null, h('summary', { style: 'cursor:pointer' }, 'Advanced: choose UJAM phrase keys yourself'), phraseKeysPanel()))
