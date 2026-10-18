@@ -99,6 +99,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .ringwrap{display:flex;flex-direction:column;gap:6px;width:100%;height:100%}
 .ringwrap>svg{flex:1;min-height:0;width:100%;display:block;touch-action:none;user-select:none}
 .bartabs{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.bartabs.rows4{display:grid;grid-template-columns:repeat(4,auto);justify-content:center}
 .bt{font-size:12px;padding:4px 9px}
 .bt.on{background:var(--fg);color:var(--bg)}
 .bt.now{box-shadow:inset 0 -2px 0 var(--accent)}
@@ -2429,7 +2430,8 @@ function noteEditor(part) {
     svg.append(s('line', { x1: LX, y1: y, x2: W, y2: y, stroke: line, 'stroke-width': 0.5 }));
     if (lit) svg.append(s('text', { x: LX - 4, y: y + RH - 3, 'text-anchor': 'end', fill: pc === sg.key.root ? col : mut, 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace' }, D.pcName(pc) + (pc === 0 ? (Math.floor(p / 12) - 2) : '')));
   }
-  for (let c = 0; c <= cols; c++) if (c % (N) === 0 || D.meter(sg).beatSteps.includes(c % N)) svg.append(s('line', { x1: LX + c * CW, y1: 14, x2: LX + c * CW, y2: H, stroke: c % N === 0 ? cssv('--line2') : line, 'stroke-width': c % N === 0 ? 1.5 : 0.6 }));
+  if (L === 12) svg.append(s('rect', { x: LX + 4 * N * CW, y: 14, width: 4 * N * CW, height: H - 14, fill: cssv('--fg'), opacity: 0.035, 'pointer-events': 'none' }));
+  for (let c = 0; c <= cols; c++) if (c % (N) === 0 || D.meter(sg).beatSteps.includes(c % N)) { const grp = L === 12 && c % (4 * N) === 0; svg.append(s('line', { x1: LX + c * CW, y1: 14, x2: LX + c * CW, y2: H, stroke: c % N === 0 ? cssv('--line2') : line, 'stroke-width': grp ? 3 : c % N === 0 ? 1.5 : 0.6 })); }
   for (let b = 0; b < L; b++) { const c = chords && chords.bars[b]; svg.append(s('text', { x: LX + b * N * CW + 4, y: 12, fill: cssv('--chords'), 'font-size': 11, 'font-family': 'Figtree, sans-serif', 'font-weight': 600 }, (b + 1) + (c ? '  ' + D.chordName(c) : ''))); }
   const nx = (st2) => LX + st2 * CW, ny = (p) => 18 + (hi - p) * RH;
   for (const n of echoNotes(part)) { if (n.p < lo || n.p > hi) continue; svg.append(s('rect', { x: nx(n.s) + 1, y: ny(n.p) + 1, width: Math.max(4, n.d * CW - 2), height: RH - 2, rx: 4, fill: col, opacity: 0.28, stroke: col, 'stroke-width': 1, class: 'echo', 'data-b': Math.floor(n.s / N), style: 'cursor:pointer' })); }
@@ -2507,7 +2509,7 @@ function noteRings(part) {
   const ringOf = (p) => { let bi = 0, bd = 99; pitches.forEach((q, i) => { if (Math.abs(q - p) < bd) { bd = Math.abs(q - p); bi = i; } }); return bi; };
   const wrap = h('div', { class: 'ringwrap' });
   const chords = resolvedNow().ctxChords;
-  wrap.append(h('div', { class: 'bartabs', role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); } }, 'Bar ' + (b + 1) + (chords && chords.bars[b] ? ' \u00b7 ' + D.chordName(chords.bars[b]) : '')))));
+  wrap.append(h('div', { class: 'bartabs' + (L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: L }, (_, b) => h('button', { class: 'bt ' + (b === bar ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === bar, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); } }, 'Bar ' + (b + 1) + (chords && chords.bars[b] ? ' \u00b7 ' + D.chordName(chords.bars[b]) : '')))));
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'noteSvg', role: 'img', 'aria-label': PART_NAMES[part] + ' rings for bar ' + (bar + 1) + ': one ring per note of the key, high notes outside' });
   const col = cssv('--' + part), line = cssv('--line'), faint = cssv('--faint'), mut = cssv('--muted'), tint = cssv('--' + part + '-t');
   const ang = (st2) => -Math.PI / 2 + st2 / N * Math.PI * 2;
@@ -2621,7 +2623,7 @@ function chordEditor() {
   const echoOf = (b) => (!data.bars[b] && sg.parts.chords.mode === 'yours' && res && res.bars[b] && res.bars[b].f ? res.bars[b] : null);
   const shadowOf = (b) => (!data.bars[b] && !echoOf(b) ? (sh.find((x) => x.bar === b) || null) : null);
   // the row of bars: what plays where, tap one to select it
-  const bars = h('div', { class: 'chordbars', style: 'grid-template-columns:repeat(' + (L === 12 ? 6 : 4) + ',minmax(0,1fr))' });
+  const bars = h('div', { class: 'chordbars', style: 'grid-template-columns:repeat(4,minmax(0,1fr))' }); // a 12 bar blues reads as three lines of four
   for (let b = 0; b < L; b++) {
     const c = data.bars[b], echo = echoOf(b), shadow = shadowOf(b);
     bars.append(h('button', { class: 'cbar ' + (b === st.chordBar ? 'sel ' : '') + (c ? '' : 'empty ') + (shadow ? 'shadow ' : '') + (echo ? 'echo' : ''), id: 'cbar' + b, 'aria-label': 'Bar ' + (b + 1) + (c ? ', ' + D.chordName(c) : ', empty'), onclick: () => { st.chordBar = b; st.ringBar = b; renderEditor(); if (c) previewChord(c); } },
@@ -2654,7 +2656,7 @@ function chordEditor() {
     const pad = L === 12 ? 0.03 : 0.05;
     svg.append(arc(R(6) + 16, ang(st.chordBar) + 0.01, ang(st.chordBar + 1) - 0.01, { stroke: tint, 'stroke-width': 8 }));
     for (const d of degs) for (let b = 0; b < L; b++) svg.append(arc(R(d), ang(b) + pad, ang(b + 1) - pad, { stroke: d === 0 ? tint : line, 'stroke-width': 15, opacity: d === 0 ? 0.9 : 0.55, class: 'ccell', 'data-b': b, 'data-d': d, style: 'cursor:pointer' }));
-    for (let b = 0; b < L; b++) { const a = ang(b); svg.append(s('line', { x1: 200 + 40 * Math.cos(a), y1: 200 + 40 * Math.sin(a), x2: 200 + 192 * Math.cos(a), y2: 200 + 192 * Math.sin(a), stroke: cssv('--line2'), 'stroke-width': 1, 'pointer-events': 'none' })); const am = ang(b + 0.5); svg.append(s('text', { x: 200 + 194 * Math.cos(am), y: 200 + 194 * Math.sin(am) + 3, 'text-anchor': 'middle', fill: b === st.chordBar ? col : mut, 'font-size': 9.5, 'font-weight': b === st.chordBar ? 700 : 400, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none' }, String(b + 1))); }
+    for (let b = 0; b < L; b++) { const a = ang(b); svg.append(s('line', { x1: 200 + 40 * Math.cos(a), y1: 200 + 40 * Math.sin(a), x2: 200 + 192 * Math.cos(a), y2: 200 + 192 * Math.sin(a), stroke: L === 12 && b % 4 === 0 ? fg : cssv('--line2'), 'stroke-width': L === 12 && b % 4 === 0 ? 1.6 : 1, opacity: L === 12 && b % 4 === 0 ? 0.5 : 1, 'pointer-events': 'none' })); const am = ang(b + 0.5); svg.append(s('text', { x: 200 + 194 * Math.cos(am), y: 200 + 194 * Math.sin(am) + 3, 'text-anchor': 'middle', fill: b === st.chordBar ? col : mut, 'font-size': 9.5, 'font-weight': b === st.chordBar ? 700 : 400, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none' }, String(b + 1))); }
     const mark = (b, d, c, kind) => { const a0 = ang(b) + pad, a1 = ang(b + 1) - pad, r = R(d); svg.append(arc(r, a0, a1, kind === 'own' ? { stroke: col, 'stroke-width': 17, class: 'ccell', 'data-b': b, 'data-d': d, style: 'cursor:pointer' } : { stroke: col, 'stroke-width': 15, opacity: kind === 'echo' ? 0.35 : 0.9, 'stroke-dasharray': kind === 'shadow' ? '4 3' : null, fill: 'none', class: 'ccell', 'data-b': b, 'data-d': d, 'data-adopt': kind, style: 'cursor:pointer' })); const am = (a0 + a1) / 2; svg.append(s('text', { x: 200 + r * Math.cos(am), y: 200 + r * Math.sin(am) + 3.5, 'text-anchor': 'middle', fill: kind === 'own' ? cssv('--bg') : fg, 'font-size': L === 12 ? 8 : 10, 'font-weight': 700, 'font-family': 'Figtree, sans-serif', 'pointer-events': 'none' }, D.chordName(c))); };
     for (let b = 0; b < L; b++) { const c = data.bars[b], e = echoOf(b), shd = shadowOf(b); if (c && c.deg >= 0) mark(b, c.deg, c, 'own'); else if (e && e.deg >= 0) mark(b, e.deg, e, 'echo'); else if (shd && shd.chord.deg >= 0) mark(b, shd.chord.deg, shd.chord, 'shadow'); }
     for (const d of degs) svg.append(s('text', { x: 196, y: 200 - R(d) + 3.5, 'text-anchor': 'end', fill: d === 0 ? col : mut, 'font-size': 8.5, 'font-family': 'IBM Plex Mono, monospace', 'pointer-events': 'none' }, name(d)));
@@ -2667,6 +2669,7 @@ function chordEditor() {
     svg = s('svg', { viewBox: '0 0 ' + W + ' ' + H, class: 'wheel', id: 'chordSvg', role: 'img', 'aria-label': 'Chord lines: one row per chord of ' + D.keyName(sg.key) + ', one column per bar' });
     const y = (d) => 18 + (6 - d) * RH;
     svg.append(s('rect', { x: LX + st.chordBar * CW, y: 14, width: CW, height: H - 14, fill: tint, opacity: 0.5 }));
+    if (L === 12) { svg.append(s('rect', { x: LX + 4 * CW, y: 14, width: 4 * CW, height: H - 14, fill: fg, opacity: 0.04, 'pointer-events': 'none' })); for (const g of [4, 8]) svg.append(s('line', { x1: LX + g * CW, y1: 14, x2: LX + g * CW, y2: H, stroke: cssv('--line2'), 'stroke-width': 2.5, 'pointer-events': 'none' })); }
     for (let b = 0; b < L; b++) svg.append(s('text', { x: LX + b * CW + CW / 2, y: 11, 'text-anchor': 'middle', fill: b === st.chordBar ? col : mut, 'font-size': 10, 'font-family': 'IBM Plex Mono, monospace' }, 'bar ' + (b + 1)));
     for (const d of degs) {
       svg.append(s('text', { x: LX - 8, y: y(d) + RH / 2 - 1, 'text-anchor': 'end', fill: d === 0 ? col : fg, 'font-size': 12, 'font-weight': 600, 'font-family': 'Figtree, sans-serif' }, name(d)));
@@ -2709,7 +2712,7 @@ function overviewRings() {
   if (st.ringBar == null || st.ringBar >= sg.L) st.ringBar = 0;
   const lb = AU.playing && !AU.preview && D.sectionAt(sg, AU.curBar) && D.sectionAt(sg, AU.curBar).i === st.sec ? D.sectionAt(sg, AU.curBar).inBar % sg.L : st.ringBar;
   const wrap = h('div', { class: 'ringwrap' });
-  wrap.append(h('div', { class: 'bartabs', role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: sg.L }, (_, b) => h('button', { class: 'bt ' + (b === lb ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === lb, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (res.chords && res.chords.bars[b] ? ' \u00b7 ' + D.chordName(res.chords.bars[b]) : '')))));
+  wrap.append(h('div', { class: 'bartabs' + (sg.L === 12 ? ' rows4' : ''), role: 'tablist', 'aria-label': 'Bar' }, Array.from({ length: sg.L }, (_, b) => h('button', { class: 'bt ' + (b === lb ? 'on' : ''), 'data-bar': b, role: 'tab', 'aria-selected': b === lb, onclick: () => { st.ringBar = b; st.chordBar = b; renderEditor(); setHint('Bar ' + (b + 1) + ' of ' + sectionLabel(st.sec) + '. Tap a ring to change that part in this bar.'); } }, 'Bar ' + (b + 1) + (res.chords && res.chords.bars[b] ? ' \u00b7 ' + D.chordName(res.chords.bars[b]) : '')))));
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'overSvg', role: 'img', 'aria-label': 'All parts in one bar: beat outside, then bass, chords, pad, melody, and the answer in the centre. Tap a ring to edit that part.' });
   const line = cssv('--line'), faint = cssv('--faint');
   const ang = (f) => -Math.PI / 2 + f * Math.PI * 2;
@@ -2760,7 +2763,7 @@ function overviewLines() {
   const H = 20 + Object.values(lanesH).reduce((a, b) => a + b + 12, 0);
   const svg = s('svg', { viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', id: 'overSvg', role: 'img', 'aria-label': 'All parts as lines over the loop' });
   const line = cssv('--line'), mut = cssv('--muted');
-  for (let b = 0; b <= L; b++) svg.append(s('line', { x1: LX + b * N * CW, y1: 10, x2: LX + b * N * CW, y2: H, stroke: cssv('--line2'), 'stroke-width': 1 }));
+  for (let b = 0; b <= L; b++) svg.append(s('line', { x1: LX + b * N * CW, y1: 10, x2: LX + b * N * CW, y2: H, stroke: cssv('--line2'), 'stroke-width': L === 12 && b % 4 === 0 ? 3 : 1 }));
   let y = 18;
   for (const p of D.PARTS) {
     const hgt = lanesH[p], col = cssv('--' + p);
