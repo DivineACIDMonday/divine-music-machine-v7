@@ -121,6 +121,8 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .secedit .faint{color:var(--faint)}
 .chip.add.sel{border-color:var(--fg)}
 .owndot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-left:4px;vertical-align:middle;opacity:.8}
+.now{position:relative}
+.structdice{position:absolute;top:0;right:0}
 .secparts{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px}
 .secparts button{font-size:11.5px;padding:5px 2px}
 .cbar.echo{opacity:.55;border-style:dashed}
@@ -525,9 +527,9 @@ E.isEmpty = function (part, m) {
 // which section type of a yours part holds the user's main material
 E.userSource = function (song, part, type) {
   const m = song.mat[type] && song.mat[type][part];
-  if (m && m.src === 'user' && (!E.isEmpty(part, m.data) || m.auto)) return { type, data: m.data, own: true, auto: !!m.auto }; // an untouched empty copy means silence here
+  if (m && m.src === 'user' && (!E.isEmpty(part, m.data) || m.auto)) return { type, data: m.data, own: true, auto: !!m.auto, lead: !!m.lead }; // an untouched empty copy means silence here
   const pref = [type, 'verse', 'chorus', 'prechorus', 'drop', 'build', 'intro', 'break', 'fill', 'outro'];
-  for (const t of pref) { const x = song.mat[t] && song.mat[t][part]; if (x && x.src === 'user' && !E.isEmpty(part, x.data)) return { type: t, data: x.data, own: t === type, auto: !!x.auto }; }
+  for (const t of pref) { const x = song.mat[t] && song.mat[t][part]; if (x && x.src === 'user' && !E.isEmpty(part, x.data)) return { type: t, data: x.data, own: t === type, auto: !!x.auto, lead: !!x.lead }; }
   return null;
 };
 
@@ -889,10 +891,10 @@ function dedupeMono(notes) {
 E.resolveType = function (song, type) {
   const out = {}, ctx = {};
   const P = song.parts;
-  const autos = {};
-  const userOf = (part) => { if (P[part].mode !== 'yours') return null; const u = E.userSource(song, part, type); if (u && u.auto) autos[part] = true; return u ? E.deriveUser(song, part, u, type) : null; };
+  const autos = {}, quiet = {}; // autos: untouched copies (keep the machine's habits); quiet: copies that do not lead yet
+  const userOf = (part) => { if (P[part].mode !== 'yours') return null; const u = E.userSource(song, part, type); if (u && u.auto) { autos[part] = true; if (!u.lead) quiet[part] = true; } return u ? E.deriveUser(song, part, u, type) : null; };
   const mel = userOf('melody'), bas = userOf('bass'), chu = userOf('chords'), bea = userOf('beat');
-  ctx.melodyUser = autos.melody ? null : mel; ctx.bassUser = autos.bass ? null : bas; // a copy you have not touched yet does not lead
+  ctx.melodyUser = quiet.melody ? null : mel; ctx.bassUser = quiet.bass ? null : bas; // a copy you have not touched yet does not lead
   const seedOf = (part) => hash(P[part].seed, type, song.genre, song.key.root, song.key.scale, song.L, song.meter);
   // chords
   if (P.chords.mode === 'yours') {
@@ -913,10 +915,10 @@ E.resolveType = function (song, type) {
   // your bass and melody: empty bars repeat your first bar, along the chords
   const rep = (part, d) => (d && P[part].repeat !== false && !autos[part] ? E.fillBars(song, part, d, ctx.chords) : d); // an untouched copy is complete already
   const basF = rep('bass', bas), melF = rep('melody', mel);
-  ctx.bassUser = autos.bass ? null : basF; ctx.melodyUser = autos.melody ? null : melF;
+  ctx.bassUser = quiet.bass ? null : basF; ctx.melodyUser = quiet.melody ? null : melF;
   // beat
   if (P.beat.mode === 'yours') out.beat = bea || E.emptyMat('beat', song);
-  else if (P.beat.mode === 'machine') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !autos.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
+  else if (P.beat.mode === 'machine') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !quiet.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
   else out.beat = null;
   ctx.beat = out.beat;
   // bass
@@ -1917,7 +1919,7 @@ function editable(part, global) {
   if (P.mode === 'yours') {
     const m = sg.mat[t][part];
     if (!m || m.src !== 'user') { const u = D.userSource(sg, part, t); D.setUser(sg, part, t, u ? D.clone(D.deriveUser(sg, part, u, t)) : D.emptyMat(part, sg)); }
-    if (!global) delete sg.mat[t][part].auto; // touched now: from here it leads and the machine bends to it
+    if (!global) { delete sg.mat[t][part].auto; delete sg.mat[t][part].lead; } // touched now: from here it leads and the machine bends to it
     return sg.mat[t][part].data;
   }
   const wasOff = P.mode === 'off';
@@ -1926,7 +1928,7 @@ function editable(part, global) {
   for (const ty of types) { const r = D.resolveType(sg, ty)[part]; keep[ty] = r ? D.clone(r) : D.emptyMat(part, sg); }
   P.mode = 'yours';
   for (const ty of types) if (!(sg.mat[ty][part] && sg.mat[ty][part].src === 'user')) { D.setUser(sg, part, ty, wasOff ? D.emptyMat(part, sg) : keep[ty]); if (!wasOff) sg.mat[ty][part].auto = true; }
-  if (!global) delete sg.mat[t][part].auto;
+  if (!global) { delete sg.mat[t][part].auto; delete sg.mat[t][part].lead; }
   if (!wasOff) toast(PART_NAMES[part] + ' is yours now and sounds the same. Change it and the other parts bend to it.');
   return sg.mat[t][part].data;
 }
@@ -2030,13 +2032,14 @@ function renderLeft() {
   const at = D.sectionAt(sg, AU.playing ? AU.curBar : D.sectionStart(sg, st.sec)) || { s: sg.sections[0], inBar: 0, i: 0 };
   const now = h('div', { class: 'now' }, h('div', { class: 'small' }, AU.playing ? 'Now playing' : 'Selected'), h('div', { class: 'sec', id: 'nowSec' }, sectionLabel(at.i)), h('div', { class: 'bar', id: 'nowBar' }, 'bar ' + (at.inBar + 1) + ' of ' + at.s.bars));
   const sp = s('svg', { id: 'spiral', viewBox: '0 0 200 200', role: 'img', 'aria-label': 'Song spiral, tap a colour to jump there' });
+  // the structure dice sits with the spiral, away from + so it is never hit by accident
+  now.append(h('button', { class: 'iconbtn structdice', id: 'rollStructure', title: 'A new song structure in this genre; your parts stay', 'aria-label': 'New random structure', onclick: rollStructure }, ico('dice')));
   left.append(now, sp);
   drawSpiral(sp);
   const chips = h('div', { class: 'chips', role: 'list' });
   sg.sections.forEach((x, i) => chips.append(h('div', { class: 'chip ' + (i === st.sec ? 'sel ' : '') + (AU.playing && at.i === i ? 'play' : ''), role: 'listitem', style: 'background:color-mix(in srgb,' + TYPE_COLOR(x.type) + ' 24%,var(--raise))' },
     h('button', { class: 'chipbtn', id: 'chip_' + i, title: 'Select ' + sectionLabel(i) + '; while playing, jump there' + (D.hasOwn(sg, x) ? '. Has its own version' : ''), onclick: () => playSection(i) }, D.TYPES[x.type].name, D.hasOwn(sg, x) ? h('span', { class: 'owndot', 'aria-label': 'own version' }) : null, h('span', { class: 'n' }, x.bars)),
     sg.sections.length > 1 ? h('button', { class: 'chipx', 'aria-label': 'Delete ' + sectionLabel(i), title: 'Delete this section', onclick: () => deleteSection(i) }, '\u00d7') : null)));
-  chips.append(h('button', { class: 'chip add', id: 'rollStructure', title: 'A new song structure in this genre; your parts stay', 'aria-label': 'New random structure', onclick: rollStructure }, ico('dice')));
   chips.append(h('button', { class: 'chip add ' + (st.adding ? 'sel' : ''), id: 'addSec', title: 'Add a section after the selected one', 'aria-label': 'Add section', 'aria-expanded': !!st.adding, onclick: () => { st.adding = !st.adding; renderLeft(); } }, ico('plus')));
   left.append(chips);
   if (st.adding) left.append(h('div', { class: 'typegrid', id: 'addGrid' }, h('div', { class: 'small full' }, 'Add after ' + sectionLabel(st.sec) + ':'), D.TYPE_ORDER.map((t) => h('button', { class: 'tbtn', style: 'border-color:' + TYPE_COLOR(t), onclick: () => addSection(t) }, D.TYPES[t].name)), h('button', { class: 'ghost full', onclick: () => { st.adding = false; renderLeft(); } }, 'Cancel')));
@@ -2239,14 +2242,16 @@ function newVersionOnce(p) {
       else if (p === 'chords') { ctx.melodyUser = sg.parts.melody.mode === 'yours' ? res.melody : null; ctx.bassUser = sg.parts.bass.mode === 'yours' ? res.bass : null; m = D.genChords(sg, t, ctx, seed); }
       else m = D.genNotes(p, sg, t, ctx, seed);
       const only = editTarget(p) !== 'std'; putHere(p, m); setHint('A fresh ' + PART_NAMES[p].toLowerCase() + ' idea for ' + (only ? sectionLabel(st.sec) + ' only' : 'every ' + D.TYPES[t].name + ' that follows ' + sectionLabel(st.sec)) + '. It stays yours to edit; undo brings back the old one.');
-    } else { if (P.mode === 'off') P.mode = 'machine'; P.seed = D.newSeed(); setHint('New machine ' + PART_NAMES[p].toLowerCase() + '. Undo brings back the previous one.'); }
+    } else { yoursLead(sg); if (P.mode === 'off') P.mode = 'machine'; P.seed = D.newSeed(); setHint('New machine ' + PART_NAMES[p].toLowerCase() + '. Undo brings back the previous one.'); }
   }
 }
+// your untouched copies start leading the moment the machine rolls something new, so new ideas always fit them
+function yoursLead(sg) { for (const t of D.TYPE_ORDER) for (const p of D.PARTS) { const m = sg.mat[t] && sg.mat[t][p]; if (m && m.auto) m.lead = true; } }
 // one tap: every machine part gets a fresh idea; what is yours stays, the machine bends around it
 function rollAll() {
   const parts = D.PARTS.filter((p) => song().parts[p].mode === 'machine');
   if (!parts.length) { toast('Every part is yours or off, so there is nothing for the machine to roll. The dice in each slot still give ideas for your own parts.'); return; }
-  change(() => { for (const p of parts) song().parts[p].seed = D.newSeed(); });
+  change(() => { yoursLead(song()); for (const p of parts) song().parts[p].seed = D.newSeed(); });
   toast('New ideas for ' + parts.map((p) => PART_NAMES[p].toLowerCase()).join(', ') + '. Your own parts stayed.', { label: 'Undo', fn: undo });
 }
 // a fresh structure; the music of each section type comes along
@@ -3121,8 +3126,10 @@ function openSaveLib() {
   const mk = (kind, part) => {
     const res = resolvedNow();
     const item = { id: 'L' + Date.now().toString(36) + D.newSeed().toString(36).slice(0, 4), kind, part, created: Date.now(), genre: sg.genre, bpm: Math.round(sg.bpm), key: D.clone(sg.key), meter: sg.meter, L: sg.L, type: t };
-    if (kind === 'part') { item.data = D.clone(res[part] || D.emptyMat(part, sg)); item.name = PART_NAMES[part] + ', ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
-    else { item.data = {}; for (const p of D.PARTS) if (res[p] && sg.parts[p].mode !== 'off') item.data[p] = D.clone(res[p]); item.name = 'Whole ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
+    const from = sg.name && sg.name !== 'Untitled' ? sg.name + ': ' : ''; // the song it came from, so you find it back
+    item.song = sg.name;
+    if (kind === 'part') { item.data = D.clone(res[part] || D.emptyMat(part, sg)); item.name = from + PART_NAMES[part] + ', ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
+    else { item.data = {}; for (const p of D.PARTS) if (res[p] && sg.parts[p].mode !== 'off') item.data[p] = D.clone(res[p]); item.name = from + 'Whole ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
     st.lib.unshift(item); persistLib(); closeOverlay(); toast('Saved to library: ' + item.name, { label: 'Open library', fn: openLibrary });
   };
   overlay(h('div', { class: 'sheet', style: 'width:min(560px,100%)' }, h('div', { class: 'hdr' }, h('h2', null, 'Save to library'), h('div', { class: 'grow' }), h('button', { class: 'ghost', onclick: closeOverlay }, 'Cancel')),
