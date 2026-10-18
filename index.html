@@ -3132,7 +3132,7 @@ function openSaveLib() {
     const from = sg.name && sg.name !== 'Untitled' ? sg.name + ': ' : ''; // the song it came from, so you find it back
     item.song = sg.name;
     if (kind === 'part') { item.data = D.clone(res[part] || D.emptyMat(part, sg)); item.name = from + PART_NAMES[part] + ', ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
-    else { item.data = {}; for (const p of D.PARTS) if (res[p] && sg.parts[p].mode !== 'off') item.data[p] = D.clone(res[p]); item.name = from + 'Whole ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
+    else { item.data = {}; for (const p of D.PARTS) if (res[p] && D.partPlaysIn(sg, secNow(), p) && !D.isEmpty(p, res[p])) item.data[p] = D.clone(res[p]); item.name = from + 'Whole ' + sectionLabel(st.sec) + ', ' + D.GENRES[sg.genre].name; }
     st.lib.unshift(item); persistLib(); closeOverlay(); toast('Saved to library: ' + item.name, { label: 'Open library', fn: openLibrary });
   };
   overlay(h('div', { class: 'sheet', style: 'width:min(560px,100%)' }, h('div', { class: 'hdr' }, h('h2', null, 'Save to library'), h('div', { class: 'grow' }), h('button', { class: 'ghost', onclick: closeOverlay }, 'Cancel')),
@@ -3228,12 +3228,14 @@ function downloadItem(item, plugin) {
   for (const p of parts) {
     const pl = item.kind === 'part' ? plugin : (p === 'beat' ? song().parts.beat.plugin : 'plain');
     const notes = D.renderSong(sg, p).filter((n) => n.t < item.L * D.barTicks(sg));
+    if (!notes.length) continue; // a part that rests here gives no empty file
     for (const v of versionsOf(pl)) {
       const masked = D.applyMask(sg, p, notes, pl, { octave: st.settings.octave, roles: rolesOverride(), mode: v ? v.toLowerCase() : undefined }).filter((n) => n.t < item.L * D.barTicks(sg));
       const bytes = D.writeMidi([{ name: PART_NAMES[p], channel: p === 'beat' ? 9 : 0, notes: masked }], { bpm: item.bpm, meter: item.meter, title: item.name });
       files.push({ name: 'DM_Lib_' + safe(item.name).slice(0, 40) + '_' + PART_NAMES[p] + (PLUG_SHORT[pl] ? '_' + PLUG_SHORT[pl] : '') + (v ? '_' + v : '') + '_' + item.bpm + 'bpm.mid', data: bytes });
     }
   }
+  if (!files.length) { toast('This library item has no notes to download.'); return; }
   saveFiles(files);
 }
 
@@ -3324,7 +3326,7 @@ async function handleFiles(files) {
 async function importMidi(f) {
   let mid; try { mid = D.parseMidi(await f.arrayBuffer()); } catch (e) { toast('This MIDI could not be read: ' + e.message); return; }
   const tracks = mid.tracks.filter((t) => t.notes.length);
-  if (!tracks.length) { toast('This MIDI has no notes.'); return; }
+  if (!tracks.length) { toast(f.name + ' is a MIDI file without any notes, so there is nothing to load.'); return; }
   // split tracks by channel when a format 0 file mixes parts
   let groups = [];
   for (const t of tracks) { const chs = [...new Set(t.notes.map((n) => n.ch))]; if (chs.length > 1) chs.forEach((c) => groups.push({ name: (t.name || f.name) + ' ch ' + (c + 1), notes: t.notes.filter((n) => n.ch === c) })); else groups.push({ name: t.name || f.name, notes: t.notes }); }
