@@ -77,7 +77,10 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .now .sec{font:700 20px/1.1 var(--display)}
 .now .bar{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
 #spiral{width:100%;max-width:210px;aspect-ratio:1;align-self:center;cursor:pointer;touch-action:none}
-.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chips{display:flex;flex-wrap:wrap;gap:4px;position:relative}
+.chip.dragging{opacity:.35}
+.dragghost{position:fixed;z-index:60;pointer-events:none;box-shadow:0 6px 18px rgba(0,0,0,.35);transform:rotate(-2deg)}
+.dropmark{position:absolute;width:3px;border-radius:2px;background:var(--fg);pointer-events:none}
 .chip{font-size:12px;border-radius:7px;border:1px solid transparent;background:var(--raise);display:inline-flex;align-items:stretch;font-variant-numeric:tabular-nums;overflow:hidden}
 .chip.add{padding:3px 7px;cursor:pointer;align-items:center}
 .chipbtn{background:transparent;border:0;border-radius:0;padding:3px 4px 3px 7px;font-size:12px;gap:5px}
@@ -2468,6 +2471,7 @@ function autoKey() {
 /* ---------- left: spiral and sections ---------- */
 const TYPE_COLOR = (t) => 'var(--' + t + ')';
 function renderLeft() {
+  if (CD.d && CD.d.on) return; // never rebuild the chips under your finger
   const sg = song(), left = $('#left'); left.innerHTML = '';
   const at = D.sectionAt(sg, AU.playing ? AU.curBar : D.sectionStart(sg, st.sec)) || { s: sg.sections[0], inBar: 0, i: 0 };
   const now = h('div', { class: 'now' }, h('div', { class: 'small' }, AU.playing ? 'Now playing' : 'Selected'), h('div', { class: 'sec', id: 'nowSec' }, sectionLabel(at.i)), h('div', { class: 'bar', id: 'nowBar' }, 'bar ' + (at.inBar + 1) + ' of ' + at.s.bars));
@@ -2478,9 +2482,10 @@ function renderLeft() {
   drawSpiral(sp);
   const chips = h('div', { class: 'chips', role: 'list' });
   sg.sections.forEach((x, i) => chips.append(h('div', { class: 'chip ' + (i === st.sec ? 'sel ' : '') + (AU.playing && at.i === i ? 'play' : ''), role: 'listitem', style: 'background:color-mix(in srgb,' + TYPE_COLOR(x.type) + ' 24%,var(--raise))' },
-    h('button', { class: 'chipbtn', id: 'chip_' + i, title: 'Select ' + sectionLabel(i) + '; while playing, jump there' + (D.hasOwn(sg, x) ? '. Has its own version' : ''), onclick: () => playSection(i) }, D.TYPES[x.type].name, D.hasOwn(sg, x) ? h('span', { class: 'owndot', 'aria-label': 'own version' }) : null, h('span', { class: 'n' }, x.bars)),
+    h('button', { class: 'chipbtn', id: 'chip_' + i, title: 'Select ' + sectionLabel(i) + '; while playing, jump there. Drag to move it' + (D.hasOwn(sg, x) ? '. Has its own version' : ''), onclick: () => playSection(i) }, D.TYPES[x.type].name, D.hasOwn(sg, x) ? h('span', { class: 'owndot', 'aria-label': 'own version' }) : null, h('span', { class: 'n' }, x.bars)),
     sg.sections.length > 1 ? h('button', { class: 'chipx', 'aria-label': 'Delete ' + sectionLabel(i), title: 'Delete this section', onclick: () => deleteSection(i) }, '\u00d7') : null)));
   chips.append(h('button', { class: 'chip add ' + (st.adding ? 'sel' : ''), id: 'addSec', title: 'Add a section after the selected one', 'aria-label': 'Add section', 'aria-expanded': !!st.adding, onclick: () => { st.adding = !st.adding; renderLeft(); } }, ico('plus')));
+  chipDrag(chips);
   left.append(chips);
   if (st.adding) left.append(h('div', { class: 'typegrid', id: 'addGrid' }, h('div', { class: 'small full' }, 'Add after ' + sectionLabel(st.sec) + ':'), D.TYPE_ORDER.map((t) => h('button', { class: 'tbtn', style: 'border-color:' + TYPE_COLOR(t), onclick: () => addSection(t) }, D.TYPES[t].name)), h('button', { class: 'ghost full', onclick: () => { st.adding = false; renderLeft(); } }, 'Cancel')));
   const sec = sg.sections[st.sec];
@@ -2560,6 +2565,54 @@ function moveSection(dir) {
   holdSel();
   change(() => { const a = song().sections, j = st.sec + dir; [a[j], a[st.sec]] = [a[st.sec], a[j]]; st.sec = j; });
   if (AU.playing && !AU.preview) jumpTo(D.sectionStart(song(), st.sec));
+}
+// move a section to another place; the selection stays with the section you had selected
+function moveSectionTo(from, to) {
+  const sg = song(); if (to === from || from < 0 || to < 0 || to >= sg.sections.length) return;
+  const moved = sg.sections[from], name = sectionLabel(from);
+  change(() => { const a = sg.sections, sel = a[st.sec]; a.splice(from, 1); a.splice(to, 0, moved); st.sec = a.indexOf(sel); });
+  const i = sg.sections.indexOf(moved), next = sg.sections[i + 1];
+  toast(name + ' moved' + (next ? ' before ' + sectionLabel(i + 1) : ' to the end') + '.', { label: 'Undo', fn: undo });
+}
+// drag the chips into any order: a mouse drags at once, a finger holds a moment first so the panel still scrolls
+const CD = { d: null, wired: false };
+function chipDrag(box) {
+  const items = () => [...box.querySelectorAll('.chip:not(.add)')];
+  box.addEventListener('pointerdown', (e) => {
+    const btn = e.target.closest && e.target.closest('.chipbtn'); if (!btn || e.button > 0) return;
+    const el = btn.closest('.chip'), from = items().indexOf(el); if (from < 0) return;
+    const r = el.getBoundingClientRect();
+    const d = CD.d = { box, items, el, from, x: e.clientX, y: e.clientY, ox: e.clientX - r.left, oy: e.clientY - r.top, on: false, touch: e.pointerType === 'touch', id: e.pointerId };
+    if (d.touch) { document.addEventListener('touchmove', chipStopTouch, { passive: false }); d.hold = setTimeout(() => { if (CD.d === d && !d.on) chipBegin(); }, 280); }
+  });
+  box.addEventListener('click', (e) => { const c = e.target.closest && e.target.closest('.chip'); if (c && c.dataset.dragged) { e.stopPropagation(); e.preventDefault(); } }, true); // a drag is not a tap
+  if (CD.wired) return; CD.wired = true;
+  window.addEventListener('pointermove', (e) => {
+    const d = CD.d; if (!d || e.pointerId !== d.id) return;
+    const moved = Math.hypot(e.clientX - d.x, e.clientY - d.y);
+    if (!d.on) { if (d.touch) { if (moved > 10) chipEnd(false); return; } if (moved < 6) return; chipBegin(); }
+    chipPlace(e.clientX, e.clientY);
+  });
+  window.addEventListener('pointerup', (e) => { if (CD.d && e.pointerId === CD.d.id) chipEnd(true); });
+  window.addEventListener('pointercancel', (e) => { if (CD.d && e.pointerId === CD.d.id) chipEnd(false); });
+}
+function chipStopTouch(e) { if (CD.d && CD.d.on) e.preventDefault(); }
+function chipBegin() { const d = CD.d; d.on = true; d.el.classList.add('dragging'); d.ghost = d.el.cloneNode(true); d.ghost.classList.add('dragghost'); document.body.append(d.ghost); chipPlace(d.x, d.y); }
+function chipTarget(x, y) { // the gap closest to the pointer: before or after the nearest chip
+  let best = null; CD.d.items().forEach((el, i) => { const r = el.getBoundingClientRect(); const dy = y < r.top ? r.top - y : y > r.bottom ? y - r.bottom : 0; const cx = Math.max(r.left, Math.min(r.right, x)); const dist = Math.hypot(x - cx, dy * 3); if (!best || dist < best.dist) best = { i, r, dist, after: x > r.left + r.width / 2 }; });
+  return best;
+}
+function chipPlace(x, y) {
+  const d = CD.d; d.ghost.style.left = (x - d.ox) + 'px'; d.ghost.style.top = (y - d.oy) + 'px';
+  const b = chipTarget(x, y); if (!b) return; d.b = b;
+  let m = d.box.querySelector('.dropmark'); if (!m) { m = h('div', { class: 'dropmark', 'aria-hidden': 'true' }); d.box.append(m); }
+  const br = d.box.getBoundingClientRect(); m.style.left = ((b.after ? b.r.right + 2 : b.r.left - 3) - br.left) + 'px'; m.style.top = (b.r.top - br.top) + 'px'; m.style.height = b.r.height + 'px';
+}
+function chipEnd(drop) {
+  const d = CD.d; if (!d) return; CD.d = null; clearTimeout(d.hold); document.removeEventListener('touchmove', chipStopTouch);
+  const m = d.box.querySelector('.dropmark'); if (m) m.remove();
+  if (!d.on) return; d.ghost.remove(); d.el.classList.remove('dragging'); d.el.dataset.dragged = '1'; setTimeout(() => { delete d.el.dataset.dragged; }, 0);
+  if (drop && d.b) { let t = d.b.i + (d.b.after ? 1 : 0); if (t > d.from) t--; moveSectionTo(d.from, t); } else renderLeft();
 }
 function deleteSection(i) {
   const name = sectionLabel(i);
@@ -4116,7 +4169,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
