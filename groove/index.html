@@ -664,11 +664,14 @@ E.genBeat = function (song, type, ctx, seed) {
   if (N === 16) {
     if (g === 'techno') {
       [0, 4, 8, 12].forEach((s) => setL(p, K, s, 118));
-      [2, 6, 10, 14].forEach((s) => setL(p, OH, s, 88));
-      for (let s = 0; s < 16; s++) if (s % 2 === 1) setL(p, HH, s, 48 + r.int(22));
+      // one hat style per beat, never all at once: open hats on the offbeat, 16ths, or 8ths
+      const hats = r.pick(['offbeat', 'offbeat', 'sixteenths', 'eighths']);
+      if (hats === 'offbeat') { [2, 6, 10, 14].forEach((s) => setL(p, OH, s, 88)); if (r.chance(0.4)) [7, 15].forEach((s) => setL(p, HH, s, 40 + r.int(10))); }
+      else if (hats === 'sixteenths') { for (let s = 0; s < 16; s++) setL(p, HH, s, s % 4 === 2 ? 78 + r.int(8) : s % 2 === 0 ? 58 + r.int(8) : 40 + r.int(12)); if (r.chance(0.5)) setL(p, OH, 14, 80); }
+      else { for (let s = 0; s < 16; s += 2) setL(p, HH, s, s % 4 === 2 ? 84 : 56 + r.int(10)); if (r.chance(0.5)) setL(p, OH, 6, 78); }
       [4, 12].forEach((s) => setL(p, CP, s, 98));
       [3, 11, 14].forEach((s) => { if (r.chance(0.55)) setL(p, PC, s, 64 + r.int(20)); });
-      if (r.chance(0.6)) [3, 7, 11, 15].forEach((s) => setL(p, K2, s, 60 + r.int(16)));
+      if (r.chance(0.3)) [3, 7, 11, 15].forEach((s) => setL(p, K2, s, 60 + r.int(16)));
     } else if (g === 'triphop') {
       setL(p, K, 0, 116); setL(p, K, 10, 102); if (r.chance(0.6)) setL(p, K, 7, 82);
       setL(p, SN, 8, 116); if (r.chance(0.5)) setL(p, SN, 15, 42);
@@ -731,6 +734,29 @@ const BEAT_MASK = {
   prechorus: { def: [K, SN, CP, HH, PC] },
   drop: { def: [K, K2, SN, CP, HH, OH, PC, CR] },
   fill: { def: [K, K2, SN, CP, HH, OH, PC] }
+};
+// an energy curve over the song: calm sections play fewer hats, perc and second kicks; the strongest hits on the beat stay
+E.DENSITY = { intro: 0.4, verse: 0.7, prechorus: 0.75, build: 0.7, chorus: 1, drop: 1, break: 0.3, outro: 0.4, fill: 0.8 };
+E.shapeDensity = function (song, data, type) {
+  const f = E.DENSITY[type] != null ? E.DENSITY[type] : 1, L = data.lanes; if (f >= 1) return data;
+  const rank = (s) => (s % 4 === 0 ? 0 : s % 2 === 0 ? 1 : 2);
+  for (const li of [HH, OH, PC]) {
+    const l = L[li]; if (!l) continue;
+    const on = l.map((v, s) => (v ? s : -1)).filter((s) => s >= 0).sort((a, b) => rank(a) - rank(b) || l[b] - l[a] || a - b);
+    const keep = on.length ? Math.max(1, Math.round(on.length * f)) : 0;
+    on.slice(keep).forEach((s) => { l[s] = 0; });
+  }
+  if (type !== 'chorus' && type !== 'drop' && L[K2]) L[K2] = L[K2].map(() => 0); // the second kick is a layer for the big moments
+  return data;
+};
+// a break keeps a soft pulse: hats from the core, quiet, if almost nothing is left
+E.breakPulse = function (song, data, core) {
+  const L = data.lanes, N = L[0].length, hits = [HH, OH, PC].reduce((a, li) => a + (L[li] ? L[li].filter(Boolean).length : 0), 0);
+  if (hits >= 4) return data;
+  const src = [HH, OH].map((li) => core.lanes[li]).find((l) => l && l.filter(Boolean).length >= 4);
+  // just the offbeats (4 per bar), soft: a pulse, not a groove
+  for (let s = 2; s < N; s += 4) { const v = src && src[s] ? src[s] : 70; if (!L[HH][s] && !L[OH][s]) L[HH][s] = clamp(Math.round(v * 0.6), 28, 56); }
+  return data;
 };
 E.typeBeatFromCore = function (song, core, type, seed) {
   const r = rng(seed);
@@ -2846,7 +2872,8 @@ function spiralBeat(all) {
     for (const t of types) {
       const m = sg.mat[t] && sg.mat[t].beat; if (!all && m && !D.isEmpty('beat', m.data)) continue;
       if (!sg.mat[t]) sg.mat[t] = {};
-      const data = D.typeBeatFromCore(sg, core, t, D.hash(seed, t));
+      const data = D.shapeDensity(sg, D.typeBeatFromCore(sg, core, t, D.hash(seed, t)), t);
+      if (t === 'break') D.breakPulse(sg, data, core);
       if (D.isEmpty('beat', data)) { const from = [5, 4, 6].find((li) => core.lanes[li] && core.lanes[li].some(Boolean)); if (from != null) data.lanes[from] = core.lanes[from].slice(); } // never a silent section: keep the hats going
       sg.mat[t].beat = { src: 'user', data }; made.push(t);
     }
@@ -2858,6 +2885,12 @@ function spiralBeat(all) {
       seen[sec.type] = (seen[sec.type] || 0) + 1;
       // the second chorus is not a copy: a light variation of the first
       if (seen[sec.type] > 1 && !(sec.own && sec.own.beat)) { sec.own = Object.assign({}, sec.own, { beat: D.varyMat(sg, 'beat', sg.mat[sec.type].beat.data, null, D.hash(seed, sec.id)) }); }
+      // the kick comes back in the last 2 bars of a break, softly, then on every beat
+      if (sec.type === 'break' && sec.bars >= 4 && sg.sections[sg.sections.indexOf(sec) + 1] && !(sec.barOwn && sec.barOwn.beat)) {
+        const base = sg.mat.break.beat.data, N = base.lanes[0].length, bo = {};
+        [[sec.bars - 2, [0, N / 2], 78], [sec.bars - 1, [0, N / 4, N / 2, 3 * N / 4], 96]].forEach(([b, steps, v]) => { const d = D.clone(base); steps.forEach((x) => { d.lanes[0][x] = v; }); bo[b] = d; });
+        sec.barOwn = Object.assign({}, sec.barOwn, { beat: bo });
+      }
       // long sections breathe by themselves: a subtle mix over 8 bars or more
       if (sec.bars >= 8 && (all || !sec.laneFx)) autoMixes.push(sec);
       // a build grows into what comes next
@@ -3807,7 +3840,7 @@ function openHelp() {
       row('Deliver', 'One MIDI file with section markers, or one MIDI per lane.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-19 09:59. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-19 10:24. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
