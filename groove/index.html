@@ -1617,6 +1617,7 @@ E.PLUGINS = {
   tekno: { name: 'BABY Audio Tekno', parts: ['beat'], drums: [36, 37, 38, 45, 40, 42, 46, 53] },
   beatmaker: { name: 'UJAM Beatmaker 3', parts: ['beat'], drums: [36, 38, 40, 43, 45, 48, 52, 59] }, /* v3 white keys: Kick 1, Kick 2, Snare 1, Snare 3/Clap, HH 1, HH 3, Perc, Cymbal 1. black keys are loops, never used */
   playbeat: { name: 'Audiomodern Playbeat 4', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] }, /* trigger keyboard, lowest octave: one key per channel 1 to 8 */
+  playbeat: { name: 'Audiomodern Playbeat 4', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] }, /* 8 channels C1 to G1 */
   beatmaker2: { name: 'UJAM Beatmaker 2 (old)', parts: ['beat'], drums: [36, 37, 38, 39, 42, 46, 47, 49] }, /* v2 instrument keys */
   silk2: Object.assign({ name: 'Virtual Guitarist Silk 2', parts: ['chords', 'melody', 'bass'] }, clone(VG)),
   iron2: Object.assign({ name: 'Virtual Guitarist Iron 2', parts: ['chords', 'melody', 'bass'] }, clone(VG)),
@@ -3506,7 +3507,7 @@ function deliveryNo(bump) {
   if (bump) { const hh = songHash(); if (st.lastDeliveredHash !== hh || !st.sessionNo) { n++; store.set('dgm-counter-v1', n); st.sessionNo = n; st.lastDeliveredHash = hh; } return String(st.sessionNo).padStart(3, '0'); }
   return String(st.lastDeliveredHash === songHash() && st.sessionNo ? st.sessionNo : n + 1).padStart(3, '0');
 }
-const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
+const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', playbeat: 'Playbeat', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
 function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + no + '.mid'; } // a beat has no key
 function markers(sg) { let b = 0; const BT = D.barTicks(sg); return sg.sections.map((x, i) => { const m = { t: b * BT, text: sectionLabelFor(sg, i) }; b += x.bars; return m; }); }
 function sectionLabelFor(sg, i) { const t = sg.sections[i].type; const k = sg.sections.slice(0, i + 1).filter((x) => x.type === t).length; return D.TYPES[t].name + ' ' + k; }
