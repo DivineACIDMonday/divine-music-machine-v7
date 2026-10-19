@@ -2766,6 +2766,44 @@ window.addEventListener('keydown', (e) => {
 });
 
 /* ---------- editor ---------- */
+// the machine makes a beat for the whole spiral: one core, every section type its own version, repeats vary a little
+function spiralBeatAsk() {
+  const sg = song(), types = [...new Set(sg.sections.map((x) => x.type))];
+  const full = types.filter((t) => sg.mat[t] && sg.mat[t].beat && !D.isEmpty('beat', sg.mat[t].beat.data));
+  if (!full.length) { spiralBeat(false); return; }
+  const sheet = h('div', { class: 'sheet', style: 'width:min(480px,100%)' },
+    h('div', { class: 'hdr' }, h('h2', null, 'Beat for the whole spiral'), h('div', { class: 'grow' }), h('button', { class: 'ghost', onclick: closeOverlay }, 'Cancel')),
+    h('p', { style: 'margin:0' }, 'Some sections already have a beat: ' + full.map((t) => D.TYPES[t].name).join(', ') + '.'),
+    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
+      h('button', { class: 'primary', id: 'spiralEmpty', disabled: full.length === types.length, onclick: () => { closeOverlay(); spiralBeat(false); } }, 'Only the empty sections'),
+      h('button', { id: 'spiralAll', onclick: () => { closeOverlay(); spiralBeat(true); } }, 'Everything new')));
+  overlay(sheet);
+}
+function spiralBeat(all) {
+  const sg = song(), seed = D.newSeed(), r = D.rng(seed), core = D.genBeat(sg, 'chorus', {}, seed);
+  const types = [...new Set(sg.sections.map((x) => x.type))], made = [];
+  change(() => {
+    for (const t of types) {
+      const m = sg.mat[t] && sg.mat[t].beat; if (!all && m && !D.isEmpty('beat', m.data)) continue;
+      if (!sg.mat[t]) sg.mat[t] = {};
+      sg.mat[t].beat = { src: 'user', data: D.typeBeatFromCore(sg, core, t, D.hash(seed, t)) }; made.push(t);
+    }
+    const seen = {};
+    sg.sections.forEach((sec) => {
+      if (!made.includes(sec.type)) return;
+      if (all && sec.own) { delete sec.own.beat; if (!Object.keys(sec.own).length) delete sec.own; }
+      if (all && sec.barOwn) { delete sec.barOwn.beat; if (!Object.keys(sec.barOwn).length) delete sec.barOwn; }
+      seen[sec.type] = (seen[sec.type] || 0) + 1;
+      // the second chorus is not a copy: a light variation of the first
+      if (seen[sec.type] > 1 && !(sec.own && sec.own.beat)) { sec.own = Object.assign({}, sec.own, { beat: D.varyMat(sg, 'beat', sg.mat[sec.type].beat.data, null, D.hash(seed, sec.id)) }); }
+      // a build grows into what comes next
+      if ((sec.type === 'build' || sec.type === 'prechorus') && !sec.laneFx) sec.laneFx = { 2: { prog: 'end16' } };
+    });
+  }, { keep: true });
+  renderEditor();
+  if (!made.length) { toast('Every section already has a beat. Choose Everything new to replace them.'); return; }
+  toast('A beat for the whole spiral: ' + made.map((t) => D.TYPES[t].name).join(', ') + '. Repeated sections vary a little.', { label: 'Undo', fn: undo });
+}
 function renderEditor() {
   st.view = 'beat';
   const head = $('#edhead'); head.innerHTML = '';
@@ -2777,6 +2815,7 @@ function renderEditor() {
     h('button', { class: mode === 'rings' ? 'on' : '', onclick: () => { st.rings = true; st.mixer = false; renderEditor(); } }, 'Rings'),
     h('button', { class: mode === 'lines' ? 'on' : '', onclick: () => { st.rings = false; st.mixer = false; renderEditor(); } }, 'Lines'),
     h('button', { id: 'mixerBtn', class: mode === 'mixer' ? 'on' : '', title: 'Switch lanes on or off per bar', onclick: () => { st.mixer = true; renderEditor(); } }, 'Mixer')));
+  head.append(h('button', { id: 'spiralBeat', title: 'The machine makes a beat for the whole spiral: one core groove, every kind of section its own version of it', onclick: spiralBeatAsk }, ico('dice'), 'Whole spiral'));
   head.append(h('button', { class: st.shadows ? 'on' : '', 'aria-pressed': st.shadows, title: 'Show the machine’s suggestions as dashed shapes', onclick: () => { st.shadows = !st.shadows; renderEditor(); } }, ico('eye'), 'Shadows'));
   head.append(h('button', { title: 'A fresh beat idea from the machine, right where your change lands', onclick: () => newVersion('beat') }, ico('dice'), 'Random'));
   head.append(h('button', { class: 'ghost', title: 'Empty the beat right where your change lands', onclick: clearPart }, ico('trash'), 'Clear'));
@@ -4171,7 +4210,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, randomFeel, newBeatSameStructure, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, spiralBeat, randomFeel, newBeatSameStructure, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
