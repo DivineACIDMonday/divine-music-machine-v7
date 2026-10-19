@@ -3603,12 +3603,35 @@ function openStart() {
   const sheet = h('div', { class: 'sheet', style: 'width:min(860px,100%)' },
     h('div', { class: 'hdr' }, h('h2', null, 'Divine Groove Machine'), h('div', { class: 'grow' }), !st.boot ? h('button', { class: 'ghost', onclick: closeOverlay }, 'Back to my groove') : null),
     h('p', { style: 'margin:0' }, 'Pure beat. You build every hit, the machine helps with shadows, and you shape a whole arrangement.'),
-    h('h3', null, 'Pick a groove'), genres,
+    !st.boot ? keepStructureBox() : null,
+    h('h3', null, st.boot ? 'Pick a groove' : 'Or a new groove from scratch'), genres,
     h('div', { class: 'small' }, 'The genre sets the swing and what the shadows suggest. Change it any time.'),
     h('div', { class: 'small faint copy' }, D.COPYRIGHT + '. All rights reserved.'),
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
   );
   overlay(sheet, { sticky: st.boot });
+}
+// same spiral, a new beat: sections, bars, tempo, groove and fills stay; every beat goes, the mixer only if you want
+function keepStructureBox() {
+  const cb = h('input', { type: 'checkbox', id: 'ksMixer' });
+  return h('div', { class: 'slot open', id: 'keepStructure', style: 'padding:10px 12px;display:flex;flex-direction:column;gap:8px' },
+    h('b', null, 'New beat, same structure'),
+    h('div', { class: 'small' }, 'Keeps your spiral: sections, bars, tempo, groove and fills. Every beat becomes empty, also the own versions of sections and bars.'),
+    h('label', { class: 'small', style: 'display:flex;gap:6px;align-items:center' }, cb, 'Empty the mixer too (🎲, ↗ and lanes switched off)'),
+    h('div', null, h('button', { class: 'primary', id: 'ksGo', onclick: () => { const mix = cb.checked; if (!confirm('Empty every beat and keep the structure?' + (mix ? ' The mixer is emptied too.' : ' The mixer stays.'))) return; newBeatSameStructure(mix); closeOverlay(); } }, ico('dice'), 'New beat, same structure')));
+}
+function newBeatSameStructure(mixToo) {
+  change(() => {
+    const sg = song();
+    for (const t of D.TYPE_ORDER) { if (!sg.mat[t]) sg.mat[t] = {}; sg.mat[t].beat = { src: 'user', data: D.emptyMat('beat', sg) }; }
+    for (const sec of sg.sections) {
+      if (sec.own) { delete sec.own.beat; if (!Object.keys(sec.own).length) delete sec.own; }
+      if (sec.barOwn) { delete sec.barOwn.beat; if (!Object.keys(sec.barOwn).length) delete sec.barOwn; }
+      if (mixToo) { delete sec.laneOff; delete sec.laneFx; }
+    }
+  });
+  st.ringBar = 0; st.view = 'beat'; st.shadows = true;
+  toast('Same structure, empty beat' + (mixToo ? ' and an empty mixer' : '; the mixer stayed') + '. Start in bar 1 of each section.', { label: 'Undo', fn: undo });
 }
 function grooveLine(g) { return { free: 'no rules, it goes where you go', techno: 'four on the floor, tight and driving', triphop: 'slow, swung, half time snare', hiphop: 'boom bap swing', newwave: 'straight and driving', blues: 'shuffle in 12 bar rounds' }[g] || ''; }
 // a new groove: a starter arrangement, every section empty, only the beat
@@ -4127,7 +4150,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, newBeatSameStructure, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
