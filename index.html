@@ -1428,6 +1428,7 @@ E.adaptToGenre = function (song, from, to) {
   for (const { m, p, t } of slots) {
     const d = m.data;
     if (p === 'beat') {
+      if (E.isEmpty('beat', d)) continue; // an empty beat stays empty: the new genre only shows in the shadows
       const core = E.genBeat(song, 'chorus', {}, hash('adapt', to, t, song.seed)).lanes;
       const out = core.map((l) => l.slice());
       // keep your kicks that sit on the grid, take the new genre's backbeat and hats
