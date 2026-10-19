@@ -245,7 +245,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .dtab th{font-size:12px;color:var(--muted);font-weight:500}
 .dtab .fn{font:12px var(--mono);word-break:break-all}
 .scroller{overflow-x:auto}
-.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--bg);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;gap:10px;align-items:center;max-width:min(560px,calc(100% - 32px))}
+.toast{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;gap:10px;align-items:center;max-width:min(560px,calc(100% - 32px))}
 .toast button{background:transparent;color:var(--bg);border-color:var(--bg);padding:3px 8px}
 .dropveil{position:fixed;inset:0;z-index:80;border:3px dashed var(--accent);background:color-mix(in srgb,var(--bg) 70%,transparent);display:flex;align-items:center;justify-content:center;font:700 26px var(--display);pointer-events:none}
 .kbd{font:11px var(--mono);border:1px solid var(--line2);border-radius:5px;padding:1px 5px}
@@ -2945,13 +2945,25 @@ function mixScan(sec, rows, noFx) {
   } finally { sec.laneOff = keepOff; sec.laneFx = keepFx; }
   return cnt;
 }
+// a 🎲 you hear: if a variation changes (almost) nothing, roll it again (and at last a bit stronger)
+function rowDiff(sg, si, key) {
+  const sec = sg.sections[si], s0 = D.sectionStart(sg, si), drum = isDrum(key);
+  const get = () => { const R = D.makeRenderer(sg), o = []; for (let b = 0; b < sec.bars; b++) { let x = null; try { x = drum ? D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }) : D.renderBar(sg, key, s0 + b, R.res, { raw: true }); } catch (e) { x = null; } o.push(JSON.stringify(drum ? (x && x.lanes ? x.lanes[key] : null) : x)); } return o; };
+  const withFx = get(), keep = sec.laneFx; sec.laneFx = Object.assign({}, keep); delete sec.laneFx[key]; const plain = get(); sec.laneFx = keep;
+  return withFx.filter((v, b) => v !== plain[b]).length;
+}
+function audible(sg, si, key) {
+  const sec = sg.sections[si], f = sec.laneFx && sec.laneFx[key]; if (!f || !f.rnd) return;
+  const from = f.from != null ? f.from : 0, to = f.to != null ? f.to : sec.bars - 1, want = Math.min(3, Math.max(1, Math.floor((to - from + 1) / 4)));
+  for (let t = 0; t < 16 && rowDiff(sg, si, key) < want; t++) sec.laneFx[key] = Object.assign({}, sec.laneFx[key], { rnd: D.newSeed() }, t >= 4 ? { amt: Math.min(3, (f.amt || 1) + 1) } : null, t >= 9 ? { kind: 'mix' } : null);
+}
 function laneMixer() {
   const sg = song(), sec = secNow(), n = sec.bars, rows = mixRows();
   const cnt = mixScan(sec, rows, false);
   const peak = cnt.map((c) => Math.max(1, ...c));
   const fxOf = (key) => (sec.laneFx && sec.laneFx[key]) || {};
   const setFx = (key, patch) => { sec.laneFx = Object.assign({}, sec.laneFx); const f = Object.assign({}, sec.laneFx[key], patch); for (const k of Object.keys(f)) if (f[k] == null || f[k] === '' || (k === 'rnd' && !f[k]) || (k === 'prog' && f[k] === 'none')) delete f[k]; if (!f.rnd) { delete f.kind; delete f.amt; delete f.every; } if (!f.rnd && !f.prog) { delete f.from; delete f.to; } if (Object.keys(f).length) sec.laneFx[key] = f; else delete sec.laneFx[key]; if (!Object.keys(sec.laneFx).length) delete sec.laneFx; };
-  const fxChange = (key, patch, msg) => { change(() => setFx(key, patch), { keep: true }); renderEditor(); if (msg) setHint(msg); };
+  const fxChange = (key, patch, msg) => { change(() => { setFx(key, patch); audible(sg, st.sec, key); }, { keep: true }); renderEditor(); if (msg) setHint(msg); };
   const wrap = h('div', { class: 'mixwrap' });
   const anyRnd = sec.laneFx && Object.values(sec.laneFx).some((f) => f.rnd);
   wrap.append(h('div', { class: 'mixtop' },
@@ -4314,6 +4326,8 @@ const demo = D.newSong('triphop', { seed: 20261017, name: 'Untitled' });
 st.song = demo; st.sec = 1; st.boot = true; st.fresh = true;
 render();
 if (!openSharedFromLink()) openStart();
+// a share link pasted into this tab: open it too
+window.addEventListener('hashchange', () => { if (/^#s=/.test(location.hash)) { stopAll(true); closeOverlay(); openSharedFromLink(); } });
 /* ---------- MP3: the whole song as you hear it in the app, rendered offline and encoded here ---------- */
 function mp3Name() { return fileName('Song', deliveryNo(false)).replace(/\.mid$/, '.mp3'); }
 async function renderSongAudio(sg, onProgress) {

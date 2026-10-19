@@ -255,7 +255,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .dtab th{font-size:12px;color:var(--muted);font-weight:500}
 .dtab .fn{font:12px var(--mono);word-break:break-all}
 .scroller{overflow-x:auto}
-.toast{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:60;background:var(--fg);color:var(--bg);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;gap:10px;align-items:center;max-width:min(560px,calc(100% - 32px))}
+.toast{position:fixed;left:0;right:0;margin:0 auto;width:fit-content;bottom:calc(18px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);border-radius:10px;padding:9px 14px;font-size:13px;display:flex;gap:10px;align-items:center;max-width:min(560px,calc(100% - 32px))}
 .toast button{background:transparent;color:var(--bg);border-color:var(--bg);padding:3px 8px}
 .dropveil{position:fixed;inset:0;z-index:80;border:3px dashed var(--accent);background:color-mix(in srgb,var(--bg) 70%,transparent);display:flex;align-items:center;justify-content:center;font:700 26px var(--display);pointer-events:none}
 .kbd{font:11px var(--mono);border:1px solid var(--line2);border-radius:5px;padding:1px 5px}
@@ -278,6 +278,9 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
   .lrow .acts{grid-column:1/-1;justify-content:flex-start}
   .lrow svg{display:none}
 }
+button.sure{background:var(--danger,#c0392b);color:#fff;border-color:transparent}
+[aria-label="New shadows"] button,[aria-label="Where"] button{padding:4px 10px;gap:5px;display:inline-flex;align-items:center}
+@media (max-width:600px){.edhead .seg button{padding:4px 8px}}
 </style>
 
 <div class="app" id="app">
@@ -2649,13 +2652,24 @@ function toneWord() { const t = hatTone(); return t < 0.34 ? 'soft' : t < 0.67 ?
 function fmtShift(v) { return v === 0 ? 'on grid' : (v < 0 ? v + ' ms' : '+' + v + ' ms'); }
 
 /* ---------- lane mixer: every lane, every bar of the section, on or off ---------- */
+// a 🎲 you hear: if a variation changes (almost) nothing, roll it again (and at last a bit stronger)
+function laneDiff(sg, si, li) {
+  const sec = sg.sections[si], s0 = D.sectionStart(sg, si), get = () => { const R = D.makeRenderer(sg), o = []; for (let b = 0; b < sec.bars; b++) { let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } o.push(JSON.stringify(x && x.lanes ? x.lanes[li] : null)); } return o; };
+  const withFx = get(), keep = sec.laneFx; sec.laneFx = Object.assign({}, keep); delete sec.laneFx[li]; const plain = get(); sec.laneFx = keep;
+  return withFx.filter((v, b) => v !== plain[b]).length;
+}
+function audible(sg, si, li) {
+  const sec = sg.sections[si], f = sec.laneFx && sec.laneFx[li]; if (!f || !f.rnd) return;
+  const from = f.from != null ? f.from : 0, to = f.to != null ? f.to : sec.bars - 1, want = Math.min(3, Math.max(1, Math.floor((to - from + 1) / 4)));
+  for (let t = 0; t < 16 && laneDiff(sg, si, li) < want; t++) sec.laneFx[li] = Object.assign({}, sec.laneFx[li], { rnd: D.newSeed() }, t >= 4 ? { amt: Math.min(3, (f.amt || 1) + 1) } : null, t >= 9 ? { kind: 'mix' } : null);
+}
 function laneMixer() {
   const sg = song(), sec = secNow(), n = sec.bars, s0 = D.sectionStart(sg, st.sec), R = D.makeRenderer(sg);
   const has = [], cnt = []; for (let b = 0; b < n; b++) { const keep = sec.laneOff; sec.laneOff = null; let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } sec.laneOff = keep; has.push(D.LANES.map((_, li) => !!(x && x.lanes && x.lanes[li].some(Boolean)))); cnt.push(D.LANES.map((_, li) => (x && x.lanes ? x.lanes[li].reduce((a, v) => a + v, 0) : 0))); }
   const peak = D.LANES.map((_, li) => Math.max(1, ...cnt.map((c) => c[li])));
   const fxOf = (li) => (sec.laneFx && sec.laneFx[li]) || {};
   const setFx = (li, patch) => { sec.laneFx = Object.assign({}, sec.laneFx); const f = Object.assign({}, sec.laneFx[li], patch); for (const k of Object.keys(f)) if (f[k] == null || f[k] === '' || (k === 'rnd' && !f[k]) || (k === 'prog' && f[k] === 'none')) delete f[k]; if (!f.rnd) { delete f.kind; delete f.amt; delete f.every; } if (!f.rnd && !f.prog) { delete f.from; delete f.to; } if (Object.keys(f).length) sec.laneFx[li] = f; else delete sec.laneFx[li]; if (!Object.keys(sec.laneFx).length) delete sec.laneFx; };
-  const fxChange = (li, patch, msg) => { change(() => setFx(li, patch), { keep: true }); renderEditor(); if (msg) setHint(msg); };
+  const fxChange = (li, patch, msg) => { change(() => { setFx(li, patch); audible(sg, st.sec, li); }, { keep: true }); renderEditor(); if (msg) setHint(msg); };
   const wrap = h('div', { class: 'mixwrap' });
   const anyRnd = sec.laneFx && Object.values(sec.laneFx).some((f) => f.rnd);
   const anyFxAll = sg.sections.some((x) => x.laneFx), anyRndAll = sg.sections.some((x) => x.laneFx && Object.values(x.laneFx).some((f) => f.rnd));
@@ -2860,13 +2874,15 @@ function renderEditor() {
     h('button', { class: mode === 'rings' ? 'on' : '', onclick: () => { st.rings = true; st.mixer = false; renderEditor(); } }, 'Rings'),
     h('button', { class: mode === 'lines' ? 'on' : '', onclick: () => { st.rings = false; st.mixer = false; renderEditor(); } }, 'Lines'),
     h('button', { id: 'mixerBtn', class: mode === 'mixer' ? 'on' : '', title: 'Switch lanes on or off per bar', onclick: () => { st.mixer = true; renderEditor(); } }, 'Mixer')));
+  head.append(h('div', { style: 'flex-basis:100%;height:0' })); // second row: what the machine does for you
   head.append(h('button', { id: 'spiralBeat', title: 'The machine makes a beat for the whole spiral: one core groove, every kind of section its own version of it', onclick: spiralBeatAsk }, ico('dice'), 'Whole spiral'));
-  head.append(h('button', { class: st.shadows ? 'on' : '', 'aria-pressed': st.shadows, title: 'Show the machine’s suggestions as dashed shapes', onclick: () => { st.shadows = !st.shadows; renderEditor(); } }, ico('eye'), 'Shadows'));
-  if (st.shadows) head.append(h('div', { class: 'seg', role: 'group', 'aria-label': 'New shadows', style: 'grid-template-columns:auto auto;gap:2px' },
-    h('button', { id: 'shadowSec', title: 'Other suggestions (dashed shapes) for ' + sectionLabel(st.sec), onclick: () => { secNow().shSeed = D.newSeed(); saveSession(); renderEditor(); setHint('New shadows for ' + sectionLabel(st.sec) + '. Tap a dashed shape to keep it.'); } }, ico('dice'), 'Section'),
-    h('button', { id: 'shadowAll', title: 'Other suggestions (dashed shapes) for every section', onclick: () => { song().sections.forEach((x) => { x.shSeed = D.newSeed(); }); saveSession(); renderEditor(); setHint('New shadows in every section. Tap a dashed shape to keep it.'); } }, ico('dice'), 'All')));
   head.append(h('button', { title: 'A fresh beat idea from the machine, right where your change lands', onclick: () => newVersion('beat') }, ico('dice'), 'Random'));
   head.append(h('button', { class: 'ghost', title: 'Empty the beat right where your change lands', onclick: clearPart }, ico('trash'), 'Clear'));
+  head.append(h('div', { class: 'grow' }));
+  head.append(h('button', { class: st.shadows ? 'on' : '', 'aria-pressed': st.shadows, title: 'Show the machine’s suggestions as dashed shapes', onclick: () => { st.shadows = !st.shadows; renderEditor(); } }, ico('eye'), 'Shadows'));
+  if (st.shadows) head.append(h('div', { class: 'seg', role: 'group', 'aria-label': 'New shadows', style: 'grid-template-columns:auto auto;gap:4px' },
+    h('button', { id: 'shadowSec', title: 'Other suggestions (dashed shapes) for ' + sectionLabel(st.sec), onclick: () => { secNow().shSeed = D.newSeed(); saveSession(); renderEditor(); setHint('New shadows for ' + sectionLabel(st.sec) + '. Tap a dashed shape to keep it.'); } }, ico('dice'), 'Section'),
+    h('button', { id: 'shadowAll', title: 'Other suggestions (dashed shapes) for every section', onclick: () => { song().sections.forEach((x) => { x.shSeed = D.newSeed(); }); saveSession(); renderEditor(); setHint('New shadows in every section. Tap a dashed shape to keep it.'); } }, ico('dice'), 'All')));
   const body = $('#edbody'); body.innerHTML = '';
   const view = mode === 'mixer' ? laneMixer() : beatWrap(st.rings ? beatRings() : beatLines());
   view.append(tapPads()); body.append(view);
@@ -3726,7 +3742,7 @@ function keepStructureBox() {
     h('b', null, 'New beat, same structure'),
     h('div', { class: 'small' }, 'Keeps your spiral: sections, bars, tempo, groove and fills. Every beat becomes empty, also the own versions of sections and bars.'),
     h('label', { class: 'small', style: 'display:flex;gap:6px;align-items:center' }, cb, 'Empty the mixer too (🎲, ↗ and lanes switched off)'),
-    h('div', null, h('button', { class: 'primary', id: 'ksGo', onclick: () => { const mix = cb.checked; if (!confirm('Empty every beat and keep the structure?' + (mix ? ' The mixer is emptied too.' : ' The mixer stays.'))) return; newBeatSameStructure(mix); closeOverlay(); } }, ico('dice'), 'New beat, same structure')));
+    h('div', null, h('button', { class: 'primary', id: 'ksGo', onclick: (e) => { const btn = e.currentTarget; if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.classList.add('sure'); btn.lastChild.textContent = 'Sure? Every beat goes. Tap again'; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.sure; btn.classList.remove('sure'); btn.lastChild.textContent = 'New beat, same structure'; } }, 4000); return; } newBeatSameStructure(cb.checked); closeOverlay(); } }, ico('dice'), h('span', null, 'New beat, same structure'))));
 }
 function newBeatSameStructure(mixToo) {
   change(() => {
@@ -3765,27 +3781,26 @@ function openHelp() {
     h('div', { class: 'keys' },
       row('Rings', 'One ring per drum. Further out is louder. Kick outside, crash inside.'),
       row('Lines', 'One row per drum, one box per step. Drag up for louder.'),
+      row('Mixer', 'Every drum, every bar of the section. Tap a cell: that drum off or on in that bar. 🎲 lets one drum vary, ↗ lets it grow, ⋯ opens every choice (kind, subtle to wild, how often, which bars, ♥ keep).'),
+      row('Randomize mix', 'In the Mixer: variations over the drums with respect for rhythm. This section or All sections; New flow gives the same choices a new way through; × All plain undoes the mix.'),
+      row('Whole spiral', 'The machine makes one core beat with its own version for every kind of section. Repeats vary a little; sections of 8 bars or more move by themselves.'),
       row('Bar 1', 'The base of each section: it plays in every bar. Other bars are the base plus your change; a dot marks them.'),
       row('Change', 'Choose where your change lands: this bar, this section or every section of its type.'),
-      row('Shadows', 'Dashed shapes are the machine’s suggestions. Tap to keep. They update after every change.'),
-      row('Sections', 'Drag the chips to reorder. + adds one, the dice by the spiral gives a whole new arrangement.'),
-      row('Groove', 'Per section in the panel on the left: straight, Dilla, ghost notes, shuffle, pushed or laid back. Into next picks the fill into the next section.'),
-      row('Lanes', 'On the right: swing on or off per drum, slide it earlier or later. Machine touches and Kick varies add a drummer’s small changes.'),
-      row('Mixer', 'Every drum, every bar of the section: tap to switch it off or on. 🎲 lets one drum vary, ↗ lets it grow. ⋯ opens every choice: the kind of variation, subtle to wild, how often (call and answer too), which bars, and ♥ to keep a way of varying for later tracks. New flow gives every 🎲 of the section a new variation. Randomize mix does it all at once, subtle to wild, with respect for rhythm: the kick on the one and the backbeat always stay.'),
+      row('Shadows', 'Dashed shapes are the machine’s suggestions. Tap one to keep it. 🎲 Section or 🎲 All gives other suggestions.'),
+      row('Random', 'A fresh beat idea right where your change lands. Clear empties it.'),
       row('Pads 1 to 8', 'Tap a drum to hear it. While it plays, tapping puts the hit in the bar you hear.'),
-      row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
       row('Spiral', 'Your song from the centre out. Tap a colour to select that section; while playing, it jumps there.'),
-      row('Sections', 'Tap a chip to select it; play starts from there. The panel sets length, type, which parts play here, Start from, Vary and ↺.'),
-      row('Repeat bar 1', 'Make one bar of bass, pad, melody or answer; empty bars follow it along the chords. Chords: Fill empty bars.'),
-      row('Dice', 'A new idea that fits the key and chords; it always lands on something different.'),
-      row('Roll machine parts', 'Top bar: every part the machine plays gets a new idea at once; your own parts stay.'),
-      row('Structure dice', 'Next to + under the chips: a new song structure in this genre.'),
-      row('Played by', 'Choose a plugin per part. UJAM parts arrive with keys already in the right zones.'),
-      row('Pure', 'Exactly what you made, with your feel.'),
-      row('Polished', 'Notes nudged into the key and chords, parts in their own range, loudness balanced.'),
+      row('Sections', 'Tap a chip to select it, drag to reorder, + adds one. The panel sets length, type, groove and the fill into the next section.'),
+      row('Copy beat', 'In the section panel: this beat, its changed bars and its mixer go to every section of the same type.'),
+      row('Groove', 'Per section: straight, Dilla, ghost notes, shuffle, pushed or laid back.'),
+      row('Lanes', 'On the right: S is swing per drum, slide earlier or later. 🎲 Random feel keeps the kick tight and lets the rest breathe; × Plain resets.'),
+      row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
+      row('Played by', 'Choose your drum plugin: XO, Impact, Tekno, Beatmaker 3, Playbeat 4 or plain MIDI. The keys land right for it.'),
+      row('New', 'A new groove from scratch, or New beat, same structure: keeps your spiral and empties every beat.'),
+      row('Share', 'A link that plays your groove for anyone. Make your own turns it into their copy.'),
+      row('Deliver', 'One MIDI file with section markers, or one MIDI per lane.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
-    h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
-    manualLinks(),
+    h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     h('div', { class: 'small faint copy' }, 'Divine Groove Machine. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
@@ -4129,6 +4144,8 @@ const demo = D.newSong('triphop', { seed: 20261017, name: 'Untitled' });
 st.song = demo; st.sec = 1; st.boot = true; st.fresh = true;
 render();
 if (!openSharedFromLink()) openStart();
+// a share link pasted into this tab: open it too
+window.addEventListener('hashchange', () => { if (/^#s=/.test(location.hash)) { stopAll(true); closeOverlay(); openSharedFromLink(); } });
 /* ---------- MP3: the whole song as you hear it in the app, rendered offline and encoded here ---------- */
 function mp3Name() { return fileName('Song', deliveryNo(false)).replace(/\.mid$/, '.mp3'); }
 async function renderSongAudio(sg, onProgress) {
@@ -4258,7 +4275,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, spiralBeat, randomFeel, newBeatSameStructure, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, laneDiff, spiralBeat, randomFeel, newBeatSameStructure, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
