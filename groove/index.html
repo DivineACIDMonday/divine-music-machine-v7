@@ -2305,7 +2305,9 @@ function setGenre(g) {
   const sg = song(); if (sg.genre === g) return;
   const from = sg.genre, oldL = sg.L;
   D.adaptToGenre(sg, from, g);
-  if (sg.bpmAuto) sg.bpm = D.GENRES[g].def;
+  const ownBpm = !sg.bpmAuto && sg.bpm !== D.GENRES[g].def ? sg.bpm : null;
+  sg.bpm = D.GENRES[g].def; sg.bpmAuto = true; // a new genre brings its own tempo; Undo brings yours back
+  if (ownBpm) setTimeout(() => toast('Tempo ' + sg.bpm + ' for ' + D.GENRES[g].name + '. Your own tempo was ' + Math.round(ownBpm) + '.', { label: 'Undo', fn: undo }), 0);
   if (oldL !== sg.L) { const unit = sg.L === 12 ? 12 : 4; sg.sections.forEach((x) => { x.bars = x.type === 'fill' ? x.bars : Math.max(unit, Math.round(x.bars / unit) * unit); }); }
   const yours = D.PARTS.filter((p) => sg.parts[p].mode === 'yours');
   setHint(D.GENRES[g].name + ': ' + genreLine(g) + (yours.length ? ' Your ' + yours.map((p) => PART_NAMES[p].toLowerCase()).join(', ') + ' moved along too. Undo brings it back.' : ''));
@@ -3846,7 +3848,7 @@ function openHelp() {
       row('Deliver', 'One MIDI file with section markers, or one MIDI per lane.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-19 10:44. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-19 11:00. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
