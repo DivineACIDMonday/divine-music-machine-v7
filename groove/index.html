@@ -2617,11 +2617,32 @@ function lanePanel() {
   });
   const tog = (id, key, label, tip) => h('button', { id, class: sg[key] ? 'on' : '', 'aria-pressed': !!sg[key], title: tip, onclick: () => { change(() => { sg[key] = !sg[key]; }, { keep: true }); } }, label);
   return h('div', { class: 'slot open lanes', id: 'lanePanel' },
-    h('div', { class: 'hd' }, h('span', { class: 'nm' }, 'Lanes')),
+    h('div', { class: 'hd' }, h('span', { class: 'nm' }, 'Lanes'), h('div', { class: 'grow' }),
+      h('button', { id: 'randomFeel', style: 'white-space:nowrap;font-size:12px;padding:4px 8px', title: 'A musical feel per drum: kick tight on the grid, snare and clap a bit late, hats loose with swing', onclick: randomFeel }, ico('dice'), 'Random feel'),
+      h('button', { class: 'ghost', id: 'plainFeel', style: 'white-space:nowrap;font-size:12px;padding:4px 8px', title: 'Every drum swings and sits on the grid again', onclick: () => { change(() => { song().laneFeel = D.LANE_FEEL0(); }, { keep: true }); setHint('Every lane on the grid again, all with swing.'); } }, '\u00d7 Plain')),
     h('div', { class: 'small' }, 'S = swing on that lane. Slide left to play earlier, right to play later.'),
     ...rows,
     h('div', { class: 'lrow' }, h('span', { class: 'lname' }, 'Hat tone'), h('span'), h('input', { type: 'range', min: 0, max: 100, value: Math.round(hatTone() * 100), id: 'hatTone', 'aria-label': 'Hihat tone in the app: soft to bright', oninput: (e) => { store.set('dgm-hattone-v1', +e.target.value / 100); const l = $('#hatToneVal'); if (l) l.textContent = toneWord(); }, onchange: () => { playLanePreview(4, 90); setHint('Hat tone: only how the hats sound here; your MIDI stays the same.'); } }), h('span', { class: 'lval', id: 'hatToneVal' }, toneWord())),
     h('div', { class: 'ltogs' }, tog('touchesBtn', 'touches', 'Machine touches', 'Small changes from bar to bar, like a drummer: a ghost hat here and there'), tog('kickVarBtn', 'kickVar', 'Kick varies', 'Let the kick move now and then too')));
+}
+// a random feel that stays musical: the kick holds the grid, snare and clap lean back, hats float, perc may go straight
+function randomFeel() {
+  const sg = song(), r = D.rng(D.newSeed()), tight = sg.genre === 'techno' || sg.genre === 'newwave', k = tight ? 0.45 : 1;
+  const rr = (a, b) => Math.round((a + r() * (b - a)) * k);
+  const hatSw = !tight || r.chance(0.7);
+  const f = [
+    { swing: true, shift: r.chance(0.7) ? 0 : rr(0, 3) },
+    { swing: true, shift: rr(-2, 5) },
+    { swing: true, shift: rr(3, 18) },
+    { swing: true, shift: rr(1, 14) },
+    { swing: hatSw, shift: rr(-6, 7) },
+    { swing: hatSw, shift: rr(-4, 9) },
+    { swing: !r.chance(0.4), shift: rr(-8, 11) },
+    { swing: true, shift: 0 }
+  ];
+  change(() => { sg.laneFeel = f; }, { keep: true });
+  const ms = (v) => (v > 0 ? '+' : '') + v + ' ms';
+  toast('Feel: snare ' + ms(f[2].shift) + ', clap ' + ms(f[3].shift) + ', hats ' + ms(f[4].shift) + (f[4].swing ? ' with swing' : ' straight') + (f[6].swing ? '' : ', perc straight') + '. The kick stays on the grid.', { label: 'Undo', fn: undo });
 }
 function toneWord() { const t = hatTone(); return t < 0.34 ? 'soft' : t < 0.67 ? 'medium' : 'bright'; }
 function fmtShift(v) { return v === 0 ? 'on grid' : (v < 0 ? v + ' ms' : '+' + v + ' ms'); }
@@ -4150,7 +4171,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, newBeatSameStructure, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, randomFeel, newBeatSameStructure, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
