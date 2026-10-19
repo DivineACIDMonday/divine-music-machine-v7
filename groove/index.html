@@ -2779,6 +2779,28 @@ function spiralBeatAsk() {
       h('button', { id: 'spiralAll', onclick: () => { closeOverlay(); spiralBeat(true); } }, 'Everything new')));
   overlay(sheet);
 }
+// a subtle mix the machine sets by itself: 2 or 3 drums vary in phrases, bar 1 stays, kick and backbeat stay; 16 bars or more: the second half moves a bit more
+function autoMix(sg, sec, r) {
+  const si = sg.sections.indexOf(sec), n = sec.bars, s0 = D.sectionStart(sg, si), R = D.makeRenderer(sg), plays = D.LANES.map(() => false);
+  const keep = sec.laneFx; sec.laneFx = null;
+  for (let b = 0; b < Math.min(n, 4); b++) { let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } if (x && x.lanes) x.lanes.forEach((l, li) => { if (l.some(Boolean)) plays[li] = true; }); }
+  sec.laneFx = keep;
+  const soft = ['ghost', 'accent', 'thin', 'roll', 'shift'];
+  const cand = Object.keys(ROLES).map(Number).filter((li) => plays[li]); if (!cand.length) return null;
+  const calm = ['intro', 'outro', 'break'].includes(sec.type), want = Math.min(cand.length, calm ? 1 + r.int(2) : 2 + r.int(2));
+  const pool = cand.slice(), fx = {};
+  for (let c = 0; c < want && pool.length; c++) {
+    const tot = pool.reduce((a, li) => a + ROLES[li].weight, 0); let x = r() * tot, i = 0; for (; i < pool.length - 1; i++) { x -= ROLES[pool[i]].weight; if (x <= 0) break; }
+    const li = pool.splice(i, 1)[0], kinds = ROLES[li].kinds.filter((k) => soft.includes(k));
+    let every = r.pick(ROLES[li].every.filter((e) => e !== 1)) || 2; if (every === 'cr' && n < 8) every = 4;
+    fx[li] = { rnd: D.newSeed(), kind: r.pick(kinds.length ? kinds : ['accent']), amt: 1, every };
+  }
+  if (n >= 16 && !calm) { const li = Object.keys(fx).map(Number).find((x) => x === 4 || x === 6) ?? +Object.keys(fx)[0]; fx[li] = Object.assign({}, fx[li], { amt: 2, from: Math.floor(n / 2) }); }
+  // make sure it really moves: a sparse beat can leave a variation nothing to do, then try another one
+  const moves = (f) => { const k0 = sec.laneFx; sec.laneFx = f; const seen = new Set(); try { for (let b = 0; b < n; b++) { const x = D.renderBar(sg, 'beat', s0 + b, D.makeRenderer(sg).res, { lanes: true }); seen.add(JSON.stringify(x && x.lanes)); } } catch (e) { /* counts as still */ } sec.laneFx = k0; return seen.size > 1; };
+  for (let t = 0; t < 6 && !moves(fx); t++) { const li = +r.pick(Object.keys(fx)); fx[li] = Object.assign({}, fx[li], { rnd: D.newSeed(), kind: r.pick(['ghost', 'accent', 'roll']), every: 2, amt: t >= 3 ? 2 : 1 }); }
+  return fx;
+}
 function spiralBeat(all) {
   const sg = song(), seed = D.newSeed(), r = D.rng(seed), core = D.genBeat(sg, 'chorus', {}, seed);
   const types = [...new Set(sg.sections.map((x) => x.type))], made = [];
@@ -2788,7 +2810,7 @@ function spiralBeat(all) {
       if (!sg.mat[t]) sg.mat[t] = {};
       sg.mat[t].beat = { src: 'user', data: D.typeBeatFromCore(sg, core, t, D.hash(seed, t)) }; made.push(t);
     }
-    const seen = {};
+    const seen = {}, autoMixes = [];
     sg.sections.forEach((sec) => {
       if (!made.includes(sec.type)) return;
       if (all && sec.own) { delete sec.own.beat; if (!Object.keys(sec.own).length) delete sec.own; }
@@ -2796,13 +2818,16 @@ function spiralBeat(all) {
       seen[sec.type] = (seen[sec.type] || 0) + 1;
       // the second chorus is not a copy: a light variation of the first
       if (seen[sec.type] > 1 && !(sec.own && sec.own.beat)) { sec.own = Object.assign({}, sec.own, { beat: D.varyMat(sg, 'beat', sg.mat[sec.type].beat.data, null, D.hash(seed, sec.id)) }); }
+      // long sections breathe by themselves: a subtle mix over 8 bars or more
+      if (sec.bars >= 8 && (all || !sec.laneFx)) autoMixes.push(sec);
       // a build grows into what comes next
       if ((sec.type === 'build' || sec.type === 'prechorus') && !sec.laneFx) sec.laneFx = { 2: { prog: 'end16' } };
     });
+    for (const sec of autoMixes) { const fx = autoMix(sg, sec, r); if (fx) sec.laneFx = Object.assign({}, fx, sec.type === 'build' || sec.type === 'prechorus' ? { 2: Object.assign({}, fx[2], { prog: 'end16' }) } : null); }
   }, { keep: true });
   renderEditor();
   if (!made.length) { toast('Every section already has a beat. Choose Everything new to replace them.'); return; }
-  toast('A beat for the whole spiral: ' + made.map((t) => D.TYPES[t].name).join(', ') + '. Repeated sections vary a little.', { label: 'Undo', fn: undo });
+  toast('A beat for the whole spiral: ' + made.map((t) => D.TYPES[t].name).join(', ') + '. Repeated sections vary a little; sections of 8 bars or more move by themselves (see the Mixer).', { label: 'Undo', fn: undo });
 }
 function renderEditor() {
   st.view = 'beat';
