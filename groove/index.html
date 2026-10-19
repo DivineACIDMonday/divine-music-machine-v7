@@ -281,6 +281,8 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 button.sure{background:var(--danger,#c0392b);color:#fff;border-color:transparent}
 [aria-label="New shadows"] button,[aria-label="Where"] button{padding:4px 10px;gap:5px;display:inline-flex;align-items:center}
 @media (max-width:600px){.edhead .seg button{padding:4px 8px}}
+.mixempty{border:1px dashed var(--line2);border-radius:10px;padding:10px 12px;font-size:13px}
+.stale{opacity:.35}
 </style>
 
 <div class="app" id="app">
@@ -2688,8 +2690,9 @@ function laneMixer() {
   D.LANES.forEach((ln, li) => {
     const allOff = Array.from({ length: n }, (_, b) => D.laneIsOff(sec, b, li)).every(Boolean), fx = fxOf(li), open = st.mixOpen === li;
     const from = fx.from != null ? fx.from : 0, to = fx.to != null ? fx.to : n - 1, ranged = fx.from != null || fx.to != null;
-    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : ''), id: 'mixRnd_' + li, title: fx.rnd ? 'Another variation of ' + ln.name : 'Let ' + ln.name + ' vary', 'aria-label': 'Vary ' + ln.name, onclick: () => fxChange(li, { rnd: D.newSeed() }, ln.name + ' varies: ' + D.VARKINDS[fx.kind || 'mix'].toLowerCase() + ', ' + D.EVERY[fx.every || 1] + '. Tap 🎲 again for another.') }, ico('dice'));
-    const prog = h('select', { class: 'mixprog', id: 'mixProg_' + li, 'aria-label': ln.name + ' progression', onchange: (e) => fxChange(li, { prog: e.target.value }, ln.name + ': ' + D.PROGS[e.target.value].toLowerCase() + '.') },
+    const idle = !cnt.some((c) => c[li] > 0);
+    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : '') + (idle ? ' stale' : ''), id: 'mixRnd_' + li, title: fx.rnd ? 'Another variation of ' + ln.name : 'Let ' + ln.name + ' vary', 'aria-label': 'Vary ' + ln.name, onclick: () => fxChange(li, { rnd: D.newSeed() }, ln.name + ' varies: ' + D.VARKINDS[fx.kind || 'mix'].toLowerCase() + ', ' + D.EVERY[fx.every || 1] + '. Tap 🎲 again for another.') }, ico('dice'));
+    const prog = h('select', { class: 'mixprog' + (idle ? ' stale' : ''), id: 'mixProg_' + li, 'aria-label': ln.name + ' progression', onchange: (e) => fxChange(li, { prog: e.target.value }, ln.name + ': ' + D.PROGS[e.target.value].toLowerCase() + '.') },
       Object.entries(D.PROGS).map(([k, t]) => h('option', { value: k, selected: (fx.prog || 'none') === k }, '↗ ' + (k === 'none' ? 'none' : t.split(':')[0]))));
     const more = h('button', { class: 'mixfx ' + (open ? 'on' : ''), id: 'mixMore_' + li, title: 'All choices for ' + ln.name, 'aria-expanded': open, onclick: () => { st.mixOpen = open ? null : li; renderEditor(); } }, '⋯');
     tbl.append(h('div', { class: 'mixhead' }, h('button', { class: 'mixname', title: (allOff ? 'Switch ' : 'Mute ') + ln.name + ' in all of ' + sectionLabel(st.sec), onclick: () => { change(() => { for (let b = 0; b < n; b++) if (D.laneIsOff(sec, b, li) === allOff) toggle(b, li); }, { keep: true }); renderEditor(); } }, ln.name), dice, prog, more));
@@ -2699,6 +2702,7 @@ function laneMixer() {
     }
     if (open) tbl.append(laneMore(li, ln, fx, n, from, to, fxChange));
   });
+  if (!cnt.some((c) => c.some((v) => v > 0))) wrap.append(h('div', { class: 'mixempty', id: 'mixEmpty' }, h('b', null, 'Only shadows here: nothing plays yet in ' + sectionLabel(st.sec) + '.'), ' Tap a dashed shape in Rings or Lines to make it real, or use Whole spiral. The mixer works on what really plays.'));
   wrap.append(tbl);
   return wrap;
 }
@@ -2715,24 +2719,26 @@ const ROLES = {
 };
 function computeMix(si, level, r) {
   const sg = song(), sec = sg.sections[si], n = sec.bars, s0 = D.sectionStart(sg, si), R = D.makeRenderer(sg);
-  const plays = D.LANES.map(() => false);
+  const plays = D.LANES.map(() => 0);
   const keep = sec.laneFx; sec.laneFx = null;
-  try { for (let b = 0; b < n; b++) { let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } if (x && x.lanes) x.lanes.forEach((l, li) => { if (l.some(Boolean)) plays[li] = true; }); } } finally { sec.laneFx = keep; }
-  const cand = Object.keys(ROLES).map(Number).filter((li) => plays[li]);
+  try { for (let b = 0; b < n; b++) { let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } if (x && x.lanes) x.lanes.forEach((l, li) => { if (l.some(Boolean)) plays[li]++; }); } } finally { sec.laneFx = keep; }
+  const cand = Object.keys(ROLES).map(Number).filter((li) => plays[li] >= Math.max(1, Math.ceil(n / 3))); // a drum that hardly plays here is left alone
   if (!cand.length) return null;
   const calm = ['intro', 'outro', 'break'].includes(sec.type), cap = Math.max(1, level - (calm ? 1 : 0));
-  const want = Math.min(cand.length, level === 1 ? 1 + r.int(2) : level === 2 ? 2 + r.int(2) : 3);
-  const pool = cand.slice(), chosen = [];
-  while (chosen.length < want && pool.length) { const tot = pool.reduce((a, li) => a + ROLES[li].weight, 0); let x = r() * tot, i = 0; for (; i < pool.length - 1; i++) { x -= ROLES[pool[i]].weight; if (x <= 0) break; } chosen.push(pool.splice(i, 1)[0]); }
   const fx = {}; let wild = false;
-  for (const li of chosen) {
-    const ro = ROLES[li]; let amt = Math.min(ro.maxAmt, 1 + r.int(cap)); if (amt === 3) { if (wild) amt = 2; wild = true; }
-    let every = r.pick(ro.every); if (every === 'cr' && n < 8) every = 4; if (n < 4) every = 1;
-    fx[li] = { rnd: D.newSeed(), kind: r.pick(ro.kinds), amt, every };
-    if (level === 3 && n >= 8 && r.chance(0.3)) fx[li].from = Math.floor(n / 2); // only the second half grows wild
+  const every = (ro) => { let e = r.pick(ro.every); if (e === 'cr' && n < 8) e = 4; if (n < 4) e = 1; return e; };
+  // every drum that plays gets something; the kicks stay the anchor, the hats and perc move most
+  for (const li of cand) {
+    const ro = ROLES[li], anchor = li <= 1;
+    if (anchor) { fx[li] = r.chance(0.5) ? { prog: r.pick(['in', 'swell']) } : { rnd: D.newSeed(), kind: r.pick(['ghost', 'shift']), amt: 1, every: n >= 8 ? 4 : 2 }; continue; }
+    const dice = r.chance(level === 1 ? 0.55 : level === 2 ? 0.8 : 1);
+    if (dice) {
+      let amt = Math.min(ro.maxAmt, 1 + r.int(cap)); if (amt === 3) { if (wild) amt = 2; wild = true; }
+      fx[li] = { rnd: D.newSeed(), kind: r.pick(ro.kinds), amt, every: every(ro) };
+      if (level === 3 && n >= 8 && r.chance(0.3)) fx[li].from = Math.floor(n / 2); // only the second half grows wild
+      if (r.chance(level === 1 ? 0.15 : 0.3)) fx[li].prog = r.pick(ro.progs);
+    } else fx[li] = { prog: r.pick(ro.progs) };
   }
-  const progLanes = cand.filter(() => r.chance(level === 1 ? 0.2 : 0.35)).slice(0, level);
-  for (const li of progLanes) { fx[li] = Object.assign(fx[li] || {}, { prog: r.pick(ROLES[li].progs) }); }
   if (level > 1 && n >= 4 && r.chance(0.5)) { // one ending, into whatever comes next
     const next = sg.sections[si + 1], up = next && D.TYPES[next.type].energy > D.TYPES[sec.type].energy;
     const li = [4, 2, 6].find((x) => plays[x] && !(fx[x] && fx[x].prog)); if (li != null) fx[li] = Object.assign(fx[li] || {}, { prog: up ? 'end16' : 'endout' });
@@ -2876,7 +2882,7 @@ function renderEditor() {
     h('button', { id: 'mixerBtn', class: mode === 'mixer' ? 'on' : '', title: 'Switch lanes on or off per bar', onclick: () => { st.mixer = true; renderEditor(); } }, 'Mixer')));
   head.append(h('div', { style: 'flex-basis:100%;height:0' })); // second row: what the machine does for you
   head.append(h('button', { id: 'spiralBeat', title: 'The machine makes a beat for the whole spiral: one core groove, every kind of section its own version of it', onclick: spiralBeatAsk }, ico('dice'), 'Whole spiral'));
-  head.append(h('button', { title: 'A fresh beat idea from the machine, right where your change lands', onclick: () => newVersion('beat') }, ico('dice'), 'Random'));
+  head.append(h('button', { title: 'A fresh beat idea from the machine, right where your change lands', onclick: () => newVersion('beat') }, ico('dice'), 'Random beat'));
   head.append(h('button', { class: 'ghost', title: 'Empty the beat right where your change lands', onclick: clearPart }, ico('trash'), 'Clear'));
   head.append(h('div', { class: 'grow' }));
   head.append(h('button', { class: st.shadows ? 'on' : '', 'aria-pressed': st.shadows, title: 'Show the machine’s suggestions as dashed shapes', onclick: () => { st.shadows = !st.shadows; renderEditor(); } }, ico('eye'), 'Shadows'));
@@ -3801,7 +3807,7 @@ function openHelp() {
       row('Deliver', 'One MIDI file with section markers, or one MIDI per lane.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-19 09:59. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
