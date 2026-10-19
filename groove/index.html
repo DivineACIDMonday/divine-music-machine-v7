@@ -2657,13 +2657,15 @@ function laneMixer() {
   const fxChange = (li, patch, msg) => { change(() => setFx(li, patch), { keep: true }); renderEditor(); if (msg) setHint(msg); };
   const wrap = h('div', { class: 'mixwrap' });
   const anyRnd = sec.laneFx && Object.values(sec.laneFx).some((f) => f.rnd);
+  const anyFxAll = sg.sections.some((x) => x.laneFx), anyRndAll = sg.sections.some((x) => x.laneFx && Object.values(x.laneFx).some((f) => f.rnd));
   wrap.append(h('div', { class: 'mixtop' },
     h('span', { class: 'small' }, 'Tap a cell: that drum off or on in that bar. 🎲 varies a drum, ↗ lets it grow, ⋯ for all choices. Bar 1 stays your base.'),
     h('div', { class: 'grow' }),
-    h('button', { id: 'mixRandom', class: 'primary', title: 'Variations and progressions over every drum that plays in ' + sectionLabel(st.sec) + ', with respect for rhythm', onclick: () => randomizeMix(st.mixLevel || 2) }, ico('dice'), 'Randomize mix'),
+    h('button', { id: 'mixRandom', class: 'primary', title: 'Variations and progressions over every drum that plays in ' + (st.mixAll ? 'every section' : sectionLabel(st.sec)) + ', with respect for rhythm', onclick: () => randomizeMix(st.mixLevel || 2) }, ico('dice'), 'Randomize mix'),
     h('div', { class: 'seg mmamt', role: 'group', 'aria-label': 'How much' }, [[1, 'subtle'], [2, 'medium'], [3, 'wild']].map(([k, t]) => h('button', { id: 'mixLevel_' + k, class: (st.mixLevel || 2) === k ? 'on' : '', onclick: () => { st.mixLevel = k; renderEditor(); } }, t))),
-    h('button', { class: 'ghost', id: 'mixPlain', disabled: !sec.laneFx, title: 'Every drum plays as written again', onclick: () => { change(() => { delete sec.laneFx; }, { keep: true }); renderEditor(); setHint('Every drum in ' + sectionLabel(st.sec) + ' plays as written again.'); } }, '\u00d7 All plain'),
-    h('button', { id: 'newFlow', disabled: !anyRnd, title: anyRnd ? 'New variations for every drum with a 🎲 in ' + sectionLabel(st.sec) + '; your base stays' : 'Give a drum a 🎲 first', onclick: () => { change(() => { for (const k of Object.keys(sec.laneFx)) if (sec.laneFx[k].rnd) sec.laneFx[k] = Object.assign({}, sec.laneFx[k], { rnd: D.newSeed() }); }, { keep: true }); renderEditor(); setHint('New flow: same base, a new way through ' + sectionLabel(st.sec) + '.'); } }, ico('dice'), 'New flow')));
+    h('div', { class: 'seg mmamt', role: 'group', 'aria-label': 'Where', style: 'grid-template-columns:1fr 1fr' }, h('button', { id: 'mixScopeSec', class: st.mixAll ? '' : 'on', title: 'Randomize, New flow and All plain work on ' + sectionLabel(st.sec), onclick: () => { st.mixAll = false; renderEditor(); } }, 'This section'), h('button', { id: 'mixScopeAll', class: st.mixAll ? 'on' : '', title: 'Randomize, New flow and All plain work on every section at once', onclick: () => { st.mixAll = true; renderEditor(); } }, 'All sections')),
+    h('button', { class: 'ghost', id: 'mixPlain', disabled: st.mixAll ? !anyFxAll : !sec.laneFx, title: st.mixAll ? 'Every drum in every section plays as written again' : 'Every drum plays as written again', onclick: () => { change(() => { if (st.mixAll) sg.sections.forEach((x) => { delete x.laneFx; }); else delete sec.laneFx; }, { keep: true }); renderEditor(); setHint(st.mixAll ? 'Every drum in every section plays as written again.' : 'Every drum in ' + sectionLabel(st.sec) + ' plays as written again.'); } }, '\u00d7 All plain'),
+    h('button', { id: 'newFlow', disabled: st.mixAll ? !anyRndAll : !anyRnd, title: (st.mixAll ? anyRndAll : anyRnd) ? 'New variations for every drum with a 🎲' + (st.mixAll ? ' in every section' : ' in ' + sectionLabel(st.sec)) + '; your base stays' : 'Give a drum a 🎲 first', onclick: () => { change(() => { for (const x of st.mixAll ? sg.sections : [sec]) if (x.laneFx) for (const k of Object.keys(x.laneFx)) if (x.laneFx[k].rnd) x.laneFx[k] = Object.assign({}, x.laneFx[k], { rnd: D.newSeed() }); }, { keep: true }); renderEditor(); setHint(st.mixAll ? 'New flow everywhere: same base, a new way through every section.' : 'New flow: same base, a new way through ' + sectionLabel(st.sec) + '.'); } }, ico('dice'), 'New flow')));
   const tbl = h('div', { class: 'mixgrid', id: 'mixGrid', style: 'grid-template-columns:178px repeat(' + n + ',minmax(18px,1fr))' });
   tbl.append(h('span'));
   for (let b = 0; b < n; b++) tbl.append(h('button', { class: 'mixbar ' + (b === selBar() ? 'on' : ''), title: 'Bar ' + (b + 1), onclick: () => { selectBar(b); renderEditor(); followBar(); } }, String(b + 1)));
@@ -2696,12 +2698,13 @@ const ROLES = {
   5: { kinds: ['thin', 'accent', 'displace'], every: [2, 4], maxAmt: 2, progs: ['wave', 'swell', 'fade'], weight: 1 },
   6: { kinds: ['euclid', 'displace', 'mix', 'ghost'], every: ['cr', 2, 4], maxAmt: 3, progs: ['walk', 'wave', 'in', 'stair'], weight: 1.3 }
 };
-function randomizeMix(level) {
-  const sg = song(), sec = secNow(), n = sec.bars, r = D.rng(D.newSeed()), s0 = D.sectionStart(sg, st.sec), R = D.makeRenderer(sg);
+function computeMix(si, level, r) {
+  const sg = song(), sec = sg.sections[si], n = sec.bars, s0 = D.sectionStart(sg, si), R = D.makeRenderer(sg);
   const plays = D.LANES.map(() => false);
-  for (let b = 0; b < n; b++) { const keep = sec.laneFx; sec.laneFx = null; let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true, }); } catch (e) { x = null; } sec.laneFx = keep; if (x && x.lanes) x.lanes.forEach((l, li) => { if (l.some(Boolean)) plays[li] = true; }); }
+  const keep = sec.laneFx; sec.laneFx = null;
+  try { for (let b = 0; b < n; b++) { let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } if (x && x.lanes) x.lanes.forEach((l, li) => { if (l.some(Boolean)) plays[li] = true; }); } } finally { sec.laneFx = keep; }
   const cand = Object.keys(ROLES).map(Number).filter((li) => plays[li]);
-  if (!cand.length) { toast('Nothing plays in ' + sectionLabel(st.sec) + ' yet. Make a base in bar 1 first.'); return; }
+  if (!cand.length) return null;
   const calm = ['intro', 'outro', 'break'].includes(sec.type), cap = Math.max(1, level - (calm ? 1 : 0));
   const want = Math.min(cand.length, level === 1 ? 1 + r.int(2) : level === 2 ? 2 + r.int(2) : 3);
   const pool = cand.slice(), chosen = [];
@@ -2713,16 +2716,30 @@ function randomizeMix(level) {
     fx[li] = { rnd: D.newSeed(), kind: r.pick(ro.kinds), amt, every };
     if (level === 3 && n >= 8 && r.chance(0.3)) fx[li].from = Math.floor(n / 2); // only the second half grows wild
   }
-  const progLanes = cand.filter((li) => r.chance(level === 1 ? 0.2 : 0.35)).slice(0, level);
+  const progLanes = cand.filter(() => r.chance(level === 1 ? 0.2 : 0.35)).slice(0, level);
   for (const li of progLanes) { fx[li] = Object.assign(fx[li] || {}, { prog: r.pick(ROLES[li].progs) }); }
   if (level > 1 && n >= 4 && r.chance(0.5)) { // one ending, into whatever comes next
-    const next = sg.sections[st.sec + 1], up = next && D.TYPES[next.type].energy > D.TYPES[sec.type].energy;
+    const next = sg.sections[si + 1], up = next && D.TYPES[next.type].energy > D.TYPES[sec.type].energy;
     const li = [4, 2, 6].find((x) => plays[x] && !(fx[x] && fx[x].prog)); if (li != null) fx[li] = Object.assign(fx[li] || {}, { prog: up ? 'end16' : 'endout' });
   }
+  return fx;
+}
+function mixWords(fx) { return Object.entries(fx).map(([li, f]) => D.LANES[li].name.toLowerCase() + ' ' + [f.kind ? D.VARKINDS[f.kind].toLowerCase() : '', f.prog ? D.PROGS[f.prog].split(':')[0].toLowerCase() : ''].filter(Boolean).join(' + ')).join(', '); }
+function randomizeMix(level) {
+  const sg = song(), r = D.rng(D.newSeed());
+  if (st.mixAll) {
+    let done = 0;
+    change(() => { sg.sections.forEach((sec, si) => { const fx = computeMix(si, level, r); if (fx && Object.keys(fx).length) { sec.laneFx = fx; done++; } else delete sec.laneFx; }); }, { keep: true });
+    st.mixLevel = level; renderEditor();
+    if (!done) { toast('Nothing plays yet. Make a base in bar 1 first.'); return; }
+    toast('A new mix for ' + done + ' of ' + sg.sections.length + ' sections, each to its kind.', { label: 'Undo', fn: undo }); return;
+  }
+  const fx = computeMix(st.sec, level, r);
+  if (!fx) { toast('Nothing plays in ' + sectionLabel(st.sec) + ' yet. Make a base in bar 1 first.'); return; }
+  const sec = secNow();
   change(() => { if (Object.keys(fx).length) sec.laneFx = fx; else delete sec.laneFx; }, { keep: true });
   st.mixLevel = level; renderEditor();
-  const words = Object.entries(fx).map(([li, f]) => D.LANES[li].name.toLowerCase() + ' ' + [f.kind ? D.VARKINDS[f.kind].toLowerCase() : '', f.prog ? D.PROGS[f.prog].split(':')[0].toLowerCase() : ''].filter(Boolean).join(' + '));
-  toast('Mix: ' + words.join(', ') + '.', { label: 'Undo', fn: undo });
+  toast('Mix: ' + mixWords(fx) + '.', { label: 'Undo', fn: undo });
 }
 // every choice for one drum: what the variation does, how strong, how often, which bars, favorites
 function laneMore(li, ln, fx, n, from, to, fxChange) {
@@ -2808,7 +2825,9 @@ function spiralBeat(all) {
     for (const t of types) {
       const m = sg.mat[t] && sg.mat[t].beat; if (!all && m && !D.isEmpty('beat', m.data)) continue;
       if (!sg.mat[t]) sg.mat[t] = {};
-      sg.mat[t].beat = { src: 'user', data: D.typeBeatFromCore(sg, core, t, D.hash(seed, t)) }; made.push(t);
+      const data = D.typeBeatFromCore(sg, core, t, D.hash(seed, t));
+      if (D.isEmpty('beat', data)) { const from = [5, 4, 6].find((li) => core.lanes[li] && core.lanes[li].some(Boolean)); if (from != null) data.lanes[from] = core.lanes[from].slice(); } // never a silent section: keep the hats going
+      sg.mat[t].beat = { src: 'user', data }; made.push(t);
     }
     const seen = {}, autoMixes = [];
     sg.sections.forEach((sec) => {
