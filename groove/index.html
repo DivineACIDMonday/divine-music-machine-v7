@@ -762,6 +762,8 @@ E.typeBeatFromCore = function (song, core, type, seed) {
   const r = rng(seed);
   const mask = (BEAT_MASK[type][song.genre] || BEAT_MASK[type].def);
   const out = core.lanes.map((l, i) => mask.includes(i) ? l.slice() : new Array(l.length).fill(0));
+  // no open hats allowed here and no closed ones left: the open hats come in as closed hats, so the pulse stays
+  if (!mask.includes(OH) && mask.includes(HH) && out[HH].filter(Boolean).length < 4 && core.lanes[OH].some(Boolean)) out[HH] = out[HH].map((v, s) => v || (core.lanes[OH][s] ? Math.round(core.lanes[OH][s] * 0.85) : 0));
   if (type === 'chorus' || type === 'drop') { const N = out[HH].length; for (let s = 1; s < N; s += 2) if (!out[HH][s] && r.chance(0.35) && song.genre !== 'blues') out[HH][s] = 38 + r.int(14); }
   if (type === 'break') for (let s = 0; s < out[HH].length; s++) if (out[HH][s] && s % 4) out[HH][s] = 0;
   return { lanes: out };
@@ -2765,6 +2767,10 @@ function computeMix(si, level, r) {
       if (r.chance(level === 1 ? 0.15 : 0.3)) fx[li].prog = r.pick(ro.progs);
     } else fx[li] = { prog: r.pick(ro.progs) };
   }
+  if (sec.type === 'build' || sec.type === 'prechorus') { // a build keeps building: hats grow in, the snare rolls into what comes next
+    if (plays[4]) fx[4] = Object.assign(fx[4] || {}, { prog: 'in' });
+    if (plays[2] || plays[3]) { const li = plays[2] ? 2 : 3; fx[li] = Object.assign(fx[li] || {}, { prog: 'end16' }); }
+  }
   if (level > 1 && n >= 4 && r.chance(0.5)) { // one ending, into whatever comes next
     const next = sg.sections[si + 1], up = next && D.TYPES[next.type].energy > D.TYPES[sec.type].energy;
     const li = [4, 2, 6].find((x) => plays[x] && !(fx[x] && fx[x].prog)); if (li != null) fx[li] = Object.assign(fx[li] || {}, { prog: up ? 'end16' : 'endout' });
@@ -2894,9 +2900,9 @@ function spiralBeat(all) {
       // long sections breathe by themselves: a subtle mix over 8 bars or more
       if (sec.bars >= 8 && (all || !sec.laneFx)) autoMixes.push(sec);
       // a build grows into what comes next
-      if ((sec.type === 'build' || sec.type === 'prechorus') && !sec.laneFx) sec.laneFx = { 2: { prog: 'end16' } };
+      if ((sec.type === 'build' || sec.type === 'prechorus') && !sec.laneFx) sec.laneFx = { 2: { prog: 'end16' }, 4: { prog: 'in' } };
     });
-    for (const sec of autoMixes) { const fx = autoMix(sg, sec, r); if (fx) sec.laneFx = Object.assign({}, fx, sec.type === 'build' || sec.type === 'prechorus' ? { 2: Object.assign({}, fx[2], { prog: 'end16' }) } : null); }
+    for (const sec of autoMixes) { const fx = autoMix(sg, sec, r); if (fx) sec.laneFx = Object.assign({}, fx, sec.type === 'build' || sec.type === 'prechorus' ? { 2: Object.assign({}, fx[2], { prog: 'end16' }), 4: Object.assign({}, fx[4], { prog: 'in' }) } : null); }
   }, { keep: true });
   renderEditor();
   if (!made.length) { toast('Every section already has a beat. Choose Everything new to replace them.'); return; }
@@ -3840,7 +3846,7 @@ function openHelp() {
       row('Deliver', 'One MIDI file with section markers, or one MIDI per lane.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-19 10:24. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-19 10:44. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
