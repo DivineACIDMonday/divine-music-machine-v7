@@ -1264,13 +1264,13 @@ E.genBeat = function (song, type, ctx, seed) {
 };
 // lane activity per section type
 const BEAT_MASK = {
-  intro: { techno: [K, HH, PC, K2], def: [HH, PC, OH] },
-  verse: { def: [K, K2, SN, CP, HH, PC] },
+  intro: { techno: [K, HH, PC, K2], house: [K, HH, OH, PC], acid: [K, HH, OH, PC], trance: [K, HH, OH, PC], eurodance: [K, HH, OH, PC], ebm: [K, HH, PC], def: [HH, PC, OH] },
+  verse: { house: [K, K2, CP, HH, OH, PC], acid: [K, CP, HH, OH, PC], trance: [K, CP, HH, OH, PC], eurodance: [K, SN, CP, HH, OH, PC], def: [K, K2, SN, CP, HH, PC] },
   chorus: { def: [K, K2, SN, CP, HH, OH, PC, CR] },
   break: { techno: [HH, PC], def: [HH, PC] },
-  build: { def: [K, SN, CP, HH, PC] },
-  outro: { techno: [K, HH, OH, PC], def: [K, HH, PC] },
-  prechorus: { def: [K, SN, CP, HH, PC] },
+  build: { house: [K, CP, HH, OH, PC], acid: [K, CP, HH, OH, PC], trance: [K, CP, HH, OH, PC], eurodance: [K, SN, CP, HH, OH, PC], def: [K, SN, CP, HH, PC] },
+  outro: { techno: [K, HH, OH, PC], house: [K, HH, OH, PC], acid: [K, HH, OH, PC], trance: [K, HH, OH, PC], eurodance: [K, HH, OH, PC], def: [K, HH, PC] },
+  prechorus: { house: [K, CP, HH, OH, PC], acid: [K, CP, HH, OH, PC], trance: [K, CP, HH, OH, PC], eurodance: [K, SN, CP, HH, OH, PC], def: [K, SN, CP, HH, PC] },
   drop: { def: [K, K2, SN, CP, HH, OH, PC, CR] },
   fill: { def: [K, K2, SN, CP, HH, OH, PC] }
 };
@@ -1295,6 +1295,17 @@ E.breakPulse = function (song, data, core) {
   const src = [HH, OH].map((li) => core.lanes[li]).find((l) => l && l.filter(Boolean).length >= 4);
   // just the offbeats (4 per bar), soft: a pulse, not a groove
   for (let s = 2; s < N; s += 4) { const v = src && src[s] ? src[s] : 70; if (!L[HH][s] && !L[OH][s]) L[HH][s] = clamp(Math.round(v * 0.6), 28, 56); }
+  return data;
+};
+// the dice for the beat: you asked for a beat, so an intro, break or outro gets a real one (calmer than the chorus), never just hats
+E.diceBeat = function (song, core, type, seed) {
+  if (type !== 'intro' && type !== 'break' && type !== 'outro') return E.typeBeatFromCore(song, core, type, seed);
+  const r = rng(hash(seed, 'dice', type)), N = core.lanes[0].length;
+  const four = E.FOUR && E.FOUR.includes(song.genre);
+  const recipe = type === 'break' ? pickW(r, four ? { break: 1, kick: 1 } : { break: 2, kick: 1 }) : pickW(r, four ? { solo: 3, kick: 1 } : { solo: 3, break: 2, toms: 1 });
+  const lanes = E.introLanes(song, core.lanes, recipe, 1, 2, N, r) || core.lanes.map((l) => l.slice());
+  const data = { lanes }; E.shapeDensity(song, data, type);
+  if (type === 'break' && lanes[SN]) lanes[SN] = lanes[SN].map((v, s) => (v >= 90 && s !== Math.round(N * 3 / 4) ? 0 : v)); // a break keeps one backbeat: the snare on four
   return data;
 };
 E.typeBeatFromCore = function (song, core, type, seed) {
@@ -3629,7 +3640,7 @@ function newVersionOnce(p) {
       const t = curType(); const res = resolvedNow(); const seed = D.newSeed();
       const ctx = { chords: res.ctxChords, beat: res.beat };
       let m;
-      if (p === 'beat') m = D.typeBeatFromCore(sg, D.genBeat(sg, 'chorus', ctx, seed), t, seed);
+      if (p === 'beat') m = D.diceBeat(sg, D.genBeat(sg, 'chorus', ctx, seed), t, seed); // a real beat, also in an intro, break or outro
       else if (p === 'chords') { ctx.melodyUser = sg.parts.melody.mode === 'yours' ? res.melody : null; ctx.bassUser = sg.parts.bass.mode === 'yours' ? res.bass : null; m = D.genChords(sg, t, ctx, seed); }
       else m = D.genNotes(p, sg, t, ctx, seed);
       const where = editingText(p).replace(/^Editing /, ''); putHere(p, m); setHint('A fresh ' + PART_NAMES[p].toLowerCase() + ' idea for ' + where + '. It stays yours to edit; undo brings back the old one.');
@@ -4888,7 +4899,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 22:57. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 23:27. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
