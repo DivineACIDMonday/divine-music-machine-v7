@@ -295,6 +295,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 #explainBtn.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 [aria-label="New shadows"] button,[aria-label="Where"] button{padding:4px 10px;gap:5px;display:inline-flex;align-items:center}
 button.sure{background:var(--danger,#c0392b);color:#fff;border-color:transparent}
+.edbody>.mixwrap{align-self:stretch;height:100%;max-height:100%;overflow:auto;justify-content:flex-start}
 </style>
 
 <div class="app" id="app">
@@ -4352,7 +4353,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 16:56. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:00. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -4704,7 +4705,8 @@ const TIP = { el: null, timer: 0, hold: 0, swallow: false };
 function tipEl() { if (!TIP.el) { TIP.el = document.createElement('div'); TIP.el.id = 'tip'; TIP.el.setAttribute('role', 'tooltip'); document.body.append(TIP.el); } return TIP.el; }
 function moveTitles(root) { (root.querySelectorAll ? root : document).querySelectorAll('[title]').forEach((e) => { e.dataset.tip = e.getAttribute('title'); if (!e.getAttribute('aria-label') && !e.textContent.trim()) e.setAttribute('aria-label', e.getAttribute('title')); e.removeAttribute('title'); }); if (root.getAttribute && root.getAttribute('title')) moveTitles({ querySelectorAll: () => [root] }); }
 function showTip(t, stay) {
-  const txt = t.dataset.tip; if (!txt) return;
+  const txt = t.dataset.tip; if (!txt || !t.isConnected) return;
+  { const rr = t.getBoundingClientRect(); if (!rr.width && !rr.height) return; } // gone or hidden after a redraw
   const el = tipEl(); el.textContent = txt; el.className = 'show' + (st.explain ? ' explain' : ''); 
   const r = t.getBoundingClientRect(), w = Math.min(300, window.innerWidth - 24); el.style.maxWidth = w + 'px';
   const tw = el.offsetWidth, th = el.offsetHeight; let x = r.left + r.width / 2 - tw / 2; x = Math.max(12, Math.min(window.innerWidth - tw - 12, x));

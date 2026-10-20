@@ -295,6 +295,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 #tip.show{opacity:1;transform:none}
 #tip.explain{outline:2px solid var(--accent)}
 #explainBtn.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
+.edbody>.mixwrap{align-self:stretch;height:100%;max-height:100%;overflow:auto;justify-content:flex-start}
 </style>
 
 <div class="app" id="app">
@@ -3883,7 +3884,7 @@ function newSong(genre) {
 function loadSong(sg) { stopAll(true); st.boot = false; D.ensureTypes(sg); D.makeGroove(sg, true); st.held = false; st.loop = false; st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.view = 'beat'; clampSec(); render(); }
 
 // the latest manual, published next to the app, in three languages
-const MANUALS = [['English', 'manuals/Divine-Music-Machine-Manual-EN.pdf'], ['Nederlands', 'manuals/Divine-Music-Machine-Handleiding-NL.pdf'], ['Deutsch', 'manuals/Divine-Music-Machine-Handbuch-DE.pdf']];
+const MANUALS = [['English', 'manuals/Divine-Groove-Machine-Manual-EN.pdf'], ['Nederlands', 'manuals/Divine-Groove-Machine-Handleiding-NL.pdf'], ['Deutsch', 'manuals/Divine-Groove-Machine-Handbuch-DE.pdf']];
 function manualLinks(small) {
   return h('div', { class: 'manuals' + (small ? ' small' : '') }, h('span', null, ico('file'), 'Manual (PDF):'), MANUALS.map(([name, href]) => h('a', { class: 'mlink', href, download: '', target: '_blank', rel: 'noopener' }, name)));
 }
@@ -3914,7 +3915,8 @@ function openHelp() {
       row('Deliver', 'One MIDI file with section markers, or one MIDI per lane.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-20 16:18. ' + D.COPYRIGHT + '. All rights reserved.')));
+    manualLinks(),
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-20 17:08. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -4264,7 +4266,8 @@ const TIP = { el: null, timer: 0, hold: 0, swallow: false };
 function tipEl() { if (!TIP.el) { TIP.el = document.createElement('div'); TIP.el.id = 'tip'; TIP.el.setAttribute('role', 'tooltip'); document.body.append(TIP.el); } return TIP.el; }
 function moveTitles(root) { (root.querySelectorAll ? root : document).querySelectorAll('[title]').forEach((e) => { e.dataset.tip = e.getAttribute('title'); if (!e.getAttribute('aria-label') && !e.textContent.trim()) e.setAttribute('aria-label', e.getAttribute('title')); e.removeAttribute('title'); }); if (root.getAttribute && root.getAttribute('title')) moveTitles({ querySelectorAll: () => [root] }); }
 function showTip(t, stay) {
-  const txt = t.dataset.tip; if (!txt) return;
+  const txt = t.dataset.tip; if (!txt || !t.isConnected) return;
+  { const rr = t.getBoundingClientRect(); if (!rr.width && !rr.height) return; } // gone or hidden after a redraw
   const el = tipEl(); el.textContent = txt; el.className = 'show' + (st.explain ? ' explain' : ''); 
   const r = t.getBoundingClientRect(), w = Math.min(300, window.innerWidth - 24); el.style.maxWidth = w + 'px';
   const tw = el.offsetWidth, th = el.offsetHeight; let x = r.left + r.width / 2 - tw / 2; x = Math.max(12, Math.min(window.innerWidth - tw - 12, x));
