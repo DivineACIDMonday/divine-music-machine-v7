@@ -443,7 +443,7 @@ E.detectKey = function (notes) {
 /* ---------- genres ---------- */
 E.GENRES = {
   techno: { name: 'Techno', bpm: [122, 132], def: 126, swing: 50, mode: 'minor', L: 4, sevenths: 0.3, melScale: 'scale', mel: { density: 0.55, len: 1.4, range: [62, 79] }, chordRhythm: 'stab', bass: 'offbeat',
-    sections: [['intro', 16], ['build', 8], ['chorus', 16], ['break', 16], ['build', 8], ['chorus', 16], ['outro', 16]],
+    sections: [['intro', 16], ['build', 8], ['chorus', 16], ['break', 16], ['build', 8], ['chorus', 16], ['outro', 8]],
     progs: { verse: [[0, 0, 0, 0], [0, 0, 5, 6], [0, 6, 0, 6], [0, 0, 3, 3]], chorus: [[0, 0, 5, 6], [5, 6, 0, 0], [0, 3, 0, 6]] } },
   triphop: { name: 'Trip hop', bpm: [80, 95], def: 88, swing: 58, mode: 'minor', L: 4, sevenths: 0.6, melScale: 'scale', mel: { density: 0.38, len: 3.2, range: [62, 81] }, chordRhythm: 'pad', bass: 'long',
     sections: [['intro', 8], ['verse', 16], ['chorus', 8], ['verse', 16], ['break', 8], ['chorus', 8], ['outro', 8]],
@@ -455,7 +455,7 @@ E.GENRES = {
     sections: [['intro', 8], ['verse', 16], ['chorus', 8], ['verse', 16], ['chorus', 8], ['break', 8], ['chorus', 8], ['outro', 8]],
     progs: { verse: [[0, 5, 2, 6], [0, 6, 5, 6], [0, 4, 5, 3]], chorus: [[5, 3, 0, 4], [3, 4, 0, 0], [0, 4, 5, 3]] } },
   blues: { name: 'Blues', bpm: [70, 110], def: 92, swing: 66, mode: 'major', L: 12, sevenths: 1, dom: true, melScale: 'blues', mel: { density: 0.45, len: 2.2, range: [62, 81] }, chordRhythm: 'shuffle', bass: 'walk',
-    sections: [['intro', 12], ['verse', 12], ['verse', 12], ['chorus', 12], ['verse', 12], ['outro', 12]],
+    sections: [['intro', 12], ['verse', 12], ['verse', 12], ['chorus', 12], ['verse', 12], ['outro', 4]],
     progs: { verse: [[0, 0, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], [0, 3, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], [0, 0, 0, 0, 3, 3, 0, 0, 4, 4, 0, 4], [0, 0, 0, 0, 3, 3, 0, 0, 1, 4, 0, 4], [0, 3, 0, 0, 3, 3, 0, 5, 1, 4, 0, 4]], chorus: [[0, 3, 0, 0, 3, 3, 0, 0, 4, 3, 0, 4], [0, 3, 0, 0, 3, 3, 0, 0, 1, 4, 0, 4], [0, 3, 0, 0, 3, 3, 0, 5, 1, 4, 0, 4]] } }
 };
 E.GENRES.free = { name: 'Free flow', bpm: [70, 140], def: 100, swing: 52, mode: 'either', L: 4, sevenths: 0.4, melScale: 'scale', mel: { density: 0.5, len: 2, range: [62, 81] }, chordRhythm: 'half', bass: 'kick', free: true,
@@ -467,13 +467,13 @@ E.GENRES.free = { name: 'Free flow', bpm: [70, 140], def: 100, swing: 52, mode: 
    the stomp and sequenced bass of EBM, the eighth note power chords and skate beat of punk. */
 Object.assign(E.GENRES, {
   house: { name: 'House', bpm: [118, 128], def: 124, swing: 54, mode: 'either', L: 4, sevenths: 0.6, melScale: 'scale', mel: { density: 0.5, len: 1.6, range: [62, 81] }, chordRhythm: 'housestab', bass: 'organ',
-    sections: [['intro', 16], ['verse', 16], ['build', 8], ['chorus', 16], ['break', 16], ['build', 8], ['chorus', 16], ['outro', 16]],
+    sections: [['intro', 16], ['verse', 16], ['build', 8], ['chorus', 16], ['break', 16], ['build', 8], ['chorus', 16], ['outro', 8]],
     progs: { verse: [[0, 0, 5, 5], [0, 3, 0, 3], [0, 5, 3, 4], [5, 3, 0, 4]], chorus: [[0, 5, 3, 4], [5, 3, 0, 4], [0, 3, 5, 4]] } },
   acid: { name: 'Acid', bpm: [124, 136], def: 130, swing: 52, mode: 'minor', L: 4, sevenths: 0.2, melScale: 'scale', melStyle: 'acid', mel: { density: 0.55, len: 1, range: [55, 72] }, chordRhythm: 'stab', bass: 'acid',
-    sections: [['intro', 16], ['build', 8], ['drop', 16], ['break', 8], ['build', 8], ['drop', 16], ['outro', 16]],
+    sections: [['intro', 16], ['build', 8], ['drop', 16], ['break', 8], ['build', 8], ['drop', 16], ['outro', 8]],
     progs: { verse: [[0, 0, 0, 0], [0, 0, 6, 6], [0, 0, 5, 5]], chorus: [[0, 0, 0, 0], [0, 6, 0, 6], [0, 0, 3, 3]] } },
   trance: { name: 'Trance', bpm: [132, 140], def: 136, swing: 50, mode: 'minor', L: 4, sevenths: 0.1, melScale: 'scale', mel: { density: 0.5, len: 2.4, range: [64, 84] }, chordRhythm: 'arp', bass: 'rolling',
-    sections: [['intro', 16], ['verse', 16], ['build', 8], ['chorus', 16], ['break', 16], ['build', 16], ['chorus', 16], ['outro', 16]],
+    sections: [['intro', 16], ['verse', 16], ['build', 8], ['chorus', 16], ['break', 16], ['build', 16], ['chorus', 16], ['outro', 8]],
     progs: { verse: [[0, 5, 2, 6], [0, 6, 5, 6], [5, 3, 0, 4], [0, 3, 5, 6]], chorus: [[5, 3, 0, 6], [0, 5, 3, 6], [5, 6, 0, 0]] } },
   eurodance: { name: 'Eurodance', bpm: [126, 140], def: 132, swing: 50, mode: 'minor', L: 4, sevenths: 0.1, melScale: 'scale', mel: { density: 0.65, len: 1.4, range: [64, 81] }, chordRhythm: 'stab', bass: 'euro',
     sections: [['intro', 8], ['verse', 16], ['prechorus', 8], ['chorus', 16], ['verse', 16], ['prechorus', 8], ['chorus', 16], ['break', 8], ['chorus', 16], ['outro', 8]],
@@ -500,6 +500,35 @@ E.flavorOf = function (song) {
   return null;
 };
 // the genre's own drums for the new genres, and the borrowed styles; true when it wrote the beat
+
+// the four on the floor genres: the kick stays, everything around it comes from a pool of patterns per genre,
+// so every new beat has its own hats, claps, percussion and rumble (the signature of the genre stays in the weights)
+const HAT_P = { h16: (s) => (s % 4 === 2 ? 84 : s % 2 === 0 ? 60 : 42), h16gap: (s) => (s % 4 === 3 ? 0 : s % 4 === 2 ? 84 : s % 2 === 0 ? 60 : 44), h8: (s) => (s % 2 ? 0 : s % 4 === 2 ? 82 : 56), off: (s) => (s % 4 === 2 ? 82 : 0), gallop: (s) => ([0, 2, 3].includes(s % 4) ? (s % 4 === 2 ? 82 : 52) : 0), three: (s) => (s % 3 === 0 ? 70 : 0), soft16: (s) => (s % 2 ? 40 : 0), none: () => 0 };
+const OH_P = { off: [2, 6, 10, 14], late: [6, 14], one: [14], ten: [10], none: [], shuffle: [3, 11] };
+const CLAP_P = { two4: [[4, 12]], four: [[12]], pick: [[4, 12], [15]], ghosts: [[4, 12], [7, 11]], double: [[4, 12], [13]], drag: [[4, 12], [3, 11]] };
+const PERC_P = { rim: [3, 11], late: [7, 15], tri: [2, 10, 14], quad: [3, 6, 11, 14], e5: [0, 3, 6, 10, 13], e3: [3, 9, 14], none: [], shaker: 'shaker' };
+const RUMBLE_P = { none: [], off: [2, 6, 10, 14], pre: [14, 15], three: [3, 11], roll: [1, 2, 3, 5, 6, 7, 9, 10, 11, 13, 14, 15] };
+const ELEC = {
+  house: { hats: { soft16: 3, h8: 2, gallop: 1.5, h16gap: 1, none: 1 }, oh: { off: 6, late: 1, none: 0.5 }, clap: { two4: 4, pick: 2, ghosts: 2, double: 1 }, perc: { shaker: 3, rim: 2, e5: 2, quad: 1.5, tri: 1, late: 1 }, rumble: { none: 6, pre: 1 }, snare: 0.15 },
+  acid: { hats: { h16: 3, h16gap: 2, gallop: 2, h8: 1.5, off: 1, three: 1 }, oh: { off: 3, none: 2, late: 1.5, ten: 1 }, clap: { two4: 4, four: 1.5, pick: 1.5, drag: 1, ghosts: 1 }, perc: { rim: 3, late: 2, e3: 2, e5: 1.5, none: 1, tri: 1 }, rumble: { none: 4, off: 2, three: 1, roll: 1 }, snare: 0.1 },
+  trance: { hats: { soft16: 3, h16: 2, h16gap: 1.5, h8: 1, none: 1 }, oh: { off: 8, late: 0.5 }, clap: { two4: 4, pick: 2, double: 1.5, ghosts: 1 }, perc: { none: 2, rim: 2, late: 2, tri: 1.5, e3: 1 }, rumble: { none: 4, roll: 2, off: 1.5 }, snare: 0.4 },
+  eurodance: { hats: { soft16: 2, h8: 2, h16gap: 1.5, none: 1.5 }, oh: { off: 8, late: 0.5 }, clap: { two4: 4, pick: 2, double: 1 }, perc: { none: 2, rim: 2, tri: 1, shaker: 2 }, rumble: { none: 6, pre: 1 }, snare: 1 },
+  ebm: { hats: { off: 3, h8: 2, h16: 1.5, gallop: 1, three: 1 }, oh: { none: 3, one: 1.5, ten: 1 }, clap: { two4: 5, drag: 1.5, double: 1 }, perc: { e5: 2, quad: 2, rim: 1.5, e3: 1.5, shaker: 1 }, rumble: { none: 4, three: 1.5, pre: 1 }, snare: 1 }
+};
+E.elecBeat = function (song, g, p, r) {
+  const W = ELEC[g], N = p[0].length;
+  [0, 4, 8, 12].forEach((s) => setL(p, K, s, g === 'ebm' ? 122 : 118));
+  const hats = HAT_P[pickW(r, W.hats)], oh = OH_P[pickW(r, W.oh)], clap = CLAP_P[pickW(r, W.clap)], perc = PERC_P[pickW(r, W.perc)], rumble = RUMBLE_P[pickW(r, W.rumble)];
+  for (let s = 0; s < N; s++) { const v = hats(s); if (v && !oh.includes(s)) setL(p, HH, s, Math.max(30, v + r.int(8) - 4)); }
+  oh.forEach((s) => setL(p, OH, s, 84 + r.int(10)));
+  const useSnare = r.chance(W.snare);
+  clap[0].forEach((s) => { setL(p, CP, s, 98 + r.int(8)); if (useSnare) setL(p, SN, s, g === 'ebm' ? 120 : 108); });
+  (clap[1] || []).forEach((s) => setL(p, CP, s, 44 + r.int(16)));
+  if (perc === 'shaker') { for (let s = 0; s < N; s++) setL(p, PC, s, s % 2 ? 36 + r.int(10) : 50 + r.int(10)); }
+  else perc.forEach((s) => setL(p, PC, s, 62 + r.int(24)));
+  rumble.forEach((s) => { if (!p[K][s]) setL(p, K2, s, 46 + r.int(16)); });
+  if (r.chance(0.25)) setL(p, K, r.pick([14, 15, 7]), 70); // now and then a kick before the next one
+};
 E.beatFor = function (song, g, p, r) {
   const N = p[0].length; if (N !== 16) return false;
   const fl = E.flavorOf(song), four = () => [0, 4, 8, 12].forEach((s) => setL(p, K, s, 118));
@@ -511,32 +540,7 @@ E.beatFor = function (song, g, p, r) {
   }
   if (fl === 'discorock') { four(); setL(p, SN, 4, 116); setL(p, SN, 12, 118); for (let s = 0; s < 16; s++) if (s % 4 === 2) setL(p, OH, s, 84); else setL(p, HH, s, s % 4 === 0 ? 76 : 50); return true; }
   if (fl === 'latin') { [0, 6, 8, 14].forEach((s) => setL(p, K, s, s % 8 ? 92 : 112)); [0, 3, 6, 10, 12].forEach((s) => setL(p, PC, s, 78)); for (let s = 0; s < 16; s += 2) setL(p, HH, s, s % 4 === 0 ? 62 : 48); if (r.chance(0.5)) setL(p, SN, 12, 70); return true; }
-  if (g === 'house') {
-    four(); setL(p, CP, 4, 98); setL(p, CP, 12, 100);
-    [2, 6, 10, 14].forEach((s) => setL(p, OH, s, 84 + r.int(8)));
-    if (r.chance(0.7)) for (let s = 1; s < 16; s += 2) setL(p, HH, s, 36 + r.int(14));
-    if (r.chance(0.5)) setL(p, PC, r.pick([3, 7, 11, 15]), 60 + r.int(16));
-    return true;
-  }
-  if (g === 'acid') {
-    four(); setL(p, CP, 4, 96); setL(p, CP, 12, 96);
-    for (let s = 0; s < 16; s++) setL(p, HH, s, s % 4 === 2 ? 84 : s % 2 === 0 ? 60 : 42 + r.int(10));
-    if (r.chance(0.5)) [2, 6, 10, 14].forEach((s) => setL(p, OH, s, 80));
-    if (r.chance(0.6)) [3, 11].forEach((s) => setL(p, PC, s, 70 + r.int(16)));
-    return true;
-  }
-  if (g === 'trance') {
-    four(); [2, 6, 10, 14].forEach((s) => setL(p, OH, s, 90)); setL(p, CP, 4, 88); setL(p, CP, 12, 92);
-    for (let s = 1; s < 16; s += 2) setL(p, HH, s, 40 + r.int(12));
-    if (r.chance(0.5)) setL(p, PC, 14, 62);
-    return true;
-  }
-  if (g === 'eurodance') {
-    four(); setL(p, SN, 4, 110); setL(p, SN, 12, 112); setL(p, CP, 12, 80);
-    [2, 6, 10, 14].forEach((s) => setL(p, OH, s, 92));
-    if (r.chance(0.6)) for (let s = 1; s < 16; s += 2) setL(p, HH, s, 40 + r.int(10));
-    return true;
-  }
+  if (['house', 'acid', 'trance', 'eurodance', 'ebm'].includes(g)) { E.elecBeat(song, g, p, r); return true; }
   if (g === 'breakbeat') { // three chopped breaks of our own: kick and snare around the backbeat, ghost snares in between
     const v = r.int(3);
     const kicks = [[0, 10], [0, 2, 10], [0, 6, 10]][v], ghosts = [[7, 9, 15], [6, 11], [14]][v];
@@ -695,7 +699,7 @@ E.newSong = function (genre, opts) {
 // now and then one section is two bars longer or shorter: an odd length keeps you listening
 E.oddLengths = function (song, r) {
   if (song.L !== 4 || !r.chance(0.4)) return song;
-  const c = song.sections.filter((x) => x.bars >= 8 && x.type !== 'intro' && x.type !== 'fill');
+  const c = song.sections.filter((x) => x.bars >= 8 && x.type !== 'intro' && x.type !== 'fill' && x.type !== 'outro');
   if (c.length) { const x = r.pick(c); x.bars += r.pick([2, -2]); }
   return song;
 };
@@ -710,7 +714,7 @@ E.scratchSong = function (genre, opts) {
 // now and then a pre chorus, break, build, drop or fill; lengths in whole patterns
 E.randomStructure = function (song, seed) {
   const r = rng(seed), g = song.genre, L = song.L, U = L === 12 ? 12 : 4;
-  const len = (t) => (t === 'fill' ? 1 + r.int(2) : L === 12 ? 12 * (t === 'verse' || t === 'chorus' ? 1 + r.int(2) : 1) : t === 'prechorus' || t === 'build' ? r.pick([4, 8]) : t === 'intro' || t === 'outro' ? r.pick([4, 8, 8, 16]) : r.pick([8, 8, 16, 16]));
+  const len = (t) => (t === 'fill' ? 1 + r.int(2) : L === 12 && t === 'outro' ? 4 : L === 12 ? 12 * (t === 'verse' || t === 'chorus' ? 1 + r.int(2) : 1) : t === 'prechorus' || t === 'build' ? r.pick([4, 8]) : t === 'outro' ? (L === 12 ? 4 : r.pick([4, 8, 8])) : t === 'intro' ? r.pick([4, 8, 8, 16]) : r.pick([8, 8, 16, 16]));
   const out = [['intro']];
   if (g === 'techno') {
     const rounds = 2 + r.int(2);
@@ -727,7 +731,7 @@ E.randomStructure = function (song, seed) {
     if (r.chance(0.3)) out.push(['chorus']);
   }
   out.push(['outro']);
-  const secs = out.map(([t]) => ({ id: 's' + hash(seed, t, Math.random()), type: t, bars: Math.max(t === 'fill' ? 1 : U, len(t)) }));
+  const secs = out.map(([t]) => ({ id: 's' + hash(seed, t, Math.random()), type: t, bars: Math.max(t === 'fill' ? 1 : t === 'outro' ? 4 : U, len(t)) }));
   if (song.arr) E.oddLengths({ L: song.L, sections: secs }, rng(hash(seed, 'odd')));
   return secs;
 };
@@ -1758,10 +1762,10 @@ const INTRO_W = { punk: { count: 4, solo: 2, silent: 1 }, newwave: { count: 1.5,
 const STOP_P = { punk: 0.6, breakbeat: 0.6, ebm: 0.5, house: 0.45, acid: 0.4, trance: 0.4, eurodance: 0.5, techno: 0.45, triphop: 0.5, hiphop: 0.6, newwave: 0.5, blues: 0.35, free: 0.5 };
 E.STOPS = ['stop', 'gift', 'hit', 'drop', 'half']; // fills that stop the whole band, not only the drums
 // the plan of one section: who leads, what the harmony does, how it ends, who comes in when
-E.arrangeOf = function (song, si) {
+E.arrangeOf = function (song, si, salt) {
   if (!song.arr) return null;
   const sec = song.sections[si]; if (!sec) return null;
-  const t = sec.type, g = song.genre, r = rng(hash(song.seed, 'arr', sec.id, t, g)), o = sec.arr || {};
+  const t = sec.type, g = song.genre, r = rng(salt ? hash(song.seed, 'arr', sec.id, t, g, salt) : hash(song.seed, 'arr', sec.id, t, g)), o = sec.arr || {};
   const hw = Object.assign({}, HARM_W[t] || HARM_W.verse); const gm = HARM_G[g] || {}; for (const k in hw) hw[k] *= gm[k] != null ? gm[k] : 1;
   const plan = {};
   plan.harm = o.harm && o.harm !== 'auto' ? o.harm : pickW(r, hw);
@@ -3444,7 +3448,7 @@ function spiralBeat(all) {
       if (!sg.mat[t]) sg.mat[t] = {};
       const data = D.shapeDensity(sg, D.typeBeatFromCore(sg, core, t, D.hash(seed, t)), t);
       if (t === 'break') D.breakPulse(sg, data, core);
-      if (t === 'intro' && sg.arr) { const A0 = D.arrangeOf(sg, sg.sections.findIndex((x) => x.type === 'intro')), rc = A0 && A0.recipe; if (rc && rc !== 'hats') { const nl = D.introLanes(sg, core.lanes, rc === 'silent' ? 'solo' : rc, 1, 2, core.lanes[0].length, D.rng(D.hash(seed, 'intro'))); if (nl) { data.lanes = nl; D.shapeDensity(sg, data, 'intro'); } } } // an intro with a plan (still calmer than the chorus: only the drums play here): drums alone, a breakbeat, toms, the kick alone
+      if (t === 'intro' && sg.arr) { const A0 = D.arrangeOf(sg, sg.sections.findIndex((x) => x.type === 'intro'), seed), rc = A0 && A0.recipe; if (rc && rc !== 'hats') { const nl = D.introLanes(sg, core.lanes, rc === 'silent' ? 'solo' : rc, 1, 2, core.lanes[0].length, D.rng(D.hash(seed, 'intro'))); if (nl) { data.lanes = nl; D.shapeDensity(sg, data, 'intro'); } } } // an intro with a plan (still calmer than the chorus: only the drums play here): drums alone, a breakbeat, toms, the kick alone
       if (D.isEmpty('beat', data)) { const from = [5, 4, 6].find((li) => core.lanes[li] && core.lanes[li].some(Boolean)); if (from != null) data.lanes[from] = core.lanes[from].slice(); } // never a silent section: keep the hats going
       sg.mat[t].beat = { src: 'user', data }; made.push(t);
     }
@@ -3454,7 +3458,7 @@ function spiralBeat(all) {
       if (all && sec.own) { delete sec.own.beat; if (!Object.keys(sec.own).length) delete sec.own; }
       if (all && sec.barOwn) { delete sec.barOwn.beat; if (!Object.keys(sec.barOwn).length) delete sec.barOwn; }
       if (sg.arr) { // the arrangement plan: a stop into what comes next, silence before the drums in an intro
-        const A = D.arrangeOf(sg, sg.sections.indexOf(sec));
+        const A = D.arrangeOf(sg, sg.sections.indexOf(sec), seed); // every Whole spiral its own plan
         if (A && A.stop && (all || !sec.fill)) sec.fill = A.stop;
         if (A && sec.type === 'intro' && A.recipe === 'silent' && (all || !sec.laneOff)) { sec.laneOff = Object.assign({}, sec.laneOff); for (let b = 0; b < Math.floor(sec.bars / 2); b++) sec.laneOff[b] = (sec.laneOff[b] || 0) | 255; }
       }
@@ -4417,7 +4421,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-20 23:36. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-20 23:44. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
