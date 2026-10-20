@@ -2097,9 +2097,11 @@ E.laneFxApply = function (song, sec, b, lanes, N) {
   const fx = sec.laneFx; if (!fx) return;
   for (const key of Object.keys(fx)) {
     const li = +key, l = lanes[li]; let f = fx[key]; if (!f || !l) continue;
-    if (li === K && E.FOUR.includes(song.genre) && ['verse', 'chorus', 'drop', 'prechorus'].includes(sec.type)) { // four on the floor stays four on the floor: the mixer may add to the kick, never move or thin it
-      f = Object.assign({}, f, { kind: f.kind && /shift|displace|euclid|thin|mix|swap/.test(f.kind) ? 'ghost' : f.kind }); if (['in', 'out', 'stair', 'wave', 'walk'].includes(f.prog)) f.prog = 'none';
+    if (song.arr && li === K && E.FOUR.includes(song.genre)) { // four on the floor stays on the grid everywhere: the mixer may add to the kick, never move it; in the main sections it never thins it either
+      f = Object.assign({}, f, { kind: f.kind && /shift|displace|euclid|thin|mix|swap/.test(f.kind) ? 'ghost' : f.kind });
+      if (['verse', 'chorus', 'drop', 'prechorus'].includes(sec.type) && ['in', 'out', 'stair', 'wave', 'walk'].includes(f.prog)) f.prog = 'none';
     }
+    if (song.arr && sec.type === 'outro' && f.prog === 'in') f = Object.assign({}, f, { prog: 'out' }); // an outro thins out toward the end, it does not grow
     const from = f.from != null ? clamp(f.from, 0, sec.bars - 1) : 0, to = f.to != null ? clamp(f.to, from, sec.bars - 1) : sec.bars - 1;
     if (b < from || b > to) continue; // only the bars you chose
     const span = Math.max(1, to - from), k = b - from;
@@ -4979,7 +4981,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 23:31. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 23:36. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -5824,7 +5826,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 23:31'),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 23:36'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
 
@@ -5857,7 +5859,7 @@ function renderLite() {
       h('button', { id: 'litePro', title: 'Open this song in Divine Music Machine Pro, with every button', onclick: openPro }, '⚙️ Pro'),
       h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, '💬 Explain'),
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 23:31')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 23:36')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }

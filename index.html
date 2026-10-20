@@ -2018,9 +2018,11 @@ E.laneFxApply = function (song, sec, b, lanes, N) {
   const fx = sec.laneFx; if (!fx) return;
   for (const key of Object.keys(fx)) {
     const li = +key, l = lanes[li]; let f = fx[key]; if (!f || !l) continue;
-    if (li === K && E.FOUR.includes(song.genre) && ['verse', 'chorus', 'drop', 'prechorus'].includes(sec.type)) { // four on the floor stays four on the floor: the mixer may add to the kick, never move or thin it
-      f = Object.assign({}, f, { kind: f.kind && /shift|displace|euclid|thin|mix|swap/.test(f.kind) ? 'ghost' : f.kind }); if (['in', 'out', 'stair', 'wave', 'walk'].includes(f.prog)) f.prog = 'none';
+    if (song.arr && li === K && E.FOUR.includes(song.genre)) { // four on the floor stays on the grid everywhere: the mixer may add to the kick, never move it; in the main sections it never thins it either
+      f = Object.assign({}, f, { kind: f.kind && /shift|displace|euclid|thin|mix|swap/.test(f.kind) ? 'ghost' : f.kind });
+      if (['verse', 'chorus', 'drop', 'prechorus'].includes(sec.type) && ['in', 'out', 'stair', 'wave', 'walk'].includes(f.prog)) f.prog = 'none';
     }
+    if (song.arr && sec.type === 'outro' && f.prog === 'in') f = Object.assign({}, f, { prog: 'out' }); // an outro thins out toward the end, it does not grow
     const from = f.from != null ? clamp(f.from, 0, sec.bars - 1) : 0, to = f.to != null ? clamp(f.to, from, sec.bars - 1) : sec.bars - 1;
     if (b < from || b > to) continue; // only the bars you chose
     const span = Math.max(1, to - from), k = b - from;
@@ -4900,7 +4902,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 23:31. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 23:36. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
