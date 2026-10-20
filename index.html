@@ -2430,6 +2430,8 @@ const PART_NAMES = { beat: 'Beat', bass: 'Bass', chords: 'Chords', pad: 'Pad', m
 const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
 /* ---------- storage (never trusted) ---------- */
+// the Lite app shares the library and settings, and keeps its own song
+const LITE = !!window.DMM_LITE, SESSION_KEY = LITE ? 'dmml-session-v1' : 'dmm-session-v1', MYLINK_KEY = LITE ? 'dmml-mylink-v1' : 'dmm-mylink-v1';
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -2481,7 +2483,7 @@ function continueSong() { st.loop = false; st.loopBar = false; st.held = false; 
 function undo() { if (!st.hist.length) return; st.fut.push(snapshot()); st.song = JSON.parse(st.hist.pop()); afterChange(); toast('Undone'); }
 function redo() { if (!st.fut.length) return; st.hist.push(snapshot()); st.song = JSON.parse(st.fut.pop()); afterChange(); toast('Redone'); }
 let saveT = null;
-function saveSession() { clearTimeout(saveT); saveT = setTimeout(() => { store.set('dmm-session-v1', st.song); linkInAddressBar(); }, 400); }
+function saveSession() { clearTimeout(saveT); saveT = setTimeout(() => { store.set(SESSION_KEY, st.song); linkInAddressBar(); }, 400); }
 function clampSec() { const n = song().sections.length; if (st.sec >= n) st.sec = n - 1; if (st.sec < 0) st.sec = 0; if (st.chordBar >= song().L) st.chordBar = 0; }
 
 /* ---------- toasts and hints ---------- */
@@ -4255,7 +4257,7 @@ function overlay(sheet, opts) {
 
 // start screen
 function openStart() {
-  const last = store.get('dmm-session-v1', null);
+  const last = store.get(SESSION_KEY, null);
   const genres = h('div', { class: 'genrepick' }, D.GENRE_ALL.map((g) => h('button', { class: 'gcard', id: 'genre_' + g, onclick: () => startHow(g) },
     h('b', null, D.GENRES[g].name), h('span', null, genreLine(g)))));
   const sheet = h('div', { class: 'sheet', style: 'width:min(860px,100%)' },
@@ -4367,7 +4369,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:31. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:44. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -4686,6 +4688,7 @@ window.addEventListener('pointerdown', () => { st.pd = true; }, true);
 window.addEventListener('pointerup', () => { st.pd = false; }, true);
 window.addEventListener('pointercancel', () => { st.pd = false; }, true);
 window.addEventListener('keydown', (e) => {
+  if (LITE && document.body.classList.contains('lite')) return; // the Lite screen has its own keys
   const tag = (e.target.tagName || '').toLowerCase(); if (tag === 'input' || tag === 'select' || tag === 'textarea') return;
   if (e.key === 'Escape' && $('#overlay').innerHTML) { if (!st.boot && !st.listening) closeOverlay(); return; }
   if ($('#overlay').innerHTML) return;
@@ -4753,9 +4756,9 @@ function toggleExplain() {
   setHint(st.explain ? 'Explain mode: tap any button to read what it does. Nothing changes. Tap 💬 Explain again to stop.' : 'Explain mode is off. Tip: press and hold any button to read what it does.');
 }
 
-if (!openSharedFromLink()) openStart();
+if (!LITE && !openSharedFromLink()) openStart(); // Lite starts itself
 // a share link pasted into this tab: open it too
-window.addEventListener('hashchange', () => { if (/^#s=/.test(location.hash)) { stopAll(true); closeOverlay(); openSharedFromLink(); } });
+window.addEventListener('hashchange', () => { if (LITE) return; if (/^#s=/.test(location.hash)) { stopAll(true); closeOverlay(); openSharedFromLink(); } });
 /* ---------- MP3: the whole song as you hear it in the app, rendered offline and encoded here ---------- */
 function mp3Name() { return fileName('Song', deliveryNo(false)).replace(/\.mid$/, '.mp3'); }
 async function renderSongAudio(sg, onProgress) {
@@ -4828,7 +4831,7 @@ async function songLink(sg) { return shareBase() + '#s=' + (await packSong(sg ||
 // your song lives in the address bar too, so copying the address shares the song
 async function linkInAddressBar() {
   if (IN_CLAUDE || !history.replaceState || !/^https?:$/.test(location.protocol) || st.boot || st.listening || !song()) return;
-  try { const code = await packSong(song()); store.set('dmm-mylink-v1', code); history.replaceState(null, '', location.pathname + location.search + '#s=' + code); } catch (e) { /* the address just stays as it is */ }
+  try { const code = await packSong(song()); store.set(MYLINK_KEY, code); history.replaceState(null, '', location.pathname + location.search + '#s=' + code); } catch (e) { /* the address just stays as it is */ }
 }
 async function shareSong() {
   const sg = song(); if (!activeParts(sg).length) { toast('Nothing plays yet, so there is nothing to share.'); return; }
@@ -4849,7 +4852,7 @@ async function shareSong() {
 function openSharedFromLink() {
   const m = /^#s=([A-Za-z0-9_\-]+)$/.exec(location.hash || ''); if (!m) return false;
   const code = m[1];
-  const mine = store.get('dmm-mylink-v1', null) === code;
+  const mine = store.get(MYLINK_KEY, null) === code;
   unpackSong(code).then((o) => {
     loadSong(o.s); st.polished = !!o.p; renderTop();
     if (mine) { toast('Welcome back to ' + (o.s.name || 'your song') + '.'); return; } // your own address: just keep working
@@ -4868,7 +4871,7 @@ function openListen() {
   const play = h('button', { class: 'primary bigplay', id: 'listenPlay', onclick: () => { if (AU.playing) stopAll(); else { st.loop = false; st.loopBar = false; st.sec = 0; startPlay(0); } } }, ico('play'), playLab);
   const mp3 = h('button', { id: 'listenMp3', onclick: (e) => downloadMp3(e.currentTarget) }, ico('download'), h('span', { class: 'lab' }, 'Download as MP3'));
   const midi = h('button', { id: 'listenMidi', onclick: () => deliverFiles(allDeliverParts(song()), true) }, ico('download'), 'Download MIDI (.zip)');
-  const own = h('button', { class: 'ghost', id: 'listenOwn', onclick: () => { stopAll(true); st.listening = false; closeOverlay(); store.set('dmm-session-v1', st.song); linkInAddressBar(); toast('This is your own copy now. Change anything you like.'); } }, 'Make your own', ico('arrowR'));
+  const own = h('button', { class: 'ghost', id: 'listenOwn', onclick: () => { stopAll(true); st.listening = false; closeOverlay(); store.set(SESSION_KEY, st.song); linkInAddressBar(); toast('This is your own copy now. Change anything you like.'); } }, 'Make your own', ico('arrowR'));
   overlay(h('div', { class: 'sheet listen', style: 'width:min(460px,100%);align-items:center;text-align:center' },
     h('div', { class: 'small' }, 'Someone shared a song with you'),
     h('h2', { style: 'margin:0' }, sg.name || 'Untitled'),
@@ -4885,7 +4888,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, newStartSameStructure, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, togglePlay, toast, loadSong, saveSession, ensureAudio, newStartSameStructure, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
