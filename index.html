@@ -1685,6 +1685,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     }
   }
   if (part !== 'beat' && !lastBar && !bo && E.machineish(song, sec, part)) notes = E.partEnergy(part, notes, type, N);
+  if (part !== 'beat' && !lastBar && !bo && E.machineish(song, sec, part) && !(sec.laneFx && sec.laneFx[part])) notes = E.repeatVary(song, si, part, notes, inBar, N);
   if (part !== 'beat') { if (E.partIsOff(sec, inBar, part)) return []; if (!lastBar && !bo) notes = E.partFxApply(song, sec, inBar, part, notes, N); }
   return E.applyFeel(song, part, notes, gbar, opts);
 };
@@ -1789,6 +1790,18 @@ E.partEnergy = function (part, notes, type, N) {
   out = out.filter((x) => kept.has(x.t));
   if (part === 'bass' || part === 'melody' || part === 'answer') { const ts = [...kept].sort((a, b) => a - b); out.forEach((x) => { const nx = ts.find((t) => t > x.t); const end = nx != null ? nx : N * ST; if (x.d < end - x.t - 10 && d < 0.5) x.d = Math.min(end - x.t - 10, x.d * 2); }); } // what stays rings a little longer
   return out;
+};
+// a section that comes back (Chorus 2, Verse 2) breathes a little: the machine's bass and answer vary lightly,
+// the melody only in the last bar of a phrase, so the hook stays recognizable. Your own parts and anything you set in the mixer stay as they are.
+E.repeatVary = function (song, si, part, notes, inBar, N) {
+  if (!notes.length || !['bass', 'melody', 'answer'].includes(part)) return notes;
+  const type = song.sections[si].type; let k = 0; for (let i = 0; i < si; i++) if (song.sections[i].type === type) k++;
+  if (!k) return notes; // the first one is the original
+  const hit = part === 'melody' ? inBar % 4 === 3 : part === 'bass' ? inBar % 2 === 1 : inBar % 2 === 0;
+  if (!hit) return notes;
+  const r = rng(hash('again', song.seed, part, si, inBar));
+  const kind = part === 'bass' ? r.pick(['octave', 'repeat', 'octave']) : part === 'melody' ? r.pick(['repeat', 'octave']) : 'mix';
+  return E.varyPart(part, notes.map((n) => Object.assign({}, n)), kind, 1, r, N);
 };
 /* the mixer for the other parts: sec.laneFx[part] with the same fields, sec.laneOff bit 8 and up per part */
 E.MIX_PARTS = ['bass', 'chords', 'pad', 'melody', 'answer'];
@@ -4353,7 +4366,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:00. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:15. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
