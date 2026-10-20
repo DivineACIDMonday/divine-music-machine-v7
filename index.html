@@ -294,6 +294,7 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 #tip.explain{outline:2px solid var(--accent)}
 #explainBtn.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 [aria-label="New shadows"] button,[aria-label="Where"] button{padding:4px 10px;gap:5px;display:inline-flex;align-items:center}
+button.sure{background:var(--danger,#c0392b);color:#fff;border-color:transparent}
 </style>
 
 <div class="app" id="app">
@@ -4244,7 +4245,8 @@ function openStart() {
     h('b', null, D.GENRES[g].name), h('span', null, genreLine(g)))));
   const sheet = h('div', { class: 'sheet', style: 'width:min(860px,100%)' },
     h('div', { class: 'hdr' }, h('h2', null, 'Divine Music Machine'), h('div', { class: 'grow' }), !st.boot ? h('button', { class: 'ghost', onclick: closeOverlay }, 'Back to my song') : null),
-    h('div', { class: 'stepnum' }, 'Step 1 of 2'), h('h3', null, 'Pick a genre'),
+    !st.boot ? keepStructureBox() : null,
+    h('div', { class: 'stepnum' }, 'Step 1 of 2'), h('h3', null, st.boot ? 'Pick a genre' : 'Or a new song from scratch: pick a genre'),
     genres,
     h('div', { class: 'small' }, 'Not sure? Free flow follows wherever you go, and the machine tells you later what it sounds like.'),
     manualLinks(true),
@@ -4252,6 +4254,34 @@ function openStart() {
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
   );
   overlay(sheet, { sticky: st.boot });
+}
+// same spiral, a new start: you choose which parts become empty (yours, silent, with shadows); the rest stays as it is
+function keepStructureBox() {
+  const sg = song(), pick = {}; D.PARTS.forEach((p) => { pick[p] = p === 'beat' || p === 'bass' || p === 'melody'; });
+  const boxes = D.PARTS.map((p) => { const cb = h('input', { type: 'checkbox', id: 'ks_' + p, checked: pick[p], onchange: (e) => { pick[p] = e.target.checked; } }); return h('label', { class: 'small ksp', style: 'display:inline-flex;gap:5px;align-items:center' }, cb, h('i', { class: 'dot', style: 'background:var(--' + p + ')' }), PART_NAMES[p]); });
+  const mix = h('input', { type: 'checkbox', id: 'ksMixer' });
+  return h('div', { class: 'slot open', id: 'keepStructure', style: 'padding:10px 12px;display:flex;flex-direction:column;gap:8px' },
+    h('b', null, 'New start, same structure'),
+    h('div', { class: 'small' }, 'Keeps your spiral, tempo, key, groove and fills. The parts you tick become yours and empty: silent, with shadows to start from. The rest stays exactly as it is.'),
+    h('div', { style: 'display:flex;gap:12px;flex-wrap:wrap' }, boxes),
+    h('label', { class: 'small', style: 'display:flex;gap:6px;align-items:center' }, mix, 'Empty the mixer too (🎲, ↗ and cells switched off)'),
+    h('div', null, h('button', { class: 'primary', id: 'ksGo', onclick: (e) => { const btn = e.currentTarget, parts = D.PARTS.filter((p) => pick[p]); if (!parts.length) { toast('Tick at least one part.'); return; } if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.classList.add('sure'); btn.lastChild.textContent = 'Sure? ' + parts.map((p) => PART_NAMES[p]).join(', ') + ' go. Tap again'; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.sure; btn.classList.remove('sure'); btn.lastChild.textContent = 'New start, same structure'; } }, 4000); return; } newStartSameStructure(parts, mix.checked); closeOverlay(); } }, ico('dice'), h('span', null, 'New start, same structure'))));
+}
+function newStartSameStructure(parts, mixToo) {
+  change(() => {
+    const sg = song();
+    for (const p of parts) {
+      sg.parts[p].mode = 'yours';
+      for (const t of D.TYPE_ORDER) { if (!sg.mat[t]) sg.mat[t] = {}; sg.mat[t][p] = { src: 'user', data: D.emptyMat(p, sg) }; } // yours and empty: silent, the machine does not fill it in
+    }
+    for (const sec of sg.sections) {
+      for (const p of parts) { if (sec.own) { delete sec.own[p]; if (!Object.keys(sec.own).length) delete sec.own; } if (sec.barOwn) { delete sec.barOwn[p]; if (!Object.keys(sec.barOwn).length) delete sec.barOwn; } }
+      if (mixToo) { delete sec.laneOff; delete sec.laneFx; }
+    }
+  });
+  st.ringBar = 0; st.shadows = true; st.view = parts[0];
+  render();
+  toast('Same structure; ' + parts.map((p) => PART_NAMES[p].toLowerCase()).join(', ') + ' start empty with shadows' + (mixToo ? ', the mixer too' : '') + '.', { label: 'Undo', fn: undo });
 }
 function startHow(genre) {
   const doors = h('div', { class: 'doors' },
@@ -4322,7 +4352,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 16:31. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 16:56. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -4839,7 +4869,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, newStartSameStructure, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
