@@ -357,6 +357,12 @@ body.lite #app{display:none}
 #lite .secbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;border-top:1px solid var(--line);padding-top:10px}
 #lite .secbar b{font:700 15px var(--display)}
 #lite .secbar .x{padding:6px 9px}
+#lite .tools{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#lite .tools button{flex:1;justify-content:center;min-height:42px;max-width:180px}
+#lite button,#liteSheet button,#liteStart button{touch-action:manipulation}
+#lite input[type=range]{height:32px}
+#liteSheet .helplist{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:7px;font-size:15px}
+#liteSheet .sh{max-height:92vh;overflow:auto}
 
 </style>
 
@@ -4432,7 +4438,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:51. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:57. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -5064,7 +5070,7 @@ function slider(id, label, names, val, fn, left, right) {
   const out = h('b', { class: 'sv', id: id + 'Val' }, names[val]);
   const inp = h('input', { type: 'range', id, min: 0, max: names.length - 1, step: 1, value: val, 'aria-label': label,
     oninput: (e) => { out.textContent = names[+e.target.value]; }, onchange: (e) => fn(+e.target.value) });
-  return h('div', { class: 'steer' }, h('div', { class: 'sl' }, h('span', null, label), out), inp, h('div', { class: 'ends' }, h('span', null, left), h('span', null, right)));
+  return h('div', { class: 'steer', title: label === 'Variation' ? 'How much the song moves from bar to bar. Calm plays every section as written; Wild moves the most.' : 'How it sits in time. Tight is on the grid; Loose breathes like a band in a room.' }, h('div', { class: 'sl' }, h('span', null, label), out), inp, h('div', { class: 'ends' }, h('span', null, left), h('span', null, right)));
 }
 
 /* ---------- one section: change only this one ---------- */
@@ -5158,6 +5164,56 @@ function openGet() {
   document.body.append(sheet);
 }
 
+
+/* ---------- Pro: the same song in the full Music Machine ---------- */
+function proBase() { return /^https?:$/.test(location.protocol) && !/claude\.ai|claudeusercontent/.test(location.host) ? location.origin + location.pathname.replace(/lite\/(index\.html)?$/, '') : 'https://divineacidmonday.github.io/divine-music-machine-v7/'; }
+async function goPro() {
+  const sg = song();
+  // the song that was open in the full machine goes to its library first, so nothing is lost
+  try {
+    const old = JSON.parse(localStorage.getItem('dmm-session-v1') || 'null');
+    if (old && old.parts && JSON.stringify(old) !== JSON.stringify(sg)) {
+      const lib = JSON.parse(localStorage.getItem('dmm-library-v1') || '[]');
+      lib.unshift({ id: 'L' + Date.now().toString(36) + D.newSeed().toString(36).slice(0, 4), kind: 'song', created: Date.now(), genre: old.genre, bpm: Math.round(old.bpm), key: old.key, meter: old.meter, L: old.L, song: old.name, data: old, bars: D.totalBars(old), name: (old.name && old.name !== 'Untitled' ? old.name : 'Song') + ', whole song, ' + D.GENRES[old.genre].name + ' (kept when Lite opened a song)' });
+      localStorage.setItem('dmm-library-v1', JSON.stringify(lib));
+    }
+  } catch (e) { /* the library stays as it was */ }
+  const code = await A.packSong(sg);
+  store.set('dmm-mylink-v1', code); store.set('dmm-session-v1', sg); // the full machine knows it as your own song: it opens straight away
+  A.stopAll(true);
+  location.href = proBase() + '#s=' + code;
+}
+function openPro() {
+  closeSheet();
+  document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'Open in Pro' },
+    h('h2', null, '⚙️ Open in the full Music Machine'),
+    h('div', null, 'Same song, every button: edit notes, chords, the mixer, the structure, plugins per part.'),
+    h('div', { class: 'small' }, 'The song that is open there now is saved in its library first. Lite keeps your song too.'),
+    h('div', { class: 'row' }, h('button', { class: 'primary big', id: 'liteProGo', onclick: goPro }, 'Open in Pro'), h('button', { class: 'ghost big', onclick: closeSheet }, 'Stay in Lite')))));
+}
+
+/* ---------- explain: tap any button to read what it does ---------- */
+function toggleExplain() {
+  st.explain = !st.explain;
+  const b = document.getElementById('liteExplain'); if (b) b.classList.toggle('on', st.explain);
+  A.toast(st.explain ? 'Explain is on: tap any button to read what it does. Nothing changes. Tap 💬 again to stop.' : 'Explain is off. Tip: press and hold any button to read what it does.');
+}
+
+/* ---------- help: the short manual, in three languages ---------- */
+const HELP = {
+  EN: ['Pick a style. The machine makes a whole song.', 'Press ▶ Play. Tap the spiral or a section to start there.', 'Turn a part On or Off. 🎲 gives that part a new idea in the whole song.', 'Variation: Calm plays every section as written, Wild moves the most.', 'Feel: Tight sits on the grid, Loose breathes like a band.', 'Tap a section, then 🎲 Change only this. ↺ makes it like the others again.', '🎲 New song: a new song in the same style.', '⬇ Get: pick your drum plugin, download the MIDI zip or an MP3.', '⚙️ Pro: the same song in the full Music Machine.', 'Press and hold any button, or turn on 💬, to read what it does. Ctrl+Z undoes, space plays.'],
+  NL: ['Kies een stijl. De machine maakt een heel nummer.', 'Druk op ▶ Play. Tik op de spiraal of een sectie om daar te beginnen.', 'Zet een partij On of Off. 🎲 geeft die partij een nieuw idee in het hele nummer.', 'Variation: Calm speelt elke sectie zoals geschreven, Wild beweegt het meest.', 'Feel: Tight zit strak op de maat, Loose ademt als een band.', 'Tik op een sectie, dan 🎲 Change only this. ↺ maakt hem weer zoals de andere.', '🎲 New song: een nieuw nummer in dezelfde stijl.', '⬇ Get: kies je drum plugin, download de MIDI zip of een MP3.', '⚙️ Pro: hetzelfde nummer in de volle Music Machine.', 'Houd een knop ingedrukt, of zet 💬 aan, om te lezen wat hij doet. Ctrl+Z maakt ongedaan, spatie speelt.'],
+  DE: ['Wähle einen Stil. Die Maschine macht einen ganzen Song.', 'Drücke ▶ Play. Tippe auf die Spirale oder einen Teil, um dort zu starten.', 'Schalte eine Spur On oder Off. 🎲 gibt dieser Spur eine neue Idee im ganzen Song.', 'Variation: Calm spielt jeden Teil wie geschrieben, Wild bewegt sich am meisten.', 'Feel: Tight sitzt genau im Raster, Loose atmet wie eine Band.', 'Tippe auf einen Teil, dann 🎲 Change only this. ↺ macht ihn wieder wie die anderen.', '🎲 New song: ein neuer Song im selben Stil.', '⬇ Get: wähle dein Drum Plugin, lade das MIDI Zip oder eine MP3.', '⚙️ Pro: derselbe Song in der vollen Music Machine.', 'Halte eine Taste gedrückt oder schalte 💬 ein, um zu lesen, was sie tut. Strg+Z macht rückgängig, Leertaste spielt.']
+};
+function openHelp(lang) {
+  closeSheet(); lang = lang || store.get('dmml-lang', 'EN'); store.set('dmml-lang', lang);
+  document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
+    h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
+    h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 17:57'),
+    h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
+}
+
 /* ---------- the one screen ---------- */
 function renderHead() {
   const b = document.getElementById('litePlay'); if (b) { b.textContent = AU.playing ? '■ Stop' : '▶ Play'; b.classList.toggle('on', AU.playing); }
@@ -5169,10 +5225,10 @@ function renderLite() {
     h('div', { class: 'lhead' },
       h('div', { class: 'lbrand' }, 'Divine Music Machine ', h('b', null, 'Lite')),
       h('div', { class: 'grow' }),
-      h('button', { class: 'primary big', id: 'litePlay', onclick: togglePlay }, '▶ Play'),
-      h('button', { class: 'big', id: 'liteGet', onclick: openGet }, '⬇ Get')),
+      h('button', { class: 'primary big', id: 'litePlay', title: 'Play the whole song from the start. Space does the same.', onclick: togglePlay }, '▶ Play'),
+      h('button', { class: 'big', id: 'liteGet', title: 'Download your song: MIDI files for your DAW, or an MP3', onclick: openGet }, '⬇ Get')),
     h('div', { class: 'songline' }, h('b', null, g.name), h('span', null, Math.round(sg.bpm) + ' bpm · ' + D.keyName(sg.key) + ' · ' + D.totalBars(sg) + ' bars'), h('div', { class: 'grow' }),
-      h('button', { class: 'linkbtn', id: 'liteStyle', onclick: openStart }, 'Other style')),
+      h('button', { class: 'linkbtn', id: 'liteStyle', title: 'Start a new song in another style', onclick: openStart }, 'Other style')),
     h('div', { class: 'spiralbox', id: 'liteSpiral' }),
     h('div', { class: 'steers' }, slider('liteWild', 'Variation', WILD, wildOf(), setWild, 'Calm', 'Wild'), slider('liteLoose', 'Feel', LOOSE, looseOf(), setLoose, 'Tight', 'Loose')),
     h('div', { class: 'parts' }, GROUPS.map((gr) => {
@@ -5182,8 +5238,12 @@ function renderLite() {
         h('button', { class: 'sw' + (on ? ' on' : ''), id: 'lsw_' + gr.key, 'aria-pressed': on ? 'true' : 'false', title: on ? 'Turn ' + gr.name.toLowerCase() + ' off' : 'Turn ' + gr.name.toLowerCase() + ' on', onclick: () => toggleGroup(gr) }, on ? 'On' : 'Off'),
         h('button', { class: 'dice', id: 'ld_' + gr.key, title: 'New ' + gr.name.toLowerCase() + ' for the whole song', onclick: () => rollGroup(gr) }, '🎲'));
     })),
-    h('button', { class: 'primary newsong', id: 'liteNew', onclick: newSongSameStyle }, '🎲 New song'),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 17:51')));
+    h('button', { class: 'primary newsong', id: 'liteNew', title: 'A whole new song in the same style. Parts you turned off stay off.', onclick: newSongSameStyle }, '🎲 New song'),
+    h('div', { class: 'tools' },
+      h('button', { id: 'litePro', title: 'Open this song in the full Music Machine, with every button', onclick: openPro }, '⚙️ Pro'),
+      h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, '💬 Explain'),
+      h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help')),
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 17:57')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
@@ -5195,7 +5255,7 @@ window.addEventListener('keydown', (e) => { if (e.code === 'Space' && !/INPUT|SE
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); e.shiftKey ? A.redo() : A.undo(); renderLite(); } });
 st.liteReady = false;
 openStart();
-window.DMMLITE = { setWild, setLoose, changeSection, resetSection, makeSong, renderLite, openGet, toggleGroup, rollGroup, GROUPS, togglePlay };
+window.DMMLITE = { goPro, openPro, openHelp, toggleExplain, setWild, setLoose, changeSection, resetSection, makeSong, renderLite, openGet, toggleGroup, rollGroup, GROUPS, togglePlay };
 })();
 
 </script>
