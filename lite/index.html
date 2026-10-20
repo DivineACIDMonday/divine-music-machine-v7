@@ -344,6 +344,19 @@ body.lite #app{display:none}
 #liteSheet .row{display:flex;gap:8px;flex-wrap:wrap}
 #liteSheet .row button{flex:1;justify-content:center}
 @media (max-width:420px){#lite .lbrand{font-size:15px}#lite .big{padding:9px 12px}}
+#lite .steers{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){#lite .steers{grid-template-columns:1fr}}
+#lite .steer{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:4px}
+#lite .steer .sl{display:flex;justify-content:space-between;font-weight:600}
+#lite .steer .sv{color:var(--accent)}
+#lite .steer input{width:100%}
+#lite .steer .ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+#lite .sec.pick{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+#lite .sec .mark{color:var(--accent)}
+#lite .sec.pick .mark{color:var(--accent)}
+#lite .secbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:center;border-top:1px solid var(--line);padding-top:10px}
+#lite .secbar b{font:700 15px var(--display)}
+#lite .secbar .x{padding:6px 9px}
 
 </style>
 
@@ -4419,7 +4432,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:48. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:51. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -4938,7 +4951,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { st, AU, togglePlay, toast, loadSong, saveSession, ensureAudio, newStartSameStructure, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { st, AU, computeMix, togglePlay, toast, loadSong, saveSession, ensureAudio, newStartSameStructure, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
@@ -4991,7 +5004,9 @@ function makeSong(genre, keepOff) {
   const sg = song();
   if (keepOff) for (const p of keepOff) sg.parts[p].mode = 'off';
   sg.parts.beat.plugin = store.get('dmml-drums', 'gm');
-  st.liteReady = true; A.saveSession();
+  sg.lite = { wild: store.get('dmml-wild', 1), loose: store.get('dmml-loose', 2), roll: 0 };
+  applyWild(sg, sg.lite.wild); applyLoose(sg, sg.lite.loose);
+  st.liteReady = true; L.pick = null; A.saveSession();
   const ls = document.getElementById('liteStart'); if (ls) ls.remove();
   renderLite();
   if (was) play(0);
@@ -5013,6 +5028,60 @@ function rollGroup(g) {
   A.change(() => { for (const p of g.parts) { const P = song().parts[p]; P.mode = 'machine'; P.seed = D.newSeed(); } });
   renderLite();
   A.toast('New ' + g.name.toLowerCase() + ' for the whole song.', { label: 'Undo', fn: () => { A.undo(); renderLite(); } });
+}
+
+
+/* ---------- steer: two sliders for the whole song ---------- */
+const WILD = ['Calm', 'A little', 'Lively', 'Wild'];
+const LOOSE = ['Tight', 'Firm', 'Natural', 'Relaxed', 'Loose'];
+const wildOf = () => (song().lite && song().lite.wild != null ? song().lite.wild : 1);
+const looseOf = () => (song().lite && song().lite.loose != null ? song().lite.loose : 2);
+// calm: every section plays as written; further right: the mixer brings more and bolder variation, each section to its kind
+function applyWild(sg, w) {
+  const r = D.rng(D.hash('wild', sg.seed, w, (sg.lite && sg.lite.roll) || 0));
+  sg.sections.forEach((sec, si) => { if (!w) { delete sec.laneFx; return; } const fx = A.computeMix(si, w, r); if (fx && Object.keys(fx).length) sec.laneFx = fx; else delete sec.laneFx; });
+}
+// tight: on the grid, straight; loose: every part breathes more and the drums sit a little apart
+function applyLoose(sg, v) {
+  const k = v / 2; // 0 .. 2, natural = 1 (the genre's own feel)
+  for (const p of D.PARTS) { const f0 = D.defaultFeel(p, sg.genre); sg.parts[p].feel = { x: Math.round(f0.x * Math.min(1, k) * 100) / 100, y: Math.round(Math.min(0.95, f0.y * k) * 100) / 100 }; }
+  if (v < 3) { delete sg.laneFeel; return; }
+  const r = D.rng(D.hash('loose', sg.seed)), tight = sg.genre === 'techno' || sg.genre === 'newwave', m = (tight ? 0.45 : 1) * (v - 2) / 2;
+  const rr = (a, b) => Math.round((a + r() * (b - a)) * m);
+  sg.laneFeel = [{ swing: true, shift: 0 }, { swing: true, shift: rr(-2, 5) }, { swing: true, shift: rr(3, 18) }, { swing: true, shift: rr(1, 14) }, { swing: true, shift: rr(-6, 7) }, { swing: true, shift: rr(-4, 9) }, { swing: true, shift: rr(-8, 11) }, { swing: true, shift: 0 }];
+}
+function setWild(w) {
+  A.change(() => { const sg = song(); sg.lite = Object.assign({}, sg.lite, { wild: w, roll: ((sg.lite && sg.lite.roll) || 0) + 1 }); applyWild(sg, w); });
+  store.set('dmml-wild', w); renderLite();
+  A.toast(w ? WILD[w] + ': the song moves more from bar to bar.' : 'Calm: every section plays as written.', { label: 'Undo', fn: () => { A.undo(); renderLite(); } });
+}
+function setLoose(v) {
+  A.change(() => { const sg = song(); sg.lite = Object.assign({}, sg.lite, { loose: v }); applyLoose(sg, v); });
+  store.set('dmml-loose', v); renderLite();
+  A.toast(LOOSE[v] + [': right on the grid.', ': close to the grid.', ': the feel of the genre.', ': a little laid back.', ': like a band in a room.'][v], { label: 'Undo', fn: () => { A.undo(); renderLite(); } });
+}
+function slider(id, label, names, val, fn, left, right) {
+  const out = h('b', { class: 'sv', id: id + 'Val' }, names[val]);
+  const inp = h('input', { type: 'range', id, min: 0, max: names.length - 1, step: 1, value: val, 'aria-label': label,
+    oninput: (e) => { out.textContent = names[+e.target.value]; }, onchange: (e) => fn(+e.target.value) });
+  return h('div', { class: 'steer' }, h('div', { class: 'sl' }, h('span', null, label), out), inp, h('div', { class: 'ends' }, h('span', null, left), h('span', null, right)));
+}
+
+/* ---------- one section: change only this one ---------- */
+function changeSection(i) {
+  A.change(() => {
+    const sg = song(), sec = sg.sections[i], base = D.resolveType(sg, sec.type), seed = D.newSeed(), own = {};
+    for (const p of D.PARTS) { if (sg.parts[p].mode === 'off' || !base[p] || D.isEmpty(p, base[p])) continue; own[p] = D.varyMat(sg, p, base[p], base.ctxChords, D.hash(seed, p)); }
+    sec.own = own;
+    const fx = A.computeMix(i, Math.max(1, wildOf()), D.rng(seed)); if (fx && Object.keys(fx).length) sec.laneFx = fx;
+  });
+  renderLite();
+  A.toast(secName(i) + ' changed. The rest of the song stayed.', { label: 'Undo', fn: () => { A.undo(); renderLite(); } });
+}
+function resetSection(i) {
+  A.change(() => { const sg = song(), sec = sg.sections[i]; delete sec.own; delete sec.barOwn; const w = wildOf(); if (!w) delete sec.laneFx; else { const fx = A.computeMix(i, w, D.rng(D.hash('wild', sg.seed, w, i))); if (fx && Object.keys(fx).length) sec.laneFx = fx; } });
+  renderLite();
+  A.toast(secName(i) + ' sounds like the others of its kind again.', { label: 'Undo', fn: () => { A.undo(); renderLite(); } });
 }
 
 /* ---------- play ---------- */
@@ -5062,7 +5131,12 @@ function renderSpiral() {
   const box = document.getElementById('liteSpiral'); if (!box) return;
   const sg = song(), cur = nowSec();
   box.replaceChildren(drawSpiral(),
-    h('div', { class: 'secs' }, sg.sections.map((x, i) => h('button', { class: 'sec' + (i === cur ? ' now' : ''), id: 'ls_' + i, title: 'Play from ' + secName(i), onclick: () => play(D.sectionStart(sg, i)) }, h('i', { style: 'background:var(--' + x.type + ')' }), secName(i)))));
+    h('div', { class: 'secs' }, sg.sections.map((x, i) => h('button', { class: 'sec' + (i === cur ? ' now' : '') + (i === L.pick ? ' pick' : ''), id: 'ls_' + i, title: 'Play from ' + secName(i) + ' and show what you can change there', onclick: () => { L.pick = i; play(D.sectionStart(sg, i)); renderSpiral(); } }, h('i', { style: 'background:var(--' + x.type + ')' }), secName(i), x.own ? h('span', { class: 'mark', title: 'Changed on its own' }, ' ✦') : null))),
+    L.pick != null && sg.sections[L.pick] ? h('div', { class: 'secbar', id: 'liteSecBar' },
+      h('b', null, secName(L.pick)),
+      h('button', { id: 'liteSecNew', title: 'A new take on this section only. The rest of the song stays as it is.', onclick: () => changeSection(L.pick) }, '🎲 Change only this'),
+      sg.sections[L.pick].own ? h('button', { class: 'ghost', id: 'liteSecBack', title: 'Make it sound like the others of its kind again', onclick: () => resetSection(L.pick) }, '↺ Like the others') : null,
+      h('button', { class: 'ghost x', title: 'Close', 'aria-label': 'Close', onclick: () => { L.pick = null; renderSpiral(); } }, '✕')) : null);
 }
 
 /* ---------- get: one download, the drums already mapped ---------- */
@@ -5100,6 +5174,7 @@ function renderLite() {
     h('div', { class: 'songline' }, h('b', null, g.name), h('span', null, Math.round(sg.bpm) + ' bpm · ' + D.keyName(sg.key) + ' · ' + D.totalBars(sg) + ' bars'), h('div', { class: 'grow' }),
       h('button', { class: 'linkbtn', id: 'liteStyle', onclick: openStart }, 'Other style')),
     h('div', { class: 'spiralbox', id: 'liteSpiral' }),
+    h('div', { class: 'steers' }, slider('liteWild', 'Variation', WILD, wildOf(), setWild, 'Calm', 'Wild'), slider('liteLoose', 'Feel', LOOSE, looseOf(), setLoose, 'Tight', 'Loose')),
     h('div', { class: 'parts' }, GROUPS.map((gr) => {
       const on = isOn(gr);
       return h('div', { class: 'prow' + (on ? '' : ' off'), style: '--pc:var(--' + gr.key + ')' },
@@ -5108,7 +5183,7 @@ function renderLite() {
         h('button', { class: 'dice', id: 'ld_' + gr.key, title: 'New ' + gr.name.toLowerCase() + ' for the whole song', onclick: () => rollGroup(gr) }, '🎲'));
     })),
     h('button', { class: 'primary newsong', id: 'liteNew', onclick: newSongSameStyle }, '🎲 New song'),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 17:48')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 17:51')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
@@ -5120,7 +5195,7 @@ window.addEventListener('keydown', (e) => { if (e.code === 'Space' && !/INPUT|SE
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); e.shiftKey ? A.redo() : A.undo(); renderLite(); } });
 st.liteReady = false;
 openStart();
-window.DMMLITE = { makeSong, renderLite, openGet, toggleGroup, rollGroup, GROUPS, togglePlay };
+window.DMMLITE = { setWild, setLoose, changeSection, resetSection, makeSong, renderLite, openGet, toggleGroup, rollGroup, GROUPS, togglePlay };
 })();
 
 </script>
