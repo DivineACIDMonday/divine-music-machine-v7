@@ -967,7 +967,8 @@ E.acidBar = function (song, b, rootPitch, density, seedKey) {
   return out;
 };
 E.BASS_STYLES = {
-  acid(o) { E.acidBar(o.song, o.b, o.root, 0.62).forEach((n) => o.add(n.s, n.d, n.p, n.v)); },
+  boogie(o) { const third = o.c.q && /m/.test(o.c.q) && !/maj/.test(o.c.q) ? 3 : 4; [0, third, 7, 9, 10, 9, 7, third].forEach((iv, k) => o.add(k * 2, 2, o.root + iv, k % 2 ? 90 : 104)); },
+  acid(o) { E.acidBar(o.song, o.b, o.root, o.type === 'chorus' || o.type === 'drop' ? 0.72 : o.type === 'build' ? 0.8 : 0.55, 'acid' + o.type).forEach((n) => o.add(n.s, n.d, n.p, n.v)); },
   organ(o) { const r = rng(hash(o.song.seed, 'organ')), fig = r.pick([[0, 3, 6, 10, 12], [0, 3, 6, 8, 11, 14], [2, 6, 10, 13], [0, 6, 10, 14]]); fig.forEach((s, k) => o.add(s, 1, k % 2 && r.chance(0.6) ? o.oct : o.root, s % 4 ? 108 : 96)); },
   rolling(o) { for (let s = 0; s < o.N; s++) if (s % 4) o.add(s, 1, s % 4 === 2 && o.r.chance(0.2) ? o.oct : o.root, s % 4 === 2 ? 96 : 82); },
   euro(o) { for (let s = 2; s < o.N; s += 4) o.add(s, 2, (s / 2) % 2 ? o.oct : o.root, 104); if (o.r.chance(0.35)) o.add(o.N - 1, 1, o.fifth, 84); },
@@ -980,15 +981,23 @@ E.BASS_STYLES = {
   }
 };
 // which bass and chord style a song uses: its genre, or a borrowed one that fits the beat style
-E.bassStyleOf = (song) => { const fl = E.flavorOf(song); return fl === 'funk' ? 'funk' : fl === 'discorock' && song.genre !== 'house' ? 'pump8' : E.GENRES[song.genre].bass; };
-const CHORD_FL = { newwave: { pump: 0.25, arp: 0.1 }, free: { pump: 0.15, arp: 0.15 }, triphop: { arp: 0.1 }, house: { arp: 0.1 }, eurodance: { arp: 0.2 } };
+const BASS_V = { techno: { offbeat: 5.5, rolling: 3, acid: 1.5 }, house: { organ: 5, euro: 2, funk: 1.5, offbeat: 1.5 }, trance: { rolling: 7, offbeat: 3 }, eurodance: { euro: 7, offbeat: 3 }, acid: { acid: 1 }, breakbeat: { kick: 4, acid: 3, funk: 3 }, ebm: { ebm: 7, pump8: 3 },
+  hiphop: { kick: 6, funk: 2.5, long: 1.5 }, triphop: { long: 7, kick: 3 }, newwave: { drive: 6, pump8: 2, funk: 2 }, punk: { pump8: 6, drive: 2.5 }, blues: { walk: 6, boogie: 3.5 }, free: { kick: 4, long: 2, drive: 2, funk: 1, rolling: 1 } };
+const CHORD_V = { techno: { stab: 7, arp: 2, pad: 1 }, house: { housestab: 6, pump: 2, arp: 2 }, trance: { arp: 7, pad: 3 }, eurodance: { stab: 5, arp: 3, pump: 2 }, acid: { stab: 5, pad: 2.5, arp: 1.5 }, breakbeat: { stab: 6, power: 2, arp: 2 }, ebm: { stab: 7, arp: 3 },
+  hiphop: { half: 6, housestab: 2, arp: 2 }, triphop: { pad: 7, arp: 3 }, newwave: { eighths: 5, pump: 2.5, arp: 2.5 }, punk: { power: 7, pump: 2, stab: 1.5 }, blues: { shuffle: 6, stab: 2, pad: 1.5 }, free: { half: 4, pump: 2, arp: 2, pad: 2 } };
+E.BASS_NAMES = { auto: 'Machine choice', offbeat: 'Offbeat', rolling: 'Rolling', acid: 'Acid 303', organ: 'Organ', euro: 'Octave offbeat', funk: 'Funk hook', kick: 'With the kick', long: 'Long and deep', drive: 'Driving eighths', pump8: 'Root eighths', ebm: 'Sequencer', walk: 'Walking', boogie: 'Boogie' };
+E.CHORD_NAMES = { auto: 'Machine choice', stab: 'Stabs on the offbeat', housestab: 'House piano stabs', arp: 'Arpeggio', pad: 'Long chords', pump: 'Pumping eighths', power: 'Power chords', half: 'Half notes', eighths: 'Eighths', shuffle: 'Shuffle comp' };
+E.bassStyleOf = (song) => {
+  const fl = E.flavorOf(song), g = E.GENRES[song.genre];
+  if (!song.arr) return g.bass;
+  if (song.bassStyle) return song.bassStyle;
+  if (fl === 'funk') return 'funk'; if (fl === 'discorock' && song.genre !== 'house') return 'pump8';
+  return pickW(rng(hash(song.seed, 'bassstyle', song.genre)), BASS_V[song.genre] || { [g.bass]: 1 });
+};
 E.chordStyleOf = function (song) {
   const g = E.GENRES[song.genre]; if (!song.arr) return g.chordRhythm;
   if (song.chordStyle) return song.chordStyle;
-  const w = CHORD_FL[song.genre]; if (!w) return g.chordRhythm;
-  const r = rng(hash(song.seed, 'chordstyle')); let x = r();
-  for (const k in w) { x -= w[k]; if (x < 0) return k; }
-  return g.chordRhythm;
+  return pickW(rng(hash(song.seed, 'chordstyle', song.genre)), CHORD_V[song.genre] || { [g.chordRhythm]: 1 });
 };
 E.CHORD_STYLES = {
   housestab(o) { const r = rng(hash(o.song.seed, 'house')), fig = r.pick([[0, 3, 6, 10, 12], [3, 6, 11, 14], [0, 6, 10], [2, 6, 10, 14], [0, 3, 8, 11, 14]]); fig.forEach((s, k) => o.add(s, 1.5, k ? 86 : 96)); },
@@ -1003,7 +1012,7 @@ E.CHORD_STYLES = {
 };
 // a form for the whole song, learned from records that tell a story with their arrangement
 E.FORMS = { auto: 'Machine choice', classic: 'Classic', quietloud: 'Quiet verse, loud chorus', ballad: 'Ballad: small start, drums later, a lift', twopart: 'Two parts: a bass breakdown, then all in', chant: 'Chant: call and answer' };
-const FORM_W = { punk: { classic: 3, quietloud: 3, twopart: 1 }, triphop: { classic: 4, ballad: 2, quietloud: 1 }, hiphop: { classic: 5, chant: 1, twopart: 1 }, newwave: { classic: 4, twopart: 1.5, ballad: 1, quietloud: 1 }, blues: { classic: 5, ballad: 1 }, techno: { classic: 5, chant: 1 }, house: { classic: 4, ballad: 1, twopart: 1 }, acid: { classic: 5, chant: 1 }, trance: { classic: 4, ballad: 1.5 }, eurodance: { classic: 4, ballad: 1 }, breakbeat: { classic: 4, quietloud: 1.5, twopart: 1 }, ebm: { classic: 2, chant: 4 }, free: { classic: 3, quietloud: 1, ballad: 1, twopart: 1, chant: 1 } };
+const FORM_W = { punk: { classic: 3, quietloud: 3, twopart: 1 }, triphop: { classic: 4, ballad: 2, quietloud: 1 }, hiphop: { classic: 5, chant: 1, twopart: 1 }, newwave: { classic: 4, twopart: 1.5, ballad: 1, quietloud: 1 }, blues: { classic: 5, ballad: 1 }, techno: { classic: 5, chant: 1, twopart: 1.5 }, house: { classic: 4, ballad: 1, twopart: 1 }, acid: { classic: 4, chant: 1, twopart: 1.5, quietloud: 0.5 }, trance: { classic: 4, ballad: 1.5 }, eurodance: { classic: 4, ballad: 1 }, breakbeat: { classic: 4, quietloud: 1.5, twopart: 1 }, ebm: { classic: 2, chant: 4 }, free: { classic: 3, quietloud: 1, ballad: 1, twopart: 1, chant: 1 } };
 E.formOf = function (song) {
   if (!song.arr) return 'classic';
   if (song.form && song.form !== 'auto') return song.form;
@@ -1067,6 +1076,9 @@ E.newSong = function (genre, opts) {
   for (const p of E.PARTS) song.parts[p] = { mode: 'machine', lead: false, plugin: 'plain', ujMode: p === 'beat' || p === 'bass' || p === 'chords' ? 'player' : 'instrument', feel: E.defaultFeel(p, genre), seed: r.int(4294967295) };
   for (const t of E.TYPE_ORDER) { song.mat[t] = {}; for (const p of E.PARTS) song.mat[t][p] = null; }
   song.arr = 1; song.raw = E.RAW_DEFAULT[genre] != null ? E.RAW_DEFAULT[genre] : 0.4;
+  { const mr = rng(hash(song.seed, 'mode')); // a modal colour now and then: dorian lifts a minor song, mixolydian roughens a major one
+    if (song.key.scale === 'minor' && ['techno', 'house', 'hiphop', 'triphop', 'newwave', 'breakbeat', 'acid', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'dorian';
+    else if (song.key.scale === 'major' && ['punk', 'newwave', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'mixolydian'; }
   E.oddLengths(song, rng(hash(song.seed, 'odd')));
   return song;
 };
@@ -1415,7 +1427,7 @@ E.genBass = function (song, type, ctx, seed) {
     const nc = chords.bars[(b + 1) % L] || c;
     const root = pitchNear(c.root, centre), fifth = root + 7 > 50 ? root - 5 : root + 7, oct = root + 12 <= 52 ? root + 12 : root - 12;
     const add = (s, d, p, v) => { if (s < N) notes.push({ s: b * N + s, d: Math.max(1, Math.min(d, N - s)), p, v }); };
-    if (E.BASS_STYLES[style]) E.BASS_STYLES[style]({ add, root, oct, fifth, c, nc, b, r, N, song });
+    if (E.BASS_STYLES[style]) E.BASS_STYLES[style]({ add, root, oct, fifth, c, nc, b, r, N, song, type });
     else if (style === 'offbeat') {
       for (let s = 2; s < N; s += 4) add(s, 2, r.chance(0.15) ? oct : root, 96 + r.int(10));
       if (r.chance(0.4)) add(N - 1, 1, fifth, 80);
@@ -1904,7 +1916,8 @@ E.renderBar = function (song, part, gbar, res, opts) {
   const mach = !!A && choice !== true && E.machineish(song, sec, part);
   const endK = song.arr && !lastBar && !bo ? E.endingOf(song, si, inBar) : null;
   if (mach && ((A.enter[part] || 0) > inBar || A.exit[part] != null && inBar >= A.exit[part])) return opts.lanes ? { lanes: mat.lanes.map((l) => l.map(() => 0)) } : [];
-  if (mach && (A.only && !A.only.includes(part) || part === 'beat' && A.noBeat)) return opts.lanes ? { lanes: mat.lanes.map((l) => l.map(() => 0)) } : []; // the form: drums later in a ballad, the bass alone in a breakdown
+  if (mach && (A.only && !A.only.includes(part) || part === 'beat' && A.noBeat || A.drumsUntil && inBar < A.drumsUntil && part !== 'beat')) return opts.lanes ? { lanes: mat.lanes.map((l) => l.map(() => 0)) } : [];
+  const stopTime = mach && A.stoptime && inBar < A.stoptime; // the form: drums later in a ballad, the bass alone in a breakdown
   const padOn = song.parts.pad.mode !== 'off';
   if (mach && part === 'chords' && (A.harm === 'none' || (A.harm === 'pad' || A.harm === 'drone') && padOn)) return [];
   if (mach && part === 'pad' && (A.harm === 'none' || A.harm === 'stabs' || A.harm === 'full' && !A.padToo && song.parts.chords.mode !== 'off')) return [];
@@ -1961,6 +1974,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     }
     if (mach && A.beatLanes) lanes.forEach((l, li) => { if (!A.beatLanes.includes(li) && li !== CR) l.fill(0); }); // a quiet verse plays only the bones of the beat
     E.laneFxApply(song, sec, inBar, lanes, N);
+    if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
     if (E.STOPS.includes(fk)) { if (fk === 'hit' || fk === 'half' || !sec.fill) E.stopLanes(lanes, fk, N); else E.applyFill(song, lanes, fk, N, r); } // a stop stays a stop, whatever the mixer adds
     E.muteLanes(sec, inBar, lanes);
     if (opts.lanes) return { lanes }; // the grid asks what this bar really plays
@@ -2004,6 +2018,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (part !== 'beat') { if (E.partIsOff(sec, inBar, part)) return []; if (!lastBar && !bo) notes = E.partFxApply(song, sec, inBar, part, notes, N); }
   if (part !== 'beat' && endK && E.STOPS.includes(endK) && song.arr && E.machineish(song, sec, part)) notes = E.stopNotes(part, notes, endK, BT); // the band stops with the drums
   if (part !== 'beat' && song.arr) { const lift = E.liftOf(song); if (lift && si >= lift.from) notes = notes.map((n) => Object.assign({}, n, { p: n.p + lift.by })); } // the last chorus a step higher
+  if (part !== 'beat' && stopTime) notes = E.stopNotes(part, notes, 'hit', BT); // stop time: the band hits the one with the drums
   if (song.arr && song.raw && !bo && !lastBar) notes = E.rawNotes(song, part, notes, type + ':' + inBar + ':' + sec.bars, N, BT, isLastOfSec && !!nextSec && (!!endK || !!sec.fill && sec.fill !== 'auto' && sec.fill !== 'none'), A && A.boost);
   return E.applyFeel(song, part, notes, gbar, opts);
 };
@@ -2065,10 +2080,14 @@ E.varyLaneRaw = function (lanes, li, kind, amt, r, N, l, top, on) {
     else if (k === 'roll') { const w = on().filter((s) => s + 1 < N && !l[s + 1] && okK(s + 1)); if (w.length) { const s = r.pick(w); l[s + 1] = Math.round(l[s] * 0.7); if (amt >= 3 && s + 2 < N && !l[s + 2] && okK(s + 2)) l[s + 2] = Math.round(l[s] * 0.85); } }
   }
 };
+E.FOUR = ['techno', 'house', 'acid', 'trance', 'eurodance', 'ebm'];
 E.laneFxApply = function (song, sec, b, lanes, N) {
   const fx = sec.laneFx; if (!fx) return;
   for (const key of Object.keys(fx)) {
-    const li = +key, f = fx[key], l = lanes[li]; if (!f || !l) continue;
+    const li = +key, l = lanes[li]; let f = fx[key]; if (!f || !l) continue;
+    if (li === K && E.FOUR.includes(song.genre) && ['verse', 'chorus', 'drop', 'prechorus'].includes(sec.type)) { // four on the floor stays four on the floor: the mixer may add to the kick, never move or thin it
+      f = Object.assign({}, f, { kind: f.kind && /shift|displace|euclid|thin|mix|swap/.test(f.kind) ? 'ghost' : f.kind }); if (['in', 'out', 'stair', 'wave', 'walk'].includes(f.prog)) f.prog = 'none';
+    }
     const from = f.from != null ? clamp(f.from, 0, sec.bars - 1) : 0, to = f.to != null ? clamp(f.to, from, sec.bars - 1) : sec.bars - 1;
     if (b < from || b > to) continue; // only the bars you chose
     const span = Math.max(1, to - from), k = b - from;
@@ -2186,7 +2205,7 @@ E.applyFill = function (song, lanes, kind, N, r) {
    an odd length or a lift in the last chorus keeps you awake (Kate Bush). */
 E.HARMS = { auto: 'Machine choice', full: 'Full chords', stabs: 'Stabs', pad: 'Only the pad', drone: 'Drone', none: 'No harmony' };
 E.LEADS = { auto: 'Machine choice', melody: 'Melody leads', riff: 'Bass riff leads', chords: 'Chords lead' };
-E.INTROS = { auto: 'Machine choice', hats: 'Hats first', solo: 'Drums alone', kick: 'Kick alone', break: 'Breakbeat', toms: 'Toms', silent: 'Silence, then drums' };
+E.INTROS = { auto: 'Machine choice', hats: 'Hats first', solo: 'Drums alone', kick: 'Kick alone', break: 'Breakbeat', toms: 'Toms', silent: 'Silence, then drums', count: 'Count in on the hats' };
 const pickW = (r, w) => { const ks = Object.keys(w).filter((k) => w[k] > 0), tot = ks.reduce((a, k) => a + w[k], 0); let x = r() * tot; for (const k of ks) { x -= w[k]; if (x <= 0) return k; } return ks[ks.length - 1]; };
 E.pickW = pickW;
 const HARM_W = {
@@ -2196,7 +2215,7 @@ const HARM_W = {
 };
 const HARM_G = { house: { stabs: 1.5, full: 1.3, drone: 0.6 }, acid: { none: 1.8, drone: 1.4, stabs: 1.2, full: 0.5, pad: 0.6 }, trance: { pad: 1.5, full: 1.3, none: 0.6 }, eurodance: { stabs: 1.5, full: 1.4, drone: 0.5 }, breakbeat: { stabs: 1.6, none: 1.4, full: 0.7 }, ebm: { none: 2, drone: 1.5, stabs: 1.2, full: 0.4, pad: 0.5 }, punk: { full: 4, stabs: 0.6, pad: 0, drone: 0.2, none: 0.6 }, techno: { stabs: 1.6, none: 1.5, drone: 1.4, full: 0.6, pad: 0.8 }, triphop: { drone: 1.6, pad: 1.4, none: 1.1, stabs: 0.8 }, hiphop: { stabs: 1.6, none: 1.4, full: 0.8 }, newwave: { full: 1.3, pad: 1.3, drone: 0.7 }, blues: { full: 3, stabs: 1.4, drone: 0, pad: 0.3, none: 0.4 } };
 const LEAD_W = { techno: { melody: 4, riff: 2, chords: 1 }, triphop: { melody: 6, riff: 1.5, chords: 1 }, hiphop: { melody: 4, riff: 2, chords: 1.2 }, newwave: { melody: 5, riff: 1.5, chords: 1 }, blues: { melody: 7, riff: 0.6, chords: 1 }, free: { melody: 5, riff: 1.5, chords: 1 }, house: { melody: 5, riff: 1, chords: 2 }, acid: { melody: 2, riff: 4, chords: 0.5 }, trance: { melody: 6, riff: 1, chords: 1.5 }, eurodance: { melody: 6, riff: 1, chords: 1 }, breakbeat: { melody: 3, riff: 3, chords: 1 }, ebm: { melody: 3, riff: 4, chords: 0.5 }, punk: { melody: 5, riff: 1, chords: 2 } };
-const INTRO_W = { punk: { solo: 3, kick: 1, silent: 2 }, ebm: { kick: 3, break: 1, solo: 1, silent: 1 }, house: { hats: 2, kick: 2.5, solo: 1, break: 1, silent: 1 }, acid: { kick: 2, break: 2, hats: 1.5, silent: 1 }, trance: { kick: 2, hats: 2, silent: 2, break: 1 }, eurodance: { kick: 2, solo: 2, silent: 1 }, breakbeat: { break: 3, solo: 2, silent: 1, toms: 1 }, techno: { break: 3.5, hats: 2, kick: 2, toms: 1, silent: 1.5 }, def: { hats: 2.5, solo: 2.5, break: 2, kick: 1, toms: 1, silent: 1 }, blues: { solo: 3, hats: 2, silent: 2, kick: 1 } };
+const INTRO_W = { punk: { count: 4, solo: 2, silent: 1 }, newwave: { count: 1.5, hats: 2, solo: 2, break: 1, kick: 1, silent: 1 }, blues: { count: 2, solo: 2, hats: 2, silent: 1 }, hiphop: { solo: 3, break: 2, hats: 1.5, kick: 1, silent: 1, toms: 0.5 }, ebm: { kick: 3, break: 1, solo: 1, silent: 1 }, house: { hats: 2, kick: 2.5, solo: 1, break: 1, silent: 1 }, acid: { kick: 2, break: 2, hats: 1.5, silent: 1 }, trance: { kick: 2.5, hats: 2, silent: 1, break: 1 }, eurodance: { kick: 2, solo: 2, silent: 1 }, breakbeat: { break: 3, solo: 2, silent: 1, toms: 1 }, techno: { kick: 4, hats: 2.5, break: 1, silent: 1, toms: 0.5 }, def: { hats: 2.5, solo: 2.5, break: 2, kick: 1, toms: 1, silent: 1 } };
 const STOP_P = { punk: 0.6, breakbeat: 0.6, ebm: 0.5, house: 0.45, acid: 0.4, trance: 0.4, eurodance: 0.5, techno: 0.45, triphop: 0.5, hiphop: 0.6, newwave: 0.5, blues: 0.35, free: 0.5 };
 E.STOPS = ['stop', 'gift', 'hit', 'drop', 'half']; // fills that stop the whole band, not only the drums
 // the plan of one section: who leads, what the harmony does, how it ends, who comes in when
@@ -2232,7 +2251,13 @@ E.arrangeOf = function (song, si) {
     if (plan.recipe === 'silent') { delete plan.enter.beat; delete plan.enter.chords; delete plan.enter.pad; }
   }
   E.applyForm(song, si, plan, o, r);
+  { const st = { blues: 0.35, punk: 0.25, newwave: 0.18, hiphop: 0.15, breakbeat: 0.15, free: 0.12, house: 0.08, eurodance: 0.08 }[g] || 0;
+    if ((t === 'verse' || t === 'chorus') && sec.bars >= 8 && !plan.noBeat && !plan.only && !Object.keys(plan.enter).length && r.chance(st)) plan.stoptime = sec.bars >= 12 ? 4 : 2; // stop time: one hit per bar, then the groove comes back
+    const db = { hiphop: 0.25, breakbeat: 0.3, triphop: 0.15, newwave: 0.12, punk: 0.15, techno: 0.12, house: 0.12, free: 0.15 }[g] || 0.08;
+    if (!plan.stoptime && (t === 'verse' || t === 'chorus' || t === 'drop') && !E.isFirstOfType(song, si) && sec.bars >= 8 && !plan.only && !plan.noBeat && !Object.keys(plan.enter).length && r.chance(db)) plan.drumsUntil = 2; // the drums alone for two bars, then everybody slams back in
+  }
   if (plan.lead === 'chords' && (plan.harm === 'none' || plan.harm === 'drone')) plan.lead = 'melody';
+  if (plan.lead === 'chords' && plan.harm === 'pad') plan.harm = 'full'; // the chords lead: they really play
   if (plan.recipe === 'silent' && plan.harm === 'none') plan.harm = 'pad'; // drums wait: something else holds the room
   if (plan.noBeat && plan.stop === 'hit') plan.stop = 'gift';
   { // entries only for what really plays here, and the first one starts right away
@@ -2278,6 +2303,7 @@ E.stopNotes = function (part, notes, kind, BT) {
 E.introLanes = function (song, core, recipe, inBar, bars, N, r) {
   const L = core.map((l) => l.slice()), z = () => new Array(N).fill(0), out = core.map(() => z());
   if (recipe === 'solo') return L;
+  if (recipe === 'count') { if (inBar > 0) return L; for (let s = 0; s < N; s += N / 4) out[HH][s] = s ? 96 : 110; return out; } // one, two, three, four, and the band is in
   if (recipe === 'silent') { if (inBar < Math.floor(bars / 2)) return out; if (inBar === Math.floor(bars / 2) && out[CR]) L[CR][0] = 110; return L; }
   if (recipe === 'kick') { out[K] = L[K].slice(); if (inBar >= bars / 2) out[HH] = L[HH].map((v, s) => (s % 4 === 2 ? v || 60 : 0)); return out; }
   if (recipe === 'toms') { // a rolling tom figure on the perc lane, kick underneath
@@ -2337,7 +2363,7 @@ E.rawNotes = function (song, part, notes, gbar, N, BT, still, boost) {
   const x = clamp((song.raw || 0) + (boost || 0), 0, 1); if (!x || !notes.length) return notes;
   const r = rng(hash(song.seed, 'raw', part, gbar));
   const span = 1 + 0.75 * x;
-  let out = notes.map((n) => Object.assign({}, n, { v: clamp(Math.round(68 + (n.v - 68) * span + (n.v >= 100 ? 10 * x : 0)), 1, 127) }));
+  let out = notes.map((n) => Object.assign({}, n, { v: clamp(Math.round(68 + (n.v - 68) * span + (n.v >= 100 ? 10 * x : 0)), Math.min(n.v, 22), 127) })); // soft stays audible: never below 22 unless it was softer to begin with
   if (still) return out.sort((a, b) => a.t - b.t); // a fill or a stop stays exactly as it is, only the accents get sharper
   if (part === 'beat') {
     const has = (lane, s) => out.some((n) => n.lane === lane && Math.abs(n.t - s * E.STEP) < 5);
@@ -3240,6 +3266,12 @@ function renderTop() {
         h('select', { id: 'flavor', style: 'max-width:170px', onchange: (e) => change(() => { if (e.target.value === 'auto') delete sg.flavor; else sg.flavor = e.target.value; }) },
           h('option', { value: 'auto', selected: !sg.flavor }, 'Machine: ' + D.FLAVORS[D.flavorOf(Object.assign({}, sg, { flavor: undefined })) || 'genre'].toLowerCase()),
           Object.entries(D.FLAVORS).map(([k, n]) => h('option', { value: k, selected: sg.flavor === k }, n))),
+        h('label', { for: 'bassStyle' }, 'Bass'),
+        h('select', { id: 'bassStyle', style: 'max-width:160px', title: 'How the machine bass plays: offbeat, rolling, a 303 line, organ, a funk hook, walking and more', onchange: (e) => change(() => { if (e.target.value === 'auto') delete sg.bassStyle; else sg.bassStyle = e.target.value; }) },
+          Object.entries(D.BASS_NAMES).map(([k, n]) => h('option', { value: k, selected: (sg.bassStyle || 'auto') === k }, k === 'auto' ? 'Machine: ' + (D.BASS_NAMES[D.bassStyleOf(Object.assign({}, sg, { bassStyle: undefined }))] || '').toLowerCase() : n))),
+        h('label', { for: 'chordStyle' }, 'Chords'),
+        h('select', { id: 'chordStyle', style: 'max-width:160px', title: 'How the machine chords play: stabs, house piano, arpeggio, long chords, pumping eighths, power chords', onchange: (e) => change(() => { if (e.target.value === 'auto') delete sg.chordStyle; else sg.chordStyle = e.target.value; }) },
+          Object.entries(D.CHORD_NAMES).map(([k, n]) => h('option', { value: k, selected: (sg.chordStyle || 'auto') === k }, k === 'auto' ? 'Machine: ' + (D.CHORD_NAMES[D.chordStyleOf(Object.assign({}, sg, { chordStyle: undefined }))] || '').toLowerCase() : n))),
         h('label', { for: 'form', title: 'The story of the whole song' }, 'Form'),
         h('select', { id: 'form', style: 'max-width:190px', title: 'Classic, a quiet verse with a loud chorus, a ballad that starts small and lifts, two parts with a bass breakdown, or a chant of call and answer', onchange: (e) => change(() => { if (e.target.value === 'auto') delete sg.form; else sg.form = e.target.value; }) },
           Object.entries(D.FORMS).map(([k, n]) => h('option', { value: k, selected: (sg.form || 'auto') === k }, k === 'auto' ? 'Machine: ' + D.FORMS[D.formOf(Object.assign({}, sg, { form: undefined }))].toLowerCase() : n)))) : null,
@@ -3710,6 +3742,7 @@ function rowDiff(sg, si, key) {
 }
 function audible(sg, si, key) {
   const sec = sg.sections[si], f = sec.laneFx && sec.laneFx[key]; if (!f || !f.rnd) return;
+  if (!/^\d+$/.test(String(key))) { const s0 = D.sectionStart(sg, si), R = D.makeRenderer(sg); let any = false; for (let b = 0; b < sec.bars && !any; b++) any = R.bar(key, s0 + b).length > 0; if (!any) return; } // a part the arrangement keeps silent here: your choice stays as you set it
   const from = f.from != null ? f.from : 0, to = f.to != null ? f.to : sec.bars - 1, want = Math.min(3, Math.max(1, Math.floor((to - from + 1) / 4)));
   for (let t = 0; t < 16 && rowDiff(sg, si, key) < want; t++) sec.laneFx[key] = Object.assign({}, sec.laneFx[key], { rnd: D.newSeed() }, t >= 4 ? { amt: Math.min(3, (f.amt || 1) + 1) } : null, t >= 9 ? { kind: 'mix' } : null);
 }
@@ -4891,7 +4924,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 21:07. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 22:49. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -5736,7 +5769,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 21:07'),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 22:49'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
 
@@ -5769,7 +5802,7 @@ function renderLite() {
       h('button', { id: 'litePro', title: 'Open this song in Divine Music Machine Pro, with every button', onclick: openPro }, '⚙️ Pro'),
       h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, '💬 Explain'),
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 21:07')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 22:49')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
