@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved."><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%23161826%22/%3E%3Cpath%20d%3D%22M32%2032m0-4a4%204%200%201%201-4%204%208%208%200%200%201%208-8%2012%2012%200%200%201%2012%2012%2016%2016%200%200%201-16%2016A20%2020%200%200%201%2012%2032%2024%2024%200%200%201%2036%208%22%20fill%3D%22none%22%20stroke%3D%22%239488ec%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22/%3E%3Cpath%20d%3D%22M36%208a24%2024%200%200%201%2020%2014%22%20fill%3D%22none%22%20stroke%3D%22%23e8825a%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22/%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2232%22%20r%3D%224.5%22%20fill%3D%22%23f0c25a%22/%3E%3C/svg%3E"><style>[hidden]{display:none!important}img{max-width:100%}</style></head><body>
-<title>Divine Music Machine</title>
+<title>Divine Music Machine Pro</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%23161826%22/%3E%3Cpath%20d%3D%22M32%2032m0-4a4%204%200%201%201-4%204%208%208%200%200%201%208-8%2012%2012%200%200%201%2012%2012%2016%2016%200%200%201-16%2016A20%2020%200%200%201%2012%2032%2024%2024%200%200%201%2036%208%22%20fill%3D%22none%22%20stroke%3D%22%239488ec%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22/%3E%3Cpath%20d%3D%22M36%208a24%2024%200%200%201%2020%2014%22%20fill%3D%22none%22%20stroke%3D%22%23e8825a%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22/%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2232%22%20r%3D%224.5%22%20fill%3D%22%23f0c25a%22/%3E%3C/svg%3E">
 <!-- Divine Music Machine. (c) 2026 Divine Monday. All rights reserved. -->
 <meta name="author" content="Divine Monday">
@@ -58,6 +58,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .top{display:flex;flex-direction:column;align-items:stretch;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
 .brand{font:700 17px/1 var(--display);letter-spacing:.01em;white-space:nowrap;margin-right:4px}
 .brand b{color:var(--accent);font-weight:700}
+.brand .pro{font:600 11px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:2px 6px;vertical-align:3px;margin-left:2px}
 .top .grp{display:flex;align-items:center;gap:6px}
 .top .trow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .top .pp{display:flex;background:var(--raise);border-radius:8px;padding:2px}
@@ -2431,7 +2432,7 @@ const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(
 
 /* ---------- storage (never trusted) ---------- */
 // the Lite app shares the library and settings, and keeps its own song
-const LITE = !!window.DMM_LITE, SESSION_KEY = LITE ? 'dmml-session-v1' : 'dmm-session-v1', MYLINK_KEY = LITE ? 'dmml-mylink-v1' : 'dmm-mylink-v1';
+const LITE = !!window.DMM_LITE, APP_NAME = LITE ? 'Divine Music Machine Lite' : 'Divine Music Machine Pro', SESSION_KEY = LITE ? 'dmml-session-v1' : 'dmm-session-v1', MYLINK_KEY = LITE ? 'dmml-mylink-v1' : 'dmm-mylink-v1';
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -2727,7 +2728,7 @@ function renderTop() {
   // row 1: the song itself. row 2: genre and everything you do with the song
   top.append(
     h('div', { class: 'trow' },
-      h('div', { class: 'brand' }, 'Divine ', h('b', null, 'Music'), ' Machine'), name,
+      h('div', { class: 'brand' }, 'Divine ', h('b', null, 'Music'), ' Machine ', h('span', { class: 'pro' }, 'Pro')), name,
       h('div', { class: 'sep' }),
       h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Previous section', title: 'Previous section (left arrow)', onclick: () => skip(-1) }, ico('prev')), playBtn, h('button', { class: 'iconbtn', 'aria-label': 'Next section', title: 'Next section (right arrow)', onclick: () => skip(1) }, ico('next')),
         scope, st.held ? h('button', { class: 'primary', id: 'continueSong', title: 'Go on with the whole song', onclick: () => continueSong() }, ico('play'), 'Continue song') : null),
@@ -4261,7 +4262,7 @@ function openStart() {
   const genres = h('div', { class: 'genrepick' }, D.GENRE_ALL.map((g) => h('button', { class: 'gcard', id: 'genre_' + g, onclick: () => startHow(g) },
     h('b', null, D.GENRES[g].name), h('span', null, genreLine(g)))));
   const sheet = h('div', { class: 'sheet', style: 'width:min(860px,100%)' },
-    h('div', { class: 'hdr' }, h('h2', null, 'Divine Music Machine'), h('div', { class: 'grow' }), !st.boot ? h('button', { class: 'ghost', onclick: closeOverlay }, 'Back to my song') : null),
+    h('div', { class: 'hdr' }, h('h2', null, APP_NAME), h('div', { class: 'grow' }), !st.boot ? h('button', { class: 'ghost', onclick: closeOverlay }, 'Back to my song') : null),
     !st.boot ? keepStructureBox() : null,
     h('div', { class: 'stepnum' }, 'Step 1 of 2'), h('h3', null, st.boot ? 'Pick a genre' : 'Or a new song from scratch: pick a genre'),
     genres,
@@ -4369,7 +4370,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:52. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 18:18. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -4836,7 +4837,7 @@ async function linkInAddressBar() {
 async function shareSong() {
   const sg = song(); if (!activeParts(sg).length) { toast('Nothing plays yet, so there is nothing to share.'); return; }
   let url; try { url = await songLink(sg); } catch (e) { toast('The link could not be made in this browser.'); return; }
-  const title = (sg.name || 'Untitled') + ' · Divine Music Machine';
+  const title = (sg.name || 'Untitled') + ' · ' + APP_NAME;
   if (navigator.share && /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) { try { await navigator.share({ title, text: 'Listen to my song ' + (sg.name || '') + ':', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
   let copied = false; try { await navigator.clipboard.writeText(url); copied = true; } catch (e) { /* show the box below */ }
   const box = h('input', { type: 'text', id: 'shareLink', value: url, readonly: true, 'aria-label': 'Link to your song', style: 'width:100%;font-family:var(--mono,monospace);font-size:12px', onfocus: (e) => e.target.select() });
@@ -4879,7 +4880,7 @@ function openListen() {
     sp, play,
     h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center' }, mp3, midi),
     h('div', { class: 'small' }, 'MIDI: one file per part plus the song structure, ready for your DAW.'),
-    own, h('div', { class: 'small faint copy' }, 'Made with the Divine Music Machine')), { sticky: true });
+    own, h('div', { class: 'small faint copy' }, 'Made with the ' + APP_NAME)), { sticky: true });
   const loop = () => {
     if (!st.listening) return;
     const d = $('#lsDot'); if (d) { const q = spiralPoint(Math.min(0.999, AU.playing ? (AU.curBar + AU.curFrac) / tot : 0)); d.setAttribute('cx', q[0].toFixed(1)); d.setAttribute('cy', q[1].toFixed(1)); }

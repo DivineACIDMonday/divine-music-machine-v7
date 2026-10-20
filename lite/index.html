@@ -58,6 +58,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .top{display:flex;flex-direction:column;align-items:stretch;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:8px 10px}
 .brand{font:700 17px/1 var(--display);letter-spacing:.01em;white-space:nowrap;margin-right:4px}
 .brand b{color:var(--accent);font-weight:700}
+.brand .pro{font:600 11px/1 var(--body);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:2px 6px;vertical-align:3px;margin-left:2px}
 .top .grp{display:flex;align-items:center;gap:6px}
 .top .trow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .top .pp{display:flex;background:var(--raise);border-radius:8px;padding:2px}
@@ -2506,7 +2507,7 @@ const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(
 
 /* ---------- storage (never trusted) ---------- */
 // the Lite app shares the library and settings, and keeps its own song
-const LITE = !!window.DMM_LITE, SESSION_KEY = LITE ? 'dmml-session-v1' : 'dmm-session-v1', MYLINK_KEY = LITE ? 'dmml-mylink-v1' : 'dmm-mylink-v1';
+const LITE = !!window.DMM_LITE, APP_NAME = LITE ? 'Divine Music Machine Lite' : 'Divine Music Machine Pro', SESSION_KEY = LITE ? 'dmml-session-v1' : 'dmm-session-v1', MYLINK_KEY = LITE ? 'dmml-mylink-v1' : 'dmm-mylink-v1';
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
@@ -2802,7 +2803,7 @@ function renderTop() {
   // row 1: the song itself. row 2: genre and everything you do with the song
   top.append(
     h('div', { class: 'trow' },
-      h('div', { class: 'brand' }, 'Divine ', h('b', null, 'Music'), ' Machine'), name,
+      h('div', { class: 'brand' }, 'Divine ', h('b', null, 'Music'), ' Machine ', h('span', { class: 'pro' }, 'Pro')), name,
       h('div', { class: 'sep' }),
       h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Previous section', title: 'Previous section (left arrow)', onclick: () => skip(-1) }, ico('prev')), playBtn, h('button', { class: 'iconbtn', 'aria-label': 'Next section', title: 'Next section (right arrow)', onclick: () => skip(1) }, ico('next')),
         scope, st.held ? h('button', { class: 'primary', id: 'continueSong', title: 'Go on with the whole song', onclick: () => continueSong() }, ico('play'), 'Continue song') : null),
@@ -4336,7 +4337,7 @@ function openStart() {
   const genres = h('div', { class: 'genrepick' }, D.GENRE_ALL.map((g) => h('button', { class: 'gcard', id: 'genre_' + g, onclick: () => startHow(g) },
     h('b', null, D.GENRES[g].name), h('span', null, genreLine(g)))));
   const sheet = h('div', { class: 'sheet', style: 'width:min(860px,100%)' },
-    h('div', { class: 'hdr' }, h('h2', null, 'Divine Music Machine'), h('div', { class: 'grow' }), !st.boot ? h('button', { class: 'ghost', onclick: closeOverlay }, 'Back to my song') : null),
+    h('div', { class: 'hdr' }, h('h2', null, APP_NAME), h('div', { class: 'grow' }), !st.boot ? h('button', { class: 'ghost', onclick: closeOverlay }, 'Back to my song') : null),
     !st.boot ? keepStructureBox() : null,
     h('div', { class: 'stepnum' }, 'Step 1 of 2'), h('h3', null, st.boot ? 'Pick a genre' : 'Or a new song from scratch: pick a genre'),
     genres,
@@ -4444,7 +4445,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 18:12. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 18:18. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -4911,7 +4912,7 @@ async function linkInAddressBar() {
 async function shareSong() {
   const sg = song(); if (!activeParts(sg).length) { toast('Nothing plays yet, so there is nothing to share.'); return; }
   let url; try { url = await songLink(sg); } catch (e) { toast('The link could not be made in this browser.'); return; }
-  const title = (sg.name || 'Untitled') + ' · Divine Music Machine';
+  const title = (sg.name || 'Untitled') + ' · ' + APP_NAME;
   if (navigator.share && /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) { try { await navigator.share({ title, text: 'Listen to my song ' + (sg.name || '') + ':', url }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
   let copied = false; try { await navigator.clipboard.writeText(url); copied = true; } catch (e) { /* show the box below */ }
   const box = h('input', { type: 'text', id: 'shareLink', value: url, readonly: true, 'aria-label': 'Link to your song', style: 'width:100%;font-family:var(--mono,monospace);font-size:12px', onfocus: (e) => e.target.select() });
@@ -4954,7 +4955,7 @@ function openListen() {
     sp, play,
     h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;justify-content:center' }, mp3, midi),
     h('div', { class: 'small' }, 'MIDI: one file per part plus the song structure, ready for your DAW.'),
-    own, h('div', { class: 'small faint copy' }, 'Made with the Divine Music Machine')), { sticky: true });
+    own, h('div', { class: 'small faint copy' }, 'Made with the ' + APP_NAME)), { sticky: true });
   const loop = () => {
     if (!st.listening) return;
     const d = $('#lsDot'); if (d) { const q = spiralPoint(Math.min(0.999, AU.playing ? (AU.curBar + AU.curFrac) / tot : 0)); d.setAttribute('cx', q[0].toFixed(1)); d.setAttribute('cy', q[1].toFixed(1)); }
@@ -5227,7 +5228,7 @@ async function goPro() {
 function openPro() {
   closeSheet();
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'Open in Pro' },
-    h('h2', null, '⚙️ Open in the full Music Machine'),
+    h('h2', null, '⚙️ Open in Divine Music Machine Pro'),
     h('div', null, 'Same song, every button: edit notes, chords, the mixer, the structure, plugins per part.'),
     h('div', { class: 'small' }, 'The song that is open there now is saved in its library first. Lite keeps your song too.'),
     h('div', { class: 'row' }, h('button', { class: 'primary big', id: 'liteProGo', onclick: goPro }, 'Open in Pro'), h('button', { class: 'ghost big', onclick: closeSheet }, 'Stay in Lite')))));
@@ -5242,16 +5243,16 @@ function toggleExplain() {
 
 /* ---------- help: the short manual, in three languages ---------- */
 const HELP = {
-  EN: ['Pick a style. The machine makes a whole song.', 'Press ▶ Play. Tap the spiral or a section to start there.', 'Turn a part On or Off. 🎲 gives that part a new idea in the whole song.', 'Variation: Calm plays every section as written, Wild moves the most.', 'Feel: Tight sits on the grid, Loose breathes like a band.', 'Tap a section, then 🎲 Change only this. ↺ makes it like the others again. − and + make it shorter or longer, 🗑 deletes it.', 'Structure: 🎲 New structure gives a whole new order, + Add section puts one after the section you tapped.', '🎲 New song: a new song in the same style.', '⬇ Get: pick your drum plugin, download the MIDI zip or an MP3.', '⚙️ Pro: the same song in the full Music Machine.', 'Press and hold any button, or turn on 💬, to read what it does. Ctrl+Z undoes, space plays.'],
-  NL: ['Kies een stijl. De machine maakt een heel nummer.', 'Druk op ▶ Play. Tik op de spiraal of een sectie om daar te beginnen.', 'Zet een partij On of Off. 🎲 geeft die partij een nieuw idee in het hele nummer.', 'Variation: Calm speelt elke sectie zoals geschreven, Wild beweegt het meest.', 'Feel: Tight zit strak op de maat, Loose ademt als een band.', 'Tik op een sectie, dan 🎲 Change only this. ↺ maakt hem weer zoals de andere. − en + maken hem korter of langer, 🗑 haalt hem weg.', 'Structuur: 🎲 New structure geeft een hele nieuwe volgorde, + Add section zet er een achter de sectie die je aantikte.', '🎲 New song: een nieuw nummer in dezelfde stijl.', '⬇ Get: kies je drum plugin, download de MIDI zip of een MP3.', '⚙️ Pro: hetzelfde nummer in de volle Music Machine.', 'Houd een knop ingedrukt, of zet 💬 aan, om te lezen wat hij doet. Ctrl+Z maakt ongedaan, spatie speelt.'],
-  DE: ['Wähle einen Stil. Die Maschine macht einen ganzen Song.', 'Drücke ▶ Play. Tippe auf die Spirale oder einen Teil, um dort zu starten.', 'Schalte eine Spur On oder Off. 🎲 gibt dieser Spur eine neue Idee im ganzen Song.', 'Variation: Calm spielt jeden Teil wie geschrieben, Wild bewegt sich am meisten.', 'Feel: Tight sitzt genau im Raster, Loose atmet wie eine Band.', 'Tippe auf einen Teil, dann 🎲 Change only this. ↺ macht ihn wieder wie die anderen. − und + machen ihn kürzer oder länger, 🗑 löscht ihn.', 'Struktur: 🎲 New structure gibt eine ganz neue Reihenfolge, + Add section setzt einen Teil hinter den angetippten.', '🎲 New song: ein neuer Song im selben Stil.', '⬇ Get: wähle dein Drum Plugin, lade das MIDI Zip oder eine MP3.', '⚙️ Pro: derselbe Song in der vollen Music Machine.', 'Halte eine Taste gedrückt oder schalte 💬 ein, um zu lesen, was sie tut. Strg+Z macht rückgängig, Leertaste spielt.']
+  EN: ['Pick a style. The machine makes a whole song.', 'Press ▶ Play. Tap the spiral or a section to start there.', 'Turn a part On or Off. 🎲 gives that part a new idea in the whole song.', 'Variation: Calm plays every section as written, Wild moves the most.', 'Feel: Tight sits on the grid, Loose breathes like a band.', 'Tap a section, then 🎲 Change only this. ↺ makes it like the others again. − and + make it shorter or longer, 🗑 deletes it.', 'Structure: 🎲 New structure gives a whole new order, + Add section puts one after the section you tapped.', '🎲 New song: a new song in the same style.', '⬇ Get: pick your drum plugin, download the MIDI zip or an MP3.', '⚙️ Pro: the same song in Divine Music Machine Pro.', 'Press and hold any button, or turn on 💬, to read what it does. Ctrl+Z undoes, space plays.'],
+  NL: ['Kies een stijl. De machine maakt een heel nummer.', 'Druk op ▶ Play. Tik op de spiraal of een sectie om daar te beginnen.', 'Zet een partij On of Off. 🎲 geeft die partij een nieuw idee in het hele nummer.', 'Variation: Calm speelt elke sectie zoals geschreven, Wild beweegt het meest.', 'Feel: Tight zit strak op de maat, Loose ademt als een band.', 'Tik op een sectie, dan 🎲 Change only this. ↺ maakt hem weer zoals de andere. − en + maken hem korter of langer, 🗑 haalt hem weg.', 'Structuur: 🎲 New structure geeft een hele nieuwe volgorde, + Add section zet er een achter de sectie die je aantikte.', '🎲 New song: een nieuw nummer in dezelfde stijl.', '⬇ Get: kies je drum plugin, download de MIDI zip of een MP3.', '⚙️ Pro: hetzelfde nummer in Divine Music Machine Pro.', 'Houd een knop ingedrukt, of zet 💬 aan, om te lezen wat hij doet. Ctrl+Z maakt ongedaan, spatie speelt.'],
+  DE: ['Wähle einen Stil. Die Maschine macht einen ganzen Song.', 'Drücke ▶ Play. Tippe auf die Spirale oder einen Teil, um dort zu starten.', 'Schalte eine Spur On oder Off. 🎲 gibt dieser Spur eine neue Idee im ganzen Song.', 'Variation: Calm spielt jeden Teil wie geschrieben, Wild bewegt sich am meisten.', 'Feel: Tight sitzt genau im Raster, Loose atmet wie eine Band.', 'Tippe auf einen Teil, dann 🎲 Change only this. ↺ macht ihn wieder wie die anderen. − und + machen ihn kürzer oder länger, 🗑 löscht ihn.', 'Struktur: 🎲 New structure gibt eine ganz neue Reihenfolge, + Add section setzt einen Teil hinter den angetippten.', '🎲 New song: ein neuer Song im selben Stil.', '⬇ Get: wähle dein Drum Plugin, lade das MIDI Zip oder eine MP3.', '⚙️ Pro: derselbe Song in Divine Music Machine Pro.', 'Halte eine Taste gedrückt oder schalte 💬 ein, um zu lesen, was sie tut. Strg+Z macht rückgängig, Leertaste spielt.']
 };
 function openHelp(lang) {
   closeSheet(); lang = lang || store.get('dmml-lang', 'EN'); store.set('dmml-lang', lang);
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 18:12'),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 18:18'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
 
@@ -5281,10 +5282,10 @@ function renderLite() {
     })),
     h('button', { class: 'primary newsong', id: 'liteNew', title: 'A whole new song in the same style. Parts you turned off stay off.', onclick: newSongSameStyle }, '🎲 New song'),
     h('div', { class: 'tools' },
-      h('button', { id: 'litePro', title: 'Open this song in the full Music Machine, with every button', onclick: openPro }, '⚙️ Pro'),
+      h('button', { id: 'litePro', title: 'Open this song in Divine Music Machine Pro, with every button', onclick: openPro }, '⚙️ Pro'),
       h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, '💬 Explain'),
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 18:12')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 18:18')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
