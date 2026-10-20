@@ -1302,8 +1302,9 @@ E.diceBeat = function (song, core, type, seed) {
   if (type !== 'intro' && type !== 'break' && type !== 'outro') return E.typeBeatFromCore(song, core, type, seed);
   const r = rng(hash(seed, 'dice', type)), N = core.lanes[0].length;
   const four = E.FOUR && E.FOUR.includes(song.genre);
-  const recipe = type === 'break' ? pickW(r, four ? { break: 1, kick: 1 } : { break: 2, kick: 1 }) : pickW(r, four ? { solo: 3, kick: 1 } : { solo: 3, break: 2, toms: 1 });
-  const lanes = E.introLanes(song, core.lanes, recipe, 1, 2, N, r) || core.lanes.map((l) => l.slice());
+  const electro = four || song.genre === 'breakbeat';
+  const recipe = type === 'break' ? pickW(r, electro ? { break: 1, kick: 1, hats: 1 } : { break: 2, kick: 1 }) : pickW(r, electro ? { solo: 1, kick: 1, hats: 1 } : { solo: 3, break: 2, toms: 1 }); // electronic music may open with hats alone: an equal chance, not the only one
+  const lanes = recipe === 'hats' ? core.lanes.map((l, li) => (li === HH || li === OH || li === PC ? l.slice() : l.map(() => 0))) : E.introLanes(song, core.lanes, recipe, 1, 2, N, r) || core.lanes.map((l) => l.slice());
   const data = { lanes }; E.shapeDensity(song, data, type);
   if (type === 'break' && lanes[SN]) lanes[SN] = lanes[SN].map((v, s) => (v >= 90 && s !== Math.round(N * 3 / 4) ? 0 : v)); // a break keeps one backbeat: the snare on four
   return data;
@@ -4899,7 +4900,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 23:27. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 23:31. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
