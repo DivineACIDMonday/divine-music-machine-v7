@@ -1691,6 +1691,7 @@ E.PLUGINS = {
   impact: { name: 'Impact XT', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
   tekno: { name: 'BABY Audio Tekno', parts: ['beat'], drums: [36, 37, 38, 45, 40, 42, 46, 53] },
   beatmaker: { name: 'UJAM Beatmaker 3', parts: ['beat'], drums: [36, 38, 40, 43, 45, 48, 52, 59] }, /* v3 white keys: Kick 1, Kick 2, Snare 1, Snare 3/Clap, HH 1, HH 3, Perc, Cymbal 1. black keys are loops, never used */
+  vdrummer: { name: 'UJAM Virtual Drummer', parts: ['beat'], drums: [36, 41, 38, 40, 42, 46, 37, 49] }, /* Legend, Brute and the rest: Kick, Tom Lo 1 for kick 2, Snare, Snare Rim for the clap (no clap except HOT), HH Close, HH Open, Sidestick for perc, Crash 1 */
   playbeat: { name: 'Audiomodern Playbeat 4', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] }, /* trigger keyboard, lowest octave: one key per channel 1 to 8 */
   playbeat: { name: 'Audiomodern Playbeat 4', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] }, /* 8 channels C1 to G1 */
   beatmaker2: { name: 'UJAM Beatmaker 2 (old)', parts: ['beat'], drums: [36, 37, 38, 39, 42, 46, 47, 49] }, /* v2 instrument keys */
@@ -3745,7 +3746,7 @@ function deliveryNo(bump) {
   if (bump) { const hh = songHash(); if (st.lastDeliveredHash !== hh || !st.sessionNo) { n++; store.set('dgm-counter-v1', n); st.sessionNo = n; st.lastDeliveredHash = hh; } return String(st.sessionNo).padStart(3, '0'); }
   return String(st.lastDeliveredHash === songHash() && st.sessionNo ? st.sessionNo : n + 1).padStart(3, '0');
 }
-const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', playbeat: 'Playbeat', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
+const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', playbeat: 'Playbeat', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
 function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + no + '.mid'; } // a beat has no key
 function markers(sg) { let b = 0; const BT = D.barTicks(sg); return sg.sections.map((x, i) => { const m = { t: b * BT, text: sectionLabelFor(sg, i) }; b += x.bars; return m; }); }
 function sectionLabelFor(sg, i) { const t = sg.sections[i].type; const k = sg.sections.slice(0, i + 1).filter((x) => x.type === t).length; return D.TYPES[t].name + ' ' + k; }
@@ -3916,7 +3917,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-20 17:08. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-20 17:31. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
