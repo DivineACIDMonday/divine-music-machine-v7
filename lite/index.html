@@ -363,6 +363,12 @@ body.lite #app{display:none}
 #lite input[type=range]{height:32px}
 #liteSheet .helplist{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:7px;font-size:15px}
 #liteSheet .sh{max-height:92vh;overflow:auto}
+#lite .secbar .bars{display:inline-flex;align-items:center;gap:4px;font-variant-numeric:tabular-nums}
+#lite .secbar .bars button{min-width:36px;justify-content:center;font-size:17px;padding:4px 8px}
+#lite .structrow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+#lite .structrow button{min-height:40px}
+#lite .addrow{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;align-items:center}
+#lite .addrow .small{font-size:12px;color:var(--muted);width:100%;text-align:center}
 
 </style>
 
@@ -4438,7 +4444,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 17:57. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Music Machine, version 2026-10-20 18:12. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -5012,7 +5018,7 @@ function makeSong(genre, keepOff) {
   sg.parts.beat.plugin = store.get('dmml-drums', 'gm');
   sg.lite = { wild: store.get('dmml-wild', 1), loose: store.get('dmml-loose', 2), roll: 0 };
   applyWild(sg, sg.lite.wild); applyLoose(sg, sg.lite.loose);
-  st.liteReady = true; L.pick = null; A.saveSession();
+  st.liteReady = true; L.pick = null; L.adding = false; A.saveSession();
   const ls = document.getElementById('liteStart'); if (ls) ls.remove();
   renderLite();
   if (was) play(0);
@@ -5090,6 +5096,34 @@ function resetSection(i) {
   A.toast(secName(i) + ' sounds like the others of its kind again.', { label: 'Undo', fn: () => { A.undo(); renderLite(); } });
 }
 
+
+/* ---------- structure: a new one with the dice, or your own ---------- */
+const ADD_TYPES = ['intro', 'verse', 'prechorus', 'chorus', 'drop', 'break', 'build', 'outro'];
+function mixOne(sg, i) { const w = wildOf(), sec = sg.sections[i]; if (!w) { delete sec.laneFx; return; } const fx = A.computeMix(i, w, D.rng(D.newSeed())); if (fx && Object.keys(fx).length) sec.laneFx = fx; else delete sec.laneFx; }
+function afterStructure(i) { renderLite(); if (AU.playing) play(D.sectionStart(song(), Math.min(i || 0, song().sections.length - 1))); }
+function newStructure() {
+  A.change(() => { const sg = song(); sg.sections = D.randomStructure(sg, D.newSeed()); applyWild(sg, wildOf()); });
+  L.pick = null; L.adding = false; afterStructure(0);
+  const sg = song(); A.toast('New structure: ' + sg.sections.length + ' sections, ' + D.totalBars(sg) + ' bars. The music came along.', { label: 'Undo', fn: () => { A.undo(); renderLite(); } });
+}
+function addSection(type) {
+  const at = L.pick != null ? L.pick + 1 : song().sections.length;
+  A.change(() => { const sg = song(); const bars = sg.L === 12 ? 12 : type === 'prechorus' || type === 'build' ? sg.L : sg.L * 2; sg.sections.splice(at, 0, { id: 's' + D.newSeed(), type, bars }); mixOne(sg, at); });
+  L.pick = at; L.adding = false; afterStructure(at);
+  A.toast(secName(at) + ' added.', { label: 'Undo', fn: () => { A.undo(); L.pick = null; renderLite(); } });
+}
+function stepBars(i, dir) {
+  A.change(() => { const sg = song(), sec = sg.sections[i], U = sg.L; let n = dir > 0 ? (Math.floor(sec.bars / U) + 1) * U : (sec.bars % U ? Math.floor(sec.bars / U) * U : sec.bars - U); sec.bars = D.clamp(n, Math.min(U, sec.bars), 64); mixOne(sg, i); });
+  renderLite();
+}
+function deleteSection(i) {
+  if (song().sections.length < 2) { A.toast('A song needs at least one section.'); return; }
+  const name = secName(i);
+  A.change(() => { song().sections.splice(i, 1); });
+  L.pick = null; afterStructure(Math.max(0, i - 1));
+  A.toast(name + ' deleted.', { label: 'Undo', fn: () => { A.undo(); renderLite(); } });
+}
+
 /* ---------- play ---------- */
 function play(fromBar) { A.startPlay(fromBar); loop(); renderHead(); }
 function togglePlay() { if (AU.playing) { A.stopAll(true); renderHead(); updateNow(); } else play(0); }
@@ -5136,13 +5170,20 @@ function secName(i) {
 function renderSpiral() {
   const box = document.getElementById('liteSpiral'); if (!box) return;
   const sg = song(), cur = nowSec();
-  box.replaceChildren(drawSpiral(),
+  box.replaceChildren(...[drawSpiral(),
     h('div', { class: 'secs' }, sg.sections.map((x, i) => h('button', { class: 'sec' + (i === cur ? ' now' : '') + (i === L.pick ? ' pick' : ''), id: 'ls_' + i, title: 'Play from ' + secName(i) + ' and show what you can change there', onclick: () => { L.pick = i; play(D.sectionStart(sg, i)); renderSpiral(); } }, h('i', { style: 'background:var(--' + x.type + ')' }), secName(i), x.own ? h('span', { class: 'mark', title: 'Changed on its own' }, ' ✦') : null))),
     L.pick != null && sg.sections[L.pick] ? h('div', { class: 'secbar', id: 'liteSecBar' },
       h('b', null, secName(L.pick)),
       h('button', { id: 'liteSecNew', title: 'A new take on this section only. The rest of the song stays as it is.', onclick: () => changeSection(L.pick) }, '🎲 Change only this'),
       sg.sections[L.pick].own ? h('button', { class: 'ghost', id: 'liteSecBack', title: 'Make it sound like the others of its kind again', onclick: () => resetSection(L.pick) }, '↺ Like the others') : null,
-      h('button', { class: 'ghost x', title: 'Close', 'aria-label': 'Close', onclick: () => { L.pick = null; renderSpiral(); } }, '✕')) : null);
+      h('span', { class: 'bars' }, h('button', { class: 'ghost', id: 'liteShorter', title: 'Make this section shorter', 'aria-label': 'Shorter', onclick: () => stepBars(L.pick, -1) }, '−'), h('span', { id: 'liteBars' }, sg.sections[L.pick].bars + ' bars'), h('button', { class: 'ghost', id: 'liteLonger', title: 'Make this section longer', 'aria-label': 'Longer', onclick: () => stepBars(L.pick, 1) }, '+')),
+      h('button', { class: 'ghost', id: 'liteDel', title: 'Delete this section', 'aria-label': 'Delete', onclick: () => deleteSection(L.pick) }, '🗑'),
+      h('button', { class: 'ghost x', title: 'Close', 'aria-label': 'Close', onclick: () => { L.pick = null; renderSpiral(); } }, '✕')) : null,
+    h('div', { class: 'structrow' },
+      h('button', { id: 'liteStruct', title: 'A new structure for the whole song. The music of each kind of section comes along.', onclick: newStructure }, '🎲 New structure'),
+      h('button', { id: 'liteAdd', class: L.adding ? 'on' : '', title: L.pick != null ? 'Add a section after ' + secName(L.pick) : 'Add a section at the end', onclick: () => { L.adding = !L.adding; renderSpiral(); } }, '+ Add section')),
+    L.adding ? h('div', { class: 'addrow', id: 'liteAddRow' }, h('span', { class: 'small' }, L.pick != null ? 'After ' + secName(L.pick) + ':' : 'At the end:'),
+      ADD_TYPES.map((t) => h('button', { class: 'sec', id: 'la_' + t, onclick: () => addSection(t) }, h('i', { style: 'background:var(--' + t + ')' }), D.TYPES[t].name))) : null].filter(Boolean));
 }
 
 /* ---------- get: one download, the drums already mapped ---------- */
@@ -5201,16 +5242,16 @@ function toggleExplain() {
 
 /* ---------- help: the short manual, in three languages ---------- */
 const HELP = {
-  EN: ['Pick a style. The machine makes a whole song.', 'Press ▶ Play. Tap the spiral or a section to start there.', 'Turn a part On or Off. 🎲 gives that part a new idea in the whole song.', 'Variation: Calm plays every section as written, Wild moves the most.', 'Feel: Tight sits on the grid, Loose breathes like a band.', 'Tap a section, then 🎲 Change only this. ↺ makes it like the others again.', '🎲 New song: a new song in the same style.', '⬇ Get: pick your drum plugin, download the MIDI zip or an MP3.', '⚙️ Pro: the same song in the full Music Machine.', 'Press and hold any button, or turn on 💬, to read what it does. Ctrl+Z undoes, space plays.'],
-  NL: ['Kies een stijl. De machine maakt een heel nummer.', 'Druk op ▶ Play. Tik op de spiraal of een sectie om daar te beginnen.', 'Zet een partij On of Off. 🎲 geeft die partij een nieuw idee in het hele nummer.', 'Variation: Calm speelt elke sectie zoals geschreven, Wild beweegt het meest.', 'Feel: Tight zit strak op de maat, Loose ademt als een band.', 'Tik op een sectie, dan 🎲 Change only this. ↺ maakt hem weer zoals de andere.', '🎲 New song: een nieuw nummer in dezelfde stijl.', '⬇ Get: kies je drum plugin, download de MIDI zip of een MP3.', '⚙️ Pro: hetzelfde nummer in de volle Music Machine.', 'Houd een knop ingedrukt, of zet 💬 aan, om te lezen wat hij doet. Ctrl+Z maakt ongedaan, spatie speelt.'],
-  DE: ['Wähle einen Stil. Die Maschine macht einen ganzen Song.', 'Drücke ▶ Play. Tippe auf die Spirale oder einen Teil, um dort zu starten.', 'Schalte eine Spur On oder Off. 🎲 gibt dieser Spur eine neue Idee im ganzen Song.', 'Variation: Calm spielt jeden Teil wie geschrieben, Wild bewegt sich am meisten.', 'Feel: Tight sitzt genau im Raster, Loose atmet wie eine Band.', 'Tippe auf einen Teil, dann 🎲 Change only this. ↺ macht ihn wieder wie die anderen.', '🎲 New song: ein neuer Song im selben Stil.', '⬇ Get: wähle dein Drum Plugin, lade das MIDI Zip oder eine MP3.', '⚙️ Pro: derselbe Song in der vollen Music Machine.', 'Halte eine Taste gedrückt oder schalte 💬 ein, um zu lesen, was sie tut. Strg+Z macht rückgängig, Leertaste spielt.']
+  EN: ['Pick a style. The machine makes a whole song.', 'Press ▶ Play. Tap the spiral or a section to start there.', 'Turn a part On or Off. 🎲 gives that part a new idea in the whole song.', 'Variation: Calm plays every section as written, Wild moves the most.', 'Feel: Tight sits on the grid, Loose breathes like a band.', 'Tap a section, then 🎲 Change only this. ↺ makes it like the others again. − and + make it shorter or longer, 🗑 deletes it.', 'Structure: 🎲 New structure gives a whole new order, + Add section puts one after the section you tapped.', '🎲 New song: a new song in the same style.', '⬇ Get: pick your drum plugin, download the MIDI zip or an MP3.', '⚙️ Pro: the same song in the full Music Machine.', 'Press and hold any button, or turn on 💬, to read what it does. Ctrl+Z undoes, space plays.'],
+  NL: ['Kies een stijl. De machine maakt een heel nummer.', 'Druk op ▶ Play. Tik op de spiraal of een sectie om daar te beginnen.', 'Zet een partij On of Off. 🎲 geeft die partij een nieuw idee in het hele nummer.', 'Variation: Calm speelt elke sectie zoals geschreven, Wild beweegt het meest.', 'Feel: Tight zit strak op de maat, Loose ademt als een band.', 'Tik op een sectie, dan 🎲 Change only this. ↺ maakt hem weer zoals de andere. − en + maken hem korter of langer, 🗑 haalt hem weg.', 'Structuur: 🎲 New structure geeft een hele nieuwe volgorde, + Add section zet er een achter de sectie die je aantikte.', '🎲 New song: een nieuw nummer in dezelfde stijl.', '⬇ Get: kies je drum plugin, download de MIDI zip of een MP3.', '⚙️ Pro: hetzelfde nummer in de volle Music Machine.', 'Houd een knop ingedrukt, of zet 💬 aan, om te lezen wat hij doet. Ctrl+Z maakt ongedaan, spatie speelt.'],
+  DE: ['Wähle einen Stil. Die Maschine macht einen ganzen Song.', 'Drücke ▶ Play. Tippe auf die Spirale oder einen Teil, um dort zu starten.', 'Schalte eine Spur On oder Off. 🎲 gibt dieser Spur eine neue Idee im ganzen Song.', 'Variation: Calm spielt jeden Teil wie geschrieben, Wild bewegt sich am meisten.', 'Feel: Tight sitzt genau im Raster, Loose atmet wie eine Band.', 'Tippe auf einen Teil, dann 🎲 Change only this. ↺ macht ihn wieder wie die anderen. − und + machen ihn kürzer oder länger, 🗑 löscht ihn.', 'Struktur: 🎲 New structure gibt eine ganz neue Reihenfolge, + Add section setzt einen Teil hinter den angetippten.', '🎲 New song: ein neuer Song im selben Stil.', '⬇ Get: wähle dein Drum Plugin, lade das MIDI Zip oder eine MP3.', '⚙️ Pro: derselbe Song in der vollen Music Machine.', 'Halte eine Taste gedrückt oder schalte 💬 ein, um zu lesen, was sie tut. Strg+Z macht rückgängig, Leertaste spielt.']
 };
 function openHelp(lang) {
   closeSheet(); lang = lang || store.get('dmml-lang', 'EN'); store.set('dmml-lang', lang);
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 17:57'),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-20 18:12'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
 
@@ -5243,7 +5284,7 @@ function renderLite() {
       h('button', { id: 'litePro', title: 'Open this song in the full Music Machine, with every button', onclick: openPro }, '⚙️ Pro'),
       h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, '💬 Explain'),
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 17:57')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-20 18:12')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
@@ -5255,7 +5296,7 @@ window.addEventListener('keydown', (e) => { if (e.code === 'Space' && !/INPUT|SE
   else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !/INPUT|SELECT|TEXTAREA/.test(e.target.tagName)) { e.preventDefault(); e.shiftKey ? A.redo() : A.undo(); renderLite(); } });
 st.liteReady = false;
 openStart();
-window.DMMLITE = { goPro, openPro, openHelp, toggleExplain, setWild, setLoose, changeSection, resetSection, makeSong, renderLite, openGet, toggleGroup, rollGroup, GROUPS, togglePlay };
+window.DMMLITE = { newStructure, addSection, stepBars, deleteSection, goPro, openPro, openHelp, toggleExplain, setWild, setLoose, changeSection, resetSection, makeSong, renderLite, openGet, toggleGroup, rollGroup, GROUPS, togglePlay };
 })();
 
 </script>
