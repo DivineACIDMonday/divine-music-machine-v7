@@ -247,7 +247,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .lib{display:grid;gap:6px}
 .lrow{display:grid;grid-template-columns:auto 90px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--raise);border-radius:10px;padding:8px 10px}
 .lrow .meta{font-size:12px;color:var(--muted)}
-.lrow input{width:100%;background:transparent;border:1px solid transparent;font-weight:600;padding:2px 4px}
+.lrow input:not([type=range]){width:100%;background:transparent;border:1px solid transparent;font-weight:600;padding:2px 4px}
 .lrow input:hover,.lrow input:focus{border-color:var(--line2)}
 .lrow .acts{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .dtab{width:100%;border-collapse:collapse;font-size:13px}
@@ -283,6 +283,18 @@ button.sure{background:var(--danger,#c0392b);color:#fff;border-color:transparent
 @media (max-width:600px){.edhead .seg button{padding:4px 8px}}
 .mixempty{border:1px dashed var(--line2);border-radius:10px;padding:10px 12px;font-size:13px}
 .stale{opacity:.35}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;border:0;padding:0;height:20px;min-width:60px;cursor:pointer}
+input[type=range]::-webkit-slider-runnable-track{height:5px;border-radius:3px;background:var(--line2)}
+input[type=range]::-moz-range-track{height:5px;border-radius:3px;background:var(--line2)}
+input[type=range]::-moz-range-progress{height:5px;border-radius:3px;background:var(--beat)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;border-radius:50%;background:var(--beat);border:0;margin-top:-5px}
+input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;background:var(--beat);border:0}
+.copychoice{display:flex;flex-direction:column;gap:8px}
+.copychoice button{flex-direction:column;align-items:flex-start;text-align:left;gap:3px;padding:10px 12px;white-space:normal}
+#tip{position:fixed;z-index:90;left:0;top:0;background:var(--fg);color:var(--bg);font-size:13px;line-height:1.35;padding:8px 11px;border-radius:9px;pointer-events:none;opacity:0;transform:translateY(4px);transition:opacity .12s,transform .12s;box-shadow:0 6px 24px rgba(0,0,0,.25)}
+#tip.show{opacity:1;transform:none}
+#tip.explain{outline:2px solid var(--accent)}
+#explainBtn.on{background:var(--accent);color:var(--bg);border-color:var(--accent)}
 </style>
 
 <div class="app" id="app">
@@ -1308,7 +1320,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       if (opts.lanes) { const ln = mat.lanes.map((l) => l.map(() => 0)); ln[K][0] = 118; if (ln[CR]) ln[CR][0] = 100; return { lanes: ln }; }
       return E.applyFeel(song, part, out, gbar, opts);
     }
-    if (song.touches && !machine && inBar > 0 && type !== 'break') E.touchBar(lanes, r, N, song.kickVar, inBar); // bar 1 stays the base as you wrote it
+    if (song.touches && !machine && inBar > 0 && type !== 'break') E.touchBar(lanes, r, N, song.kickVar, inBar, type); // bar 1 stays the base as you wrote it
     if (machine && type !== 'break') {
       // small per-bar variation, keep the core recognizable
       if (lb % 2 === 1 && r.chance(0.5)) { const s = 2 + r.int(N - 3); if (!lanes[HH][s] && s % 2 === 1) lanes[HH][s] = 34 + r.int(14); }
@@ -1367,11 +1379,29 @@ E.renderBar = function (song, part, gbar, res, opts) {
   }
   return E.applyFeel(song, part, notes, gbar, opts);
 };
-// a drummer's small changes from bar to bar, on top of your base: a ghost hat, a dropped hat, an open hat, now and then a kick
-E.touchBar = function (lanes, r, N, kickVar, inBar) {
+// a drummer's small changes from bar to bar, on top of your base. Not coin flips over the whole bar:
+// ghost notes sit in the pockets around the backbeat (a pickup just before it, an echo just after),
+// rise into the hit they lead to, never land on a kick, and there are more of them in busier sections and at the end of a phrase
+E.touchBar = function (lanes, r, N, kickVar, inBar, type) {
+  const energy = E.DENSITY[type] != null ? E.DENSITY[type] : 0.7;
+  const back = []; for (let s = 1; s < N; s++) if (lanes[SN][s] >= 80 || lanes[CP][s] >= 80) back.push(s);
+  const free = (s) => s > 0 && s < N && !lanes[SN][s] && !lanes[CP][s] && !lanes[K][s];
+  if (back.length) {
+    const pockets = [];
+    for (const b of back) { pockets.push({ s: b - 1, w: 1, v: 44 }); pockets.push({ s: b + 1, w: 0.55, v: 32 }); } // pickup into the hit, echo after it
+    pockets.push({ s: N - 1, w: inBar % 4 === 3 ? 1 : 0.35, v: 46 }); // the last 16th leads into the next bar, most at a phrase end
+    const want = Math.max(0, Math.round(energy * 2 + (inBar % 4 === 3 ? 1 : 0) - (r.chance(0.35) ? 1 : 0)));
+    const cand = pockets.filter((p) => free(p.s));
+    for (let k = 0; k < want && cand.length; k++) {
+      const tot = cand.reduce((a, p) => a + p.w, 0); let x = r() * tot, i = 0; for (; i < cand.length - 1; i++) { x -= cand[i].w; if (x <= 0) break; }
+      const p = cand.splice(i, 1)[0]; lanes[SN][p.s] = p.v + r.int(6);
+    }
+  }
+  // the hats breathe: now and then one soft in-between hat, or one dropped
   const odd = []; for (let s = 1; s < N; s += 2) odd.push(s);
-  if (r.chance(0.6)) { const s = r.pick(odd); if (!lanes[HH][s] && !lanes[OH][s]) lanes[HH][s] = 32 + r.int(16); }
+  if (r.chance(0.3 + 0.3 * energy)) { const s = r.pick(odd); if (!lanes[HH][s] && !lanes[OH][s] && lanes[HH].some(Boolean)) lanes[HH][s] = 30 + r.int(14); }
   if (r.chance(0.3)) { const hs = odd.filter((s) => lanes[HH][s] && lanes[HH][s] < 90); if (hs.length) lanes[HH][r.pick(hs)] = 0; }
+  // an open hat at the end of a phrase
   if (inBar % 4 === 3 && r.chance(0.5)) { const s = r.pick([N - 2, Math.floor(N / 2) - 2].filter((x) => x > 0)); if (lanes[HH][s] && !lanes[OH][s]) { lanes[OH][s] = lanes[HH][s]; lanes[HH][s] = 0; } }
   if (kickVar && inBar % 2 === 1 && r.chance(0.55)) { const cands = [3, 6, 7, 10, 11, 14].filter((s) => s < N && !lanes[K][s] && !lanes[K][s - 1] && !lanes[K][s + 1] && !(lanes[SN][s] >= 90)); if (cands.length) lanes[K][r.pick(cands)] = 70 + r.int(20); }
 };
@@ -1477,6 +1507,11 @@ E.GROOVES = {
 };
 E.grooveOf = (song, sec) => (sec && sec.groove && E.GROOVES[sec.groove]) || E.GROOVES.genre;
 E.LANE_FEEL0 = () => E.LANES.map(() => ({ swing: true, shift: 0 }));
+// feel like a drummer, not like noise:
+//  drift: the time breathes slowly across the bar (smooth value noise, one point per beat, eased in between),
+//  weight: a heavier hit lands a fraction later, a light one a fraction earlier (up to about 3 ms),
+//  a small rest of per-note looseness on top. All seeded, so the same groove always plays the same.
+function smoothNoise(seed, x) { const i = Math.floor(x), f = x - i, a = rng(hash(seed, i))() * 2 - 1, b = rng(hash(seed, i + 1))() * 2 - 1, u = (1 - Math.cos(f * Math.PI)) / 2; return a + (b - a) * u; }
 E.applyFeel = function (song, part, notes, gbar, opts) {
   if (opts.raw) return notes;
   const f = song.parts[part].feel || { x: 0, y: 0 };
@@ -1484,16 +1519,21 @@ E.applyFeel = function (song, part, notes, gbar, opts) {
   const sw = gr && gr.swing != null ? gr.swing : E.swingFor(song);
   const tpms = (song.bpm / 60) * E.PPQ / 1000; // ticks per ms
   const r = rng(hash('feel', song.seed, part, gbar));
+  const loose = Math.max(f.y, gr && gr.loose || 0), BT = E.meter(song).steps * E.STEP;
+  const tSeed = hash('drift', song.seed, part), vSeed = hash('push', song.seed, part);
   const out = notes.map((n) => {
     let t = n.t;
     const st = Math.round(n.t / E.STEP);
     const L = n.lane != null && lf ? lf[n.lane] : null;
     if (sw > 50 && st % 2 === 1 && Math.abs(n.t - st * E.STEP) < 2 && !(L && L.swing === false)) t += Math.round(((sw - 50) / 50) * E.STEP);
     const shift = (f.x * 22 + (gr && gr.shift && n.lane != null ? gr.shift[n.lane] || 0 : 0) + (L ? L.shift || 0 : 0)) * tpms; // laid back is positive
-    const jit = (r() * 2 - 1) * Math.max(f.y, gr && gr.loose || 0) * 14 * tpms;
-    t = Math.round(t + shift + jit); if (gbar === 0 && t < 0) t = 0;
-    const vs = Math.round((r() * 2 - 1) * f.y * 16);
-    return Object.assign({}, n, { t, v: clamp(n.v + vs, 1, 127) });
+    const beat = (gbar * BT + n.t) / E.PPQ;
+    const drift = smoothNoise(tSeed, beat) * loose * 10; // ms, slow
+    const weight = ((n.v - 80) / 47) * 3 * (0.35 + loose); // ms, heavy is late
+    const rest = (r() * 2 - 1) * loose * 4; // ms, a little life per note
+    t = Math.round(t + shift + (drift + weight + rest) * tpms); if (gbar === 0 && t < 0) t = 0;
+    const push = smoothNoise(vSeed, beat / 2) * f.y * 10 + (r() * 2 - 1) * f.y * 4; // velocity swells slowly too
+    return Object.assign({}, n, { t, v: clamp(Math.round(n.v + push), 1, 127) });
   });
   return out;
 };
@@ -2122,7 +2162,7 @@ function editingText(part) {
 // own versions in the section panel: status, Vary and back to the standard
 function ownRow(sg, sec) {
   const rows = ownRowBase(sg, sec), many = sg.sections.filter((x) => x.type === sec.type).length > 1;
-  if (many && sg.parts.beat.mode !== 'off') rows.push(h('button', { id: 'copyBeatAll', class: 'full', title: 'The beat of ' + sectionLabel(st.sec) + ', with every bar you changed, becomes the beat of every ' + D.TYPES[sec.type].name, onclick: copyBeatToType }, ico('loop'), 'Copy beat of ' + sectionLabel(st.sec) + ' to every ' + D.TYPES[sec.type].name));
+  if (many && sg.parts.beat.mode !== 'off') rows.push(h('button', { id: 'copyBeatAll', class: 'full', title: 'The beat of ' + sectionLabel(st.sec) + ', with every bar you changed, becomes the beat of every ' + D.TYPES[sec.type].name, onclick: copyBeatAsk }, ico('loop'), 'Copy beat of ' + sectionLabel(st.sec) + ' to every ' + D.TYPES[sec.type].name));
   return rows;
 }
 function ownRowBase(sg, sec) {
@@ -2135,7 +2175,24 @@ function ownRowBase(sg, sec) {
     own.length ? h('button', { id: 'followBtn', class: first ? 'full' : '', title: 'Drop the own version and follow the standard again', onclick: followStandard }, '\u21ba ' + (first ? 'Use standard' : 'Follow ' + firstLabel(st.sec))) : null].filter(Boolean);
 }
 // the beat of this section, base and changed bars, becomes the beat of every section of its type
-function copyBeatToType() {
+// say what a copy takes along before it happens: the base only, or exactly as you hear it (changed bars marked with a dot)
+function copyBeatAsk() {
+  const sg = song(), i = st.sec, sec = sg.sections[i], t = sec.type, n = sg.sections.filter((x) => x.type === t).length;
+  const base = JSON.stringify(sectionMat('beat').data.lanes), s0 = D.sectionStart(sg, i), R = D.makeRenderer(sg);
+  const own = [], touched = [];
+  for (let k = 1; k < sec.bars - 1; k++) { const x = D.renderBar(sg, 'beat', s0 + k, R.res, { lanes: true }); const same = x && x.lanes && JSON.stringify(x.lanes) === base; if (sec.barOwn && sec.barOwn.beat && sec.barOwn.beat[k]) own.push(k + 1); else if (!same) touched.push(k + 1); }
+  const list = (a) => a.length ? a.join(', ') : 'none';
+  const sheet = h('div', { class: 'sheet', style: 'width:min(520px,100%)' },
+    h('div', { class: 'hdr' }, h('h2', null, 'Copy the beat of ' + sectionLabel(i)), h('div', { class: 'grow' }), h('button', { class: 'ghost', onclick: closeOverlay }, 'Cancel')),
+    h('p', { style: 'margin:0' }, 'To every ' + D.TYPES[t].name + ' (' + n + ' in your song). What comes along?'),
+    h('div', { class: 'copychoice' },
+      h('button', { class: 'primary', id: 'copyExact', onclick: () => { closeOverlay(); copyBeatToType('exact'); } }, h('b', null, 'Exactly as you hear it'),
+        h('span', { class: 'small' }, 'Bar 1, your changed bars (' + list(own) + '), the bars where the machine or the mixer plays it a little different (' + list(touched) + ') and the mixer. Those bars get a dot.')),
+      h('button', { id: 'copyBase', onclick: () => { closeOverlay(); copyBeatToType('base'); } }, h('b', null, 'Only the base'),
+        h('span', { class: 'small' }, 'Just bar 1. Every bar of every ' + D.TYPES[t].name + ' plays it; their own mixer stays as it is.'))));
+  overlay(sheet);
+}
+function copyBeatToType(mode) {
   const sg = song(), i = st.sec, sec = sg.sections[i], t = sec.type, label = sectionLabel(i), typ = D.TYPES[t].name;
   const base = D.solidCopy('beat', sectionMat('beat').data);
   const bars = {}; const bo = sec.barOwn && sec.barOwn.beat || {}; for (const k of Object.keys(bo)) if (+k < sec.bars && bo[k]) bars[k] = bo[k];
@@ -2143,6 +2200,15 @@ function copyBeatToType() {
   const s0 = D.sectionStart(sg, i), heard = (song2, g) => { const x = D.renderBar(song2, 'beat', g, D.makeRenderer(song2).res, { lanes: true }); return x && x.lanes ? x.lanes : null; };
   const before = []; for (let k = 0; k < sec.bars - 1; k++) before.push(heard(sg, s0 + k));
   const n = sg.sections.filter((x) => x.type === t).length;
+  if (mode === 'base') {
+    change(() => {
+      if (sg.parts.beat.mode !== 'yours') { const keep = st.scope; st.scope = 'all'; try { editable('beat', true); } finally { st.scope = keep; } }
+      D.setUser(sg, 'beat', t, D.clone(base));
+      for (const x of sg.sections) { if (x.type !== t) continue; if (x.own && x.own.beat) { x.own = Object.assign({}, x.own); delete x.own.beat; } if (x.barOwn && x.barOwn.beat) { x.barOwn = Object.assign({}, x.barOwn); delete x.barOwn.beat; } }
+    });
+    toast('Every ' + typ + ' (' + n + ') plays the base of ' + label + ' now, bar 1 in every bar.', { label: 'Undo', fn: undo });
+    return;
+  }
   change(() => {
     if (sg.parts.beat.mode !== 'yours') { const keep = st.scope; st.scope = 'all'; try { editable('beat', true); } finally { st.scope = keep; } } // yours everywhere, sounding the same
     D.setUser(sg, 'beat', t, D.clone(base));
@@ -2159,7 +2225,7 @@ function copyBeatToType() {
     before.forEach((lanes, k) => { if (!lanes || bars[k]) return; const now = heard(sg, s0 + k); if (JSON.stringify(now) !== JSON.stringify(lanes)) bars[k] = { lanes: lanes.map((l) => l.slice()) }; });
     put();
   });
-  toast('Every ' + typ + ' (' + n + ') has the beat of ' + label + ' now, with ' + Object.keys(bars).length + ' changed bar' + (Object.keys(bars).length === 1 ? '' : 's') + '.', { label: 'Undo', fn: undo });
+  toast('Every ' + typ + ' (' + n + ') has the beat of ' + label + ' now, with ' + Object.keys(bars).length + ' changed bar' + (Object.keys(bars).length === 1 ? '' : 's') + ' (marked with a dot).', { label: 'Undo', fn: undo });
 }
 function varySection() {
   const label = sectionLabel(st.sec), from = firstLabel(st.sec);
@@ -2287,7 +2353,7 @@ function renderTop() {
       h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Undo', title: 'Undo (Ctrl Z)', disabled: !st.hist.length, onclick: undo }, ico('undo')), h('button', { class: 'iconbtn', 'aria-label': 'Redo', title: 'Redo', disabled: !st.fut.length, onclick: redo }, ico('redo'))),
       h('button', { id: 'shareBtn', title: 'Send your groove as a link: whoever opens it can listen and download the MIDI', onclick: shareSong }, ico('share'), 'Share'),
       h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver'),
-      h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
+      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
   );
 }
 function setMeter(m) {
@@ -3848,7 +3914,7 @@ function openHelp() {
       row('Deliver', 'One MIDI file with section markers, or one MIDI per lane.'),
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-19 11:00. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-20 16:18. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -4190,6 +4256,47 @@ st.song = null;
 const demo = D.newSong('triphop', { seed: 20261017, name: 'Untitled' });
 st.song = demo; st.sec = 1; st.boot = true; st.fresh = true;
 render();
+
+/* ---------- explanations that work on touch too: one shared bubble, no native title tooltips ----------
+   every title="" becomes data-tip=""; desktop: hover or focus shows it; touch: press and hold;
+   Explain mode: a tap explains instead of acting */
+const TIP = { el: null, timer: 0, hold: 0, swallow: false };
+function tipEl() { if (!TIP.el) { TIP.el = document.createElement('div'); TIP.el.id = 'tip'; TIP.el.setAttribute('role', 'tooltip'); document.body.append(TIP.el); } return TIP.el; }
+function moveTitles(root) { (root.querySelectorAll ? root : document).querySelectorAll('[title]').forEach((e) => { e.dataset.tip = e.getAttribute('title'); if (!e.getAttribute('aria-label') && !e.textContent.trim()) e.setAttribute('aria-label', e.getAttribute('title')); e.removeAttribute('title'); }); if (root.getAttribute && root.getAttribute('title')) moveTitles({ querySelectorAll: () => [root] }); }
+function showTip(t, stay) {
+  const txt = t.dataset.tip; if (!txt) return;
+  const el = tipEl(); el.textContent = txt; el.className = 'show' + (st.explain ? ' explain' : ''); 
+  const r = t.getBoundingClientRect(), w = Math.min(300, window.innerWidth - 24); el.style.maxWidth = w + 'px';
+  const tw = el.offsetWidth, th = el.offsetHeight; let x = r.left + r.width / 2 - tw / 2; x = Math.max(12, Math.min(window.innerWidth - tw - 12, x));
+  let y = r.bottom + 8; if (y + th > window.innerHeight - 8) y = Math.max(8, r.top - th - 8);
+  el.style.left = x + 'px'; el.style.top = y + 'px';
+  clearTimeout(TIP.timer); if (stay) TIP.timer = setTimeout(hideTip, 5000);
+}
+function hideTip() { clearTimeout(TIP.timer); if (TIP.el) TIP.el.className = ''; }
+function tipTarget(e) { return e.target && e.target.closest ? e.target.closest('[data-tip]') : null; }
+new MutationObserver((ms) => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) moveTitles(n); }).observe(document.body, { childList: true, subtree: true });
+moveTitles(document);
+document.addEventListener('mouseover', (e) => { if (st.explain) return; const t = tipTarget(e); if (!t) return; clearTimeout(TIP.timer); TIP.timer = setTimeout(() => showTip(t), 450); });
+document.addEventListener('mouseout', (e) => { if (!st.explain && tipTarget(e)) hideTip(); });
+document.addEventListener('focusin', (e) => { const t = tipTarget(e); if (t && t.matches(':focus-visible')) showTip(t, true); });
+document.addEventListener('pointerdown', (e) => {
+  if (e.pointerType === 'mouse') return; const t = tipTarget(e); if (!t) { hideTip(); return; }
+  clearTimeout(TIP.hold); TIP.hold = setTimeout(() => { TIP.swallow = true; showTip(t, true); if (navigator.vibrate) navigator.vibrate(10); }, 450); // press and hold
+}, true);
+['pointerup', 'pointercancel', 'pointermove'].forEach((k) => document.addEventListener(k, (e) => { if (k === 'pointermove' && Math.abs(e.movementX) + Math.abs(e.movementY) < 4) return; clearTimeout(TIP.hold); }, true));
+document.addEventListener('contextmenu', (e) => { if (tipTarget(e) && e.pointerType !== 'mouse') e.preventDefault(); });
+document.addEventListener('click', (e) => {
+  const t = tipTarget(e);
+  if (TIP.swallow) { TIP.swallow = false; e.preventDefault(); e.stopPropagation(); return; } // a long press explains, it does not click
+  if (st.explain && t && t.id !== 'explainBtn') { e.preventDefault(); e.stopPropagation(); showTip(t, true); return; }
+  if (!t) hideTip();
+}, true);
+document.addEventListener('change', (e) => { if (st.explain && tipTarget(e)) { e.stopPropagation(); } }, true);
+function toggleExplain() {
+  st.explain = !st.explain; hideTip(); renderTop();
+  setHint(st.explain ? 'Explain mode: tap any button to read what it does. Nothing changes. Tap 💬 Explain again to stop.' : 'Explain mode is off. Tip: press and hold any button to read what it does.');
+}
+
 if (!openSharedFromLink()) openStart();
 // a share link pasted into this tab: open it too
 window.addEventListener('hashchange', () => { if (/^#s=/.test(location.hash)) { stopAll(true); closeOverlay(); openSharedFromLink(); } });
