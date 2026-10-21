@@ -4723,7 +4723,9 @@ function deliveryNo(bump) {
   return String(st.lastDeliveredHash === songHash() && st.sessionNo ? st.sessionNo : n + 1).padStart(3, '0');
 }
 const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
-function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
+// the genre in every file name, so you see at a glance what it is: DM_Untitled_Acid_Beat_...
+const genreTag = (sg) => ((D.GENRES[sg.genre] || {}).name || sg.genre || '').replace(/[^A-Za-z0-9]+/g, '');
+function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
 function markers(sg) { let b = 0; const BT = D.barTicks(sg); return sg.sections.map((x, i) => { const m = { t: b * BT, text: sectionLabelFor(sg, i) }; b += x.bars; return m; }); }
 function sectionLabelFor(sg, i) { const t = sg.sections[i].type; const k = sg.sections.slice(0, i + 1).filter((x) => x.type === t).length; return D.TYPES[t].name + ' ' + k; }
 function buildPartFile(part, polished, plugin, mode) {
@@ -4755,7 +4757,7 @@ async function saveFiles(files) {
     const dl = await downloadsCap();
     if (!dl) { toast('Downloads are not available in this view. Open the Divine Code version to download.'); return false; }
     const one = files.length === 1 && /\.(json|txt|csv|md|zip)$/i.test(files[0].name);
-    const out = one ? files[0] : { name: files.length === 1 ? files[0].name.replace(/\.mid$/, '.zip') : 'DM_' + safe(song().name) + '_' + deliveryNo(false) + '.zip', data: makeZip(files) };
+    const out = one ? files[0] : { name: files.length === 1 ? files[0].name.replace(/\.mid$/, '.zip') : 'DM_' + safe(song().name) + '_' + genreTag(song()) + '_' + deliveryNo(false) + '.zip', data: makeZip(files) };
     try { await dl.save({ filename: out.name, data: out.data }); toast('Saved ' + out.name); return true; }
     catch (e) { if (e && e.code === 'declined') toast('Download cancelled.'); else toast('Download did not work: ' + ((e && e.message) || 'unknown reason')); return false; }
   }
@@ -4906,7 +4908,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-20 23:44. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 02:35. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -5242,7 +5244,7 @@ async function deliverFiles(parts, asZip) {
     const [part, ver] = p.split(':');
     files.push({ name: fileName(PART_NAMES[part], no, [st.polished ? '' : 'pure', ver || ''].filter(Boolean).join('_'), sg.parts[part].plugin), data: buildPartFile(part, st.polished, null, ver ? ver.toLowerCase() : undefined) });
   }
-  if (asZip && files.length > 1) await saveFiles([{ name: 'DM_' + safe(sg.name) + '_All_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.zip', data: makeZip(files), zip: true }]);
+  if (asZip && files.length > 1) await saveFiles([{ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_All_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.zip', data: makeZip(files), zip: true }]);
   else await saveFiles(files);
   renderTop();
 }
