@@ -2265,11 +2265,61 @@ E.beatLoops = function (song, notes, L) {
   release(total * BT);
   return out.sort((x, y) => x.t - y.t || x.p - y.p);
 };
+/* Beatmaker 3 pads per title, read from the plugin: 16 white keys C1 to D3. The keys are the same in every title, the sounds under them are not */
+E.BM_KEYS = [36, 38, 40, 41, 43, 45, 47, 48, 50, 52, 53, 55, 57, 59, 60, 62];
+E.BM_PADS = {
+  BERSERK: 'Kck 1,Kck 2,Sn 1,Sn 2,Clap,HH 1,HH 2,HH 3,Tom L,Tom M,Tom H,FX,Perc 1,Perc 2,Cym 1,Cym 2',
+  BOUNCE: 'Kck 1,Kck 2,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Tom L,Tom M,Tom H,Perc 1,Perc 2,Perc 3,Cym 1,Cym 2',
+  CHROMED: 'Kck 1,Kck 2,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Tom L,Perc 1,Tom H,FX,Perc 2,Perc 3,Cym 1,Cym 2',
+  CIRCUITS: 'Kck,Acc,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Tom L,Tom M,Tom H,Tamb,Perc 1,Perc 2,Cym 1,Cym 2',
+  COZY: 'Kck 1,Kck 2,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Acc L,Acc M,Acc H,Perc 1,Perc 2,Perc 3,Cym 1,Cym 2',
+  DOPE: 'Kck 1,Kck 2,Sn 1,Sn 2,Perc,HH 1,HH 2,HH 3,Tom L,Tom M,Tom H,Vox,FX 1,FX 2,Cym 1,Cym 2',
+  EDEN: 'Kck 1,Kck 2,Sn 1,Sn 2,Clap,HH 1,HH 2,HH 3,Tom L,Tom M,Tom H,FX 1,FX 2,HH 4,Cym 1,Cym 2',
+  GLOOM: 'Kck 1,Kck 2,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Acc L,Acc M,Acc H,Perc 1,Perc 2,Perc 3,Cym 1,Cym 2',
+  GLORY: 'Kck,Acc,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,HH 1 L,HH 2 L,HH HO,Bass,Perc 1,Perc 2,Cym 1,Cym 2',
+  HUSTLE: 'Kck 1,Kck 2,Sn 1,Sn 2,Sn 3,HH 1,HH 2,HH 3,Tom L,Tom M,Tom H,Bass,FX,Cym 1,Cym 2,Cym 3',
+  HYPE: 'Kck 1,Kck 2,Sn 1,Sn 2,Clap,HH 1,FX,HH O,Tom L,Tom H,Perc 1,Perc 2,Perc 3,Perc 4,Cym 1,Cym 2',
+  IDOL: 'Kck,Acc,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Tom L,Tom M,Tom H,Perc 1,Perc 2,Perc 3,Cym 1,Cym 2',
+  KANDY: 'Kck,Acc,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Tom L,Tom M,Tom H,Perc 1,Perc 2,Perc 3,Cym 1,Cym 2',
+  KAYA: 'Kck 1,Acc,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Tom L,Tom M,Tom H,Perc 1,Perc 2,Perc 3,Cym 1,Cym 2',
+  NEMESIS: 'Kck 1,Kck 2,Sn 1,Sn 2,Perc 1,HH 1,HH 2,HH 3,Tom L,Tom M,Tom H,Vox 1,Vox 2,Perc 2,Cym 1,Cym 2',
+  RICO: 'Kck 1,Kck 2,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Tom L,Tom M,Tom H,Perc 1,Perc 2,Perc 3,Cym 1,Cym 2',
+  VICE: 'Kck,Acc,Sn 1,Sn 2,Clap,HH 1,HH 2,HH O,Tom L,Tom M,Tom H,Tamb,Perc 1,Perc 2,Cym 1,Cym 2',
+  VOID: 'Kck 1,Kck 2,Sn 1,Sn 2,Sn 3,HH 1,HH 2,HH 3,Tom L,Tom M,Tom H,FX 1,FX 2,Cym 1,Cym 2,Cym 3'
+};
+E.bmPads = (title) => (E.BM_PADS[title] || '').split(',').filter(Boolean);
+// each machine lane on the pad that sounds like it in this title; with no title, the pads most titles share
+E.bmMap = function (title) {
+  const P = E.bmPads(title); if (P.length !== 16) return [36, 38, 40, 43, 45, 48, 57, 60];
+  const at = function () { for (const nm of arguments) { const i = P.indexOf(nm); if (i >= 0) return E.BM_KEYS[i]; } return null; };
+  return [36, 38, 40, at('Clap', 'Sn 3', 'Sn 2'), 45, at('HH O', 'HH 3', 'HH 2'), at('Perc 1', 'Perc', 'Tamb', 'Perc 2', 'HH 4', 'Acc M', 'Tom M'), at('Cym 1')];
+};
+// Beatmaker hits with the title's extra pads: HH 2 on the in between sixteenths of a chorus, toms rolling down in a fill bar, a Vox or FX hit to open each chorus
+E.bmHits = function (song, notes, title) {
+  const P = E.bmPads(title), map = E.bmMap(title), full = P.length === 16;
+  const key = (nm) => { const i = P.indexOf(nm); return i >= 0 ? E.BM_KEYS[i] : null; };
+  const BT = E.barTicks(song), steps = E.meter(song).steps, stepT = BT / steps, info = [], seen = {}; let b0 = 0;
+  song.sections.forEach((s, i) => { const next = song.sections[i + 1]; seen[s.type] = (seen[s.type] || 0) + 1;
+    for (let j = 0; j < s.bars; j++) info[b0 + j] = { type: s.type, first: j === 0, fill: s.type === 'fill' || (j === s.bars - 1 && !!next && next.type !== s.type) }; b0 += s.bars; });
+  const hh2 = key('HH 2'), tH = key('Tom H') || key('Acc H'), tM = key('Tom M') || key('Acc M'), tL = key('Tom L') || key('Acc L');
+  const accent = key('Vox 1') || key('Vox') || key('FX 1') || key('FX');
+  const out = [], playing = {};
+  notes.forEach((n) => {
+    const b = Math.floor(n.t / BT), inf = info[b] || {}, s = Math.round((n.t - b * BT) / stepT); playing[b] = true;
+    let p = map[n.lane];
+    if (full && n.lane === HH && hh2 && s % 2 === 1 && (inf.type === 'chorus' || inf.type === 'drop')) p = hh2;
+    if (full && inf.fill && (n.lane === SN || n.lane === PC) && s >= steps / 2 && tH && tL) { const q = (s - steps / 2) / (steps / 2); p = q < 0.4 ? tH : q < 0.7 ? (tM || tH) : tL; }
+    out.push({ t: n.t, d: n.d, v: n.v, p });
+  });
+  if (full && accent) info.forEach((inf, b) => { if (inf.first && (inf.type === 'chorus' || inf.type === 'drop') && playing[b]) out.push({ t: b * BT, d: stepT, p: accent, v: 96 }); });
+  return out.sort((x, y) => x.t - y.t);
+};
 E.applyMask = function (song, part, notes, pluginKey, settings) {
   settings = settings || {};
   const pl = E.PLUGINS[pluginKey] || E.PLUGINS.plain;
   const oct = (settings.octave || 0) * 12;
   if (part === 'beat' && pl.loops && settings.mode === 'player') return E.beatLoops(song, notes, pl.loops);
+  if (part === 'beat' && pl.loops) return E.bmHits(song, notes, settings.title != null ? settings.title : (E.titleOf ? E.titleOf('beat', pluginKey) : ''));
   if (part === 'beat') { const map = pl.drums || E.PLUGINS.gm.drums; return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: map[n.lane] })); }
   if (!pl.family) return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p }));
   const mode = pl.noPlayer ? 'instrument' : (settings.mode || 'player');
@@ -4371,6 +4421,7 @@ const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekn
 const genreTag = (sg) => ((D.GENRES[sg.genre] || {}).name || sg.genre || '').replace(/[^A-Za-z0-9]+/g, '');
 // the Beatmaker or Usynth title per part, kept with your settings
 function titleFor(p, plugin) { const pl = D.PLUGINS[plugin]; const s = st.settings.titles || {}; const t = s[p] || (p === 'answer' ? s.melody : ''); return pl && pl.titles && pl.titles.includes(t) ? t : ''; }
+D.titleOf = (p, plugin) => titleFor(p, plugin);
 function titleSel(p, plugin, after) {
   const pl = D.PLUGINS[plugin]; if (!pl || !pl.titles) return null; const cur = titleFor(p, plugin);
   return h('select', { id: 'title_' + p, 'aria-label': PART_NAMES[p] + ' title', title: 'Which ' + pl.name + ' title. Every title uses the same keys, so this only names the file.', onchange: (e) => { st.settings.titles = st.settings.titles || {}; st.settings.titles[p] = e.target.value; store.set('dmm-settings-v1', st.settings); if (after) after(); } },
