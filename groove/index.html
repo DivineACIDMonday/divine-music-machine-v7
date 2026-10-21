@@ -2221,6 +2221,7 @@ E.PLUGINS = {
   carbon: { name: 'Virtual Guitarist Carbon', family: 'guitar', ks: { style: nn('D#2'), open: nn('C3'), half: nn('A2'), muted: nn('G2'), dead: nn('F2') }, /* Instrument articulations, read from the plugin: D#2 Legato on, Short to Long on F2 G2 A2 B2 C3; long notes open up a chorus, medium in a verse, short in a break */ parts: ['chords', 'melody', 'bass', 'pad', 'answer'], play: [nn('C4'), nn('C7')], roles: { intro: nn('E1'), verse: nn('C3'), chorus: nn('E3'), build: nn('F#1'), break: null, outro: nn('E1'), fill: null, end: nn('C#1') }, zones: [['common', nn('C1'), nn('B2')], ['style', nn('C3'), nn('B3')], ['play', nn('C4'), nn('C7')]], silence: nn('C1'), endHold: true },
   royal: { name: 'Virtual Bassist Royal', family: 'bass', inst: [nn('C1'), nn('D#3')], /* Instrument mode plays from C1, the G string tops out at D#3 */ parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
   slap: { name: 'Virtual Bassist Slap', family: 'bass', inst: [nn('D1'), nn('D#4')], hold: { finger: nn('A-1'), slap: nn('B-1') }, /* Instrument mode D1 to D#4; A-1 Finger and B-1 Slap override while held */ parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
+  subcraft: { name: 'UJAM Subcraft', family: 'bass', parts: ['bass'], play: [nn('C3'), nn('C4')], inst: [nn('A2'), nn('A4')], roles: { intro: nn('C2'), verse: nn('D2'), build: nn('D2'), chorus: nn('E2'), drop: nn('E2'), break: nn('C2'), outro: nn('C2'), fill: nn('C#2'), end: nn('C2') }, zones: [['loops', nn('C2'), nn('D#2')], ['pitch', nn('F2'), nn('G#2')], ['play', nn('A2'), nn('C5')]] }, /* read from the plugin screen: C2 D2 E2 Loop 1 to 3 (busier going up), C#2 Loop 4 the fill, D#2 Stop, F2 F#2 G2 pitch drops, G#2 kick, notes from A2 */
   score: { name: 'Virtual Pianist Score', family: 'piano', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C3'), nn('C6')], inst: [nn('C2'), nn('C6')], roles: { intro: nn('D1'), verse: nn('E1'), prechorus: nn('F1'), build: nn('G1'), chorus: nn('A1'), drop: nn('A1'), break: nn('C1'), outro: nn('D1'), fill: nn('F#1'), end: nn('D1') }, zones: [['control', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]] }, /* Player control octave, read from the plugin: C1 to A1 Intensity 1 to 6, C#1 Low Chord, D#1 High Chord, F#1 G#1 A#1 Fill 1 to 3, B1 Stop; chords from C2 */
   usynth: { name: 'Usynth', family: 'synth', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['patterns', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]], noPlayer: true }
 };
@@ -2940,7 +2941,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 11:35)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 11:50)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -4335,7 +4336,7 @@ function deliveryNo(bump) {
   if (bump) { const hh = songHash(); if (st.lastDeliveredHash !== hh || !st.sessionNo) { n++; store.set('dgm-counter-v1', n); st.sessionNo = n; st.lastDeliveredHash = hh; } return String(st.sessionNo).padStart(3, '0'); }
   return String(st.lastDeliveredHash === songHash() && st.sessionNo ? st.sessionNo : n + 1).padStart(3, '0');
 }
-const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', ezdrummer: 'EZdrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', playbeat: 'Playbeat', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
+const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', ezdrummer: 'EZdrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', playbeat: 'Playbeat', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', subcraft: 'Subcraft', score: 'Score', usynth: 'Usynth' };
 // the genre in every file name, so you see at a glance what it is: DM_Untitled_Acid_Beat_...
 const genreTag = (sg) => ((D.GENRES[sg.genre] || {}).name || sg.genre || '').replace(/[^A-Za-z0-9]+/g, '');
 function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + no + '.mid'; } // a beat has no key
@@ -4526,7 +4527,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 11:35. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 11:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
