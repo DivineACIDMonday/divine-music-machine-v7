@@ -180,6 +180,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .manuals.small .mlink{padding:3px 8px}
 .copy{margin-top:8px;color:var(--faint);font-size:11px}
 .noai{margin:10px 0 6px;font-size:13px;color:var(--muted)}.noai b{display:inline-block;color:#101219;background:#f0c25a;border-radius:999px;padding:2px 10px;margin-right:6px;font-size:12px}
+select.chosen{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent);color:var(--fg)}
 a.legal{color:var(--muted);text-decoration:underline;white-space:nowrap}
 .small{font-size:12px;color:var(--muted)}
 
@@ -2621,6 +2622,20 @@ function clampSec() { const n = song().sections.length; if (st.sec >= n) st.sec 
 
 /* ---------- toasts and hints ---------- */
 let toastT = null;
+/* ---------- visual feedback for the machine choices (Style, Bass, Chords, Form, section picks) ---------- */
+function pickNote(label, e, part, where) {
+  const v = e.target.value, opt = e.target.selectedOptions && e.target.selectedOptions[0];
+  const name = (opt ? opt.textContent : v).replace(/^Machine: /, '').split(':')[0].toLowerCase();
+  return () => {
+    const undoAct = { label: 'Undo', fn: undo };
+    if (v === 'auto') { toast(label + ': back to Machine. It picks what fits ' + (where || 'the genre') + '.', undoAct); return; }
+    const sg = song(), P = part && sg.parts && sg.parts[part];
+    if (P && P.mode === 'yours') { toast(label + ': ' + name + '. Your ' + part + ' is Yours, so it stays as you made it.', undoAct); return; }
+    if (P && P.mode === 'off') { toast(label + ': ' + name + '. The ' + part + ' is Off; switch it on to hear it.', undoAct); return; }
+    toast(label + ': ' + name + (part ? '. The machine ' + part + ' plays it from the next bar.' : '. The machine uses it ' + (where ? 'in ' + where : 'for the whole song') + ' from the next bar.'), undoAct);
+  };
+}
+
 function toast(msg, action) {
   const host = $('#toastHost'); host.innerHTML = '';
   const t = h('div', { class: 'toast', role: 'status' }, msg, action ? h('button', { onclick: () => { host.innerHTML = ''; action.fn(); } }, action.label) : null);
@@ -2874,7 +2889,7 @@ function renderTop() {
     h('div', { class: 'trow' },
       h('div', { class: 'grp' }, h('label', { for: 'genre' }, 'Genre'), genre, sg.genre === 'free' ? h('button', { id: 'suggestBtn', title: 'Which genre does this sound like?', onclick: openSuggest }, ico('bulb'), 'Suggest') : null),
       sg.arr ? h('div', { class: 'grp', style: 'flex-wrap:wrap;min-width:0;max-width:100%', title: 'The beat style: the genre’s own, or a borrowed one (funk sixteenths, disco hats under rock, a latin clave). Machine choice lets the song decide' }, h('label', { for: 'flavor' }, 'Style'),
-        h('select', { id: 'flavor', style: 'max-width:170px', onchange: (e) => change(() => { if (e.target.value === 'auto') delete sg.flavor; else sg.flavor = e.target.value; }) },
+        h('select', { id: 'flavor', class: sg.flavor ? 'chosen' : '', style: 'max-width:170px', onchange: (e) => { const note = pickNote('Style', e, 'beat'); change(() => { if (e.target.value === 'auto') delete sg.flavor; else sg.flavor = e.target.value; }); note(); } },
           h('option', { value: 'auto', selected: !sg.flavor }, 'Machine: ' + D.FLAVORS[D.flavorOf(Object.assign({}, sg, { flavor: undefined })) || 'genre'].toLowerCase()),
           Object.entries(D.FLAVORS).map(([k, n]) => h('option', { value: k, selected: sg.flavor === k }, n)))) : null,
       h('div', { class: 'grow' }),
@@ -2910,7 +2925,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 05:42)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 06:24)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -4477,7 +4492,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 05:42. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 06:24. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
