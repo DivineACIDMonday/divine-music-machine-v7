@@ -2599,13 +2599,18 @@ const nn = (name) => { const m = /^([A-G]#?)(-?\d)$/.exec(name); return NOTE.ind
 E.nn = nn;
 E.noteLabel = (p) => NOTE[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 2);
 const VG = { family: 'guitar', ks: { style: nn('C#1'), open: nn('A#2'), half: nn('G#2'), muted: nn('F#2'), dead: nn('D#2') }, /* Instrument mode key switches, read from the plugin: C#1 Strum Auto, A#2 Open, G#2 Half Muted, F#2 Muted, D#2 Dead Notes */ play: [nn('C3'), nn('C6')], roles: { intro: nn('E0'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: null, end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C6')]], silence: nn('C0') };
+/* every Beatmaker 3 title shares one keyboard layout, every Usynth title shares one too: a title only names the file */
+E.BM_TITLES = ['BERSERK', 'BOUNCE', 'CHROMED', 'CIRCUITS', 'COZY', 'DOPE', 'EDEN', 'GLOOM', 'GLORY', 'HUSTLE', 'HYPE', 'IDOL', 'KANDY', 'KAYA', 'NEMESIS', 'RICO', 'VICE', 'VOID'];
+E.US_TITLES = ['2080', 'BOUNCE', 'CARAMEL', 'CORE', 'DELUXE', 'DRIVE', 'DUST', 'EUPHORIA', 'FLUID', 'GLAM', 'PIXEL', 'STRANGER', 'TURBO-XT', 'VORTEX', 'WEBCORE'];
+/* Beatmaker 3 loops on the black keys: C#1 Intro, D#1 Fill, F#1 Verse, G#1 Verse, A#1 Fill, C#2 Chorus, D#2 Chorus, F#2 Break, G#2 Special, A#2 Ending */
+E.BM_LOOPS = { intro: [42], verse: [42, 44], prechorus: [44], build: [44], chorus: [49, 51], drop: [51, 49], break: [54], outro: [42], fills: [39, 46], ending: 58 };
 E.PLUGINS = {
   plain: { name: 'Plain MIDI', parts: ['bass', 'chords', 'pad', 'melody', 'answer'] },
   gm: { name: 'Plain MIDI (GM drums)', parts: ['beat'], drums: [36, 35, 38, 39, 42, 46, 37, 49] },
   xo: { name: 'XLN XO', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
   impact: { name: 'Impact XT', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
   tekno: { name: 'BABY Audio Tekno', parts: ['beat'], drums: [36, 37, 38, 45, 40, 42, 46, 53] },
-  beatmaker: { name: 'UJAM Beatmaker 3', parts: ['beat'], drums: [36, 38, 40, 43, 45, 48, 52, 59] }, /* v3 white keys: Kick 1, Kick 2, Snare 1, Snare 3/Clap, HH 1, HH 3, Perc, Cymbal 1. black keys are loops, never used */
+  beatmaker: { name: 'UJAM Beatmaker 3', parts: ['beat'], drums: [36, 38, 40, 43, 45, 48, 52, 59], titles: E.BM_TITLES, loops: E.BM_LOOPS }, /* v3 white keys: Kick 1, Kick 2, Snare 1, Snare 3/Clap, HH 1, HH 3, Perc, Cymbal 1. black keys are loops, never used */
   vdrummer: { name: 'UJAM Virtual Drummer', parts: ['beat'], drums: [36, 41, 38, 40, 42, 46, 37, 49] }, /* Legend, Brute and the rest: Kick, Tom Lo 1 for kick 2, Snare, Snare Rim for the clap (no clap except HOT), HH Close, HH Open, Sidestick for perc, Crash 1 */
   ezdrummer: { name: 'Toontrack EZdrummer 3', parts: ['beat'], drums: [36, 36, 38, 40, 42, 46, 37, 49] }, /* Toontrack default map, GM based: Kick, Kick, Snare, Snare Rimshot for the clap (acoustic kits have no clap), HH Closed, HH Open, Sidestick for perc, Crash */
   playbeat: { name: 'Audiomodern Playbeat 4', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] }, /* trigger keyboard, lowest octave: one key per channel 1 to 8 */
@@ -2619,7 +2624,7 @@ E.PLUGINS = {
   slap: { name: 'Virtual Bassist Slap', family: 'bass', inst: [nn('D1'), nn('D#4')], hold: { finger: nn('A-1'), slap: nn('B-1') }, /* Instrument mode D1 to D#4; A-1 Finger and B-1 Slap override while held */ parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
   subcraft: { name: 'UJAM Subcraft', family: 'bass', parts: ['bass'], play: [nn('C3'), nn('C4')], inst: [nn('A2'), nn('A4')], roles: { intro: nn('C2'), verse: nn('D2'), build: nn('D2'), chorus: nn('E2'), drop: nn('E2'), break: nn('C2'), outro: nn('C2'), fill: nn('C#2'), end: nn('C2') }, zones: [['loops', nn('C2'), nn('D#2')], ['pitch', nn('F2'), nn('G#2')], ['play', nn('A2'), nn('C5')]] }, /* read from the plugin screen: C2 D2 E2 Loop 1 to 3 (busier going up), C#2 Loop 4 the fill, D#2 Stop, F2 F#2 G2 pitch drops, G#2 kick, notes from A2 */
   score: { name: 'Virtual Pianist Score', family: 'piano', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C3'), nn('C6')], inst: [nn('C2'), nn('C6')], roles: { intro: nn('D1'), verse: nn('E1'), prechorus: nn('F1'), build: nn('G1'), chorus: nn('A1'), drop: nn('A1'), break: nn('C1'), outro: nn('D1'), fill: nn('F#1'), end: nn('D1') }, zones: [['control', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]] }, /* Player control octave, read from the plugin: C1 to A1 Intensity 1 to 6, C#1 Low Chord, D#1 High Chord, F#1 G#1 A#1 Fill 1 to 3, B1 Stop; chords from C2 */
-  usynth: { name: 'Usynth', family: 'synth', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['patterns', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]], noPlayer: true }
+  usynth: { name: 'Usynth', titles: E.US_TITLES, family: 'synth', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['patterns', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]], noPlayer: true }
 };
 E.pluginsFor = (part) => Object.keys(E.PLUGINS).filter((k) => E.PLUGINS[k].parts.includes(part));
 E.isUjam = (k) => !!(E.PLUGINS[k] && E.PLUGINS[k].family);
@@ -2634,10 +2639,33 @@ function foldInto(notes, lo, hi) {
 }
 E.foldInto = foldInto;
 // apply a mask to rendered notes (absolute ticks) for a part
+// Beatmaker Player: one held loop key per stretch where the beat plays, a fill before each new section, the ending on the last bar
+E.beatLoops = function (song, notes, L) {
+  const BT = E.barTicks(song), total = E.totalBars(song), on = new Array(total).fill(false);
+  notes.forEach((n) => { const b = Math.floor(n.t / BT); if (b >= 0 && b < total) on[b] = true; });
+  const out = [], seen = {}; let held = null, b0 = 0, last = L.verse[0], nf = 0;
+  const release = (t) => { if (held) { out.push({ t: held.t, d: Math.max(30, t - held.t - 5), p: held.p, v: 100 }); held = null; } };
+  song.sections.forEach((s, i) => {
+    const k = seen[s.type] || 0; seen[s.type] = k + 1;
+    const arr = L[s.type], key = arr ? arr[k % arr.length] : last, next = song.sections[i + 1];
+    for (let j = 0; j < s.bars; j++) {
+      const b = b0 + j, t0 = b * BT;
+      if (b === total - 1) { release(t0); if (on[b]) out.push({ t: t0, d: BT - 5, p: L.ending, v: 100 }); continue; }
+      if (!on[b]) { release(t0); continue; }
+      if (!held || held.p !== key) { release(t0); held = { p: key, t: t0 }; }
+      const fill = s.type === 'fill' ? j === 0 : (j === s.bars - 1 && next && next.type !== s.type);
+      if (fill) out.push({ t: t0, d: 120, p: L.fills[nf++ % L.fills.length], v: 100 });
+    }
+    last = key; b0 += s.bars;
+  });
+  release(total * BT);
+  return out.sort((x, y) => x.t - y.t || x.p - y.p);
+};
 E.applyMask = function (song, part, notes, pluginKey, settings) {
   settings = settings || {};
   const pl = E.PLUGINS[pluginKey] || E.PLUGINS.plain;
   const oct = (settings.octave || 0) * 12;
+  if (part === 'beat' && pl.loops && settings.mode === 'player') return E.beatLoops(song, notes, pl.loops);
   if (part === 'beat') { const map = pl.drums || E.PLUGINS.gm.drums; return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: map[n.lane] })); }
   if (!pl.family) return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p }));
   const mode = pl.noPlayer ? 'instrument' : (settings.mode || 'player');
@@ -3618,6 +3646,8 @@ function renderRight() {
       const lab = h('div', { class: 'lab' }, h('div', null, 'Feel'), h('div', { id: 'feel_' + p }, feelText(P.feel)));
       bindPad(pad, dot, p, lab);
       card.append(h('div', { class: 'row' }, h('span', { class: 'small' }, 'played by'), plugSel),
+        pl.titles ? h('div', { class: 'row' }, h('span', { class: 'small' }, 'title'), titleSel(p, P.plugin)) : '',
+        pl.loops ? h('div', { class: 'small' }, 'You get two files: Player (its own loops per section) and Instrument (your exact hits).') :
         pl.family && !pl.noPlayer ? h('div', { class: 'small' }, NOTE_PARTS.includes(p) ? 'You get one file: Instrument, your exact notes.' : 'You get two files: Player (its own phrases) and Instrument (your exact notes).') : '',
         h('div', { class: 'feel' }, pad, lab, h('div', { class: 'grow' }),
           h('button', { class: 'iconbtn', title: 'Edit ' + PART_NAMES[p], 'aria-label': 'Edit ' + PART_NAMES[p], onclick: () => { st.view = p; render(); } }, ico('pencil'))));
@@ -4807,20 +4837,28 @@ function deliveryNo(bump) {
 const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', ezdrummer: 'EZdrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', subcraft: 'Subcraft', score: 'Score', usynth: 'Usynth' };
 // the genre in every file name, so you see at a glance what it is: DM_Untitled_Acid_Beat_...
 const genreTag = (sg) => ((D.GENRES[sg.genre] || {}).name || sg.genre || '').replace(/[^A-Za-z0-9]+/g, '');
-function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
+// the Beatmaker or Usynth title per part, kept with your settings
+function titleFor(p, plugin) { const pl = D.PLUGINS[plugin]; const s = st.settings.titles || {}; const t = s[p] || (p === 'answer' ? s.melody : ''); return pl && pl.titles && pl.titles.includes(t) ? t : ''; }
+function titleSel(p, plugin, after) {
+  const pl = D.PLUGINS[plugin]; if (!pl || !pl.titles) return null; const cur = titleFor(p, plugin);
+  return h('select', { id: 'title_' + p, 'aria-label': PART_NAMES[p] + ' title', title: 'Which ' + pl.name + ' title. Every title uses the same keys, so this only names the file.', onchange: (e) => { st.settings.titles = st.settings.titles || {}; st.settings.titles[p] = e.target.value; store.set('dmm-settings-v1', st.settings); if (after) after(); } },
+    [''].concat(pl.titles).map((t) => h('option', { value: t, selected: t === cur }, t || 'Any title')));
+}
+function fileName(part, no, extra, plugin) { const sg = song(); const pk = Object.keys(PART_NAMES).find((k) => PART_NAMES[k] === part); const tt = plugin && pk ? titleFor(pk, plugin).replace(/[^A-Za-z0-9]/g, '') : ''; const pl = plugin ? PLUG_SHORT[plugin] + (tt ? '_' + tt : '') : ''; return 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
 function markers(sg) { let b = 0; const BT = D.barTicks(sg); return sg.sections.map((x, i) => { const m = { t: b * BT, text: sectionLabelFor(sg, i) }; b += x.bars; return m; }); }
 function sectionLabelFor(sg, i) { const t = sg.sections[i].type; const k = sg.sections.slice(0, i + 1).filter((x) => x.type === t).length; return D.TYPES[t].name + ' ' + k; }
 function buildPartFile(part, polished, plugin, mode) {
   const sg = song(); plugin = plugin || sg.parts[part].plugin;
   const notes = D.renderSong(sg, part, { polished });
   const masked = D.applyMask(sg, part, notes, plugin, { octave: st.settings.octave, roles: rolesOverride(), mode });
-  const name = PART_NAMES[part] + (plugin !== 'plain' && plugin !== 'gm' ? ' for ' + D.PLUGINS[plugin].name + (mode ? ' ' + mode : '') : '');
+  const tt = titleFor(part, plugin);
+  const name = PART_NAMES[part] + (plugin !== 'plain' && plugin !== 'gm' ? ' for ' + D.PLUGINS[plugin].name + (tt ? ' ' + tt : '') + (mode ? ' ' + mode : '') : '');
   return D.writeMidi([{ name, channel: part === 'beat' ? 9 : 0, notes: masked }], { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
 }
 // UJAM parts with phrases come as two files: Player and Instrument
 // a melody or an answer is the notes themselves: a Player file would only hold the chords, the same for both, so they come as Instrument only
 const NOTE_PARTS = ['melody', 'answer'];
-function versionsOf(plugin, part) { const pl = D.PLUGINS[plugin]; if (!(pl && pl.family && !pl.noPlayer)) return [null]; return NOTE_PARTS.includes(part) ? ['Instrument'] : ['Player', 'Instrument']; }
+function versionsOf(plugin, part) { const pl = D.PLUGINS[plugin]; if (pl && pl.loops) return ['Player', 'Instrument']; if (!(pl && pl.family && !pl.noPlayer)) return [null]; return NOTE_PARTS.includes(part) ? ['Instrument'] : ['Player', 'Instrument']; }
 function rolesOverride() {
   // scanned phrases decide calm and busy keys unless you set a role yourself
   const out = {};
@@ -5136,9 +5174,10 @@ function openDeliver() {
   for (const p of D.PARTS) {
     const on = active.includes(p);
     const sel = h('select', { id: 'dplug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { sg.parts[p].plugin = e.target.value; saveSession(); renderRight(); renderTop(); openDeliver(); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === sg.parts[p].plugin }, D.PLUGINS[k].name)));
+    const tsel = titleSel(p, sg.parts[p].plugin, () => openDeliver());
     const vers = on ? versionsOf(sg.parts[p].plugin, p) : [null];
     vers.forEach((v, vi) => tbl.append(h('tr', null, h('td', null, vi ? h('span', { class: 'small' }, '') : h('span', { style: 'display:inline-flex;gap:6px;align-items:center' }, shapeIcon(p), PART_NAMES[p])),
-      h('td', null, vi ? h('span', { class: 'small' }, v + ' version') : on ? h('div', { style: 'display:grid;gap:4px' }, sel, v ? h('span', { class: 'small' }, v + ' version') : null) : h('span', { class: 'small' }, 'off or silent')),
+      h('td', null, vi ? h('span', { class: 'small' }, v + ' version') : on ? h('div', { style: 'display:grid;gap:4px' }, sel, tsel, v ? h('span', { class: 'small' }, v + ' version') : null) : h('span', { class: 'small' }, 'off or silent')),
       h('td', { class: 'fn' }, on ? fileName(PART_NAMES[p], no, [st.polished ? '' : 'pure', v || ''].filter(Boolean).join('_'), sg.parts[p].plugin) : ''),
       h('td', null, on ? h('button', { class: 'iconbtn', 'aria-label': 'Download ' + PART_NAMES[p] + (v ? ' ' + v : ''), onclick: () => deliverFiles([p + (v ? ':' + v : '')]) }, ico('download')) : null))));
   }
@@ -5515,7 +5554,7 @@ function openListen() {
   };
   requestAnimationFrame(loop);
 }
-window.DMMAPP = { count, sendFeedback, st, AU, computeMix, togglePlay, toast, loadSong, saveSession, ensureAudio, newStartSameStructure, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+window.DMMAPP = { titleSel, count, sendFeedback, st, AU, computeMix, togglePlay, toast, loadSong, saveSession, ensureAudio, newStartSameStructure, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
 })();
 
 </script>
