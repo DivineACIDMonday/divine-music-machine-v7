@@ -374,6 +374,9 @@ body.lite #app{display:none}
 #lite .lbrand .ujam,#liteStart h1 .ujam{font:700 11px/1 var(--body);letter-spacing:.08em;border:1px solid var(--accent);color:var(--accent);border-radius:999px;padding:2px 7px;margin-left:6px;vertical-align:3px}
 #liteSheet .ujgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media (max-width:480px){#liteSheet .ujgrid{grid-template-columns:1fr}}
+#liteSheet .singles{display:flex;flex-direction:column;gap:6px}
+#liteSheet .singrow{display:flex;flex-wrap:wrap;gap:6px}
+#liteSheet .singrow button{flex:0 0 auto;padding:6px 10px;font-size:13px}
 
 </style>
 
@@ -4987,7 +4990,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 02:35. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 02:37. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
@@ -5751,6 +5754,13 @@ function renderSpiral() {
 
 /* ---------- get: one download, the drums already mapped ---------- */
 function closeSheet() { const o = document.getElementById('liteSheet'); if (o) o.remove(); }
+// one file at a time, no zip: a button per part (and per version for Guitarist and Bassist)
+function singleFiles() {
+  const names = { beat: 'Beat', bass: 'Bass', chords: 'Chords', pad: 'Pad', melody: 'Melody', answer: 'Answer', structure: 'Structure' };
+  return h('div', { class: 'singles' }, h('span', { class: 'small' }, 'Or one file at a time, no zip:'),
+    h('div', { class: 'singrow' }, A.allDeliverParts(song()).map((k) => { const [part, ver] = k.split(':');
+      return h('button', { class: 'ghost', id: 'lf_' + k.replace(':', '_'), title: 'Download only the ' + names[part].toLowerCase() + (ver ? ' (' + ver + ')' : '') + ' as one .mid file', onclick: () => A.deliverFiles([k]) }, '⬇ ' + names[part] + (ver ? ' ' + ver : '')); })));
+}
 function openGet() {
   closeSheet();
   const sg = song();
@@ -5765,6 +5775,7 @@ function openGet() {
       h('button', { class: 'primary big', id: 'liteZip', onclick: async () => { await A.deliverFiles(A.allDeliverParts(song()), true); } }, '⬇ MIDI files (one zip)'),
       mp3),
     h('span', { class: 'small' }, 'One MIDI file per part plus the song structure, ready to drop in your DAW.'),
+    singleFiles(),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close')));
   document.body.append(sheet);
 }
@@ -5784,6 +5795,7 @@ function openGetUjam() {
     h('div', { class: 'row' },
       h('button', { class: 'primary big', id: 'liteZip', onclick: async () => { await A.deliverFiles(A.allDeliverParts(song()), true); } }, '⬇ MIDI files (one zip)'),
       mp3),
+    singleFiles(),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
 
@@ -5832,7 +5844,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-21 02:35'),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-21 02:37'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
 
@@ -5865,7 +5877,7 @@ function renderLite() {
       h('button', { id: 'litePro', title: 'Open this song in Divine Music Machine Pro, with every button', onclick: openPro }, '⚙️ Pro'),
       h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, '💬 Explain'),
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-21 02:35')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('span', null, 'Lite · version 2026-10-21 02:37')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
