@@ -690,6 +690,7 @@ E.newSong = function (genre, opts) {
   for (const p of E.PARTS) song.parts[p] = { mode: 'machine', lead: false, plugin: 'plain', ujMode: p === 'beat' || p === 'bass' || p === 'chords' ? 'player' : 'instrument', feel: E.defaultFeel(p, genre), seed: r.int(4294967295) };
   for (const t of E.TYPE_ORDER) { song.mat[t] = {}; for (const p of E.PARTS) song.mat[t][p] = null; }
   song.arr = 1; song.raw = E.RAW_DEFAULT[genre] != null ? E.RAW_DEFAULT[genre] : 0.4;
+  { const own = E.structureFor(song, hash(song.seed, 'struct')); if (own) song.sections = own.map((x, i) => Object.assign(x, { id: 's' + i + '_' + hash(song.seed, i, x.type) })); }
   { const mr = rng(hash(song.seed, 'mode')); // a modal colour now and then: dorian lifts a minor song, mixolydian roughens a major one
     if (song.key.scale === 'minor' && ['techno', 'house', 'hiphop', 'triphop', 'newwave', 'breakbeat', 'acid', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'dorian';
     else if (song.key.scale === 'major' && ['punk', 'newwave', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'mixolydian'; }
@@ -712,7 +713,27 @@ E.scratchSong = function (genre, opts) {
 };
 // a fresh structure in the spirit of the genre: intro first, outro last, verses and choruses in between,
 // now and then a pre chorus, break, build, drop or fill; lengths in whole patterns
+// a structure in the language of each genre: the dice vary it, the genre decides what makes sense
+E.STRUCTS = {
+  acid: (r) => { const o = [['intro', r.pick([8, 16])]], n = 2 + r.int(2); for (let k = 0; k < n; k++) { o.push(['build', r.pick([8, 8, 16])], ['drop', r.pick([16, 16, 32])]); if (k < n - 1) o.push(['break', r.pick([8, 16])]); } o.push(['outro', 8]); return o; },
+  trance: (r) => { const o = [['intro', 16]]; if (r.chance(0.6)) o.push(['verse', 16]); o.push(['build', r.pick([8, 16])], ['drop', 16], ['break', r.pick([16, 16, 32])], ['build', 16], ['drop', r.pick([16, 32])]); if (r.chance(0.35)) o.push(['break', 8], ['drop', 16]); o.push(['outro', 8]); return o; },
+  house: (r) => { const o = [['intro', 16], ['verse', 16], ['chorus', 16]]; if (r.chance(0.5)) o.push(['verse', 16], ['chorus', 16]); o.push(['break', r.pick([8, 16])]); if (r.chance(0.4)) o.push(['build', 8]); o.push(['chorus', 16], ['outro', 8]); return o; },
+  eurodance: (r) => { const o = [['intro', 8]]; for (let k = 0; k < 2; k++) { o.push(['verse', 16]); if (r.chance(0.8)) o.push(['prechorus', 8]); o.push(['chorus', 16]); } o.push(['break', 8], ['chorus', 16]); if (r.chance(0.6)) o.push(['chorus', 16]); o.push(['outro', 8]); return o; },
+  ebm: (r) => { const o = [['intro', 8]], n = 2 + r.int(2); for (let k = 0; k < n; k++) o.push(['verse', 16], ['chorus', 16]); o.push(['break', 8], ['chorus', 16], ['outro', 8]); return o; },
+  breakbeat: (r) => { const o = [['intro', 8], ['verse', 16], ['build', 8], ['drop', 16], ['break', 8], ['build', 8], ['drop', 16]]; if (r.chance(0.3)) o.push(['break', 8], ['drop', 16]); o.push(['outro', 8]); return o; },
+  punk: (r) => { const o = [['intro', 4]]; for (let k = 0; k < 2; k++) o.push(['verse', 8], ['chorus', 8]); if (r.chance(0.65)) o.push(['break', r.pick([4, 8])]); o.push(['chorus', 8]); if (r.chance(0.5)) o.push(['chorus', 8]); o.push(['outro', 4]); return o; },
+  hiphop: (r) => { const o = [['intro', r.pick([4, 8])]], n = 2 + r.int(2); for (let k = 0; k < n; k++) { o.push(['verse', 16], ['chorus', 8]); if (k === n - 2 && r.chance(0.4)) o.push(['break', 8]); } o.push(['outro', 4]); return o; },
+  triphop: (r) => { const o = [['intro', r.pick([8, 16])], ['verse', 16], ['chorus', 8], ['verse', 16], ['break', r.pick([8, 16])], ['chorus', 8]]; if (r.chance(0.4)) o.push(['chorus', 8]); o.push(['outro', 8]); return o; },
+  newwave: (r) => { const o = [['intro', 8]], pre = r.chance(0.6); for (let k = 0; k < 2; k++) { o.push(['verse', 16]); if (pre) o.push(['prechorus', r.pick([4, 8])]); o.push(['chorus', 8]); } o.push(['break', 8], ['chorus', 8]); if (r.chance(0.5)) o.push(['chorus', 8]); o.push(['outro', 8]); return o; }
+};
+E.structureFor = function (song, seed) {
+  const f = E.STRUCTS[song.genre]; if (!f || song.L !== 4) return null;
+  const r = rng(seed), secs = f(r).map(([t, b]) => ({ id: 's' + hash(seed, t, Math.random()), type: t, bars: b }));
+  if (song.arr) E.oddLengths({ L: song.L, sections: secs }, rng(hash(seed, 'odd')));
+  return secs;
+};
 E.randomStructure = function (song, seed) {
+  { const own = E.structureFor(song, seed); if (own) return own; } // the genre's own language
   const r = rng(seed), g = song.genre, L = song.L, U = L === 12 ? 12 : 4;
   const len = (t) => (t === 'fill' ? 1 + r.int(2) : L === 12 && t === 'outro' ? 4 : L === 12 ? 12 * (t === 'verse' || t === 'chorus' ? 1 + r.int(2) : 1) : t === 'prechorus' || t === 'build' ? r.pick([4, 8]) : t === 'outro' ? (L === 12 ? 4 : r.pick([4, 8, 8])) : t === 'intro' ? r.pick([4, 8, 8, 16]) : r.pick([8, 8, 16, 16]));
   const out = [['intro']];
@@ -4423,7 +4444,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 02:35. ' + D.COPYRIGHT + '. All rights reserved.')));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 02:42. ' + D.COPYRIGHT + '. All rights reserved.')));
 }
 
 // save to library
