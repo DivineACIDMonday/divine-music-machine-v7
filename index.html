@@ -2615,8 +2615,8 @@ E.PLUGINS = {
   iron2: Object.assign({ name: 'Virtual Guitarist Iron 2', parts: ['chords', 'melody', 'bass', 'pad', 'answer'] }, clone(VG)),
   cinedream: Object.assign({ name: 'Virtual Guitarist Cinedream', parts: ['chords', 'melody', 'bass', 'pad', 'answer'] }, clone(VG)),
   carbon: { name: 'Virtual Guitarist Carbon', family: 'guitar', parts: ['chords', 'melody', 'bass', 'pad', 'answer'], play: [nn('C4'), nn('C7')], roles: { intro: nn('E1'), verse: nn('C3'), chorus: nn('E3'), build: nn('F#1'), break: null, outro: nn('E1'), fill: null, end: nn('C#1') }, zones: [['common', nn('C1'), nn('B2')], ['style', nn('C3'), nn('B3')], ['play', nn('C4'), nn('C7')]], silence: nn('C1'), endHold: true },
-  royal: { name: 'Virtual Bassist Royal', family: 'bass', parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
-  slap: { name: 'Virtual Bassist Slap', family: 'bass', parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
+  royal: { name: 'Virtual Bassist Royal', family: 'bass', inst: [nn('C1'), nn('D#3')], /* Instrument mode plays from C1, the G string tops out at D#3 */ parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
+  slap: { name: 'Virtual Bassist Slap', family: 'bass', inst: [nn('D1'), nn('D#4')], hold: { finger: nn('A-1'), slap: nn('B-1') }, /* Instrument mode D1 to D#4; A-1 Finger and B-1 Slap override while held */ parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
   score: { name: 'Virtual Pianist Score', family: 'piano', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['play', nn('C2'), nn('C6')]], noPlayer: true },
   usynth: { name: 'Usynth', family: 'synth', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['patterns', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]], noPlayer: true }
 };
@@ -2642,7 +2642,13 @@ E.applyMask = function (song, part, notes, pluginKey, settings) {
   const mode = pl.noPlayer ? 'instrument' : (settings.mode || 'player');
   const lo = pl.play[0] + oct, hi = pl.play[1] + oct;
   if (mode === 'instrument') {
-    const played = foldInto(notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p })), lo, Math.min(hi, lo + 36));
+    const ilo = pl.inst ? pl.inst[0] + oct : lo, ihi = pl.inst ? pl.inst[1] + oct : hi; // a bass in Instrument mode has its own, lower range
+    const played = foldInto(notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p })), ilo, Math.min(ihi, ilo + 36));
+    if (pl.hold) { // technique keys that work while held: finger in quiet sections, slap where it lifts; a single line stays fingered
+      const BTh = E.barTicks(song), HOLD = { chorus: 'slap', drop: 'slap', outro: 'slap' }, single = part === 'melody' || part === 'answer'; let b0 = 0; const hs = [];
+      for (const s of song.sections) { const k = single ? 'finger' : (HOLD[s.type] || 'finger'); const t = Math.max(0, b0 * BTh - 30); hs.push({ t, d: (b0 + s.bars) * BTh - 90 - t, p: pl.hold[k], v: 100 }); b0 += s.bars; }
+      return hs.concat(played).sort((x, y) => x.t - y.t);
+    }
     if (!pl.ks) return played;
     // the plugin's key switches per section: half muted and tight in verses, open in choruses, muted in a break; a melody stays open
     const BT = E.barTicks(song), ks = pl.ks, single = part === 'melody' || part === 'answer';
@@ -2988,7 +2994,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 10:55)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 11:03)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -4987,7 +4993,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 10:55. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 11:03. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
