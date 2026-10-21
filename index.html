@@ -2606,15 +2606,16 @@ E.PLUGINS = {
   tekno: { name: 'BABY Audio Tekno', parts: ['beat'], drums: [36, 37, 38, 45, 40, 42, 46, 53] },
   beatmaker: { name: 'UJAM Beatmaker 3', parts: ['beat'], drums: [36, 38, 40, 43, 45, 48, 52, 59] }, /* v3 white keys: Kick 1, Kick 2, Snare 1, Snare 3/Clap, HH 1, HH 3, Perc, Cymbal 1. black keys are loops, never used */
   vdrummer: { name: 'UJAM Virtual Drummer', parts: ['beat'], drums: [36, 41, 38, 40, 42, 46, 37, 49] }, /* Legend, Brute and the rest: Kick, Tom Lo 1 for kick 2, Snare, Snare Rim for the clap (no clap except HOT), HH Close, HH Open, Sidestick for perc, Crash 1 */
+  ezdrummer: { name: 'Toontrack EZdrummer 3', parts: ['beat'], drums: [36, 36, 38, 40, 42, 46, 37, 49] }, /* Toontrack default map, GM based: Kick, Kick, Snare, Snare Rimshot for the clap (acoustic kits have no clap), HH Closed, HH Open, Sidestick for perc, Crash */
   playbeat: { name: 'Audiomodern Playbeat 4', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] }, /* trigger keyboard, lowest octave: one key per channel 1 to 8 */
   playbeat: { name: 'Audiomodern Playbeat 4', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] }, /* 8 channels C1 to G1 */
   beatmaker2: { name: 'UJAM Beatmaker 2 (old)', parts: ['beat'], drums: [36, 37, 38, 39, 42, 46, 47, 49] }, /* v2 instrument keys */
-  silk2: Object.assign({ name: 'Virtual Guitarist Silk 2', parts: ['chords', 'melody', 'bass'] }, clone(VG)),
-  iron2: Object.assign({ name: 'Virtual Guitarist Iron 2', parts: ['chords', 'melody', 'bass'] }, clone(VG)),
-  cinedream: Object.assign({ name: 'Virtual Guitarist Cinedream', parts: ['chords', 'melody', 'bass'] }, clone(VG)),
-  carbon: { name: 'Virtual Guitarist Carbon', family: 'guitar', parts: ['chords', 'melody', 'bass'], play: [nn('C4'), nn('C7')], roles: { intro: nn('E1'), verse: nn('C3'), chorus: nn('E3'), build: nn('F#1'), break: null, outro: nn('E1'), fill: null, end: nn('C#1') }, zones: [['common', nn('C1'), nn('B2')], ['style', nn('C3'), nn('B3')], ['play', nn('C4'), nn('C7')]], silence: nn('C1'), endHold: true },
-  royal: { name: 'Virtual Bassist Royal', family: 'bass', parts: ['bass', 'melody', 'chords'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
-  slap: { name: 'Virtual Bassist Slap', family: 'bass', parts: ['bass', 'melody', 'chords'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
+  silk2: Object.assign({ name: 'Virtual Guitarist Silk 2', parts: ['chords', 'melody', 'bass', 'pad', 'answer'] }, clone(VG)),
+  iron2: Object.assign({ name: 'Virtual Guitarist Iron 2', parts: ['chords', 'melody', 'bass', 'pad', 'answer'] }, clone(VG)),
+  cinedream: Object.assign({ name: 'Virtual Guitarist Cinedream', parts: ['chords', 'melody', 'bass', 'pad', 'answer'] }, clone(VG)),
+  carbon: { name: 'Virtual Guitarist Carbon', family: 'guitar', parts: ['chords', 'melody', 'bass', 'pad', 'answer'], play: [nn('C4'), nn('C7')], roles: { intro: nn('E1'), verse: nn('C3'), chorus: nn('E3'), build: nn('F#1'), break: null, outro: nn('E1'), fill: null, end: nn('C#1') }, zones: [['common', nn('C1'), nn('B2')], ['style', nn('C3'), nn('B3')], ['play', nn('C4'), nn('C7')]], silence: nn('C1'), endHold: true },
+  royal: { name: 'Virtual Bassist Royal', family: 'bass', parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
+  slap: { name: 'Virtual Bassist Slap', family: 'bass', parts: ['bass', 'melody', 'chords', 'pad', 'answer'], play: [nn('C3'), nn('C5')], roles: { intro: nn('C#2'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: nn('F#2'), end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C5')]], silence: nn('C0') },
   score: { name: 'Virtual Pianist Score', family: 'piano', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['play', nn('C2'), nn('C6')]], noPlayer: true },
   usynth: { name: 'Usynth', family: 'synth', parts: ['chords', 'pad', 'melody', 'answer', 'bass'], play: [nn('C2'), nn('C6')], roles: null, zones: [['patterns', nn('C1'), nn('B1')], ['play', nn('C2'), nn('C6')]], noPlayer: true }
 };
@@ -2977,7 +2978,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 04:21)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 05:15)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   return 'mailto:divinemonday@gmail.com?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
 }
@@ -3315,7 +3316,7 @@ function renderTop() {
         h('button', { class: st.polished ? 'on' : '', title: 'Theory checked and mix ready', onclick: () => { st.polished = true; renderTop(); } }, 'Polished')),
       h('button', { id: 'shareBtn', title: 'Send your song as a link: whoever opens it can listen and download the MP3 and MIDI', onclick: shareSong }, ico('share'), 'Share'),
       h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver'),
-      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Feedback or contact', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: sendFeedback }, '📮'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
+      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'suiteBtn', 'aria-label': 'All Divine Monday machines', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠'), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Feedback or contact', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: sendFeedback }, '📮'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
   );
 }
 function setMeter(m) {
@@ -3998,7 +3999,7 @@ function renderEditor() {
     }
     head.append(h('button', { class: st.shadows ? 'on' : '', 'aria-pressed': st.shadows, title: 'Show the machine’s suggestions as dashed shapes', onclick: () => { st.shadows = !st.shadows; renderEditor(); } }, ico('eye'), 'Shadows'));
     if (st.shadows) head.append(h('div', { class: 'seg', role: 'group', 'aria-label': 'New shadows', style: 'grid-template-columns:auto auto;gap:4px' },
-      h('button', { id: 'shadowSec', title: 'Other suggestions (dashed shapes) for ' + sectionLabel(st.sec), onclick: () => { secNow().shSeed = D.newSeed(); saveSession(); renderEditor(); setHint('New shadows for ' + sectionLabel(st.sec) + '. Tap a dashed shape to keep it.'); } }, ico('dice'), 'Section'),
+      h('button', { id: 'shadowSec', title: 'Other suggestions (dashed shapes) for ' + sectionLabel(st.sec), onclick: () => { const sig = () => [...document.querySelectorAll('#edbody .shadow')].map((x) => x.hasAttribute('data-lane') ? x.getAttribute('data-lane') + ':' + x.getAttribute('data-step') : x.getAttribute('data-s') + ':' + x.getAttribute('data-p')).join(' '); const before = sig(); for (let i = 0; i < 8; i++) { secNow().shSeed = D.newSeed(); renderEditor(); if (sig() !== before) break; } saveSession(); setHint('New shadows for ' + sectionLabel(st.sec) + '. Tap a dashed shape to keep it.'); } }, ico('dice'), 'Section'),
       h('button', { id: 'shadowAll', title: 'Other suggestions (dashed shapes) for every section', onclick: () => { song().sections.forEach((x) => { x.shSeed = D.newSeed(); }); saveSession(); renderEditor(); setHint('New shadows in every section. Tap a dashed shape to keep it.'); } }, ico('dice'), 'All')));
     head.append(h('div', { style: 'flex-basis:100%;height:0' }));
     if (st.view === 'beat') head.append(h('button', { id: 'spiralBeat', title: 'The machine makes a beat for the whole spiral: one core groove, every kind of section its own version of it', onclick: spiralBeatAsk }, ico('dice'), 'Whole spiral'));
@@ -4771,7 +4772,7 @@ function deliveryNo(bump) {
   if (bump) { const hh = songHash(); if (st.lastDeliveredHash !== hh || !st.sessionNo) { n++; store.set('dmm-counter-v1', n); st.sessionNo = n; st.lastDeliveredHash = hh; } return String(st.sessionNo).padStart(3, '0'); }
   return String(st.lastDeliveredHash === songHash() && st.sessionNo ? st.sessionNo : n + 1).padStart(3, '0');
 }
-const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
+const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', ezdrummer: 'EZdrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', score: 'Score', usynth: 'Usynth' };
 // the genre in every file name, so you see at a glance what it is: DM_Untitled_Acid_Beat_...
 const genreTag = (sg) => ((D.GENRES[sg.genre] || {}).name || sg.genre || '').replace(/[^A-Za-z0-9]+/g, '');
 function fileName(part, no, extra, plugin) { const sg = song(); const pl = plugin ? PLUG_SHORT[plugin] : ''; return 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_' + part + (pl ? '_' + pl : '') + (extra ? '_' + extra : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
@@ -4959,7 +4960,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 04:21. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 05:15. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
