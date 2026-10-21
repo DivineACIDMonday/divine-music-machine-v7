@@ -24,7 +24,7 @@ address{font-style:normal}
 <p class="muted">Angaben gemäß § 5 DDG</p>
 <address>JJ Cornelissen<br>Divine Monday<br>Mindenerstr. 9<br>10589 Berlin<br>Deutschland</address>
 <h3>Kontakt</h3>
-<p>E-Mail: <a href="mailto:divinemonday@gmail.com">divinemonday@gmail.com</a></p>
+<p>E-Mail: <span class="em">divinemonday (at) gmail (dot) com</span></p>
 <h3>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h3>
 <p>JJ Cornelissen, Anschrift wie oben.</p>
 <h3>Marken</h3>
@@ -36,7 +36,7 @@ address{font-style:normal}
 <h3>Kurz gesagt</h3>
 <p>Die Apps von Divine Monday (Divine Music Machine Pro, Lite, Lite UJAM und Divine Groove Machine) laufen vollständig in deinem Browser. Es gibt keine Anmeldung, keine Cookies und keine Werbung. Deine Songs werden nicht an uns gesendet. Wir zählen nur anonym, wie oft die Apps genutzt werden (siehe Besucherzählung).</p>
 <h3>Verantwortlicher</h3>
-<p>JJ Cornelissen, Mindenerstr. 9, 10589 Berlin, E-Mail: <a href="mailto:divinemonday@gmail.com">divinemonday@gmail.com</a></p>
+<p>JJ Cornelissen, Mindenerstr. 9, 10589 Berlin, E-Mail: <span class="em">divinemonday (at) gmail (dot) com</span></p>
 <h3>Hosting durch GitHub Pages</h3>
 <p>Diese Seiten werden von GitHub Pages bereitgestellt (GitHub Inc., 88 Colin P. Kelly Jr. Street, San Francisco, CA 94107, USA). Beim Aufruf verarbeitet GitHub technisch notwendige Daten wie deine IP-Adresse, Datum und Uhrzeit und die aufgerufene Seite, um die Seite auszuliefern und die Sicherheit zu gewährleisten. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist die zuverlässige Bereitstellung der Apps. GitHub ist nach dem EU-US Data Privacy Framework zertifiziert. Mehr dazu: <a href="https://docs.github.com/de/site-policy/privacy-policies/github-general-privacy-statement" rel="noopener">Datenschutzerklärung von GitHub</a>. Wir selbst haben keinen Zugriff auf diese Daten.</p>
 <h3>Besucherzählung mit GoatCounter</h3>
@@ -61,7 +61,11 @@ address{font-style:normal}
 
 <section id="en" lang="en">
 <h2>English summary</h2>
-<p>Site owner: JJ Cornelissen (Divine Monday), Mindenerstr. 9, 10589 Berlin, Germany. Email: <a href="mailto:divinemonday@gmail.com">divinemonday@gmail.com</a>.</p>
+<p>Site owner: JJ Cornelissen (Divine Monday), Mindenerstr. 9, 10589 Berlin, Germany. Email: <span class="em">divinemonday (at) gmail (dot) com</span>.</p>
 <p>The apps run entirely in your browser. No sign-up, no cookies, no ads. We count visits anonymously with GoatCounter (which app, genre, downloads, screen size, browser, country); no cookies, no IP addresses stored, nothing that identifies you. Your songs and settings stay in your browser's local storage and are never sent to us. Share links carry the song after the # sign, which browsers do not send to the server. Fonts are built into the pages; nothing is loaded from Google or other third parties. The pages are hosted by GitHub Pages, which processes technical data such as your IP address to deliver them (see GitHub's privacy statement). The Feedback / contact button opens your own mail app with a prepared message; you see everything before you send it. Brand names such as UJAM, XLN Audio, BABY Audio and Audiomodern belong to their owners; Divine Monday is not affiliated with them. What you make with the apps is yours.</p>
 </section>
-</main></body></html>
+</main><script>
+/* the address is put together here, so bots reading the page find no address; people see a normal clickable link */
+document.querySelectorAll('.em').forEach(function(el){var to='divinemonday'+String.fromCharCode(64)+['gmail','com'].join('.');var a=document.createElement('a');a.href='mail'+'to:'+to;a.textContent=to;el.replaceWith(a);});
+</script>
+</body></html>
