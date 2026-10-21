@@ -2598,7 +2598,7 @@ E.hintBeat = function (song, data) {
 const nn = (name) => { const m = /^([A-G]#?)(-?\d)$/.exec(name); return NOTE.indexOf(m[1]) + (parseInt(m[2], 10) + 2) * 12; };
 E.nn = nn;
 E.noteLabel = (p) => NOTE[((p % 12) + 12) % 12] + (Math.floor(p / 12) - 2);
-const VG = { family: 'guitar', play: [nn('C3'), nn('C6')], roles: { intro: nn('E0'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: null, end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C6')]], silence: nn('C0') };
+const VG = { family: 'guitar', ks: { style: nn('C#1'), open: nn('A#2'), half: nn('G#2'), muted: nn('F#2'), dead: nn('D#2') }, /* Instrument mode key switches, read from the plugin: C#1 Strum Auto, A#2 Open, G#2 Half Muted, F#2 Muted, D#2 Dead Notes */ play: [nn('C3'), nn('C6')], roles: { intro: nn('E0'), verse: nn('C2'), chorus: nn('E2'), build: nn('G2'), break: null, outro: nn('E0'), fill: null, end: nn('B2') }, zones: [['common', nn('C0'), nn('B1')], ['style', nn('C2'), nn('B2')], ['play', nn('C3'), nn('C6')]], silence: nn('C0') };
 E.PLUGINS = {
   plain: { name: 'Plain MIDI', parts: ['bass', 'chords', 'pad', 'melody', 'answer'] },
   gm: { name: 'Plain MIDI (GM drums)', parts: ['beat'], drums: [36, 35, 38, 39, 42, 46, 37, 49] },
@@ -2641,7 +2641,16 @@ E.applyMask = function (song, part, notes, pluginKey, settings) {
   if (!pl.family) return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p }));
   const mode = pl.noPlayer ? 'instrument' : (settings.mode || 'player');
   const lo = pl.play[0] + oct, hi = pl.play[1] + oct;
-  if (mode === 'instrument') return foldInto(notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p })), lo, Math.min(hi, lo + 36));
+  if (mode === 'instrument') {
+    const played = foldInto(notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p })), lo, Math.min(hi, lo + 36));
+    if (!pl.ks) return played;
+    // the plugin's key switches per section: half muted and tight in verses, open in choruses, muted in a break; a melody stays open
+    const BT = E.barTicks(song), ks = pl.ks, single = part === 'melody' || part === 'answer';
+    const ART = { intro: 'half', verse: 'half', prechorus: 'half', build: 'half', chorus: 'open', drop: 'open', break: 'muted', outro: 'open' };
+    const sw = [{ t: 0, d: 30, p: ks.style, v: 100 }]; let cur = null, b0 = 0;
+    for (const s of song.sections) { const a = single ? 'open' : (s.type === 'fill' ? cur : (ART[s.type] || 'open')); if (a && a !== cur) { sw.push({ t: Math.max(0, b0 * BT - 30), d: 30, p: ks[a], v: 100 }); cur = a; } b0 += s.bars; }
+    return sw.concat(played).sort((x, y) => x.t - y.t);
+  }
   // player mode: the plugin plays its own phrases. we send chord notes per bar plus one held phrase key per stretch
   const BT = E.barTicks(song), total = E.totalBars(song);
   const R = E.makeRenderer(song);
@@ -2979,7 +2988,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 10:33)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 10:55)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -4978,7 +4987,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 10:33. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 10:55. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
