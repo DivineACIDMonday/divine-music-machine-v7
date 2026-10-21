@@ -179,6 +179,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .mlink:hover{border-color:var(--accent)}
 .manuals.small .mlink{padding:3px 8px}
 .copy{margin-top:8px;color:var(--faint);font-size:11px}
+.noai{margin:10px 0 6px;font-size:13px;color:var(--muted)}.noai b{display:inline-block;color:#101219;background:#f0c25a;border-radius:999px;padding:2px 10px;margin-right:6px;font-size:12px}
 a.legal{color:var(--muted);text-decoration:underline;white-space:nowrap}
 .small{font-size:12px;color:var(--muted)}
 
@@ -2879,7 +2880,7 @@ function renderTop() {
       h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Undo', title: 'Undo (Ctrl Z)', disabled: !st.hist.length, onclick: undo }, ico('undo')), h('button', { class: 'iconbtn', 'aria-label': 'Redo', title: 'Redo', disabled: !st.fut.length, onclick: redo }, ico('redo'))),
       h('button', { id: 'shareBtn', title: 'Send your groove as a link: whoever opens it can listen and download the MIDI', onclick: shareSong }, ico('share'), 'Share'),
       h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver'),
-      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Send feedback', title: 'Send feedback: opens a mail to Divine Monday', onclick: sendFeedback }, '📮'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
+      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Feedback or contact', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: sendFeedback }, '📮'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
   );
 }
 function setMeter(m) {
@@ -2908,7 +2909,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback: ' + FB_APP + ' (version 2026-10-21 04:01)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 04:21)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   return 'mailto:divinemonday@gmail.com?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
 }
@@ -4400,6 +4401,7 @@ function openStart() {
     !st.boot ? keepStructureBox() : null,
     h('h3', null, st.boot ? 'Pick a groove' : 'Or a new groove from scratch'), genres,
     h('div', { class: 'small' }, 'The genre sets the swing and what the shadows suggest. Change it any time.'),
+    h('div', { class: 'noai' }, h('b', null, '⚙️ No AI inside'), ' Every note comes from music rules, patterns and dice. Fully mechanical.'),
     h('div', { class: 'small faint copy' }, D.COPYRIGHT + '. All rights reserved.'),
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
   );
@@ -4473,7 +4475,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 04:01. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Send feedback'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 04:21. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library

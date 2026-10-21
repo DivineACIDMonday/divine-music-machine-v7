@@ -92,6 +92,8 @@ body.lite #app{display:none}
 #liteSheet .singrow{display:flex;flex-wrap:wrap;gap:6px}
 #liteSheet .singrow button{flex:0 0 auto;padding:6px 10px;font-size:13px}
 
+#lite .noai{margin:4px 0 14px;font-size:14px;color:var(--muted)}#lite .noai b{display:inline-block;color:#101219;background:#f0c25a;border-radius:999px;padding:2px 10px;margin-right:6px;font-size:13px}
+
 </style>
 <style>
 /* Layout: one instrument panel. Top bar = song settings, left = song spiral, centre = the editor, right = the part slots (one opens at a time), top bar also holds delivery. Dark first, like gear in a dim studio. */
@@ -251,6 +253,7 @@ input[type=number]{width:64px;font-variant-numeric:tabular-nums}
 .mlink:hover{border-color:var(--accent)}
 .manuals.small .mlink{padding:3px 8px}
 .copy{margin-top:8px;color:var(--faint);font-size:11px}
+.noai{margin:10px 0 6px;font-size:13px;color:var(--muted)}.noai b{display:inline-block;color:#101219;background:#f0c25a;border-radius:999px;padding:2px 10px;margin-right:6px;font-size:12px}
 a.legal{color:var(--muted);text-decoration:underline;white-space:nowrap}
 .small{font-size:12px;color:var(--muted)}
 
@@ -3058,7 +3061,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback: ' + FB_APP + ' (version 2026-10-21 03:48)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 04:21)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   return 'mailto:divinemonday@gmail.com?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
 }
@@ -3396,7 +3399,7 @@ function renderTop() {
         h('button', { class: st.polished ? 'on' : '', title: 'Theory checked and mix ready', onclick: () => { st.polished = true; renderTop(); } }, 'Polished')),
       h('button', { id: 'shareBtn', title: 'Send your song as a link: whoever opens it can listen and download the MP3 and MIDI', onclick: shareSong }, ico('share'), 'Share'),
       h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver'),
-      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Send feedback', title: 'Send feedback: opens a mail to Divine Monday', onclick: sendFeedback }, '📮'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
+      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Feedback or contact', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: sendFeedback }, '📮'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
   );
 }
 function setMeter(m) {
@@ -4935,6 +4938,7 @@ function openStart() {
     h('div', { class: 'stepnum' }, 'Step 1 of 2'), h('h3', null, st.boot ? 'Pick a genre' : 'Or a new song from scratch: pick a genre'),
     genres,
     h('div', { class: 'small' }, 'Not sure? Free flow follows wherever you go, and the machine tells you later what it sounds like.'),
+    h('div', { class: 'noai' }, h('b', null, '⚙️ No AI inside'), ' Every note comes from music rules, patterns and dice. Fully mechanical.'),
     manualLinks(true),
     h('div', { class: 'small faint copy' }, D.COPYRIGHT + '. All rights reserved.'),
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
@@ -5039,7 +5043,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 03:48. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Send feedback'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 04:21. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -5611,6 +5615,7 @@ function openStart() {
   const box = h('div', { id: 'liteStart' }, h('div', { class: 'col' },
     h('h1', null, 'Divine Music Machine ', h('b', null, 'Lite'), UJ ? h('span', { class: 'ujam' }, 'UJAM') : null),
     h('p', null, 'Pick a style. The machine makes a whole song right away. Then you steer.'),
+    h('div', { class: 'noai' }, h('b', null, '⚙️ No AI inside'), ' Every note comes from music rules, patterns and dice. Fully mechanical.'),
     h('div', { class: 'gcards' }, D.GENRE_ALL.map((g) => h('button', { class: 'gc', id: 'lg_' + g, style: '--gc:var(' + GENRE_COLOR[g] + ')', onclick: () => makeSong(g) }, h('b', null, D.GENRES[g].name), h('span', null, GENRE_LINE[g] || '')))),
     last && last.parts && song() && st.liteReady ? h('button', { class: 'ghost', onclick: () => box.remove() }, 'Back to my song') : null,
     last && last.parts && !st.liteReady ? h('button', { class: 'ghost', id: 'liteContinue', onclick: () => { A.loadSong(last); st.liteReady = true; box.remove(); renderLite(); } }, 'Continue where you left off') : null,
@@ -5896,8 +5901,8 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-21 03:48 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
-    h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Send feedback'),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-21 04:21 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
 
@@ -5930,8 +5935,8 @@ function renderLite() {
       h('button', { id: 'litePro', title: 'Open this song in Divine Music Machine Pro, with every button', onclick: openPro }, '⚙️ Pro'),
       h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, '💬 Explain'),
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
-      h('button', { id: 'liteFeedback', title: 'Send feedback: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Feedback')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-21 03:48')));
+      h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-21 04:21')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
