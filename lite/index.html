@@ -2775,8 +2775,17 @@ E.bmMap = function (title) {
   return [36, 38, 40, at('Clap', 'Sn 3', 'Sn 2'), 45, at('HH O', 'HH 3', 'HH 2'), at('Perc 1', 'Perc', 'Tamb', 'Perc 2', 'HH 4', 'Acc M', 'Tom M'), at('Cym 1')];
 };
 // Beatmaker hits with the title's extra pads: HH 2 on the in between sixteenths of a chorus, toms rolling down in a fill bar, a Vox or FX hit to open each chorus
+E.BM_NAMES0 = { 36: 'Kick', 38: 'Kick 2', 40: 'Sn 1', 41: 'Sn 2', 43: 'Clap', 45: 'HH 1', 47: 'HH 2', 48: 'HH O', 50: 'Tom L', 52: 'Tom M', 53: 'Tom H', 55: 'Perc 1', 57: 'Perc 2', 59: 'Perc 3', 60: 'Cym 1', 62: 'Cym 2' };
+// which of the 8 machine lanes a pad sounds most like: where it lands in a plugin with 8 slots
+E.foldName = (nm) => (/^(Kck 2|Kick 2|Acc)$/.test(nm) ? K2 : /^(Kck|Kick|Bass)/.test(nm) ? K : /^Sn/.test(nm) ? SN : /^Clap/.test(nm) ? CP : /^HH (O|HO)/.test(nm) ? OH : /^HH/.test(nm) ? HH : /^Cym/.test(nm) ? CR : PC);
+E.bmLayout = function (title) {
+  const P = E.bmPads(title), base = E.bmMap(title), extra = E.BM_KEYS.filter((k) => !base.includes(k)).slice(0, 8);
+  for (let i = 0; extra.length < 8; i++) if (!extra.includes(E.BM_KEYS[i])) extra.push(E.BM_KEYS[i]);
+  const keys = base.concat(extra), names = keys.map((k) => (P.length === 16 ? P[E.BM_KEYS.indexOf(k)] : E.BM_NAMES0[k]));
+  return { keys, names, fold: names.map((nm, li) => (li < 8 ? li : E.foldName(nm))) };
+};
 E.bmHits = function (song, notes, title) {
-  const P = E.bmPads(title), map = E.bmMap(title), full = P.length === 16;
+  const P = E.bmPads(title), map = E.bmLayout(title).keys, own = notes.some((n) => n.lane >= 8), full = P.length === 16 && !own; // your own extra lanes: the machine adds none of its own
   const key = (nm) => { const i = P.indexOf(nm); return i >= 0 ? E.BM_KEYS[i] : null; };
   const BT = E.barTicks(song), steps = E.meter(song).steps, stepT = BT / steps, info = [], seen = {}; let b0 = 0;
   song.sections.forEach((s, i) => { const next = song.sections[i + 1]; seen[s.type] = (seen[s.type] || 0) + 1;
@@ -2800,7 +2809,7 @@ E.applyMask = function (song, part, notes, pluginKey, settings) {
   const oct = (settings.octave || 0) * 12;
   if (part === 'beat' && pl.loops && settings.mode === 'player') return E.beatLoops(song, notes, pl.loops);
   if (part === 'beat' && pl.loops) return E.bmHits(song, notes, settings.title != null ? settings.title : (E.titleOf ? E.titleOf('beat', pluginKey) : ''));
-  if (part === 'beat') { const map = pl.drums || E.PLUGINS.gm.drums; return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: map[n.lane] })); }
+  if (part === 'beat') { const map = pl.drums || E.PLUGINS.gm.drums; let fold = null; const lane = (li) => (li < 8 ? li : (fold = fold || E.bmLayout(E.titleOf ? E.titleOf('beat', 'beatmaker') : '').fold)[li]); return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: map[lane(n.lane)] })); }
   if (!pl.family) return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p }));
   const mode = pl.noPlayer ? 'instrument' : (settings.mode || 'player');
   const lo = pl.play[0] + oct, hi = pl.play[1] + oct;
@@ -4234,8 +4243,9 @@ function clearPart() {
 }
 
 // --- shapes for drum lanes
+function laneDefs() { return D.LANES; }
 function laneShape(li, x, y, r, attrs) {
-  const sh = D.LANES[li].shape; const a = Object.assign({}, attrs);
+  const sh = (laneDefs()[li] || D.LANES[li] || D.LANES[7]).shape; const a = Object.assign({}, attrs);
   if (sh === 'circle') return s('circle', Object.assign({ cx: x, cy: y, r }, a));
   if (sh === 'ring') return s('circle', Object.assign({ cx: x, cy: y, r: r * 0.85 }, a, { fill: 'none', 'stroke-width': Math.max(2, r * 0.45), stroke: a.fill || a.stroke }));
   if (sh === 'square') return s('rect', Object.assign({ x: x - r * 0.85, y: y - r * 0.85, width: r * 1.7, height: r * 1.7, rx: 1.5 }, a));
