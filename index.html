@@ -2979,7 +2979,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 06:24)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 10:33)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -3602,7 +3602,7 @@ function renderRight() {
       const lab = h('div', { class: 'lab' }, h('div', null, 'Feel'), h('div', { id: 'feel_' + p }, feelText(P.feel)));
       bindPad(pad, dot, p, lab);
       card.append(h('div', { class: 'row' }, h('span', { class: 'small' }, 'played by'), plugSel),
-        pl.family && !pl.noPlayer ? h('div', { class: 'small' }, 'You get two files: Player (its own phrases) and Instrument (your exact notes).') : '',
+        pl.family && !pl.noPlayer ? h('div', { class: 'small' }, NOTE_PARTS.includes(p) ? 'You get one file: Instrument, your exact notes.' : 'You get two files: Player (its own phrases) and Instrument (your exact notes).') : '',
         h('div', { class: 'feel' }, pad, lab, h('div', { class: 'grow' }),
           h('button', { class: 'iconbtn', title: 'Edit ' + PART_NAMES[p], 'aria-label': 'Edit ' + PART_NAMES[p], onclick: () => { st.view = p; render(); } }, ico('pencil'))));
     }
@@ -4802,7 +4802,9 @@ function buildPartFile(part, polished, plugin, mode) {
   return D.writeMidi([{ name, channel: part === 'beat' ? 9 : 0, notes: masked }], { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
 }
 // UJAM parts with phrases come as two files: Player and Instrument
-function versionsOf(plugin) { const pl = D.PLUGINS[plugin]; return pl && pl.family && !pl.noPlayer ? ['Player', 'Instrument'] : [null]; }
+// a melody or an answer is the notes themselves: a Player file would only hold the chords, the same for both, so they come as Instrument only
+const NOTE_PARTS = ['melody', 'answer'];
+function versionsOf(plugin, part) { const pl = D.PLUGINS[plugin]; if (!(pl && pl.family && !pl.noPlayer)) return [null]; return NOTE_PARTS.includes(part) ? ['Instrument'] : ['Player', 'Instrument']; }
 function rolesOverride() {
   // scanned phrases decide calm and busy keys unless you set a role yourself
   const out = {};
@@ -4976,7 +4978,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 06:24. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 10:33. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -5099,7 +5101,7 @@ function downloadItem(item, plugin) {
     const pl = item.kind === 'part' ? plugin : (p === 'beat' ? song().parts.beat.plugin : 'plain');
     const notes = D.renderSong(sg, p).filter((n) => n.t < item.L * D.barTicks(sg));
     if (!notes.length) continue; // a part that rests here gives no empty file
-    for (const v of versionsOf(pl)) {
+    for (const v of versionsOf(pl, p)) {
       const masked = D.applyMask(sg, p, notes, pl, { octave: st.settings.octave, roles: rolesOverride(), mode: v ? v.toLowerCase() : undefined }).filter((n) => n.t < item.L * D.barTicks(sg));
       const bytes = D.writeMidi([{ name: PART_NAMES[p], channel: p === 'beat' ? 9 : 0, notes: masked }], { bpm: item.bpm, meter: item.meter, title: item.name });
       files.push({ name: 'DM_Lib_' + safe(item.name).slice(0, 40) + '_' + PART_NAMES[p] + (PLUG_SHORT[pl] ? '_' + PLUG_SHORT[pl] : '') + (v ? '_' + v : '') + '_' + item.bpm + 'bpm.mid', data: bytes });
@@ -5118,7 +5120,7 @@ function openDeliver() {
   for (const p of D.PARTS) {
     const on = active.includes(p);
     const sel = h('select', { id: 'dplug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { sg.parts[p].plugin = e.target.value; saveSession(); renderRight(); renderTop(); openDeliver(); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === sg.parts[p].plugin }, D.PLUGINS[k].name)));
-    const vers = on ? versionsOf(sg.parts[p].plugin) : [null];
+    const vers = on ? versionsOf(sg.parts[p].plugin, p) : [null];
     vers.forEach((v, vi) => tbl.append(h('tr', null, h('td', null, vi ? h('span', { class: 'small' }, '') : h('span', { style: 'display:inline-flex;gap:6px;align-items:center' }, shapeIcon(p), PART_NAMES[p])),
       h('td', null, vi ? h('span', { class: 'small' }, v + ' version') : on ? h('div', { style: 'display:grid;gap:4px' }, sel, v ? h('span', { class: 'small' }, v + ' version') : null) : h('span', { class: 'small' }, 'off or silent')),
       h('td', { class: 'fn' }, on ? fileName(PART_NAMES[p], no, [st.polished ? '' : 'pure', v || ''].filter(Boolean).join('_'), sg.parts[p].plugin) : ''),
@@ -5137,7 +5139,7 @@ function openDeliver() {
       h('div', { class: 'pp seg', style: 'grid-template-columns:1fr 1fr;width:220px' }, h('button', { class: !st.polished ? 'on' : '', onclick: () => { st.polished = false; renderTop(); openDeliver(); } }, 'Pure'), h('button', { class: st.polished ? 'on' : '', onclick: () => { st.polished = true; renderTop(); openDeliver(); } }, 'Polished')),
       h('span', { class: 'small' }, st.polished ? 'Polished: notes nudged into key and chords, each part in its own range, loudness balanced.' : 'Pure: exactly what you made, with your feel.')),
     h('div', { class: 'scroller' }, tbl),
-    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { class: 'primary', id: 'deliverAll', onclick: () => deliverFiles(active.flatMap((p) => versionsOf(sg.parts[p].plugin).map((v) => p + (v ? ':' + v : ''))).concat(['structure']), true) }, ico('download'), 'Download all as one .zip'),
+    h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { class: 'primary', id: 'deliverAll', onclick: () => deliverFiles(active.flatMap((p) => versionsOf(sg.parts[p].plugin, p).map((v) => p + (v ? ':' + v : ''))).concat(['structure']), true) }, ico('download'), 'Download all as one .zip'),
       h('span', { class: 'small' }, 'Everything as it is right now, in one .zip. The buttons per row download single .mid files. Drop them on bar 1 in Studio One.')),
     h('div', { style: 'display:flex;gap:8px;flex-wrap:wrap;align-items:center' }, h('button', { id: 'deliverMp3', onclick: (e) => downloadMp3(e.currentTarget) }, ico('download'), h('span', { class: 'lab' }, 'Download as MP3')),
       h('span', { class: 'small' }, 'The whole song as you hear it here, with the sketch sounds of the app. Handy to listen back or share; the plugins in your DAW sound different.')),
@@ -5417,7 +5419,7 @@ async function downloadMp3(btn) {
 }
 /* ---------- share: the link is the song ---------- */
 function activeParts(sg) { return D.PARTS.filter((p) => sg.parts[p].mode !== 'off' && D.renderSong(sg, p).length); }
-function allDeliverParts(sg) { return activeParts(sg).flatMap((p) => versionsOf(sg.parts[p].plugin).map((v) => p + (v ? ':' + v : ''))).concat(['structure']); }
+function allDeliverParts(sg) { return activeParts(sg).flatMap((p) => versionsOf(sg.parts[p].plugin, p).map((v) => p + (v ? ':' + v : ''))).concat(['structure']); }
 function b64u(u8) { let t = ''; for (let i = 0; i < u8.length; i += 0x8000) t += String.fromCharCode.apply(null, u8.subarray(i, i + 0x8000)); return btoa(t).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
 function unb64u(t) { t = t.replace(/-/g, '+').replace(/_/g, '/'); while (t.length % 4) t += '='; const b = atob(t), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u; }
 async function streamBytes(u8, Kind, fmt) { const cs = new Kind(fmt); const w = cs.writable.getWriter(); w.write(u8); w.close(); return new Uint8Array(await new Response(cs.readable).arrayBuffer()); }
