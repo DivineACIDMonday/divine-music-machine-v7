@@ -2925,7 +2925,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 06:24)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 07:08)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -3336,6 +3336,9 @@ function laneMixer() {
   const setFx = (li, patch) => { sec.laneFx = Object.assign({}, sec.laneFx); const f = Object.assign({}, sec.laneFx[li], patch); for (const k of Object.keys(f)) if (f[k] == null || f[k] === '' || (k === 'rnd' && !f[k]) || (k === 'prog' && f[k] === 'none')) delete f[k]; if (!f.rnd) { delete f.kind; delete f.amt; delete f.every; } if (!f.rnd && !f.prog) { delete f.from; delete f.to; } if (Object.keys(f).length) sec.laneFx[li] = f; else delete sec.laneFx[li]; if (!Object.keys(sec.laneFx).length) delete sec.laneFx; };
   const fxChange = (li, patch, msg) => { change(() => { setFx(li, patch); audible(sg, st.sec, li); }, { keep: true }); renderEditor(); if (msg) setHint(msg); };
   const wrap = h('div', { class: 'mixwrap' });
+  if (cnt.every((c) => !c || c.every((v) => !v))) wrap.append(h('div', { class: 'slot open', id: 'mixEmpty', style: 'padding:10px 12px;display:flex;gap:10px;align-items:center;flex-wrap:wrap' },
+    h('span', null, h('b', null, 'Nothing to mix yet. '), sectionLabel(st.sec) + ' has no beat; the mixer varies the hits that are there.'),
+    h('button', { class: 'primary', id: 'mixFill', onclick: () => { spiralBeat(false); render(); } }, ico('dice'), 'Fill the empty sections')));
   const anyRnd = sec.laneFx && Object.values(sec.laneFx).some((f) => f.rnd);
   const anyFxAll = sg.sections.some((x) => x.laneFx), anyRndAll = sg.sections.some((x) => x.laneFx && Object.values(x.laneFx).some((f) => f.rnd));
   wrap.append(h('div', { class: 'mixtop' },
@@ -4408,9 +4411,23 @@ function overlay(sheet, opts) {
 }
 
 // start screen
+// step 2: a whole groove from the machine, or an empty spiral to tap yourself
+function openDoors(g) {
+  const sheet = h('div', { class: 'sheet', style: 'width:min(860px,100%)' },
+    h('div', { class: 'hdr' }, h('h2', null, D.GENRES[g].name), h('div', { class: 'grow' }), h('button', { class: 'ghost', id: 'doorsBack', onclick: openStart }, 'Back')),
+    h('h3', null, 'How do you start?'),
+    h('div', { class: 'genrepick' },
+      h('button', { class: 'gcard', id: 'doorMachine', onclick: () => { newSong(g); spiralBeat(true); closeOverlay(); setHint('A whole ' + D.GENRES[g].name.toLowerCase() + ' groove. Press play, then steer: the Mixer, the dice, or tap the rings.'); } },
+        h('b', null, '🎲 Machine makes a groove'), h('span', null, 'A whole song of beats, ready to play. You steer after.')),
+      h('button', { class: 'gcard', id: 'doorScratch', onclick: () => { newSong(g); closeOverlay(); } },
+        h('b', null, '✏️ From scratch'), h('span', null, 'An empty spiral. You tap every hit, the shadows help.'))),
+    h('div', { class: 'small' }, 'Both can be changed later: Beat, Whole spiral fills or refills the beat any time.'));
+  overlay(sheet, { sticky: st.boot });
+}
+
 function openStart() {
   const last = store.get('dgm-session-v1', null);
-  const genres = h('div', { class: 'genrepick' }, D.GENRE_ALL.map((g) => h('button', { class: 'gcard', id: 'genre_' + g, onclick: () => { newSong(g); closeOverlay(); } },
+  const genres = h('div', { class: 'genrepick' }, D.GENRE_ALL.map((g) => h('button', { class: 'gcard', id: 'genre_' + g, onclick: () => openDoors(g) },
     h('b', null, D.GENRES[g].name), h('span', null, grooveLine(g)))));
   const sheet = h('div', { class: 'sheet', style: 'width:min(860px,100%)' },
     h('div', { class: 'hdr' }, h('h2', null, 'Divine Groove Machine'), h('div', { class: 'grow' }), !st.boot ? h('button', { class: 'ghost', onclick: closeOverlay }, 'Back to my groove') : null),
@@ -4492,7 +4509,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 06:24. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-21 07:08. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
