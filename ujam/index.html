@@ -5129,7 +5129,7 @@ function newSong(genre, how, part) {
 function loadSong(sg) { stopAll(true); st.boot = false; D.ensureTypes(sg); st.held = false; st.loop = false; st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.view = 'overview'; clampSec(); render(); }
 
 // the latest manual, published next to the app, in three languages
-const MANUALS = [['English', '/divine-music-machine-v7/manuals/Divine-Music-Machine-Manual-EN.pdf'], ['Nederlands', '/divine-music-machine-v7/manuals/Divine-Music-Machine-Handleiding-NL.pdf'], ['Deutsch', '/divine-music-machine-v7/manuals/Divine-Music-Machine-Handbuch-DE.pdf']];
+const MANUALS = [['English', '/divine-music-machine-v7/ujam/manuals/Divine-Music-Machine-UJAM-Manual-EN.pdf'], ['Nederlands', '/divine-music-machine-v7/ujam/manuals/Divine-Music-Machine-UJAM-Handleiding-NL.pdf'], ['Deutsch', '/divine-music-machine-v7/ujam/manuals/Divine-Music-Machine-UJAM-Handbuch-DE.pdf']];
 function manualLinks(small) {
   return h('div', { class: 'manuals' + (small ? ' small' : '') }, h('span', null, ico('file'), 'Manual (PDF):'), MANUALS.map(([name, href]) => h('a', { class: 'mlink', href, download: '', target: '_blank', rel: 'noopener' }, name)));
 }

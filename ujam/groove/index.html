@@ -4668,7 +4668,7 @@ function newSong(genre) {
 function loadSong(sg) { stopAll(true); st.boot = false; D.ensureTypes(sg); D.makeGroove(sg, true); st.held = false; st.loop = false; st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.view = 'beat'; clampSec(); render(); }
 
 // the latest manual, published next to the app, in three languages
-const MANUALS = [['English', '/divine-music-machine-v7/groove/manuals/Divine-Groove-Machine-Manual-EN.pdf'], ['Nederlands', '/divine-music-machine-v7/groove/manuals/Divine-Groove-Machine-Handleiding-NL.pdf'], ['Deutsch', '/divine-music-machine-v7/groove/manuals/Divine-Groove-Machine-Handbuch-DE.pdf']];
+const MANUALS = [['English', '/divine-music-machine-v7/ujam/manuals/Divine-Groove-Machine-UJAM-Manual-EN.pdf'], ['Nederlands', '/divine-music-machine-v7/ujam/manuals/Divine-Groove-Machine-UJAM-Handleiding-NL.pdf'], ['Deutsch', '/divine-music-machine-v7/ujam/manuals/Divine-Groove-Machine-UJAM-Handbuch-DE.pdf']];
 function manualLinks(small) {
   return h('div', { class: 'manuals' + (small ? ' small' : '') }, h('span', null, ico('file'), 'Manual (PDF):'), MANUALS.map(([name, href]) => h('a', { class: 'mlink', href, download: '', target: '_blank', rel: 'noopener' }, name)));
 }
