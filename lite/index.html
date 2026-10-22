@@ -2786,7 +2786,7 @@ E.bmLayout = function (title) {
   return { keys, names, fold: names.map((nm, li) => (li < 8 ? li : E.foldName(nm))) };
 };
 // Beatmaker hits: every lane on its pad; the tiny timing drift is pulled onto the grid so the kit plays tight, swing stays
-E.bm808 = () => 0; // the 808 tune you set by ear, in semitones
+E.bm808 = () => 0; // the note the 808 plays with its Bass Tune in the middle, set once by ear (0 = C)
 E.bmHits = function (song, notes, title) {
   const lay = E.bmLayout(title), keys = lay.keys, S = E.STEP, seen = {};
   const out = notes.map((n) => { const g = Math.round(n.t / S) * S; return { t: Math.abs(n.t - g) <= 30 ? g : n.t, d: n.d, v: n.v, p: keys[n.lane] }; });
@@ -2797,7 +2797,7 @@ E.bmHits = function (song, notes, title) {
     const BT = E.barTicks(song), R = E.makeRenderer(song); let last = null;
     const rootAt = (b) => { const at = E.sectionAt(song, b); if (!at) return null; const res = R.res(at.i); const ch = res.chords && !E.isEmpty('chords', res.chords) ? res.chords : res.ctxChords; const c = ch && ch.bars[at.inBar % song.L]; return c ? c.root : null; };
     const bars = [...new Set(hits.filter((n) => n.p === bk).map((n) => Math.floor(n.t / BT)))].sort((a, b) => a - b);
-    for (const b of bars) { const r = rootAt(b); if (r == null) continue; let o = ((r - song.key.root + (E.bm808() || 0)) % 12 + 12) % 12; if (o > 6) o -= 12; const p = 20 + o; if (p === last) continue; last = p; tune.push({ t: Math.max(0, b * BT - 20), d: Math.max(30, BT - 40), p, v: 100 }); }
+    for (const b of bars) { const r = rootAt(b); if (r == null) continue; let o = ((r - (E.bm808() || 0)) % 12 + 12) % 12; if (o > 6) o -= 12; const p = 20 + o; if (p === last) continue; last = p; tune.push({ t: Math.max(0, b * BT - 20), d: Math.max(30, BT - 40), p, v: 100 }); }
   }
   return tune.concat(hits).sort((x, y) => x.t - y.t || x.p - y.p);
 };
@@ -5032,8 +5032,8 @@ function titleFor(p, plugin) { const pl = D.PLUGINS[plugin]; const s = st.settin
 function bm808Sel(p, plugin) {
   if (p !== 'beat' || !D.bmPads(titleFor(p, plugin)).includes('Bass')) return null;
   const cur = st.settings.bm808 || 0;
-  return h('select', { id: 'bm808', 'aria-label': '808 tune', title: '808 tune: set it once by ear so the 808 sits in your key', onchange: (e) => { st.settings.bm808 = +e.target.value; store.set('dmm-settings-v1', st.settings); } },
-    Array.from({ length: 13 }, (_, i) => i - 6).map((o) => h('option', { value: o, selected: o === cur }, '808 tune ' + (o > 0 ? '+' + o : o))));
+  return h('select', { id: 'bm808', 'aria-label': '808 tune', title: '808 note: the note your 808 plays with Bass Tune in the middle. Set it once by ear, then the 808 follows every chord', onchange: (e) => { st.settings.bm808 = +e.target.value; store.set('dmm-settings-v1', st.settings); } },
+    D.NOTE.map((n, o) => h('option', { value: o, selected: o === cur }, '808 note ' + n)));
 }
 D.bm808 = () => st.settings.bm808 || 0;
 D.titleOf = (p, plugin) => titleFor(p, plugin);
