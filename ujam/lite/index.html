@@ -369,7 +369,7 @@ a.legal{color:var(--muted);text-decoration:underline;white-space:nowrap}
 .ltogs button.on{background:var(--fg);color:var(--bg)}
 .tappads{display:flex;gap:4px;flex-wrap:wrap;align-items:center;justify-content:center;padding:6px 4px 2px}
 .tpad{display:inline-flex;flex-direction:column;align-items:center;gap:1px;padding:4px 8px;min-width:38px;font-size:10px}
-.tpad.hit{background:var(--beat);color:var(--bg)}
+.tpad.hit{background:var(--beat);color:var(--bg)}.tpad .tpn{font-size:9px;line-height:1.1;opacity:.75;max-width:64px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .mixempty{border:1px dashed var(--line2);border-radius:10px;padding:10px 12px;font-size:13px}
 .stale{opacity:.35}
 input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;border:0;padding:0;height:20px;min-width:60px;cursor:pointer}
@@ -2021,7 +2021,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       const left = sec.bars - inBar;
       if (left <= 2) for (let s = 0; s < N; s += (left === 1 ? 1 : 2)) lanes[SN][s] = Math.max(lanes[SN][s], 50 + Math.round(s / N * 50));
     }
-    if (E.isBM(song) && (machine || !lanes.slice(8).some((l) => l && l.some((v) => v > 0)))) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
+    if (E.kitOf(song) && (machine || !lanes.slice(8).some((l) => l && l.some((v) => v > 0)))) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
     if (mach && A.beatLanes) lanes.forEach((l, li) => { if (!A.beatLanes.includes(li) && li !== CR) l.fill(0); }); // a quiet verse plays only the bones of the beat
     E.laneFxApply(song, sec, inBar, lanes, N);
     if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
@@ -2609,10 +2609,15 @@ E.shadows = function (song, part, type, data, seedBump, ctxRes) {
       if (!v || used[li][s]) return;
       if (li === K && (used[K][s - 1] || used[K][s + 1])) return;
       if (li === K && used[SN][s] >= 90) return;
-      if (hasAny && !used[li].some((x) => x) && li !== HH && li !== K && li !== SN) return; // keep it calm: lanes you already use
+      if (hasAny && li < 8 && !used[li].some((x) => x) && li !== HH && li !== K && li !== SN) return; // keep it calm: lanes you already use
       out.push({ lane: li, s, v });
     }));
-    return out.slice(0, 10);
+    const kit = E.kitOf(song), extra = [];
+    if (kit && N >= 8) { // the full kit: suggestions on the extra lanes too, in the roles they play
+      const L2 = sug.lanes.map((l) => l.slice()); E.bmRoles(song, { bars: 8 }, 5, L2, N, type === 'break' ? 'verse' : type, false);
+      L2.forEach((l, li) => { if (li < 8 || li >= kit.names.length) return; l.forEach((v, s) => { if (v && !(used[li] && used[li][s])) extra.push({ lane: li, s, v }); }); });
+    }
+    return out.slice(0, 10).concat(extra.slice(0, 8));
   }
   if (part === 'chords') {
     const bars = data ? data.bars : new Array(song.L).fill(null);
@@ -2802,12 +2807,28 @@ E.bmHits = function (song, notes, title) {
   }
   return tune.concat(hits).sort((x, y) => x.t - y.t || x.p - y.p);
 };
+// Virtual Drummer and Tekno: every sound of the kit on its own lane. Lanes 1 to 8 stay where they were.
+// [name, key, role (the Beatmaker name whose job it takes), fold (which of the 8 lanes it sounds most like)]
+E.KITS = {
+  vdrummer: { base: ['Kick', 'Kick 2 (Tom Lo 1)', 'Snare', 'Snare Rim', 'HH Close', 'HH Open', 'Sidestick', 'Crash 1'],
+    extra: [['HH Pedal', 44, 'HH 2', HH], ['HH Half', 54, 'Perc 3', OH], ['Tom Hi', 45, 'Tom H', PC], ['Tom Lo 2', 43, 'Tom M', PC], ['Tom Lo 1', 41, 'Tom L', PC], ['Ride', 51, 'Cym 2', CR], ['Ride Bell', 53, 'Perc 2', PC], ['Crash 2', 57, 'FX', CR]] },
+  tekno: { base: ['kick a', 'kick b', 'snare a', 'clap', 'hat a', 'hat op', 'rimshot', 'crash'],
+    extra: [['snare b', 39, 'Sn 2', SN], ['hat b', 41, 'HH 2', HH], ['tom l', 43, 'Tom L', PC], ['tom h', 44, 'Tom H', PC], ['conga l', 47, 'Perc 2', PC], ['conga h', 48, 'Perc 3', PC], ['ride', 49, 'Cym 2', CR], ['tonal', 50, '', PC], ['cowbell', 51, '', PC], ['block', 52, '', PC]] }
+};
+// the lanes of a plugin with a full kit: names, keys, roles and folds; null for a plugin with 8 slots
+E.kitLayout = function (plugin, title) {
+  const pl = E.PLUGINS[plugin] || {};
+  if (pl.loops) { const l = E.bmLayout(title); return { keys: l.keys, names: l.names, roles: l.names, fold: l.fold }; }
+  const k = E.KITS[plugin]; if (!k || !pl.drums) return null;
+  return { keys: pl.drums.concat(k.extra.map((x) => x[1])), names: k.base.concat(k.extra.map((x) => x[0])), roles: k.base.concat(k.extra.map((x) => x[2])), fold: [0, 1, 2, 3, 4, 5, 6, 7].concat(k.extra.map((x) => x[3])) };
+};
+E.kitOf = (song) => E.kitLayout(song.parts.beat.plugin, E.titleOf ? E.titleOf('beat', song.parts.beat.plugin) : '');
 E.isBM = (song) => !!(E.PLUGINS[song.parts.beat.plugin] || {}).loops;
 // Beatmaker's 16 pads in their own roles, learned from a hand made Beatmaker beat: soft ghost snares, HH 2 as a soft accent,
 // percussion as colour, a ride in the second half of a long chorus, toms only in the fill. Only on the machine's own material
 E.bmRoles = function (song, sec, inBar, lanes, N, type, fill) {
-  const nm = E.bmLayout(E.titleOf ? E.titleOf('beat', song.parts.beat.plugin) : '').names;
-  while (lanes.length < 16) lanes.push(new Array(N).fill(0));
+  const kit = E.kitOf(song); if (!kit) return; const nm = kit.roles;
+  while (lanes.length < kit.names.length) lanes.push(new Array(N).fill(0));
   if (N < 8) return;
   const at = function () { for (const x of arguments) { const i = nm.indexOf(x); if (i >= 0) return i; } return -1; };
   const put = (li, s, v) => { if (li >= 0 && s >= 0 && s < N && !lanes[li][s]) lanes[li][s] = v; };
@@ -2835,6 +2856,7 @@ E.applyMask = function (song, part, notes, pluginKey, settings) {
   const oct = (settings.octave || 0) * 12;
   if (part === 'beat' && pl.loops && settings.mode === 'player') return E.beatLoops(song, notes, pl.loops);
   if (part === 'beat' && pl.loops) return E.bmHits(song, notes, settings.title != null ? settings.title : (E.titleOf ? E.titleOf('beat', pluginKey) : ''));
+  if (part === 'beat' && E.KITS[pluginKey] && pl.drums) { const kit = E.kitLayout(pluginKey), bmf = E.bmLayout(E.titleOf ? E.titleOf('beat', 'beatmaker') : '').fold; return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.lane < kit.keys.length ? kit.keys[n.lane] : pl.drums[bmf[n.lane] || 0] })); }
   if (part === 'beat') { const map = pl.drums || E.PLUGINS.gm.drums; let fold = null; const lane = (li) => (li < 8 ? li : (fold = fold || E.bmLayout(E.titleOf ? E.titleOf('beat', 'beatmaker') : '').fold)[li]); return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: map[lane(n.lane)] })); }
   if (!pl.family) return notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: n.p }));
   const mode = pl.noPlayer ? 'instrument' : (settings.mode || 'player');
@@ -3211,7 +3233,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-22 02:45)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 00:45)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -3827,7 +3849,7 @@ function renderRight() {
     const card = h('div', { class: 'slot ' + (st.view === p ? 'selp ' : '') + (isOpen ? 'open' : 'closed'), id: 'slot_' + p }, head, seg);
     if (isOpen) {
       if (!D.pluginsFor(p).includes(P.plugin)) P.plugin = D.pluginsFor(p)[0];
-      const plugSel = h('select', { id: 'plug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { const was = p === 'beat' ? laneDefs() : null; change(() => { P.plugin = e.target.value; }, { keep: true }); const ex = was ? extraLanesUsed(song()) : []; if (ex.length && !(D.PLUGINS[P.plugin] || {}).loops) toast(ex.map((li) => was[li] ? was[li].name + ' into ' + D.LANES[was[li].fold].name : 'Lane ' + (li + 1)).join(', ') + ': ' + D.PLUGINS[P.plugin].name + ' has 8 slots, so these lanes share a sound now.'); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === P.plugin }, D.PLUGINS[k].name)));
+      const plugSel = h('select', { id: 'plug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { const was = p === 'beat' ? laneDefs() : null; change(() => { P.plugin = e.target.value; }, { keep: true }); const ex = was ? extraLanesUsed(song()) : []; if (ex.length && !D.kitLayout(P.plugin, titleFor('beat', P.plugin))) toast(ex.map((li) => was[li] ? was[li].name + ' into ' + D.LANES[was[li].fold].name : 'Lane ' + (li + 1)).join(', ') + ': ' + D.PLUGINS[P.plugin].name + ' has 8 slots, so these lanes share a sound now.'); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === P.plugin }, D.PLUGINS[k].name)));
       const pl = D.PLUGINS[P.plugin];
       const pad = h('div', { class: 'pad', role: 'slider', tabindex: 0, 'aria-label': PART_NAMES[p] + ' feel', 'aria-valuetext': feelText(P.feel), title: 'Left: ahead of the beat. Right: laid back. Top: tight. Bottom: loose.' });
       const dot = h('i', { style: 'left:' + ((P.feel.x + 1) / 2 * 100) + '%;top:' + (P.feel.y * 100) + '%;background:var(--' + p + ')' });
@@ -4267,11 +4289,11 @@ function renderEditor() {
 }
 function tapPads() {
   return h('div', { class: 'tappads', id: 'tapPads' }, h('span', { class: 'small' }, AU.playing ? 'Tap in while it plays (keys 1 to 8):' : 'Pads (keys 1 to 8). Press play to tap them in:'),
-    laneDefs().map((ln, li) => { const b = h('button', { class: 'tpad', id: 'tpad_' + li, title: ln.name + (li < 8 ? ' (key ' + (li + 1) + ')' : ''), onpointerdown: (e) => { e.preventDefault(); tapIn(li); } }); b.append(svgShape(li), h('span', null, String(li + 1))); return b; }));
+    laneDefs().map((ln, li) => { const b = h('button', { class: 'tpad', id: 'tpad_' + li, title: ln.name + (li < 8 ? ' (key ' + (li + 1) + ')' : ''), onpointerdown: (e) => { e.preventDefault(); tapIn(li); } }); b.append(svgShape(li), h('span', null, String(li + 1)), h('small', { class: 'tpn' }, ln.name)); return b; }));
 }
 function svgShape(li) { const sv = s('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': 'true' }); sv.append(laneShape(li, 8, 8, 6, { fill: cssv('--beat') })); return sv; }
 function tapIn(li) {
-  const v = [110, 92, 108, 100, 80, 84, 76, 100][li];
+  const V = [110, 92, 108, 100, 80, 84, 76, 100], ln = laneDefs()[li], v = V[li] || V[ln && ln.fold != null ? ln.fold : 6] || 90;
   playLanePreview(li, v);
   const el = $('#tpad_' + li); if (el) { el.classList.add('hit'); setTimeout(() => el.classList.remove('hit'), 120); }
   if (!AU.playing || AU.preview) return;
@@ -4291,8 +4313,7 @@ function clearPart() {
 
 // --- shapes for drum lanes
 function laneDefs() {
-  const sg = song(), plug = sg.parts.beat.plugin; if (!(D.PLUGINS[plug] || {}).loops) return D.LANES;
-  const lay = D.bmLayout(titleFor('beat', plug));
+  const sg = song(), plug = sg.parts.beat.plugin, lay = D.kitLayout(plug, titleFor('beat', plug)); if (!lay) return D.LANES;
   return lay.names.map((nm, li) => ({ id: 'p' + li, name: nm, shape: D.LANES[lay.fold[li]].shape, fold: lay.fold[li] }));
 }
 const laneCount = () => laneDefs().length;
@@ -4884,13 +4905,33 @@ const mtof = (p) => 440 * Math.pow(2, (p - 69) / 12);
 function env(g, t, a, peak, dur, rel) { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.setTargetAtTime(0.0001, t + Math.max(a, dur), rel); }
 function track(node, end) { AU.nodes.push({ node, end }); }
 function noiseSrc(t, dur) { const src = AU.ctx.createBufferSource(); src.buffer = AU.noise; src.start(t, Math.random() * 0.5); src.stop(t + dur); track(src, t + dur); return src; }
+// a sketch sound for every extra lane, by what it is called; anything unknown sounds like the lane it folds into
+function drumExtra(nm, li, t, v) {
+  const ctx = AU.ctx, g = ctx.createGain(), amp = Math.pow(v / 127, 1.4), n0 = nm.toLowerCase(); g.connect(AU.master);
+  const osc = (type, f0, f1, dur, peak, rel) => { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1 !== f0) o.frequency.exponentialRampToValueAtTime(f1, t + Math.min(0.08, dur)); o.connect(g); env(g, t, 0.002, peak, 0.01, rel); o.start(t); o.stop(t + dur); track(o, t + dur); return o; };
+  const noise = (type, f, q, dur, peak, hold, rel) => { const n = noiseSrc(t, dur), fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; if (q) fl.Q.value = q; n.connect(fl); fl.connect(g); env(g, t, 0.001, peak, hold, rel); };
+  const tom = /^(tom|acc) ?(lo 2|lo 1|lo|hi|[lmh])/.exec(n0);
+  if (tom || /conga/.test(n0)) { const f = /conga/.test(n0) ? (/ h$/.test(n0) ? 330 : 240) : ({ h: 185, hi: 185, m: 135, 'lo 2': 135, l: 95, 'lo 1': 95, lo: 95 }[tom[2]] || 135); return osc('sine', f * 1.6, f, 0.4, amp * 0.55, /conga/.test(n0) ? 0.08 : 0.22); }
+  if (/bell|cowbell/.test(n0)) { osc('square', /cow/.test(n0) ? 800 : 1180, /cow/.test(n0) ? 800 : 1180, 0.5, amp * 0.12, /cow/.test(n0) ? 0.08 : 0.25); const g2 = ctx.createGain(), o2 = ctx.createOscillator(); g2.connect(AU.master); o2.type = 'square'; o2.frequency.value = /cow/.test(n0) ? 540 : 1770; o2.connect(g2); env(g2, t, 0.002, amp * 0.08, 0.01, /cow/.test(n0) ? 0.08 : 0.2); o2.start(t); o2.stop(t + 0.5); track(o2, t + 0.5); return; }
+  if (/ride|cym 2/.test(n0)) return noise('bandpass', 7800, 0.6, 1.2, amp * 0.22, 0.03, 0.35);
+  if (/crash|cym/.test(n0)) return noise('highpass', 3600, 0, 2, amp * 0.3, 0.06, 0.7);
+  if (/pedal/.test(n0)) return noise('highpass', 8200, 0, 0.06, amp * 0.22, 0.004, 0.012);
+  if (/half/.test(n0)) return noise('highpass', 6800, 0, 0.3, amp * 0.28, 0.02, 0.06);
+  if (/^(hh|hat)/.test(n0)) return noise('highpass', /o/.test(n0.replace(/^hh |^hat /, '')) ? 6200 : 7600, 0, 0.2, amp * 0.24, 0.008, 0.02);
+  if (/^sn|snare|rim/.test(n0)) { noise('bandpass', 2600, 0.9, 0.18, amp * 0.45, 0.01, 0.04); return; }
+  if (/bass|808|sub/.test(n0)) return osc('sine', 110, 46, 0.9, amp * 0.9, 0.3);
+  if (/vox|voice/.test(n0)) { const o = osc('sawtooth', 220, 330, 0.35, amp * 0.12, 0.1); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.setValueAtTime(700, t); bp.frequency.linearRampToValueAtTime(1600, t + 0.25); o.disconnect(); o.connect(bp); bp.connect(g); return; }
+  if (/fx|sweep|noise/.test(n0)) { const n = noiseSrc(t, 0.6), bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.Q.value = 2; bp.frequency.setValueAtTime(600, t); bp.frequency.exponentialRampToValueAtTime(6000, t + 0.5); n.connect(bp); bp.connect(g); env(g, t, 0.05, amp * 0.3, 0.3, 0.1); return; }
+  if (/block|wood/.test(n0)) return osc('sine', 1500, 1500, 0.08, amp * 0.4, 0.015);
+  if (/tonal|tone/.test(n0)) return osc('triangle', 330, 300, 0.5, amp * 0.3, 0.15);
+  if (/shak|tamb|maraca/.test(n0)) return noise('highpass', 5200, 0, 0.12, amp * 0.2, 0.03, 0.03);
+  if (/perc ?3|perc 2|perc/.test(n0)) { const f = /3/.test(n0) ? 1250 : /2/.test(n0) ? 620 : 900; return osc('square', f, f, 0.12, amp * 0.18, 0.025); }
+  if (/clap/.test(n0)) return drum(CP_LANE, t, v);
+  return drum(D.foldName(nm), t, v);
+}
+const CP_LANE = 3;
 function drum(li, t, v) {
-  if (li >= 8) {
-    const nm = D.bmLayout(titleFor('beat', 'beatmaker')).names[li] || '', tom = /^(Tom|Acc) ([LMH])/.exec(nm);
-    if (!tom) return drum(D.foldName(nm), t, v);
-    const ctx = AU.ctx, g = ctx.createGain(), o = ctx.createOscillator(), f = { L: 95, M: 135, H: 185 }[tom[2]]; g.connect(AU.master); o.type = 'sine';
-    o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08); o.connect(g); env(g, t, 0.002, Math.pow(v / 127, 1.4) * 0.55, 0.05, 0.22); o.start(t); o.stop(t + 0.4); track(o, t + 0.4); return;
-  }
+  if (li >= 8) { const ln = laneDefs()[li]; return drumExtra(ln ? ln.name : '', li, t, v); }
   const ctx = AU.ctx, g = ctx.createGain(), amp = Math.pow(v / 127, 1.4); g.connect(AU.master);
   if (li === 0 || li === 1) { const o = ctx.createOscillator(); o.type = 'sine'; const f = li === 0 ? 1 : 0.8; o.frequency.setValueAtTime(150 * f, t); o.frequency.exponentialRampToValueAtTime(44 * f, t + 0.13); env(g, t, 0.002, amp * (li ? 0.6 : 1), 0.05, 0.09); o.connect(g); o.start(t); o.stop(t + 0.5); track(o, t + 0.5); }
   else if (li === 2) { const n = noiseSrc(t, 0.25), bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.8; n.connect(bp); bp.connect(g); env(g, t, 0.001, amp * 0.7, 0.02, 0.06); const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'triangle'; o.frequency.value = 190; o.connect(og); og.connect(AU.master); env(og, t, 0.001, amp * 0.35, 0.02, 0.04); o.start(t); o.stop(t + 0.2); track(o, t + 0.2); }
@@ -5250,7 +5291,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-22 02:45. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 00:45. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6110,7 +6151,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-22 02:45 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 00:45 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6146,7 +6187,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-22 02:45')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 00:45')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
