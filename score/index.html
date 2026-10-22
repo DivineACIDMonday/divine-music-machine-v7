@@ -41,6 +41,11 @@ select,input[type=text],input[type=number]{height:38px;border-radius:8px;border:
 .chip{min-height:44px;border-radius:22px;padding:0 16px}
 .chip.small{min-height:36px;border-radius:18px;padding:0 12px;font-size:13px}
 .chip.on{border-color:#E8A03A;background:#2B2216;color:#F4C177;font-weight:600}
+.grp{display:flex;flex-direction:column;gap:6px}
+.chip.feel{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;border-radius:12px;padding:6px 14px;min-height:52px;line-height:1.2}
+.chip.feel span{font-size:11px;color:#A39E94}
+.chip.feel.light{background:#221F19}.chip.feel.dark{background:#171B22}.chip.feel.story{background:#1F1A20}
+.chip.feel.on{background:#2B2216;border-color:#E8A03A}.chip.feel.on b{color:#F4C177}.chip.feel.on span{color:#C9B48D}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .big{position:relative;min-height:64px;border-radius:10px;border:1px solid #3A3D46;background:#1E2026;text-align:left;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;cursor:pointer}
 .big b{display:block}.big span{font-size:12px;color:#A39E94}
@@ -95,7 +100,7 @@ S.PER = { common: [48, 50, 52, 53, 55, 57, 59], style: [60, 62, 64, 65, 67, 69, 
 S.KEYNAME = (p) => NOTE[p % 12].replace('Eb', 'D#').replace('Ab', 'G#').replace('Bb', 'A#') + (Math.floor(p / 12) - 2);
 
 /* ---------- chords: [semitones above the tonic, quality] ---------- */
-const C = { i: [0, 'm'], I: [0, 'M'], bII: [1, 'M'], ii: [2, 'm'], iio: [2, 'd'], III: [3, 'M'], iii: [4, 'm'], iv: [5, 'm'], IV: [5, 'M'], tt: [6, 'M'], v: [7, 'm'], V: [7, 'M'], VI: [8, 'M'], vi: [9, 'm'], VII: [10, 'M'], vii7: [11, 'd'], bvii: [11, 'M'], biii: [3, 'm'] };
+const C = { i: [0, 'm'], I: [0, 'M'], bII: [1, 'M'], ii: [2, 'm'], iio: [2, 'd'], III: [3, 'M'], iii: [4, 'm'], iv: [5, 'm'], IV: [5, 'M'], tt: [6, 'M'], ttm: [6, 'm'], bii: [1, 'm'], v: [7, 'm'], V: [7, 'M'], VI: [8, 'M'], vi: [9, 'm'], VII: [10, 'M'], vii7: [11, 'd'], bvii: [11, 'M'], biii: [3, 'm'] };
 const ch = (s) => s.split(' ').map((k) => C[k]);
 
 /* ---------- the styles ---------- */
@@ -106,32 +111,57 @@ S.TYPES = {
 };
 S.TYPE_ORDER = ['intro', 'theme', 'build', 'peak', 'film', 'outro'];
 S.STYLES = {
-  comedy: { name: 'Comedy', line: 'Bright and bouncy: a major key, hits on the jokes, metals that sparkle.', mode: 'major', bpm: [112, 132], chordBars: 1, lift: 0.05, pedal: 7,
+  comedy: { name: 'Playful', like: 'like a comedy', group: 'light', line: 'Bright and bouncy: a major key, hits on the jokes, metals that sparkle.', mode: 'major', bpm: [112, 132], chordBars: 1, lift: 0.05, pedal: 7,
     prog: { intro: [ch('I V')], theme: [ch('I vi IV V'), ch('I IV I V')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('IV V I vi')], film: [ch('IV')], outro: [ch('IV V I I')] },
     form: [['intro', 4], ['theme', 8], ['build', 4], ['peak', 8], ['theme', 8], ['film', 4], ['peak', 8], ['outro', 4]], percs: { metals: 0.6, hits: 0.9 } },
-  suspense: { name: 'Suspense', line: 'Low pedal tones, a slow ladder up, metals that hang in the air, hits on the turns.', mode: 'minor', bpm: [70, 88], chordBars: 1, lift: 0, pedal: 7,
+  suspense: { name: 'Tense', like: 'like suspense', group: 'dark', line: 'Low pedal tones, a slow ladder up, metals that hang in the air, hits on the turns.', mode: 'minor', bpm: [70, 88], chordBars: 1, lift: 0, pedal: 7,
     prog: { intro: [ch('i')], theme: [ch('i VI iv V'), ch('i iv VI V')], build: [ch('VI VII')], peak: [ch('i III VII iv'), ch('i VI III VII')], film: [ch('i iv')], outro: [ch('i')] },
     form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 16], ['film', 8], ['peak', 16], ['outro', 4]], percs: { metals: 0.8, hits: 0.8 } },
-  horror: { name: 'Horror', line: 'A half step that never resolves, a drone on the tonic, sudden hits out of the dark.', mode: 'minor', bpm: [60, 76], chordBars: 2, lift: -0.05, pedal: 0, drone: true,
+  horror: { name: 'Fearful', like: 'like horror', group: 'dark', line: 'A half step that never resolves, a drone on the tonic, sudden hits out of the dark.', mode: 'minor', bpm: [60, 76], chordBars: 2, lift: -0.05, pedal: 0, drone: true,
     prog: { intro: [ch('i bII')], theme: [ch('i bII i bII'), ch('i iv bII i')], build: [ch('bII V')], peak: [ch('i VI bII V')], film: [ch('i bII')], outro: [ch('i bII i i')] },
     form: [['intro', 8], ['theme', 16], ['build', 8], ['film', 8], ['peak', 8], ['outro', 8]], percs: { metals: 1, hits: 1 } },
-  thriller: { name: 'Thriller', line: 'Driving and restless: style phrases high up, a ladder in every build, fills into each peak.', mode: 'minor', bpm: [112, 132], chordBars: 1, lift: 0.15, pedal: 7,
+  thriller: { name: 'Chase', like: 'like a thriller', group: 'story', line: 'Driving and restless: style phrases high up, a ladder in every build, fills into each peak.', mode: 'minor', bpm: [112, 132], chordBars: 1, lift: 0.15, pedal: 7,
     prog: { intro: [ch('i VI')], theme: [ch('i VI VII i'), ch('i iv v i')], build: [ch('iv V')], peak: [ch('i VI III VII')], film: [ch('i VI')], outro: [ch('i VI VII i')] },
     form: [['intro', 4], ['theme', 8], ['build', 8], ['peak', 8], ['theme', 8], ['build', 8], ['film', 4], ['peak', 16], ['outro', 4]], percs: { metals: 0.4, hits: 1 } },
-  docu: { name: 'Docu', line: 'Warm and open: slow chords, light common phrases, a gentle swell that carries the story.', mode: 'major', bpm: [80, 100], chordBars: 2, lift: -0.1, pedal: 7,
+  docu: { name: 'Wonder', like: 'like a documentary', group: 'light', line: 'Warm and open: slow chords, light common phrases, a gentle swell that carries the story.', mode: 'major', bpm: [80, 100], chordBars: 2, lift: -0.1, pedal: 7,
     prog: { intro: [ch('I IV')], theme: [ch('I V vi IV'), ch('vi IV I V')], build: [ch('IV V')], peak: [ch('I V vi IV')], film: [ch('vi IV')], outro: [ch('IV I')] },
     form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 16], ['film', 8], ['outro', 8]], percs: { metals: 0.3, hits: 0.3 } },
-  noir: { name: 'Film noir', line: 'Smoke and shadow: minor chords that lean on the fourth, soft strings, a lonely cymbal.', mode: 'minor', bpm: [60, 76], chordBars: 2, lift: -0.12, pedal: 7,
+  noir: { name: 'Mysterious', like: 'like film noir', group: 'dark', line: 'Smoke and shadow: minor chords that lean on the fourth, soft strings, a lonely cymbal.', mode: 'minor', bpm: [60, 76], chordBars: 2, lift: -0.12, pedal: 7,
     prog: { intro: [ch('i iv')], theme: [ch('i iv VI V'), ch('i VI iv V')], build: [ch('iv V')], peak: [ch('i iv VII III')], film: [ch('iv V')], outro: [ch('iv i')] },
     form: [['intro', 8], ['theme', 16], ['film', 8], ['theme', 8], ['peak', 8], ['outro', 8]], percs: { metals: 0.7, hits: 0.2 } },
-  romance: { name: 'Romance', line: 'Long lines and full chords: strings carry everything, percussion only as a whisper.', mode: 'major', bpm: [64, 80], chordBars: 2, lift: 0, pedal: 7, quietPercs: true,
+  romance: { name: 'Tender', like: 'like romance', group: 'light', line: 'Long lines and full chords: strings carry everything, percussion only as a whisper.', mode: 'major', bpm: [64, 80], chordBars: 2, lift: 0, pedal: 7, quietPercs: true,
     prog: { intro: [ch('I IV')], theme: [ch('I vi IV V'), ch('I iii IV V')], build: [ch('ii V')], peak: [ch('IV V iii vi'), ch('I V vi IV')], film: [ch('vi IV')], outro: [ch('IV I')] },
     form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 16], ['film', 8], ['peak', 8], ['outro', 8]], percs: { metals: 0.5, hits: 0.1 } },
-  avant: { name: 'Avant garde', line: 'Rules bent on purpose: tritones, odd section lengths, phrases that jump.', mode: 'minor', bpm: [70, 110], chordBars: 1, lift: 0.05, pedal: 0, jump: true,
+  avant: { name: 'Uncanny', like: 'like avant garde', group: 'dark', line: 'Rules bent on purpose: tritones, odd section lengths, phrases that jump.', mode: 'minor', bpm: [70, 110], chordBars: 1, lift: 0.05, pedal: 0, jump: true,
     prog: { intro: [ch('i tt')], theme: [ch('i tt bII bvii'), ch('i biii tt V')], build: [ch('bII V')], peak: [ch('i tt III vi')], film: [ch('i bII')], outro: [ch('tt i')] },
     form: [['intro', 6], ['theme', 10], ['film', 5], ['build', 7], ['peak', 12], ['outro', 5]], percs: { metals: 0.9, hits: 0.9 } }
 };
-S.STYLE_ORDER = ['comedy', 'suspense', 'horror', 'thriller', 'docu', 'noir', 'romance', 'avant'];
+S.STYLES.light = { name: 'Light', like: 'carefree', group: 'light', line: 'Carefree and airy: major chords up high, strings that float, a few bright metals.', mode: 'major', bpm: [96, 112], chordBars: 2, lift: -0.15, pedal: 7, high: true,
+  prog: { intro: [ch('I IV')], theme: [ch('I IV vi V'), ch('I V IV I')], build: [ch('IV V')], peak: [ch('IV I V I'), ch('I IV V I')], film: [ch('vi IV')], outro: [ch('IV I')] },
+  form: [['intro', 4], ['theme', 8], ['peak', 8], ['theme', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.6, hits: 0.2 } };
+S.STYLES.euphoric = { name: 'Euphoric', like: 'hands in the air', group: 'light', line: 'Rising and rising: fast, a ladder in every build, everything wide open at the top.', mode: 'major', bpm: [124, 136], chordBars: 1, lift: 0.15, pedal: 7,
+  prog: { intro: [ch('vi IV')], theme: [ch('vi IV I V')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('IV V vi I')], film: [ch('IV V')], outro: [ch('IV I')] },
+  form: [['intro', 4], ['build', 8], ['peak', 8], ['theme', 8], ['build', 8], ['peak', 16], ['outro', 4]], percs: { metals: 0.5, hits: 1 } };
+S.STYLES.ecstasy = { name: 'Ecstasy', like: 'beyond the peak', group: 'light', line: 'The peak that will not let go: tension stays at the top, every addition on, hits that keep coming.', mode: 'major', bpm: [120, 132], chordBars: 1, lift: 0.25, pedal: 7,
+  prog: { intro: [ch('I V')], theme: [ch('I V vi IV')], build: [ch('IV V')], peak: [ch('IV V I I'), ch('I V IV I')], film: [ch('IV')], outro: [ch('IV I')] },
+  form: [['intro', 4], ['build', 8], ['peak', 16], ['build', 4], ['peak', 16], ['outro', 4]], percs: { metals: 0.6, hits: 1 } };
+S.STYLES.glory = { name: 'Glory', like: 'the victory', group: 'light', line: 'Heroic and proud: the major key with its flat seventh, big hits, the long walk to the top.', mode: 'major', bpm: [84, 100], chordBars: 1, lift: 0.05, pedal: 7,
+  prog: { intro: [ch('I VII')], theme: [ch('I VII IV I'), ch('I IV VII I')], build: [ch('IV V')], peak: [ch('I VI VII I'), ch('VI VII I I')], film: [ch('VI VII')], outro: [ch('VI VII I I')] },
+  form: [['intro', 8], ['theme', 8], ['build', 8], ['peak', 16], ['film', 4], ['peak', 8], ['outro', 8]], percs: { metals: 0.8, hits: 1 } };
+S.STYLES.dark = { name: 'Dark', like: 'deep shadow', group: 'dark', line: 'Low and heavy: the half step above the root, low phrases, a drone that never leaves.', mode: 'minor', bpm: [70, 84], chordBars: 2, lift: -0.05, pedal: 0, drone: true,
+  prog: { intro: [ch('i bII')], theme: [ch('i bII VII i'), ch('i iv bII i')], build: [ch('iv V')], peak: [ch('i VI bII V')], film: [ch('i bII')], outro: [ch('bII i')] },
+  form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 8], ['film', 8], ['outro', 8]], percs: { metals: 0.7, hits: 0.6 } };
+S.STYLES.depressed = { name: 'Depressed', like: 'heavy hearted', group: 'dark', line: 'Slow and sinking: a bass line that walks down, quiet strings, everything a little softer each time.', mode: 'minor', bpm: [58, 70], chordBars: 2, lift: -0.2, pedal: 7, quietPercs: true,
+  prog: { intro: [ch('i VII')], theme: [ch('i VII VI V'), ch('i v iv i')], build: [ch('iv V')], peak: [ch('VI VII i i')], film: [ch('iv i')], outro: [ch('VI V i i')] },
+  form: [['intro', 8], ['theme', 16], ['peak', 8], ['theme', 16], ['film', 8], ['outro', 8]], percs: { metals: 0.4, hits: 0.1 } };
+S.STYLES.confused = { name: 'Confused', like: 'lost the thread', group: 'dark', line: 'The ground keeps moving: chords that slip a half step, phrases that jump, lengths you cannot count.', mode: 'minor', bpm: [84, 104], chordBars: 1, lift: 0, pedal: 0, jump: true,
+  prog: { intro: [ch('i bii')], theme: [ch('i bii bvii ttm'), ch('i tt bii i')], build: [ch('bII V')], peak: [ch('i ttm bII bvii')], film: [ch('i bii')], outro: [ch('bii i')] },
+  form: [['intro', 5], ['theme', 7], ['build', 6], ['peak', 9], ['theme', 7], ['outro', 5]], percs: { metals: 0.8, hits: 0.7 } };
+S.STYLES.plot = { name: 'Solving the plot', like: 'it all falls into place', group: 'story', line: 'A ticking pulse, clues stacking up in minor, and at the end the minor turns major: the pieces fall into place.', mode: 'minor', bpm: [96, 112], chordBars: 1, lift: 0.05, pedal: 7,
+  prog: { intro: [ch('i VI')], theme: [ch('i VI III VII'), ch('i iv VI V')], build: [ch('iv V')], peak: [ch('I IV V I')], film: [ch('iv V')], outro: [ch('IV V I I')] },
+  form: [['intro', 4], ['theme', 8], ['build', 8], ['theme', 8], ['build', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.5, hits: 0.8 } };
+S.GROUPS = [['light', 'Light'], ['dark', 'Dark'], ['story', 'Story']];
+S.STYLE_ORDER = ['comedy', 'light', 'docu', 'romance', 'euphoric', 'ecstasy', 'glory', 'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'thriller', 'plot'];
 S.AMOUNTS = { spice: 'Spice', colour: 'Colour', film: 'Film' };
 S.WHERE = { auto: 'Follow the amount', all: 'Everywhere', peaks: 'Builds and peaks', quiet: 'Quiet parts' };
 S.TRICKS = { swell: 'Swell', pedal: 'Pedal point', ladder: 'Ladder', hits: 'Hits on turns', metals: 'Metals in quiet parts' };
@@ -166,7 +196,8 @@ const FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'], 
 // sharps in the sharp keys (G, D, A, E, B major; E, B, F# minor and their relatives), flats everywhere else
 S.names = (key) => (key && (key.mode === 'major' ? [7, 2, 9, 4, 11, 6] : [4, 11, 6, 1, 8]).includes(key.root) ? SHARP : FLAT);
 S.pcName = (pc, key) => S.names(key)[((pc % 12) + 12) % 12];
-S.chordName = (c, key) => (c ? S.pcName(c.root, key) + (c.q === 'm' ? 'm' : c.q === 'd' ? 'dim' : '') : '');
+// a chord borrowed from the flat side (bII, bIII, bVI, bVII in a major key) is spelled with a flat: Bb in D major, not A#
+S.chordName = (c, key) => { if (!c) return ''; const iv = key ? ((c.root - key.root) % 12 + 12) % 12 : 0; const nm = key && key.mode === 'major' && [1, 3, 8, 10].includes(iv) ? FLAT[c.root] : S.pcName(c.root, key); return nm + (c.q === 'm' ? 'm' : c.q === 'd' ? 'dim' : ''); };
 S.chordsFor = function (sc) {
   const v = S.view(sc);
   if (sc.fromTrack && sc.trackChords) return sc.trackChords.slice(0, S.totalBars(v));
@@ -246,7 +277,7 @@ S.render = function (sc) {
       const pedal = sc.tricks.pedal && (s.type === 'film' || (st.drone && (s.type === 'intro' || s.type === 'theme')));
       const bassPc = pedal ? (sc.key.root + (s.type === 'film' ? st.pedal : 0)) % 12 : c.root;
       bassH.set(S.STR.bassLo + bassPc, t0, vel);
-      const tri = triad(c.root, c.q).map((pc) => { let p = S.STR.playLo + pc; if (p < 62) p += 12; return p; }).sort((a, x) => a - x);
+      const tri = triad(c.root, c.q).map((pc) => { let p = S.STR.playLo + pc; if (p < 62) p += 12; if (st.high && p + 12 <= 83) p += 12; return p; }).sort((a, x) => a - x);
       tri.forEach((p, i) => chordH[i].set(p, t0, vel));
     }
     const end = total * BT; ph.end(end); ad.end(end); bassH.end(end); chordH.forEach((x) => x.end(end));
@@ -414,7 +445,7 @@ if (typeof module !== 'undefined') module.exports = S;
 (function () {
 'use strict';
 const S = window.SCORE;
-const VERSION = 'version 2026-10-22 03:30';
+const VERSION = 'version 2026-10-22 03:40';
 const $ = (q) => document.querySelector(q);
 const SVGNS = 'http://www.w3.org/2000/svg';
 function h(tag, attrs, ...kids) {
@@ -501,9 +532,10 @@ function render() {
     h('button', { id: 'deliverAll', class: 'primary', onclick: () => deliver() }, '⬇ Download all')));
   // style and start
   app.append(h('section', { class: 'row' },
-    h('div', { class: 'card', style: 'flex:999 1 620px' }, h('div', { class: 'cap' }, 'Style'),
-      h('div', { class: 'chips' }, S.STYLE_ORDER.map((k) => h('button', { id: 'style_' + k, class: 'chip' + (k === x.style && !x.fromTrack ? ' on' : ''), 'aria-pressed': k === x.style ? 'true' : 'false', onclick: () => { if (x.fromTrack) { change(() => { x.style = k; }, true); setHint(S.STYLES[k].name + ' colours your track now.'); } else { st.sc = S.newScore(k, { seed: x.seed, name: x.name }); render(); setHint(S.STYLES[k].line); } } }, S.STYLES[k].name))),
-      h('div', { class: 'muted' }, (x.fromTrack ? 'Your track, coloured as ' + style.name + '. ' : style.name + ': ') + style.line)),
+    h('div', { class: 'card', style: 'flex:999 1 620px' }, h('div', { class: 'disp' }, 'What should your scene feel like?'),
+      S.GROUPS.map(([g, gname]) => h('div', { class: 'grp' }, h('div', { class: 'cap' }, gname),
+        h('div', { class: 'chips' }, S.STYLE_ORDER.filter((k) => S.STYLES[k].group === g).map((k) => h('button', { id: 'style_' + k, class: 'chip feel ' + g + (k === x.style ? ' on' : ''), 'aria-pressed': k === x.style ? 'true' : 'false', title: S.STYLES[k].line, onclick: () => { if (x.fromTrack) { change(() => { x.style = k; }, true); setHint(S.STYLES[k].name + ' colours your track now.'); } else { st.sc = S.newScore(k, { seed: x.seed, name: x.name }); render(); setHint(S.STYLES[k].line); } } }, h('b', null, S.STYLES[k].name), h('span', null, S.STYLES[k].like)))))),
+      h('div', { class: 'muted' }, (x.fromTrack ? 'Your track, feeling ' + style.name.toLowerCase() + '. ' : style.name + ': ') + style.line)),
     h('div', { class: 'card', style: 'flex:1 1 300px' }, h('div', { class: 'cap' }, 'Start from'),
       h('div', { class: 'two' },
         h('button', { id: 'startFilm', class: 'big' + (!x.fromTrack ? ' on' : ''), onclick: () => { if (x.fromTrack) { st.sc = S.newScore(x.style, { name: x.name }); render(); setHint('A film score from scratch.'); } } }, h('b', null, 'Film score'), h('span', null, 'The machine writes it all')),
