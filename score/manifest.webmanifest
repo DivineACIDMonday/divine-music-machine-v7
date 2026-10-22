@@ -1,0 +1,16 @@
+{
+ "name": "Divine Score Machine",
+ "short_name": "DM Score",
+ "description": "Pick a feeling, draw the tension, get MIDI for UJAM STRIIIINGS and PERRCS. No AI inside.",
+ "id": "./",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#0D0E11",
+ "theme_color": "#0D0E11",
+ "icons": [
+  {"src": "/divine-music-machine-v7/icons/score-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+  {"src": "/divine-music-machine-v7/icons/score-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"},
+  {"src": "/divine-music-machine-v7/icons/score-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+ ]
+}

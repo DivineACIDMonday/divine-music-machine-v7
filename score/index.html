@@ -1,9 +1,21 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Film score MIDI made for UJAM Symphonic Elements STRIIIINGS and PERRCS. Pick a style, draw the tension, get Player files. By Divine Monday.">
+<meta name="description" content="Pick a feeling, draw the tension, get MIDI for both. Made especially for UJAM Symphonic Elements STRIIIINGS and PERRCS. By Divine Monday.">
 <meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
 <meta name="theme-color" content="#0D0E11">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Divine Monday">
+<meta property="og:title" content="Divine Score Machine">
+<meta property="og:description" content="Pick a feeling, draw the tension, get MIDI for both. Made especially for UJAM Symphonic Elements STRIIIINGS and PERRCS. By Divine Monday.">
+<meta property="og:url" content="https://divineacidmonday.github.io/divine-music-machine-v7/score/">
+<meta property="og:image" content="https://divineacidmonday.github.io/divine-music-machine-v7/og/og-score.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Divine Score Machine">
+<meta name="twitter:image" content="https://divineacidmonday.github.io/divine-music-machine-v7/og/og-score.png">
+<!--PWA--><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="/divine-music-machine-v7/icons/score-180.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="DM Score"><link rel="icon" type="image/png" sizes="192x192" href="/divine-music-machine-v7/icons/score-192.png"><script>if ('serviceWorker' in navigator && /\.github\.io$/.test(location.hostname)) navigator.serviceWorker.register('sw.js').catch(function () {});</script><!--/PWA-->
 <title>Divine Score Machine</title>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%230D0E11%22/%3E%3Cpath%20d%3D%22M8%2048%20C%2020%2046%2C%2026%2040%2C%2032%2026%20S%2046%2012%2C%2056%2016%22%20fill%3D%22none%22%20stroke%3D%22%23E8A03A%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22/%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2226%22%20r%3D%224.5%22%20fill%3D%22%239CC7E3%22/%3E%3C/svg%3E">
 <style>
@@ -74,7 +86,7 @@ select,input[type=text],input[type=number]{height:38px;border-radius:8px;border:
 .switch input{width:20px;height:20px;accent-color:#E8A03A}
 .film{background:#1C161A;border:1px dashed #B88AA8}
 .hint{color:#C9C2B5;font-size:13px;padding:2px 4px;min-height:20px}
-footer{color:#8E897F;font-size:12px;padding:4px}
+footer{color:#8E897F;font-size:12px;padding:4px}footer .man{display:block;margin-top:6px}footer .man a{color:#E8A03A;margin-right:10px}
 .noai{display:inline-block;background:#E8A03A;color:#0D0E11;font-weight:600;border-radius:10px;padding:1px 8px;margin-right:6px}
 @media (max-width:640px){#app{padding:10px}.two{grid-template-columns:1fr}.logo{font-size:20px}}
 </style></head>
@@ -441,11 +453,11 @@ if (typeof module !== 'undefined') module.exports = S;
 
 </script>
 <script>
-/* Divine Score Machine: interface. Draw the tension, pick a style, get Player files for STRIIIINGS and PERRCS. */
+/* Divine Score Machine: interface. Pick a feeling, draw the tension, get MIDI for STRIIIINGS and PERRCS. */
 (function () {
 'use strict';
 const S = window.SCORE;
-const VERSION = 'version 2026-10-22 03:40';
+const VERSION = 'version 2026-10-22 04:00';
 const $ = (q) => document.querySelector(q);
 const SVGNS = 'http://www.w3.org/2000/svg';
 function h(tag, attrs, ...kids) {
@@ -455,7 +467,7 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 function sv(tag, attrs) { const el = document.createElementNS(SVGNS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
-const st = { sc: S.newScore('suspense', { seed: 20261022 }), sel: 0, hint: 'Pick a style, draw the tension, then download the Player files.' };
+const st = { sc: S.newScore('suspense', { seed: 20261022 }), sel: 0, hint: 'Pick a feeling, draw the tension, then get MIDI for both.' };
 const sc = () => st.sc;
 function change(fn, keepLines) { fn(); if (!keepLines) { st.sc.tension = null; st.sc.swell = null; } st.sel = Math.min(st.sel, S.view(st.sc).sections.length - 1); render(); }
 function setHint(t) { st.hint = t; const e = $('#hint'); if (e) e.textContent = t; }
@@ -522,7 +534,7 @@ function render() {
   // header
   app.append(h('header', { class: 'card top' },
     h('div', { class: 'brand' }, h('span', { class: 'logo' }, 'Divine ', h('i', null, 'Score'), ' Machine'), h('span', { class: 'tag' }, 'for UJAM STRIIIINGS + PERRCS')),
-    h('button', { id: 'newScore', class: 'ghost', title: 'A new score in the same style', onclick: () => { st.sc = S.newScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '🎲 New score'),
+    h('button', { id: 'newScore', class: 'ghost', title: 'A new score with the same feeling', onclick: () => { st.sc = S.newScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '🎲 New score'),
     h('label', { class: 'lab' }, 'Name', h('input', { id: 'name', type: 'text', value: x.name, style: 'width:150px', onchange: (e) => change(() => { x.name = e.target.value.trim() || 'Untitled'; }, true) })),
     h('label', { class: 'lab' }, 'Tempo', h('input', { id: 'bpm', type: 'number', min: 40, max: 200, value: x.bpm, style: 'width:72px', onchange: (e) => change(() => { x.bpm = S.clamp(Math.round(+e.target.value || x.bpm), 40, 200); }, true) })),
     h('label', { class: 'lab' }, 'Key',
@@ -578,10 +590,10 @@ function render() {
   aside.append(h('div', { class: 'card film' }, h('b', { class: 'disp small', style: 'color:#E3C6DA' }, 'Film moment'), h('span', { class: 'muted' }, x.fromTrack ? 'With your own track the structure is yours: set a section to Film moment to hold your breath there.' : 'Bars where your track holds its breath: strings on a pedal tone, only metals in the air. Switch it on above, or set any section to Film moment.')));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Get the files'),
     h('div', { class: 'col' }, ['Strings', 'Percs', 'Structure'].map((p) => h('button', { id: 'dl_' + p, class: 'ghost left', onclick: () => deliver(p) }, '⬇ ' + p, h('span', { class: 'fn' }, fileName(p))))),
-    h('div', { class: 'muted small' }, 'Player files: load STRIIIINGS and PERRCS, switch Latch off, Sync on Note, and drop each file on bar 1. The swell rides the mod wheel: both plugins play softer as it goes up.')));
+    h('div', { class: 'muted small' }, 'The files: load STRIIIINGS and PERRCS, switch Latch off, Sync on Note, and drop each file on bar 1. The swell rides the mod wheel: both plugins play softer as it goes up.')));
   app.append(h('div', { class: 'row top-align' }, main, aside));
   app.append(h('div', { id: 'hint', class: 'hint', role: 'status' }, st.hint));
-  app.append(h('footer', null, h('span', { class: 'noai' }, 'No AI inside'), ' Every note comes from music rules and a seeded dice. Fully mechanical. © ' + new Date().getFullYear() + ' Divine Monday. Divine Score Machine, ' + VERSION + '.'));
+  app.append(h('footer', null, h('span', { class: 'noai' }, 'No AI inside'), ' Every note comes from music rules and a seeded dice. Fully mechanical. © ' + new Date().getFullYear() + ' Divine Monday. Divine Score Machine, ' + VERSION + '.', h('span', { class: 'man' }, 'Manual (PDF): ', ...[['English', 'EN'], ['Nederlands', 'NL'], ['Deutsch', 'DE']].map(([n, c]) => h('a', { href: '../manuals/' + ({ EN: 'Divine-Score-Machine-Manual-EN', NL: 'Divine-Score-Machine-Handleiding-NL', DE: 'Divine-Score-Machine-Handbuch-DE' })[c] + '.pdf', target: '_blank', rel: 'noopener' }, n)))));
 }
 window.SCOREAPP = { st, render, deliver, loadTrack, fileName };
 render();
