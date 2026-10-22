@@ -2,7 +2,7 @@
  "name": "Divine Music Machine Pro UJAM",
  "short_name": "DM Pro UJAM",
  "description": "Track arranged in one click, for UJAM plugins only. Totally free. No AI inside.",
- "id": "./",
+ "id": "/divine-music-machine-v7/ujam/",
  "start_url": "./index.html",
  "scope": "./index.html",
  "display": "standalone",

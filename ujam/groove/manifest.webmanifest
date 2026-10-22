@@ -2,7 +2,7 @@
  "name": "Divine Groove Machine UJAM",
  "short_name": "DM Groove UJAM",
  "description": "Groove arranged in one click, for UJAM Beatmaker and Virtual Drummer. Totally free. No AI inside.",
- "id": "./",
+ "id": "/divine-music-machine-v7/ujam/groove/",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",

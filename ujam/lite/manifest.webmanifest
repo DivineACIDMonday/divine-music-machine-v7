@@ -2,7 +2,7 @@
  "name": "Divine Music Machine Lite UJAM",
  "short_name": "DM Lite UJAM",
  "description": "Track arranged in one click, for UJAM plugins. Totally free. No AI inside.",
- "id": "./",
+ "id": "/divine-music-machine-v7/ujam/lite/",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",

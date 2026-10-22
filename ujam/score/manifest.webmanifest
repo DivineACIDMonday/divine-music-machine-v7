@@ -2,7 +2,7 @@
  "name": "Divine Score Machine UJAM",
  "short_name": "DM Score UJAM",
  "description": "Pick a feeling, draw the tension, get MIDI for UJAM STRIIIINGS and PERRCS. No AI inside.",
- "id": "./",
+ "id": "/divine-music-machine-v7/ujam/score/",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",

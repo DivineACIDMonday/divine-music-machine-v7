@@ -2,7 +2,7 @@
  "name": "Divine Music Machine Pro",
  "short_name": "DM Pro",
  "description": "Track arranged in one click. Totally free. No AI inside.",
- "id": "./",
+ "id": "/divine-music-machine-v7/",
  "start_url": "./index.html",
  "scope": "./index.html",
  "display": "standalone",

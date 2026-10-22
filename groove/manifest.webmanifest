@@ -2,7 +2,7 @@
  "name": "Divine Groove Machine",
  "short_name": "DM Groove",
  "description": "Groove arranged in one click. Totally free. No AI inside.",
- "id": "./",
+ "id": "/divine-music-machine-v7/groove/",
  "start_url": "./",
  "scope": "./",
  "display": "standalone",
