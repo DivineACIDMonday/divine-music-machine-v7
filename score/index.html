@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="description" content="Film score MIDI for UJAM STRIIIINGS and PERRCS. Pick a style, draw the tension, get Player files. By Divine Monday.">
+<meta name="description" content="Film score MIDI made for UJAM Symphonic Elements STRIIIINGS and PERRCS. Pick a style, draw the tension, get Player files. By Divine Monday.">
 <meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
 <meta name="theme-color" content="#0D0E11">
 <title>Divine Score Machine</title>
@@ -521,7 +521,7 @@ function render() {
   const app = $('#app'); app.replaceChildren();
   // header
   app.append(h('header', { class: 'card top' },
-    h('div', { class: 'brand' }, h('span', { class: 'logo' }, 'Divine ', h('i', null, 'Score'), ' Machine'), h('span', { class: 'tag' }, 'for STRIIIINGS + PERRCS')),
+    h('div', { class: 'brand' }, h('span', { class: 'logo' }, 'Divine ', h('i', null, 'Score'), ' Machine'), h('span', { class: 'tag' }, 'for UJAM STRIIIINGS + PERRCS')),
     h('button', { id: 'newScore', class: 'ghost', title: 'A new score in the same style', onclick: () => { st.sc = S.newScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '🎲 New score'),
     h('label', { class: 'lab' }, 'Name', h('input', { id: 'name', type: 'text', value: x.name, style: 'width:150px', onchange: (e) => change(() => { x.name = e.target.value.trim() || 'Untitled'; }, true) })),
     h('label', { class: 'lab' }, 'Tempo', h('input', { id: 'bpm', type: 'number', min: 40, max: 200, value: x.bpm, style: 'width:72px', onchange: (e) => change(() => { x.bpm = S.clamp(Math.round(+e.target.value || x.bpm), 40, 200); }, true) })),
