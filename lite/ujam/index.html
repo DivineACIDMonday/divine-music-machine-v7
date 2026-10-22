@@ -2522,6 +2522,7 @@ E.applyFeel = function (song, part, notes, gbar, opts) {
   const r = rng(hash('feel', song.seed, part, gbar));
   const loose = Math.max(f.y, gr && gr.loose || 0), BT = E.meter(song).steps * E.STEP;
   const tSeed = hash('drift', song.seed, part), vSeed = hash('push', song.seed, part);
+  const tight = part === 'beat' && E.isBM(song); // Beatmaker plays tight: swing and your lane shifts stay, the random drift goes
   const out = notes.map((n) => {
     let t = n.t;
     const st = Math.round(n.t / E.STEP);
@@ -2532,11 +2533,11 @@ E.applyFeel = function (song, part, notes, gbar, opts) {
     const drift = smoothNoise(tSeed, beat) * loose * 10; // ms, slow
     const weight = ((n.v - 80) / 47) * 3 * (0.35 + loose); // ms, heavy is late
     const rest = (r() * 2 - 1) * loose * 4; // ms, a little life per note
-    t = Math.round(t + shift + (drift + weight + rest) * tpms); if (gbar === 0 && t < 0) t = 0;
+    t = Math.round(t + shift + (tight ? 0 : (drift + weight + rest) * tpms)); if (gbar === 0 && t < 0) t = 0;
     const push = smoothNoise(vSeed, beat / 2) * f.y * 10 + (r() * 2 - 1) * f.y * 4; // velocity swells slowly too
     return Object.assign({}, n, { t, v: clamp(Math.round(n.v + push), 1, 127) });
   });
-  return song.arr ? E.humanize(song, part, out, gbar, f, tpms) : out; // new songs: played by people
+  return song.arr && !tight ? E.humanize(song, part, out, gbar, f, tpms) : out; // new songs: played by people
 };
 
 /* ---------- polish (theory check + mix ready) ---------- */
@@ -2789,7 +2790,7 @@ E.bmLayout = function (title) {
 E.bm808 = () => 0; // the note the 808 plays with its Bass Tune in the middle, set once by ear (0 = C)
 E.bmHits = function (song, notes, title) {
   const lay = E.bmLayout(title), keys = lay.keys, S = E.STEP, seen = {};
-  const out = notes.map((n) => { const g = Math.round(n.t / S) * S; return { t: Math.abs(n.t - g) <= 30 ? g : n.t, d: n.d, v: n.v, p: keys[n.lane] }; });
+  const out = notes.map((n) => ({ t: n.t, d: n.d, v: n.v, p: keys[n.lane] })); // tight already: the feel leaves out the drift for Beatmaker
   const hits = out.filter((n) => { const k = n.t + '_' + n.p; if (seen[k]) { seen[k].v = Math.max(seen[k].v, n.v); return false; } seen[k] = n; return true; });
   // the 808: the very low keys D-1 to D0 tune it a semitone a key; it follows the chord of each bar it plays in
   const bi = lay.names.indexOf('Bass'), bk = bi >= 0 ? keys[bi] : null, tune = [];
@@ -3191,7 +3192,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-22 02:30)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-22 02:45)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5230,7 +5231,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-22 02:30. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-22 02:45. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6090,7 +6091,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-22 02:30 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-22 02:45 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6126,7 +6127,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-22 02:30')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-22 02:45')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
