@@ -89,6 +89,7 @@ select,input[type=text],input[type=number]{height:38px;border-radius:8px;border:
 footer{color:#8E897F;font-size:12px;padding:4px}footer .man{display:block;margin-top:6px}footer .man a{color:#E8A03A;margin-right:10px}
 .noai{display:inline-block;background:#E8A03A;color:#0D0E11;font-weight:600;border-radius:10px;padding:1px 8px;margin-right:6px}
 @media (max-width:640px){#app{padding:10px}.two{grid-template-columns:1fr}.logo{font-size:20px}}
+.hitrow{flex:1 1 0;display:flex;gap:1px;height:22px;min-width:0}.hitrow button{flex:1 1 0;min-width:0;min-height:0;height:22px;padding:0;border:0;border-radius:2px;background:#1A1C22;color:#E8A03A;font-size:10px;line-height:22px;cursor:pointer}.hitrow button:hover{background:#2A2C34}.hitrow button.on{background:#3A2E1C}.hitlist{gap:6px}.hrow{display:flex;gap:6px;align-items:center}
 </style></head>
 <body><div id="app"></div>
 <script>
@@ -172,8 +173,59 @@ S.STYLES.confused = { name: 'Confused', like: 'lost the thread', group: 'dark', 
 S.STYLES.plot = { name: 'Solving the plot', like: 'it all falls into place', group: 'story', line: 'A ticking pulse, clues stacking up in minor, and at the end the minor turns major: the pieces fall into place.', mode: 'minor', bpm: [96, 112], chordBars: 1, lift: 0.05, pedal: 7,
   prog: { intro: [ch('i VI')], theme: [ch('i VI III VII'), ch('i iv VI V')], build: [ch('iv V')], peak: [ch('I IV V I')], film: [ch('iv V')], outro: [ch('IV V I I')] },
   form: [['intro', 4], ['theme', 8], ['build', 8], ['theme', 8], ['build', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.5, hits: 0.8 } };
+/* ---------- fourteen more feelings ---------- */
+Object.assign(S.STYLES, {
+  nostalgic: { name: 'Nostalgic', like: 'looking back', group: 'light', line: 'Warm and a little sad: a major key that borrows the minor four, slow chords, soft metals like a music box.', mode: 'major', bpm: [72, 88], chordBars: 2, lift: -0.1, pedal: 7,
+    prog: { intro: [ch('I iv')], theme: [ch('I iii IV iv'), ch('I vi IV iv')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('IV iv I I')], film: [ch('IV iv')], outro: [ch('IV iv I I')] },
+    form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 8], ['film', 8], ['theme', 8], ['outro', 8]], percs: { metals: 0.7, hits: 0.2 } },
+  hope: { name: 'Hope', like: 'light after the dark', group: 'light', line: 'It starts in minor and finds its way: every peak a little brighter, the end in a major key.', mode: 'minor', bpm: [76, 92], chordBars: 2, lift: 0, pedal: 7,
+    prog: { intro: [ch('i VI')], theme: [ch('i VI III VII'), ch('i iv VI VII')], build: [ch('iv V')], peak: [ch('VI VII I I'), ch('I IV V I')], film: [ch('VI VII')], outro: [ch('IV V I I')] },
+    form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 8], ['theme', 8], ['build', 8], ['peak', 16], ['outro', 8]], percs: { metals: 0.5, hits: 0.6 } },
+  triumph: { name: 'Triumph', like: 'we made it', group: 'light', line: 'Pure joy: a major key, a hit on every peak, the ending loud and proud.', mode: 'major', bpm: [100, 116], chordBars: 1, lift: 0.2, pedal: 7,
+    prog: { intro: [ch('I V')], theme: [ch('I IV I V'), ch('I V IV I')], build: [ch('IV V')], peak: [ch('I IV V I'), ch('VI VII I I')], film: [ch('IV V')], outro: [ch('IV V I I')] },
+    form: [['intro', 4], ['theme', 8], ['build', 4], ['peak', 8], ['theme', 8], ['build', 8], ['peak', 16], ['outro', 4]], percs: { metals: 0.6, hits: 1 } },
+  dreamy: { name: 'Dreamy', like: 'half asleep', group: 'light', line: 'Soft and floating: chords that drift up high, slow changes, metals that shimmer, nothing in a hurry.', mode: 'major', bpm: [64, 80], chordBars: 2, lift: -0.2, pedal: 7, high: true, quietPercs: true,
+    prog: { intro: [ch('I IV')], theme: [ch('I iii vi IV'), ch('IV I IV I')], build: [ch('ii V')], peak: [ch('IV V iii vi')], film: [ch('IV')], outro: [ch('IV I')] },
+    form: [['intro', 8], ['theme', 16], ['film', 8], ['theme', 8], ['peak', 8], ['outro', 8]], percs: { metals: 0.8, hits: 0.1 } },
+  serenity: { name: 'Serenity', like: 'calm water', group: 'light', line: 'Still and open: two chords that rock gently, long phrases, almost no percussion.', mode: 'major', bpm: [60, 72], chordBars: 4, lift: -0.25, pedal: 7, quietPercs: true,
+    prog: { intro: [ch('I')], theme: [ch('I IV'), ch('I vi IV I')], build: [ch('IV')], peak: [ch('IV I')], film: [ch('IV')], outro: [ch('I')] },
+    form: [['intro', 8], ['theme', 16], ['theme', 16], ['film', 8], ['outro', 8]], percs: { metals: 0.5, hits: 0 } },
+  sunrise: { name: 'Sunrise', like: 'a new day', group: 'light', line: 'From the dark into the light: it starts low and quiet, climbs slowly and opens up wide and major.', mode: 'major', bpm: [72, 90], chordBars: 2, lift: -0.1, pedal: 7,
+    prog: { intro: [ch('vi IV')], theme: [ch('vi IV I V')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('IV V I I')], film: [ch('IV')], outro: [ch('IV I')] },
+    form: [['intro', 8], ['theme', 8], ['build', 8], ['theme', 8], ['build', 8], ['peak', 16], ['outro', 8]], percs: { metals: 0.6, hits: 0.5 } },
+  heartbreak: { name: 'Heartbreak', like: 'something broke', group: 'dark', line: 'Slow and aching: minor chords that fall, a lonely high line, the percussion almost gone.', mode: 'minor', bpm: [56, 68], chordBars: 2, lift: -0.15, pedal: 7, high: true, quietPercs: true,
+    prog: { intro: [ch('i VI')], theme: [ch('i VI III VII'), ch('i iv i V')], build: [ch('iv V')], peak: [ch('VI VII i i'), ch('iv V i i')], film: [ch('iv i')], outro: [ch('VI iv i i')] },
+    form: [['intro', 8], ['theme', 16], ['film', 8], ['peak', 8], ['theme', 8], ['outro', 8]], percs: { metals: 0.4, hits: 0.1 } },
+  lonely: { name: 'Lonely', like: 'on your own', group: 'dark', line: 'Wide and empty: one high string line, long silences, a single metal far away.', mode: 'minor', bpm: [60, 72], chordBars: 4, lift: -0.2, pedal: 7, high: true, quietPercs: true,
+    prog: { intro: [ch('i')], theme: [ch('i iv'), ch('i VI')], build: [ch('iv V')], peak: [ch('VI VII i i')], film: [ch('i')], outro: [ch('iv i')] },
+    form: [['intro', 8], ['theme', 16], ['film', 8], ['theme', 8], ['outro', 8]], percs: { metals: 0.6, hits: 0 } },
+  grief: { name: 'Grief', like: 'saying goodbye', group: 'dark', line: 'Heavy and slow: a bass that walks down step by step, low soft strings, a last chord that stays.', mode: 'minor', bpm: [52, 64], chordBars: 2, lift: -0.2, pedal: 7, quietPercs: true,
+    prog: { intro: [ch('i v')], theme: [ch('i v iv i'), ch('i VII VI V')], build: [ch('iv V')], peak: [ch('VI iv i V')], film: [ch('iv i')], outro: [ch('iv V i i')] },
+    form: [['intro', 8], ['theme', 16], ['peak', 8], ['film', 8], ['theme', 8], ['outro', 8]], percs: { metals: 0.3, hits: 0 } },
+  rage: { name: 'Rage', like: 'all fire', group: 'dark', line: 'Fast and furious: low phrases at full force, the half step that grinds, hits on every turn.', mode: 'minor', bpm: [128, 148], chordBars: 1, lift: 0.25, pedal: 0,
+    prog: { intro: [ch('i bII')], theme: [ch('i bII i VII'), ch('i iv bII V')], build: [ch('bII V')], peak: [ch('i VI bII V')], film: [ch('i bII')], outro: [ch('bII i')] },
+    form: [['intro', 4], ['build', 8], ['peak', 8], ['theme', 8], ['build', 8], ['peak', 16], ['outro', 4]], percs: { metals: 0.3, hits: 1 } },
+  danger: { name: 'Danger nearby', like: 'something is coming', group: 'dark', line: 'Low and creeping: a pedal that will not move, phrases that slowly climb, metals that tick like footsteps.', mode: 'minor', bpm: [76, 92], chordBars: 2, lift: 0, pedal: 0, drone: true,
+    prog: { intro: [ch('i')], theme: [ch('i bII'), ch('i iv')], build: [ch('bII V')], peak: [ch('i VI bII V')], film: [ch('i')], outro: [ch('i bII')] },
+    form: [['intro', 8], ['theme', 8], ['build', 8], ['theme', 8], ['build', 8], ['peak', 8], ['outro', 4]], percs: { metals: 1, hits: 0.8 } },
+  adventure: { name: 'Adventure', like: 'the journey begins', group: 'story', line: 'Striding forward: a bold major key, big steps between chords, a ladder into every peak.', mode: 'major', bpm: [104, 124], chordBars: 1, lift: 0.1, pedal: 7,
+    prog: { intro: [ch('I V')], theme: [ch('I IV V IV'), ch('I VII IV V')], build: [ch('IV V')], peak: [ch('I V IV V'), ch('VI VII I I')], film: [ch('IV V')], outro: [ch('VI VII I I')] },
+    form: [['intro', 4], ['theme', 8], ['build', 8], ['peak', 8], ['theme', 8], ['build', 8], ['peak', 16], ['outro', 4]], percs: { metals: 0.4, hits: 1 } },
+  showdown: { name: 'Showdown', like: 'the duel', group: 'story', line: 'The stand off: one long held tone, the percussion holding its breath, a hit at a time, then everything at once.', mode: 'minor', bpm: [66, 80], chordBars: 4, lift: -0.05, pedal: 0, drone: true,
+    prog: { intro: [ch('i')], theme: [ch('i bII'), ch('i iv')], build: [ch('iv V')], peak: [ch('i VI bII V')], film: [ch('i')], outro: [ch('i')] },
+    form: [['intro', 8], ['film', 8], ['theme', 8], ['build', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.9, hits: 1 } },
+  countdown: { name: 'Countdown', like: 'the ticking clock', group: 'story', line: 'A clock that never stops: a steady pulse that climbs one key every two bars, the tension rising to zero.', mode: 'minor', bpm: [100, 120], chordBars: 1, lift: 0.1, pedal: 7, tick: true,
+    prog: { intro: [ch('i')], theme: [ch('i VI iv V'), ch('i iv i V')], build: [ch('iv V')], peak: [ch('i VI III VII')], film: [ch('i iv')], outro: [ch('i')] },
+    form: [['intro', 4], ['theme', 8], ['build', 8], ['build', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.3, hits: 1 } }
+});
 S.GROUPS = [['light', 'Light'], ['dark', 'Dark'], ['story', 'Story']];
-S.STYLE_ORDER = ['comedy', 'light', 'docu', 'romance', 'euphoric', 'ecstasy', 'glory', 'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'thriller', 'plot'];
+S.STYLE_ORDER = ['comedy', 'light', 'docu', 'romance', 'euphoric', 'ecstasy', 'glory', 'nostalgic', 'hope', 'triumph', 'dreamy', 'serenity', 'sunrise',
+  'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'heartbreak', 'lonely', 'grief', 'rage', 'danger', 'thriller', 'plot', 'adventure', 'showdown', 'countdown'];
+S.ENDINGS = { resolve: 'Resolve', open: 'Cliffhanger', stop: 'Sudden stop' };
+// the feeling of one section: its own, or the feeling of the score
+S.styleOf = (sc, s) => S.STYLES[(s && s.style) || sc.style] || S.STYLES.suspense;
+// hit points: bars of the score (counted as shown) where something happens on screen
+S.hitsOf = (sc) => { const n = S.totalBars(S.view(sc)); return (sc.hits || []).filter((x) => x.bar >= 0 && x.bar < n).sort((a, b) => a.bar - b.bar); };
 S.AMOUNTS = { spice: 'Spice', colour: 'Colour', film: 'Film' };
 S.WHERE = { auto: 'Follow the amount', all: 'Everywhere', peaks: 'Builds and peaks', quiet: 'Quiet parts' };
 S.TRICKS = { swell: 'Swell', pedal: 'Pedal point', ladder: 'Ladder', hits: 'Hits on turns', metals: 'Metals in quiet parts' };
@@ -189,7 +241,7 @@ S.newScore = function (styleKey, opts) {
     sections: st.form.map((f, i) => ({ id: 's' + i, type: f[0], bars: f[1] })),
     parts: { strings: { on: true, where: 'auto' }, percs: { on: !st.quietPercs, where: st.quietPercs ? 'quiet' : 'auto' } },
     tricks: { swell: true, pedal: true, ladder: true, hits: true, metals: true },
-    tension: null, swell: null, chords: null
+    tension: null, swell: null, chords: null, hits: [], ending: 'resolve', bpmEnd: null
   };
   return sc;
 };
@@ -216,11 +268,12 @@ S.chordsFor = function (sc) {
   const st = S.STYLES[sc.style] || S.STYLES.suspense, out = [], seen = {};
   v.sections.forEach((s, si) => {
     const k = seen[s.type] || 0; seen[s.type] = k + 1;
-    const pool = st.prog[s.type] || st.prog.theme, pr = rng(hash(sc.seed, 'prog', s.type, k));
-    const prog = st.jump ? pr.pick(pool) : pool[k % pool.length];
-    const cb = s.type === 'build' ? 1 : st.chordBars;
+    const ss = S.styleOf(sc, s), pool = ss.prog[s.type] || ss.prog.theme, pr = rng(hash(sc.seed, 'prog', s.type, k));
+    const prog = ss.jump ? pr.pick(pool) : pool[k % pool.length];
+    const cb = s.type === 'build' ? 1 : ss.chordBars;
     for (let j = 0; j < s.bars; j++) { const d = prog[Math.floor(j / cb) % prog.length]; out.push({ root: (sc.key.root + d[0]) % 12, q: d[1] }); }
   });
+  if (sc.ending === 'open' && out.length) out[out.length - 1] = { root: (sc.key.root + 7) % 12, q: 'M' }; // the cliffhanger ends on the five: the question stays open
   return out;
 };
 
@@ -229,16 +282,18 @@ S.autoTension = function (sc) {
   const v = S.view(sc), st = S.STYLES[sc.style] || S.STYLES.suspense, out = [];
   const r = rng(hash(sc.seed, 'tension'));
   v.sections.forEach((s, si) => {
-    const [a, b] = S.TYPES[s.type].t, last = si === v.sections.length - 1;
+    const [a, b] = S.TYPES[s.type].t, last = si === v.sections.length - 1, ss = S.styleOf(sc, s);
     for (let j = 0; j < s.bars; j++) {
       const f = s.bars > 1 ? j / (s.bars - 1) : 0;
-      let t = a + (b - a) * f + (st.lift || 0);
+      let t = a + (b - a) * f + (ss.lift || 0);
       if (s.type === 'peak' && si > 0 && v.sections.slice(0, si).some((x) => x.type === 'peak')) t += 0.06; // the second peak goes a bit further
-      if (st.jump) t += (r() - 0.5) * 0.3;
-      if (last && j === s.bars - 1) t = Math.min(t, 0.1);
+      if (ss.jump) t += (r() - 0.5) * 0.3;
+      if (last && j === s.bars - 1) t = sc.ending === 'open' ? Math.max(t, 0.6) : sc.ending === 'stop' ? Math.max(t, 0.85) : Math.min(t, 0.1);
       out.push(clamp(Math.round(t * 100) / 100, 0, 1));
     }
   });
+  // a hit point pulls the line up in the bars before it
+  S.hitsOf(sc).forEach((x) => { const h = x.bar; [[h - 2, 0.62], [h - 1, 0.78], [h, 0.92]].forEach(([b, m]) => { if (b >= 0 && b < out.length) out[b] = Math.max(out[b], m); }); });
   return out;
 };
 S.tensionOf = function (sc) { const a = S.autoTension(sc); return a.map((t, b) => (sc.tension && sc.tension[b] != null ? sc.tension[b] : t)); };
@@ -270,6 +325,8 @@ S.render = function (sc) {
   const map = S.barMap(v), total = map.length, chords = S.chordsFor(sc), tension = S.tensionOf(sc), swell = S.swellOf(sc);
   const out = { strings: { notes: [], ccs: [] }, percs: { notes: [], ccs: [] }, markers: [] };
   let b0 = 0; v.sections.forEach((s, si) => { const k = v.sections.slice(0, si + 1).filter((x) => x.type === s.type).length; out.markers.push({ t: b0 * BT, text: S.TYPES[s.type].name + (v.sections.filter((x) => x.type === s.type).length > 1 ? ' ' + k : '') }); b0 += s.bars; });
+  const hits = S.hitsOf(sc), hitAt = new Set(hits.map((x) => x.bar)), ending = sc.ending || 'resolve';
+  hits.forEach((x) => out.markers.push({ t: x.bar * BT + 1, text: 'Hit' + (x.text ? ': ' + x.text : '') }));
   const hold = (arr) => { let cur = null; return { set(p, t, vel) { if (cur && cur.p === p) return; this.end(t); if (p != null) cur = { p, t, v: vel }; }, end(t) { if (cur) { arr.push({ t: cur.t, d: Math.max(30, t - cur.t - 10), p: cur.p, v: cur.v }); cur = null; } } }; };
   const one = (arr, t, p, vel, len) => arr.push({ t, d: len || 240, p, v: vel || 100 });
   const level = (t) => (t < 0.5 ? S.PER.common[Math.min(6, Math.floor(t / 0.5 * 7))] : S.PER.style[Math.min(8, Math.floor((t - 0.5) / 0.5 * 9))]);
@@ -277,19 +334,21 @@ S.render = function (sc) {
   { const N = out.strings.notes, ph = hold(N), ad = hold(N), bassH = hold(N), chordH = [hold(N), hold(N), hold(N)];
     for (let b = 0; b < total; b++) {
       const { si, s, j } = map[b], t0 = b * BT, mode = S.plays(sc, 'strings', s, si, v.sections), t = tension[b], c = chords[b] || chords[b - 1] || { root: sc.key.root, q: 'm' };
-      const lastBar = b === total - 1;
+      const lastBar = b === total - 1, ss = S.styleOf(sc, s);
+      if (lastBar && ending === 'stop') { ph.end(t0); ad.end(t0); bassH.end(t0); chordH.forEach((x) => x.end(t0)); if (mode) one(N, t0, S.STR.stop, 100, 240); continue; } // the sudden stop: everything cut at once
       if (mode !== 'full') { ph.end(t0); ad.end(t0); bassH.end(t0); chordH.forEach((x) => x.end(t0)); continue; }
       let key = S.STR.phrases[clamp(Math.floor(t * 6), 0, 5)];
-      if (st.jump) key = S.STR.phrases[hash(sc.seed, 'jump', si, Math.floor(j / 2)) % 6];
-      if (lastBar && s.type === 'outro') key = S.STR.ending;
+      if (ss.jump) key = S.STR.phrases[hash(sc.seed, 'jump', si, Math.floor(j / 2)) % 6];
+      if (lastBar && s.type === 'outro' && ending === 'resolve') key = S.STR.ending;
       const vel = Math.round(64 + 40 * t);
       ph.set(key, t0, 100);
-      const add = (s.type === 'build' || s.type === 'peak') && t > 0.72 && sc.amount !== 'spice' ? S.STR.additions[si % 4] : null;
+      let add = (s.type === 'build' || s.type === 'peak') && t > 0.72 && sc.amount !== 'spice' ? S.STR.additions[si % 4] : null;
+      if (hitAt.has(b)) add = S.STR.additions[(b + si) % 4]; // a hit point: the strings add a layer on that bar
       ad.set(add, t0, 100);
-      const pedal = sc.tricks.pedal && (s.type === 'film' || (st.drone && (s.type === 'intro' || s.type === 'theme')));
-      const bassPc = pedal ? (sc.key.root + (s.type === 'film' ? st.pedal : 0)) % 12 : c.root;
+      const pedal = sc.tricks.pedal && (s.type === 'film' || (ss.drone && (s.type === 'intro' || s.type === 'theme')));
+      const bassPc = pedal ? (sc.key.root + (s.type === 'film' ? ss.pedal : 0)) % 12 : c.root;
       bassH.set(S.STR.bassLo + bassPc, t0, vel);
-      const tri = triad(c.root, c.q).map((pc) => { let p = S.STR.playLo + pc; if (p < 62) p += 12; if (st.high && p + 12 <= 83) p += 12; return p; }).sort((a, x) => a - x);
+      const tri = triad(c.root, c.q).map((pc) => { let p = S.STR.playLo + pc; if (p < 62) p += 12; if (ss.high && p + 12 <= 83) p += 12; return p; }).sort((a, x) => a - x);
       tri.forEach((p, i) => chordH[i].set(p, t0, vel));
     }
     const end = total * BT; ph.end(end); ad.end(end); bassH.end(end); chordH.forEach((x) => x.end(end));
@@ -298,20 +357,28 @@ S.render = function (sc) {
   { const N = out.percs.notes, ph = hold(N), seen = {}; let nf = 0, nh = 0, nm = 0;
     for (let b = 0; b < total; b++) {
       const { si, s, j } = map[b], t0 = b * BT, mode = S.plays(sc, 'percs', s, si, v.sections), t = tension[b], next = v.sections[si + 1];
-      const lastBar = b === total - 1, lastOfSec = j === s.bars - 1, k = seen[si] || 0;
+      const lastBar = b === total - 1, lastOfSec = j === s.bars - 1, k = seen[si] || 0, ss = S.styleOf(sc, s);
+      const hitHere = hitAt.has(b) && sc.parts.percs.on, hitNext = hitAt.has(b + 1) && sc.parts.percs.on;
+      if (hitHere) one(N, t0, S.PER.hits[nh++ % 2], 124, 240); // a hit point: the hit lands exactly on the bar
+      if (hitNext && !lastBar) one(N, t0, S.PER.fills[nf++ % 3], 108, BT - 20); // and a fill runs into it
       if (!mode) { ph.end(t0); continue; }
       if (mode === 'full') {
         let key = level(t);
-        if (s.type === 'build' && sc.tricks.ladder) { const steps = Math.floor(j / 2), base = S.PER.style.indexOf(level(Math.max(0.5, tension[b - j] || 0.5))); key = S.PER.style[clamp(base + steps, 0, 8)]; } // one key up every two bars
+        if ((s.type === 'build' || (ss.tick && s.type === 'theme')) && sc.tricks.ladder) { const steps = Math.floor(j / 2), base = S.PER.style.indexOf(level(Math.max(0.5, tension[b - j] || 0.5))); key = S.PER.style[clamp(base + steps, 0, 8)]; } // one key up every two bars
         if (s.type === 'film' && sc.tricks.metals) key = null; // the film moment: only metals hanging in the air
         if (lastBar) key = null;
         ph.set(key, t0, 100);
         if (j === 0 && s.type === 'intro') one(N, t0, S.PER.intros[si % 2], 100, 480);
       } else ph.end(t0);
-      if (sc.tricks.hits && j === 0 && (s.type === 'peak' || s.type === 'film' || (s.type === 'build' && (S.STYLES[sc.style].percs.hits > 0.8)))) one(N, t0, S.PER.hits[nh++ % 2], 118, 240);
+      if (sc.tricks.hits && j === 0 && !hitHere && (s.type === 'peak' || s.type === 'film' || (s.type === 'build' && (ss.percs.hits > 0.8)))) one(N, t0, S.PER.hits[nh++ % 2], 118, 240);
       if (sc.tricks.metals && (s.type === 'film' || ((s.type === 'intro' || s.type === 'theme') && t < 0.5 && mode === 'full')) && j % (s.type === 'film' ? 2 : 4) === 0 && !lastBar) one(N, t0 + (s.type === 'film' ? 0 : BT / 2), S.PER.metals[nm++ % 3], 96, 480);
-      if (lastOfSec && next && (next.type === 'peak' || next.type === 'build') && !lastBar) one(N, t0, S.PER.fills[nf++ % 3], 108, BT - 20);
-      if (lastBar) { ph.end(t0); one(N, t0, S.PER.endings[si % 2], 110, BT - 20); }
+      if (lastOfSec && next && (next.type === 'peak' || next.type === 'build') && !lastBar && !hitNext) one(N, t0, S.PER.fills[nf++ % 3], 108, BT - 20);
+      if (lastBar) {
+        ph.end(t0);
+        if (ending === 'resolve') one(N, t0, S.PER.endings[si % 2], 110, BT - 20);
+        else if (ending === 'open') { if (!hitHere) one(N, t0, S.PER.hits[nh++ % 2], 112, 240); one(N, t0 + BT / 2, S.PER.metals[nm++ % 3], 92, BT / 2 - 20); } // the cliffhanger: a hit, then a metal that hangs
+        else one(N, t0, S.PER.stop, 110, 240); // the sudden stop
+      }
       seen[si] = k + 1;
     }
     ph.end(total * BT);
@@ -334,6 +401,7 @@ S.summary = function (sc) {
     const phr = sn.filter((n) => n.p >= 36 && n.p <= 46);
     const str = [];
     if (phr.some((n) => n.p === S.STR.ending)) str.push('Ending');
+    if (sn.some((n) => n.p === S.STR.stop)) str.push('Stop');
     const ps = [...new Set(phr.filter((n) => S.STR.phrases.includes(n.p)).map((n) => 'Phrase ' + (S.STR.phrases.indexOf(n.p) + 1)))];
     if (ps.length) str.push(ps.length > 2 ? ps[0] + ' to ' + ps[ps.length - 1].replace('Phrase ', '') : ps.join(', '));
     if (phr.some((n) => S.STR.additions.includes(n.p))) str.push('+ Addition');
@@ -347,6 +415,7 @@ S.summary = function (sc) {
     if (pn.some((n) => S.PER.metals.includes(n.p))) per.push('Metals');
     if (pn.some((n) => S.PER.fills.includes(n.p))) per.push('Fill');
     if (pn.some((n) => S.PER.endings.includes(n.p))) per.push('Ending');
+    if (pn.some((n) => n.p === S.PER.stop)) per.push('Stop');
     const cs = []; chords.slice(b0 - s.bars, b0).forEach((c) => { const nmx = S.chordName(c, sc.key); if (cs[cs.length - 1] !== nmx) cs.push(nmx); });
     return { strings: str.join(' · '), percs: per.join(' · '), chords: cs.slice(0, 6).join(' · ') + (cs.length > 6 ? ' …' : '') };
   });
@@ -361,7 +430,8 @@ S.writeMidi = function (tracks, meta) {
   const t0 = [];
   const meta0 = (t, type, bytes) => t0.push({ t, b: [0xff, type].concat(vlq(bytes.length), bytes) });
   meta0(0, 0x03, str(meta.title || 'Divine Score Machine')); meta0(0, 0x02, str(S.COPYRIGHT));
-  const us = Math.round(60000000 / meta.bpm); meta0(0, 0x51, [(us >> 16) & 255, (us >> 8) & 255, us & 255]);
+  const tempo = (t, bpm) => { const us = Math.round(60000000 / bpm); meta0(t, 0x51, [(us >> 16) & 255, (us >> 8) & 255, us & 255]); };
+  if (meta.tempos && meta.tempos.length) meta.tempos.forEach((x) => tempo(x.t, x.bpm)); else tempo(0, meta.bpm);
   meta0(0, 0x58, [meta.meter || 4, 2, 24, 8]);
   (meta.markers || []).forEach((m) => meta0(m.t, 0x06, str(m.text)));
   const enc = (evs) => { evs.sort((a, b) => a.t - b.t || a.o - b.o); let last = 0; const out = []; for (const e of evs) { out.push(...vlq(e.t - last), ...e.b); last = e.t; } out.push(0, 0xff, 0x2f, 0); return out; };
@@ -374,8 +444,15 @@ S.writeMidi = function (tracks, meta) {
   }
   return new Uint8Array([].concat(...chunks));
 };
+// the tempo per bar: steady, or a straight line from the start tempo to the end tempo
+S.tempoMap = function (sc) {
+  const n = S.totalBars(S.view(sc)), BT = S.barTicks(sc);
+  if (!sc.bpmEnd || sc.bpmEnd === sc.bpm || n < 2) return [{ t: 0, bpm: sc.bpm }];
+  const out = []; for (let b = 0; b < n; b++) out.push({ t: b * BT, bpm: Math.round((sc.bpm + (sc.bpmEnd - sc.bpm) * b / (n - 1)) * 100) / 100 });
+  return out;
+};
 S.files = function (sc) {
-  const r = S.render(sc), meta = { bpm: sc.bpm, meter: sc.meter, markers: r.markers, title: sc.name };
+  const r = S.render(sc), meta = { bpm: sc.bpm, meter: sc.meter, markers: r.markers, title: sc.name, tempos: S.tempoMap(sc) };
   const out = [];
   if (sc.parts.strings.on && r.strings.notes.length) out.push({ part: 'Strings', data: S.writeMidi([{ name: 'Strings for STRIIIINGS (Player)', notes: r.strings.notes, ccs: r.strings.ccs }], meta) });
   if (sc.parts.percs.on && r.percs.notes.length) out.push({ part: 'Percs', data: S.writeMidi([{ name: 'Percs for PERRCS (Player)', notes: r.percs.notes, ccs: r.percs.ccs }], meta) });
@@ -457,7 +534,7 @@ if (typeof module !== 'undefined') module.exports = S;
 (function () {
 'use strict';
 const S = window.SCORE;
-const VERSION = 'version 2026-10-22 04:00';
+const VERSION = 'version 2026-10-23 02:30';
 const $ = (q) => document.querySelector(q);
 const SVGNS = 'http://www.w3.org/2000/svg';
 function h(tag, attrs, ...kids) {
@@ -537,7 +614,8 @@ function render() {
     h('button', { class: 'ghost', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
     h('button', { id: 'newScore', class: 'ghost', title: 'A new score with the same feeling', onclick: () => { st.sc = S.newScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '🎲 New score'),
     h('label', { class: 'lab' }, 'Name', h('input', { id: 'name', type: 'text', value: x.name, style: 'width:150px', onchange: (e) => change(() => { x.name = e.target.value.trim() || 'Untitled'; }, true) })),
-    h('label', { class: 'lab' }, 'Tempo', h('input', { id: 'bpm', type: 'number', min: 40, max: 200, value: x.bpm, style: 'width:72px', onchange: (e) => change(() => { x.bpm = S.clamp(Math.round(+e.target.value || x.bpm), 40, 200); }, true) })),
+    h('label', { class: 'lab' }, 'Tempo', h('input', { id: 'bpm', type: 'number', min: 40, max: 200, value: x.bpm, style: 'width:72px', onchange: (e) => change(() => { x.bpm = S.clamp(Math.round(+e.target.value || x.bpm), 40, 200); }, true) }),
+      h('span', { class: 'small muted' }, 'to'), h('input', { id: 'bpmEnd', type: 'number', min: 40, max: 200, value: x.bpmEnd || '', placeholder: 'steady', title: 'The tempo at the end: the score speeds up or slows down bar by bar. Empty: the tempo stays the same.', style: 'width:78px', onchange: (e) => change(() => { const v2 = Math.round(+e.target.value); x.bpmEnd = v2 ? S.clamp(v2, 40, 200) : null; setHint(x.bpmEnd ? 'From ' + x.bpm + ' to ' + x.bpmEnd + ' bpm, bar by bar. The files carry the tempo changes.' : 'Steady tempo.'); }, true) })),
     h('label', { class: 'lab' }, 'Key',
       h('select', { id: 'keyRoot', disabled: x.fromTrack, title: x.fromTrack ? 'Found in your track' : 'Key', onchange: (e) => change(() => { x.key.root = +e.target.value; }, true) }, S.names(x.key).map((n, i) => h('option', { value: i, selected: i === x.key.root }, n))),
       h('select', { id: 'keyMode', disabled: x.fromTrack, onchange: (e) => change(() => { x.key.mode = e.target.value; }, true) }, ['minor', 'major'].map((m) => h('option', { value: m, selected: m === x.key.mode }, m)))),
@@ -562,6 +640,8 @@ function render() {
   const lanes = h('div', { class: 'lanes' });
   const grow = (s) => 'flex:' + s.bars + ' 1 0;min-width:0';
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Tension'), h('span', null, 'draw it')), h('div', { class: 'draw' }, lineSvg('tensionSvg', 'Tension', t, S.autoTension(x), 'tension', '#E8A03A'))));
+  const hitBars = new Set(S.hitsOf(x).map((q) => q.bar));
+  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Hits'), h('span', null, 'tap a bar')), h('div', { class: 'hitrow', id: 'hitRow' }, Array.from({ length: total }, (_, b) => h('button', { id: 'hit_' + b, class: hitBars.has(b) ? 'on' : '', title: 'Bar ' + (b + 1) + (hitBars.has(b) ? ': hit point, tap to remove' : ': tap to set a hit point'), 'aria-label': 'Hit point bar ' + (b + 1), onclick: () => change(() => { const hs = (x.hits || []).slice(), at = hs.findIndex((q) => q.bar === b); if (at >= 0) hs.splice(at, 1); else hs.push({ bar: b, text: '' }); x.hits = hs; setHint(at >= 0 ? 'Hit point on bar ' + (b + 1) + ' removed.' : 'Hit point on bar ' + (b + 1) + ': a fill runs into it, the hit lands on the bar. Name it on the right.'); }) }, hitBars.has(b) ? '▼' : '')))));
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }), h('div', { class: 'secs' }, v.sections.map((s, i) => h('button', { id: 'sec_' + i, class: 'sec' + (i === st.sel ? ' sel' : ''), style: grow(s) + ';background:' + TYPE_COL[s.type] + ';color:' + TYPE_FG[s.type] + (s.type === 'film' ? ';border:1px dashed #B88AA8' : ''), title: S.TYPES[s.type].name + ', ' + s.bars + ' bars. Tap to edit.', onclick: () => { st.sel = i; render(); } }, S.TYPES[s.type].name, ' ', h('span', { class: 'n' }, s.bars))))));
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('span', null, 'chords')), h('div', { class: 'secs mono' }, v.sections.map((s, i) => h('div', { style: grow(s), class: 'cell' }, sum[i].chords)))));
   const laneRow = (part, title, plugin, col, bg) => h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', { style: 'color:' + col }, title), h('span', null, plugin)),
@@ -576,6 +656,7 @@ function render() {
   main.append(h('div', { class: 'secedit' },
     h('span', { class: 'disp small' }, S.TYPES[s.type].name),
     h('label', { class: 'lab' }, 'Type', h('select', { id: 'secType', onchange: (e) => change(() => { s.type = e.target.value; if (s.type === 'film') x.filmMoment = true; }) }, S.TYPE_ORDER.map((k) => h('option', { value: k, selected: k === s.type }, S.TYPES[k].name)))),
+    h('label', { class: 'lab' }, 'Feeling', h('select', { id: 'secStyle', title: 'This section can have its own feeling', onchange: (e) => change(() => { if (e.target.value) s.style = e.target.value; else delete s.style; setHint(e.target.value ? S.TYPES[s.type].name + ' feels ' + S.STYLES[e.target.value].name.toLowerCase() + ' now.' : S.TYPES[s.type].name + ' follows the feeling of the score again.'); }) }, h('option', { value: '', selected: !s.style }, 'Same as the score'), S.STYLE_ORDER.map((k) => h('option', { value: k, selected: s.style === k }, S.STYLES[k].name)))),
     h('div', { class: 'seg' }, h('button', { id: 'barsMinus', 'aria-label': 'Fewer bars', onclick: () => change(() => { s.bars = Math.max(1, s.bars - (s.bars > 4 ? 2 : 1)); }) }, '−'), h('span', { class: 'mid' }, s.bars + ' bars'), h('button', { id: 'barsPlus', 'aria-label': 'More bars', onclick: () => change(() => { s.bars = Math.min(64, s.bars + (s.bars >= 4 ? 2 : 1)); }) }, '+')),
     h('button', { id: 'secAdd', class: 'ghost', disabled: x.fromTrack, onclick: () => change(() => { x.sections.splice(realIdx + 1, 0, { id: 'n' + Date.now(), type: s.type === 'peak' ? 'theme' : 'peak', bars: 8 }); st.sel++; }) }, '+ Section after'),
     h('button', { id: 'secDel', class: 'ghost', disabled: x.sections.length < 2 || x.fromTrack, onclick: () => change(() => { x.sections.splice(realIdx, 1); }) }, 'Remove'),
@@ -587,6 +668,11 @@ function render() {
       h('label', { class: 'switch' }, h('input', { id: 'on_' + part, type: 'checkbox', checked: P.on, onchange: (e) => change(() => { P.on = e.target.checked; }, true) }), h('span', null, P.on ? 'on' : 'off'))),
     h('label', { class: 'lab col' }, 'Where', h('select', { id: 'where_' + part, disabled: !P.on, onchange: (e) => change(() => { P.where = e.target.value; }, true) }, Object.entries(S.WHERE).map(([k, t]) => h('option', { value: k, selected: k === P.where }, t))))); };
   aside.append(partCard('strings', 'Strings', 'STRIIIINGS', '#F4C177'), partCard('percs', 'Percs', 'PERRCS', '#9CC7E3'));
+  aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Ending'), seg('end', Object.entries(S.ENDINGS), x.ending || 'resolve', (k) => change(() => { x.ending = k; setHint({ resolve: 'The score comes home: an ending phrase and a closing hit.', open: 'A cliffhanger: it ends on the five, a hit and a metal that hangs in the air.', stop: 'A sudden stop: everything cut at once on the last bar.' }[k]); }), 'How it ends')));
+  const hl = S.hitsOf(x);
+  aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Hit points'),
+    hl.length ? h('div', { class: 'col hitlist' }, hl.map((q) => h('div', { class: 'hrow' }, h('span', { class: 'mono small' }, 'Bar ' + (q.bar + 1)), h('input', { type: 'text', value: q.text || '', placeholder: 'what happens', 'aria-label': 'What happens on bar ' + (q.bar + 1), style: 'flex:1;min-width:0', onchange: (e) => change(() => { q.text = e.target.value.trim(); }, true) }), h('button', { class: 'ghost small', 'aria-label': 'Remove the hit point on bar ' + (q.bar + 1), onclick: () => change(() => { x.hits = (x.hits || []).filter((z) => z !== q); }) }, '✕'))))
+      : h('div', { class: 'muted small' }, 'A moment in your film, like a door that slams. Tap a bar in the Hits row: a fill runs into it, the hit lands on the bar, and the name shows as a marker in your DAW.')));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Tricks'), h('div', { class: 'chips' }, Object.entries(S.TRICKS).map(([k, tt]) => h('button', { id: 'trick_' + k, class: 'chip small' + (x.tricks[k] ? ' on' : ''), 'aria-pressed': x.tricks[k] ? 'true' : 'false', onclick: () => change(() => { x.tricks[k] = !x.tricks[k]; }, true) }, tt)))));
   aside.append(h('div', { class: 'card film' }, h('b', { class: 'disp small', style: 'color:#E3C6DA' }, 'Film moment'), h('span', { class: 'muted' }, x.fromTrack ? 'With your own track the structure is yours: set a section to Film moment to hold your breath there.' : 'Bars where your track holds its breath: strings on a pedal tone, only metals in the air. Switch it on above, or set any section to Film moment.')));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Get the files'),
