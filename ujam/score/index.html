@@ -1,0 +1,604 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Pick a feeling, draw the tension, get MIDI for both. Made especially for UJAM Symphonic Elements STRIIIINGS and PERRCS. By Divine Monday.">
+<meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
+<meta name="theme-color" content="#0D0E11">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Divine Monday">
+<meta property="og:title" content="Divine Score Machine">
+<meta property="og:description" content="Pick a feeling, draw the tension, get MIDI for both. Made especially for UJAM Symphonic Elements STRIIIINGS and PERRCS. By Divine Monday.">
+<meta property="og:url" content="https://divineacidmonday.github.io/divine-music-machine-v7/ujam/score/">
+<meta property="og:image" content="https://divineacidmonday.github.io/divine-music-machine-v7/og/og-score.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Divine Score Machine">
+<meta name="twitter:image" content="https://divineacidmonday.github.io/divine-music-machine-v7/og/og-score.png">
+<!--PWA--><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="/divine-music-machine-v7/icons/score-180.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="DM Score"><link rel="icon" type="image/png" sizes="192x192" href="/divine-music-machine-v7/icons/score-192.png"><script>if ('serviceWorker' in navigator && /\.github\.io$/.test(location.hostname)) navigator.serviceWorker.register('sw.js').catch(function () {});</script><!--/PWA-->
+<title>Divine Score Machine</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A//www.w3.org/2000/svg%22%20viewBox%3D%220%200%2064%2064%22%3E%3Crect%20width%3D%2264%22%20height%3D%2264%22%20rx%3D%2214%22%20fill%3D%22%230D0E11%22/%3E%3Cpath%20d%3D%22M8%2048%20C%2020%2046%2C%2026%2040%2C%2032%2026%20S%2046%2012%2C%2056%2016%22%20fill%3D%22none%22%20stroke%3D%22%23E8A03A%22%20stroke-width%3D%225%22%20stroke-linecap%3D%22round%22/%3E%3Ccircle%20cx%3D%2232%22%20cy%3D%2226%22%20r%3D%224.5%22%20fill%3D%22%239CC7E3%22/%3E%3C/svg%3E">
+<style>
+:root{color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:#0D0E11;color:#ECE7DD;font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:1500px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:12px}
+.card{background:#16181D;border:1px solid #2A2D35;border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:10px}
+.top{flex-direction:row;flex-wrap:wrap;align-items:center;gap:12px}
+.row{display:flex;flex-wrap:wrap;gap:12px}.top-align{align-items:flex-start}
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.grow{flex:1 1 20px}
+.brand{display:flex;align-items:baseline;gap:8px;margin-right:6px}
+.logo{font-family:"Bodoni 72",Didot,"Bodoni MT",Georgia,serif;font-size:24px;font-weight:700;letter-spacing:.3px}
+.logo i{color:#E8A03A}
+.disp{font-family:"Bodoni 72",Didot,"Bodoni MT",Georgia,serif;font-size:20px;font-style:italic}
+.disp.small{font-size:17px}
+.tag{font:11px/1.2 ui-monospace,Menlo,Consolas,monospace;color:#A39E94;border:1px solid #3A3D46;border-radius:6px;padding:3px 6px}
+.cap{font-size:12px;letter-spacing:1.5px;text-transform:uppercase;color:#A39E94}
+.muted{color:#A39E94;font-size:13px}.small{font-size:12px}
+.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+button,select,input{font:inherit;color:#ECE7DD}
+button{min-height:40px;border-radius:8px;border:1px solid #3A3D46;background:#1E2026;padding:0 14px;cursor:pointer}
+button:hover:not(:disabled){border-color:#5A5E68}
+button:disabled,select:disabled,input:disabled{opacity:.5;cursor:default}
+button:focus-visible,select:focus-visible,input:focus-visible,label.big:focus-within{outline:2px solid #E8A03A;outline-offset:2px}
+.primary{background:#E8A03A;border-color:#E8A03A;color:#0D0E11;font-weight:600}
+.ghost{background:#1E2026}
+.left{text-align:left;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;padding:8px 12px}
+.fn{font:11px/1.3 ui-monospace,Menlo,Consolas,monospace;color:#A39E94;word-break:break-all}
+select,input[type=text],input[type=number]{height:38px;border-radius:8px;border:1px solid #3A3D46;background:#0D0E11;padding:0 8px}
+.lab{display:flex;align-items:center;gap:6px;color:#A39E94}.lab.col{flex-direction:column;align-items:stretch;font-size:12px}
+.col{display:flex;flex-direction:column;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:44px;border-radius:22px;padding:0 16px}
+.chip.small{min-height:36px;border-radius:18px;padding:0 12px;font-size:13px}
+.chip.on{border-color:#E8A03A;background:#2B2216;color:#F4C177;font-weight:600}
+.grp{display:flex;flex-direction:column;gap:6px}
+.chip.feel{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;border-radius:12px;padding:6px 14px;min-height:52px;line-height:1.2}
+.chip.feel span{font-size:11px;color:#A39E94}
+.chip.feel.light{background:#221F19}.chip.feel.dark{background:#171B22}.chip.feel.story{background:#1F1A20}
+.chip.feel.on{background:#2B2216;border-color:#E8A03A}.chip.feel.on b{color:#F4C177}.chip.feel.on span{color:#C9B48D}
+.two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.big{position:relative;min-height:64px;border-radius:10px;border:1px solid #3A3D46;background:#1E2026;text-align:left;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;cursor:pointer}
+.big b{display:block}.big span{font-size:12px;color:#A39E94}
+.big.on{border-color:#E8A03A;background:#2B2216}.big.on b{color:#F4C177}
+.big.drop{border-style:dashed}
+.seg{display:flex;border:1px solid #3A3D46;border-radius:10px;overflow:hidden}
+.seg button{border:none;border-radius:0;border-left:1px solid #3A3D46;background:#1E2026}
+.seg button:first-child{border-left:none}
+.seg button.on{background:#E8A03A;color:#0D0E11;font-weight:600}
+.seg .mid{display:flex;align-items:center;padding:0 12px;color:#ECE7DD;border-left:1px solid #3A3D46;border-right:1px solid #3A3D46}
+.scroll{overflow-x:auto}
+.lanes{min-width:680px;display:flex;flex-direction:column;gap:8px}
+.lrow{display:flex;gap:8px;align-items:stretch}
+.lname{width:92px;flex:none;display:flex;flex-direction:column;justify-content:center;gap:1px}
+.lname span{font-size:11px;color:#A39E94}
+.draw{flex:1 1 0;min-width:0;height:96px;border-radius:8px;background:#111317;border:1px solid #23262D;overflow:hidden}
+.draw.small{height:44px}.draw.off{opacity:.35}
+.secs{flex:1 1 0;min-width:0;display:flex;gap:4px}
+.sec{min-height:36px;border-radius:6px;border:1px solid transparent;padding:4px 8px;font-size:12px;text-align:left;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.sec .n{opacity:.65}
+.sec.sel{outline:2px solid #E8A03A;outline-offset:1px}
+.cell{font-size:11px;color:#A39E94;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.blocks .blk{min-height:56px;border-radius:6px;padding:6px;font-size:11px;overflow:hidden}
+.secedit{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border-top:1px solid #2A2D35;padding-top:12px}
+.switch{display:flex;align-items:center;gap:6px;color:#C9C2B5;font-size:13px}
+.switch input{width:20px;height:20px;accent-color:#E8A03A}
+.film{background:#1C161A;border:1px dashed #B88AA8}
+.hint{color:#C9C2B5;font-size:13px;padding:2px 4px;min-height:20px}
+footer{color:#8E897F;font-size:12px;padding:4px}footer .man{display:block;margin-top:6px}footer .man a{color:#E8A03A;margin-right:10px}
+.noai{display:inline-block;background:#E8A03A;color:#0D0E11;font-weight:600;border-radius:10px;padding:1px 8px;margin-right:6px}
+@media (max-width:640px){#app{padding:10px}.two{grid-template-columns:1fr}.logo{font-size:20px}}
+</style></head>
+<body><div id="app"></div>
+<script>
+/* Divine Score Machine engine: styles, structure, chords, tension, and Player MIDI for UJAM STRIIIINGS and PERRCS. No DOM, no AI: fixed music rules and a seeded dice. */
+(function (root) {
+'use strict';
+const S = {};
+S.PPQ = 480;
+const NOTE = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+S.NOTE = NOTE;
+const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+S.clamp = clamp;
+function rng(seed) { let a = seed >>> 0; const f = () => { a |= 0; a = (a + 0x6D2B79F5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; f.int = (n) => Math.floor(f() * n); f.pick = (arr) => arr[f.int(arr.length)]; f.chance = (p) => f() < p; return f; }
+function hash() { let h = 2166136261; for (const x of arguments) { const s = String(x); for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } h ^= 124; } return h >>> 0; }
+S.rng = rng; S.hash = hash;
+S.newSeed = () => (Math.random() * 4294967295) >>> 0;
+
+/* ---------- the two plugins, read from their manuals (C3 = MIDI 60) ---------- */
+S.STR = { phrases: [36, 38, 40, 41, 43, 45], additions: [37, 39, 42, 44], ending: 46, stop: 47, bassLo: 48, playLo: 60 };
+S.PER = { common: [48, 50, 52, 53, 55, 57, 59], style: [60, 62, 64, 65, 67, 69, 71, 72, 74], hits: [49, 51], metals: [54, 56, 58], intros: [61, 63], fills: [66, 68, 70], endings: [73, 75], stop: 76 };
+S.KEYNAME = (p) => NOTE[p % 12].replace('Eb', 'D#').replace('Ab', 'G#').replace('Bb', 'A#') + (Math.floor(p / 12) - 2);
+
+/* ---------- chords: [semitones above the tonic, quality] ---------- */
+const C = { i: [0, 'm'], I: [0, 'M'], bII: [1, 'M'], ii: [2, 'm'], iio: [2, 'd'], III: [3, 'M'], iii: [4, 'm'], iv: [5, 'm'], IV: [5, 'M'], tt: [6, 'M'], ttm: [6, 'm'], bii: [1, 'm'], v: [7, 'm'], V: [7, 'M'], VI: [8, 'M'], vi: [9, 'm'], VII: [10, 'M'], vii7: [11, 'd'], bvii: [11, 'M'], biii: [3, 'm'] };
+const ch = (s) => s.split(' ').map((k) => C[k]);
+
+/* ---------- the styles ---------- */
+// tension: how high each section type sits by default (0 calm, 1 full); ramp: rises through the section
+S.TYPES = {
+  intro: { name: 'Intro', t: [0.12, 0.25] }, theme: { name: 'Theme', t: [0.3, 0.42] }, build: { name: 'Build', t: [0.42, 0.82] },
+  peak: { name: 'Peak', t: [0.82, 0.92] }, film: { name: 'Film moment', t: [0.22, 0.6] }, outro: { name: 'Outro', t: [0.3, 0.05] }
+};
+S.TYPE_ORDER = ['intro', 'theme', 'build', 'peak', 'film', 'outro'];
+S.STYLES = {
+  comedy: { name: 'Playful', like: 'like a comedy', group: 'light', line: 'Bright and bouncy: a major key, hits on the jokes, metals that sparkle.', mode: 'major', bpm: [112, 132], chordBars: 1, lift: 0.05, pedal: 7,
+    prog: { intro: [ch('I V')], theme: [ch('I vi IV V'), ch('I IV I V')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('IV V I vi')], film: [ch('IV')], outro: [ch('IV V I I')] },
+    form: [['intro', 4], ['theme', 8], ['build', 4], ['peak', 8], ['theme', 8], ['film', 4], ['peak', 8], ['outro', 4]], percs: { metals: 0.6, hits: 0.9 } },
+  suspense: { name: 'Tense', like: 'like suspense', group: 'dark', line: 'Low pedal tones, a slow ladder up, metals that hang in the air, hits on the turns.', mode: 'minor', bpm: [70, 88], chordBars: 1, lift: 0, pedal: 7,
+    prog: { intro: [ch('i')], theme: [ch('i VI iv V'), ch('i iv VI V')], build: [ch('VI VII')], peak: [ch('i III VII iv'), ch('i VI III VII')], film: [ch('i iv')], outro: [ch('i')] },
+    form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 16], ['film', 8], ['peak', 16], ['outro', 4]], percs: { metals: 0.8, hits: 0.8 } },
+  horror: { name: 'Fearful', like: 'like horror', group: 'dark', line: 'A half step that never resolves, a drone on the tonic, sudden hits out of the dark.', mode: 'minor', bpm: [60, 76], chordBars: 2, lift: -0.05, pedal: 0, drone: true,
+    prog: { intro: [ch('i bII')], theme: [ch('i bII i bII'), ch('i iv bII i')], build: [ch('bII V')], peak: [ch('i VI bII V')], film: [ch('i bII')], outro: [ch('i bII i i')] },
+    form: [['intro', 8], ['theme', 16], ['build', 8], ['film', 8], ['peak', 8], ['outro', 8]], percs: { metals: 1, hits: 1 } },
+  thriller: { name: 'Chase', like: 'like a thriller', group: 'story', line: 'Driving and restless: style phrases high up, a ladder in every build, fills into each peak.', mode: 'minor', bpm: [112, 132], chordBars: 1, lift: 0.15, pedal: 7,
+    prog: { intro: [ch('i VI')], theme: [ch('i VI VII i'), ch('i iv v i')], build: [ch('iv V')], peak: [ch('i VI III VII')], film: [ch('i VI')], outro: [ch('i VI VII i')] },
+    form: [['intro', 4], ['theme', 8], ['build', 8], ['peak', 8], ['theme', 8], ['build', 8], ['film', 4], ['peak', 16], ['outro', 4]], percs: { metals: 0.4, hits: 1 } },
+  docu: { name: 'Wonder', like: 'like a documentary', group: 'light', line: 'Warm and open: slow chords, light common phrases, a gentle swell that carries the story.', mode: 'major', bpm: [80, 100], chordBars: 2, lift: -0.1, pedal: 7,
+    prog: { intro: [ch('I IV')], theme: [ch('I V vi IV'), ch('vi IV I V')], build: [ch('IV V')], peak: [ch('I V vi IV')], film: [ch('vi IV')], outro: [ch('IV I')] },
+    form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 16], ['film', 8], ['outro', 8]], percs: { metals: 0.3, hits: 0.3 } },
+  noir: { name: 'Mysterious', like: 'like film noir', group: 'dark', line: 'Smoke and shadow: minor chords that lean on the fourth, soft strings, a lonely cymbal.', mode: 'minor', bpm: [60, 76], chordBars: 2, lift: -0.12, pedal: 7,
+    prog: { intro: [ch('i iv')], theme: [ch('i iv VI V'), ch('i VI iv V')], build: [ch('iv V')], peak: [ch('i iv VII III')], film: [ch('iv V')], outro: [ch('iv i')] },
+    form: [['intro', 8], ['theme', 16], ['film', 8], ['theme', 8], ['peak', 8], ['outro', 8]], percs: { metals: 0.7, hits: 0.2 } },
+  romance: { name: 'Tender', like: 'like romance', group: 'light', line: 'Long lines and full chords: strings carry everything, percussion only as a whisper.', mode: 'major', bpm: [64, 80], chordBars: 2, lift: 0, pedal: 7, quietPercs: true,
+    prog: { intro: [ch('I IV')], theme: [ch('I vi IV V'), ch('I iii IV V')], build: [ch('ii V')], peak: [ch('IV V iii vi'), ch('I V vi IV')], film: [ch('vi IV')], outro: [ch('IV I')] },
+    form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 16], ['film', 8], ['peak', 8], ['outro', 8]], percs: { metals: 0.5, hits: 0.1 } },
+  avant: { name: 'Uncanny', like: 'like avant garde', group: 'dark', line: 'Rules bent on purpose: tritones, odd section lengths, phrases that jump.', mode: 'minor', bpm: [70, 110], chordBars: 1, lift: 0.05, pedal: 0, jump: true,
+    prog: { intro: [ch('i tt')], theme: [ch('i tt bII bvii'), ch('i biii tt V')], build: [ch('bII V')], peak: [ch('i tt III vi')], film: [ch('i bII')], outro: [ch('tt i')] },
+    form: [['intro', 6], ['theme', 10], ['film', 5], ['build', 7], ['peak', 12], ['outro', 5]], percs: { metals: 0.9, hits: 0.9 } }
+};
+S.STYLES.light = { name: 'Light', like: 'carefree', group: 'light', line: 'Carefree and airy: major chords up high, strings that float, a few bright metals.', mode: 'major', bpm: [96, 112], chordBars: 2, lift: -0.15, pedal: 7, high: true,
+  prog: { intro: [ch('I IV')], theme: [ch('I IV vi V'), ch('I V IV I')], build: [ch('IV V')], peak: [ch('IV I V I'), ch('I IV V I')], film: [ch('vi IV')], outro: [ch('IV I')] },
+  form: [['intro', 4], ['theme', 8], ['peak', 8], ['theme', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.6, hits: 0.2 } };
+S.STYLES.euphoric = { name: 'Euphoric', like: 'hands in the air', group: 'light', line: 'Rising and rising: fast, a ladder in every build, everything wide open at the top.', mode: 'major', bpm: [124, 136], chordBars: 1, lift: 0.15, pedal: 7,
+  prog: { intro: [ch('vi IV')], theme: [ch('vi IV I V')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('IV V vi I')], film: [ch('IV V')], outro: [ch('IV I')] },
+  form: [['intro', 4], ['build', 8], ['peak', 8], ['theme', 8], ['build', 8], ['peak', 16], ['outro', 4]], percs: { metals: 0.5, hits: 1 } };
+S.STYLES.ecstasy = { name: 'Ecstasy', like: 'beyond the peak', group: 'light', line: 'The peak that will not let go: tension stays at the top, every addition on, hits that keep coming.', mode: 'major', bpm: [120, 132], chordBars: 1, lift: 0.25, pedal: 7,
+  prog: { intro: [ch('I V')], theme: [ch('I V vi IV')], build: [ch('IV V')], peak: [ch('IV V I I'), ch('I V IV I')], film: [ch('IV')], outro: [ch('IV I')] },
+  form: [['intro', 4], ['build', 8], ['peak', 16], ['build', 4], ['peak', 16], ['outro', 4]], percs: { metals: 0.6, hits: 1 } };
+S.STYLES.glory = { name: 'Glory', like: 'the victory', group: 'light', line: 'Heroic and proud: the major key with its flat seventh, big hits, the long walk to the top.', mode: 'major', bpm: [84, 100], chordBars: 1, lift: 0.05, pedal: 7,
+  prog: { intro: [ch('I VII')], theme: [ch('I VII IV I'), ch('I IV VII I')], build: [ch('IV V')], peak: [ch('I VI VII I'), ch('VI VII I I')], film: [ch('VI VII')], outro: [ch('VI VII I I')] },
+  form: [['intro', 8], ['theme', 8], ['build', 8], ['peak', 16], ['film', 4], ['peak', 8], ['outro', 8]], percs: { metals: 0.8, hits: 1 } };
+S.STYLES.dark = { name: 'Dark', like: 'deep shadow', group: 'dark', line: 'Low and heavy: the half step above the root, low phrases, a drone that never leaves.', mode: 'minor', bpm: [70, 84], chordBars: 2, lift: -0.05, pedal: 0, drone: true,
+  prog: { intro: [ch('i bII')], theme: [ch('i bII VII i'), ch('i iv bII i')], build: [ch('iv V')], peak: [ch('i VI bII V')], film: [ch('i bII')], outro: [ch('bII i')] },
+  form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 8], ['film', 8], ['outro', 8]], percs: { metals: 0.7, hits: 0.6 } };
+S.STYLES.depressed = { name: 'Depressed', like: 'heavy hearted', group: 'dark', line: 'Slow and sinking: a bass line that walks down, quiet strings, everything a little softer each time.', mode: 'minor', bpm: [58, 70], chordBars: 2, lift: -0.2, pedal: 7, quietPercs: true,
+  prog: { intro: [ch('i VII')], theme: [ch('i VII VI V'), ch('i v iv i')], build: [ch('iv V')], peak: [ch('VI VII i i')], film: [ch('iv i')], outro: [ch('VI V i i')] },
+  form: [['intro', 8], ['theme', 16], ['peak', 8], ['theme', 16], ['film', 8], ['outro', 8]], percs: { metals: 0.4, hits: 0.1 } };
+S.STYLES.confused = { name: 'Confused', like: 'lost the thread', group: 'dark', line: 'The ground keeps moving: chords that slip a half step, phrases that jump, lengths you cannot count.', mode: 'minor', bpm: [84, 104], chordBars: 1, lift: 0, pedal: 0, jump: true,
+  prog: { intro: [ch('i bii')], theme: [ch('i bii bvii ttm'), ch('i tt bii i')], build: [ch('bII V')], peak: [ch('i ttm bII bvii')], film: [ch('i bii')], outro: [ch('bii i')] },
+  form: [['intro', 5], ['theme', 7], ['build', 6], ['peak', 9], ['theme', 7], ['outro', 5]], percs: { metals: 0.8, hits: 0.7 } };
+S.STYLES.plot = { name: 'Solving the plot', like: 'it all falls into place', group: 'story', line: 'A ticking pulse, clues stacking up in minor, and at the end the minor turns major: the pieces fall into place.', mode: 'minor', bpm: [96, 112], chordBars: 1, lift: 0.05, pedal: 7,
+  prog: { intro: [ch('i VI')], theme: [ch('i VI III VII'), ch('i iv VI V')], build: [ch('iv V')], peak: [ch('I IV V I')], film: [ch('iv V')], outro: [ch('IV V I I')] },
+  form: [['intro', 4], ['theme', 8], ['build', 8], ['theme', 8], ['build', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.5, hits: 0.8 } };
+S.GROUPS = [['light', 'Light'], ['dark', 'Dark'], ['story', 'Story']];
+S.STYLE_ORDER = ['comedy', 'light', 'docu', 'romance', 'euphoric', 'ecstasy', 'glory', 'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'thriller', 'plot'];
+S.AMOUNTS = { spice: 'Spice', colour: 'Colour', film: 'Film' };
+S.WHERE = { auto: 'Follow the amount', all: 'Everywhere', peaks: 'Builds and peaks', quiet: 'Quiet parts' };
+S.TRICKS = { swell: 'Swell', pedal: 'Pedal point', ladder: 'Ladder', hits: 'Hits on turns', metals: 'Metals in quiet parts' };
+
+/* ---------- a new score ---------- */
+S.newScore = function (styleKey, opts) {
+  opts = opts || {};
+  const st = S.STYLES[styleKey] || S.STYLES.suspense, seed = opts.seed != null ? opts.seed >>> 0 : S.newSeed(), r = rng(hash(seed, 'score', styleKey));
+  const roots = st.mode === 'minor' ? [2, 4, 9, 0, 7, 5] : [0, 2, 5, 7, 9, 10];
+  const sc = {
+    v: 1, name: opts.name || 'Untitled', style: styleKey, seed, bpm: st.bpm[0] + r.int(st.bpm[1] - st.bpm[0] + 1), meter: 4,
+    key: { root: r.pick(roots), mode: st.mode }, amount: 'film', fromTrack: false, filmMoment: true,
+    sections: st.form.map((f, i) => ({ id: 's' + i, type: f[0], bars: f[1] })),
+    parts: { strings: { on: true, where: 'auto' }, percs: { on: !st.quietPercs, where: st.quietPercs ? 'quiet' : 'auto' } },
+    tricks: { swell: true, pedal: true, ladder: true, hits: true, metals: true },
+    tension: null, swell: null, chords: null
+  };
+  return sc;
+};
+S.totalBars = (sc) => sc.sections.reduce((a, s) => a + s.bars, 0);
+S.barTicks = (sc) => sc.meter * S.PPQ;
+// which section and bar in it, per bar of the score
+S.barMap = function (sc) {
+  const out = []; sc.sections.forEach((s, si) => { for (let j = 0; j < s.bars; j++) out.push({ si, s, j }); }); return out;
+};
+S.sectionsShown = (sc) => (sc.filmMoment || sc.fromTrack ? sc.sections : sc.sections.filter((s) => s.type !== 'film'));
+S.view = function (sc) { return Object.assign({}, sc, { sections: S.sectionsShown(sc) }); };
+
+/* ---------- chords per bar ---------- */
+const triad = (root, q) => (q === 'M' ? [0, 4, 7] : q === 'm' ? [0, 3, 7] : [0, 3, 6]).map((x) => (root + x) % 12);
+const FLAT = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B'], SHARP = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+// sharps in the sharp keys (G, D, A, E, B major; E, B, F# minor and their relatives), flats everywhere else
+S.names = (key) => (key && (key.mode === 'major' ? [7, 2, 9, 4, 11, 6] : [4, 11, 6, 1, 8]).includes(key.root) ? SHARP : FLAT);
+S.pcName = (pc, key) => S.names(key)[((pc % 12) + 12) % 12];
+// a chord borrowed from the flat side (bII, bIII, bVI, bVII in a major key) is spelled with a flat: Bb in D major, not A#
+S.chordName = (c, key) => { if (!c) return ''; const iv = key ? ((c.root - key.root) % 12 + 12) % 12 : 0; const nm = key && key.mode === 'major' && [1, 3, 8, 10].includes(iv) ? FLAT[c.root] : S.pcName(c.root, key); return nm + (c.q === 'm' ? 'm' : c.q === 'd' ? 'dim' : ''); };
+S.chordsFor = function (sc) {
+  const v = S.view(sc);
+  if (sc.fromTrack && sc.trackChords) return sc.trackChords.slice(0, S.totalBars(v));
+  const st = S.STYLES[sc.style] || S.STYLES.suspense, out = [], seen = {};
+  v.sections.forEach((s, si) => {
+    const k = seen[s.type] || 0; seen[s.type] = k + 1;
+    const pool = st.prog[s.type] || st.prog.theme, pr = rng(hash(sc.seed, 'prog', s.type, k));
+    const prog = st.jump ? pr.pick(pool) : pool[k % pool.length];
+    const cb = s.type === 'build' ? 1 : st.chordBars;
+    for (let j = 0; j < s.bars; j++) { const d = prog[Math.floor(j / cb) % prog.length]; out.push({ root: (sc.key.root + d[0]) % 12, q: d[1] }); }
+  });
+  return out;
+};
+
+/* ---------- tension and swell per bar: the machine's line, your drawing on top ---------- */
+S.autoTension = function (sc) {
+  const v = S.view(sc), st = S.STYLES[sc.style] || S.STYLES.suspense, out = [];
+  const r = rng(hash(sc.seed, 'tension'));
+  v.sections.forEach((s, si) => {
+    const [a, b] = S.TYPES[s.type].t, last = si === v.sections.length - 1;
+    for (let j = 0; j < s.bars; j++) {
+      const f = s.bars > 1 ? j / (s.bars - 1) : 0;
+      let t = a + (b - a) * f + (st.lift || 0);
+      if (s.type === 'peak' && si > 0 && v.sections.slice(0, si).some((x) => x.type === 'peak')) t += 0.06; // the second peak goes a bit further
+      if (st.jump) t += (r() - 0.5) * 0.3;
+      if (last && j === s.bars - 1) t = Math.min(t, 0.1);
+      out.push(clamp(Math.round(t * 100) / 100, 0, 1));
+    }
+  });
+  return out;
+};
+S.tensionOf = function (sc) { const a = S.autoTension(sc); return a.map((t, b) => (sc.tension && sc.tension[b] != null ? sc.tension[b] : t)); };
+S.autoSwell = function (sc) { const t = S.tensionOf(sc); return t.map((x, b) => { const p = t[b - 1] != null ? t[b - 1] : x, n = t[b + 1] != null ? t[b + 1] : x; return clamp(Math.round((0.25 + 0.75 * (p + 2 * x + n) / 4) * 100) / 100, 0, 1); }); };
+S.swellOf = function (sc) { const a = S.autoSwell(sc); return a.map((s, b) => (sc.swell && sc.swell[b] != null ? sc.swell[b] : s)); };
+
+/* ---------- where each part plays ---------- */
+// 'full': plays its phrases; 'touch': only the one-shot accents (hits, fills, metals, endings); false: silent
+S.plays = function (sc, part, s, si, sections) {
+  const P = sc.parts[part]; if (!P || !P.on) return false;
+  const type = s.type, last = si === sections.length - 1, lastPeak = sections.map((x) => x.type).lastIndexOf('peak') === si;
+  if (P.where === 'all') return 'full';
+  if (P.where === 'peaks') return type === 'build' || type === 'peak' ? 'full' : last ? 'touch' : false;
+  if (P.where === 'quiet') return type === 'intro' || type === 'theme' || type === 'film' || type === 'outro' ? 'full' : 'touch';
+  if (sc.amount === 'film') return 'full';
+  if (sc.amount === 'colour') {
+    if (part === 'strings') return type === 'peak' || type === 'film' || type === 'outro' || type === 'build' ? 'full' : false;
+    return type === 'build' || type === 'peak' || type === 'film' ? 'full' : 'touch';
+  }
+  // spice: only the moments that matter
+  if (part === 'strings') return type === 'film' || lastPeak || last ? 'full' : false;
+  return type === 'build' ? 'full' : type === 'peak' || last || type === 'film' ? 'touch' : false;
+};
+
+/* ---------- the performance: Player MIDI events per part ---------- */
+// notes: { t, d, p, v }, ccs: { t, c, v }
+S.render = function (sc) {
+  const v = S.view(sc), st = S.STYLES[sc.style] || S.STYLES.suspense, BT = S.barTicks(sc);
+  const map = S.barMap(v), total = map.length, chords = S.chordsFor(sc), tension = S.tensionOf(sc), swell = S.swellOf(sc);
+  const out = { strings: { notes: [], ccs: [] }, percs: { notes: [], ccs: [] }, markers: [] };
+  let b0 = 0; v.sections.forEach((s, si) => { const k = v.sections.slice(0, si + 1).filter((x) => x.type === s.type).length; out.markers.push({ t: b0 * BT, text: S.TYPES[s.type].name + (v.sections.filter((x) => x.type === s.type).length > 1 ? ' ' + k : '') }); b0 += s.bars; });
+  const hold = (arr) => { let cur = null; return { set(p, t, vel) { if (cur && cur.p === p) return; this.end(t); if (p != null) cur = { p, t, v: vel }; }, end(t) { if (cur) { arr.push({ t: cur.t, d: Math.max(30, t - cur.t - 10), p: cur.p, v: cur.v }); cur = null; } } }; };
+  const one = (arr, t, p, vel, len) => arr.push({ t, d: len || 240, p, v: vel || 100 });
+  const level = (t) => (t < 0.5 ? S.PER.common[Math.min(6, Math.floor(t / 0.5 * 7))] : S.PER.style[Math.min(8, Math.floor((t - 0.5) / 0.5 * 9))]);
+  /* strings */
+  { const N = out.strings.notes, ph = hold(N), ad = hold(N), bassH = hold(N), chordH = [hold(N), hold(N), hold(N)];
+    for (let b = 0; b < total; b++) {
+      const { si, s, j } = map[b], t0 = b * BT, mode = S.plays(sc, 'strings', s, si, v.sections), t = tension[b], c = chords[b] || chords[b - 1] || { root: sc.key.root, q: 'm' };
+      const lastBar = b === total - 1;
+      if (mode !== 'full') { ph.end(t0); ad.end(t0); bassH.end(t0); chordH.forEach((x) => x.end(t0)); continue; }
+      let key = S.STR.phrases[clamp(Math.floor(t * 6), 0, 5)];
+      if (st.jump) key = S.STR.phrases[hash(sc.seed, 'jump', si, Math.floor(j / 2)) % 6];
+      if (lastBar && s.type === 'outro') key = S.STR.ending;
+      const vel = Math.round(64 + 40 * t);
+      ph.set(key, t0, 100);
+      const add = (s.type === 'build' || s.type === 'peak') && t > 0.72 && sc.amount !== 'spice' ? S.STR.additions[si % 4] : null;
+      ad.set(add, t0, 100);
+      const pedal = sc.tricks.pedal && (s.type === 'film' || (st.drone && (s.type === 'intro' || s.type === 'theme')));
+      const bassPc = pedal ? (sc.key.root + (s.type === 'film' ? st.pedal : 0)) % 12 : c.root;
+      bassH.set(S.STR.bassLo + bassPc, t0, vel);
+      const tri = triad(c.root, c.q).map((pc) => { let p = S.STR.playLo + pc; if (p < 62) p += 12; if (st.high && p + 12 <= 83) p += 12; return p; }).sort((a, x) => a - x);
+      tri.forEach((p, i) => chordH[i].set(p, t0, vel));
+    }
+    const end = total * BT; ph.end(end); ad.end(end); bassH.end(end); chordH.forEach((x) => x.end(end));
+  }
+  /* percs */
+  { const N = out.percs.notes, ph = hold(N), seen = {}; let nf = 0, nh = 0, nm = 0;
+    for (let b = 0; b < total; b++) {
+      const { si, s, j } = map[b], t0 = b * BT, mode = S.plays(sc, 'percs', s, si, v.sections), t = tension[b], next = v.sections[si + 1];
+      const lastBar = b === total - 1, lastOfSec = j === s.bars - 1, k = seen[si] || 0;
+      if (!mode) { ph.end(t0); continue; }
+      if (mode === 'full') {
+        let key = level(t);
+        if (s.type === 'build' && sc.tricks.ladder) { const steps = Math.floor(j / 2), base = S.PER.style.indexOf(level(Math.max(0.5, tension[b - j] || 0.5))); key = S.PER.style[clamp(base + steps, 0, 8)]; } // one key up every two bars
+        if (s.type === 'film' && sc.tricks.metals) key = null; // the film moment: only metals hanging in the air
+        if (lastBar) key = null;
+        ph.set(key, t0, 100);
+        if (j === 0 && s.type === 'intro') one(N, t0, S.PER.intros[si % 2], 100, 480);
+      } else ph.end(t0);
+      if (sc.tricks.hits && j === 0 && (s.type === 'peak' || s.type === 'film' || (s.type === 'build' && (S.STYLES[sc.style].percs.hits > 0.8)))) one(N, t0, S.PER.hits[nh++ % 2], 118, 240);
+      if (sc.tricks.metals && (s.type === 'film' || ((s.type === 'intro' || s.type === 'theme') && t < 0.5 && mode === 'full')) && j % (s.type === 'film' ? 2 : 4) === 0 && !lastBar) one(N, t0 + (s.type === 'film' ? 0 : BT / 2), S.PER.metals[nm++ % 3], 96, 480);
+      if (lastOfSec && next && (next.type === 'peak' || next.type === 'build') && !lastBar) one(N, t0, S.PER.fills[nf++ % 3], 108, BT - 20);
+      if (lastBar) { ph.end(t0); one(N, t0, S.PER.endings[si % 2], 110, BT - 20); }
+      seen[si] = k + 1;
+    }
+    ph.end(total * BT);
+  }
+  /* swell: the mod wheel turns both down where the line is low (in both plugins it dials in a decrescendo) */
+  if (sc.tricks.swell) for (let b = 0; b < total; b++) for (let q = 0; q < 4; q++) {
+    const a = swell[b], n = swell[b + 1] != null ? swell[b + 1] : a, x = a + (n - a) * (q / 4), val = clamp(Math.round((1 - x) * 100), 0, 127), t = b * BT + q * (BT / 4);
+    ['strings', 'percs'].forEach((p) => { const cc = out[p].ccs; if (!cc.length || cc[cc.length - 1].v !== val) cc.push({ t, c: 1, v: val }); });
+  }
+  out.strings.notes.sort((x, y) => x.t - y.t || x.p - y.p); out.percs.notes.sort((x, y) => x.t - y.t || x.p - y.p);
+  return out;
+};
+
+/* ---------- what each part plays per section, in words for the lanes ---------- */
+S.summary = function (sc) {
+  const v = S.view(sc), r = S.render(sc), BT = S.barTicks(sc), chords = S.chordsFor(sc); let b0 = 0;
+  return v.sections.map((s, si) => {
+    const a = b0 * BT, z = (b0 + s.bars) * BT; b0 += s.bars;
+    const on = (n) => n.t < z && n.t + n.d > a; const sn = r.strings.notes.filter(on), pn = r.percs.notes.filter(on);
+    const phr = sn.filter((n) => n.p >= 36 && n.p <= 46);
+    const str = [];
+    if (phr.some((n) => n.p === S.STR.ending)) str.push('Ending');
+    const ps = [...new Set(phr.filter((n) => S.STR.phrases.includes(n.p)).map((n) => 'Phrase ' + (S.STR.phrases.indexOf(n.p) + 1)))];
+    if (ps.length) str.push(ps.length > 2 ? ps[0] + ' to ' + ps[ps.length - 1].replace('Phrase ', '') : ps.join(', '));
+    if (phr.some((n) => S.STR.additions.includes(n.p))) str.push('+ Addition');
+    const bass = sn.filter((n) => n.p >= 48 && n.p < 60);
+    if (bass.length && new Set(bass.map((n) => n.p)).size === 1 && s.bars > 2 && new Set(chords.slice(b0 - s.bars, b0).map((c) => c.root)).size > 1) str.push('pedal ' + S.pcName(bass[0].p, sc.key));
+    const per = [];
+    const held = [...new Set(pn.filter((n) => S.PER.common.includes(n.p) || S.PER.style.includes(n.p)).map((n) => n.p))];
+    if (held.length) per.push((S.PER.common.includes(held[0]) ? 'Common ' : 'Style ') + S.KEYNAME(held[0]) + (held.length > 1 ? ' to ' + S.KEYNAME(held[held.length - 1]) : ''));
+    if (pn.some((n) => S.PER.intros.includes(n.p))) per.unshift('Intro key');
+    if (pn.some((n) => S.PER.hits.includes(n.p))) per.push('Hit');
+    if (pn.some((n) => S.PER.metals.includes(n.p))) per.push('Metals');
+    if (pn.some((n) => S.PER.fills.includes(n.p))) per.push('Fill');
+    if (pn.some((n) => S.PER.endings.includes(n.p))) per.push('Ending');
+    const cs = []; chords.slice(b0 - s.bars, b0).forEach((c) => { const nmx = S.chordName(c, sc.key); if (cs[cs.length - 1] !== nmx) cs.push(nmx); });
+    return { strings: str.join(' · '), percs: per.join(' · '), chords: cs.slice(0, 6).join(' · ') + (cs.length > 6 ? ' …' : '') };
+  });
+};
+
+/* ---------- MIDI out: type 1, 480 PPQ, tempo and metre, named track, mod wheel ---------- */
+function vlq(n) { const b = [n & 0x7f]; n >>= 7; while (n) { b.unshift((n & 0x7f) | 0x80); n >>= 7; } return b; }
+function str(s) { const o = []; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); o.push(c < 128 ? c : 63); } return o; }
+function chunk(id, data) { return str(id).concat([(data.length >>> 24) & 255, (data.length >>> 16) & 255, (data.length >>> 8) & 255, data.length & 255], data); }
+S.COPYRIGHT = 'Copyright ' + new Date().getFullYear() + ' Divine Monday';
+S.writeMidi = function (tracks, meta) {
+  const t0 = [];
+  const meta0 = (t, type, bytes) => t0.push({ t, b: [0xff, type].concat(vlq(bytes.length), bytes) });
+  meta0(0, 0x03, str(meta.title || 'Divine Score Machine')); meta0(0, 0x02, str(S.COPYRIGHT));
+  const us = Math.round(60000000 / meta.bpm); meta0(0, 0x51, [(us >> 16) & 255, (us >> 8) & 255, us & 255]);
+  meta0(0, 0x58, [meta.meter || 4, 2, 24, 8]);
+  (meta.markers || []).forEach((m) => meta0(m.t, 0x06, str(m.text)));
+  const enc = (evs) => { evs.sort((a, b) => a.t - b.t || a.o - b.o); let last = 0; const out = []; for (const e of evs) { out.push(...vlq(e.t - last), ...e.b); last = e.t; } out.push(0, 0xff, 0x2f, 0); return out; };
+  const chunks = [chunk('MThd', [0, 1, 0, tracks.length + 1, (S.PPQ >> 8) & 255, S.PPQ & 255]), chunk('MTrk', enc(t0.map((e) => ({ t: e.t, o: 0, b: e.b }))))];
+  for (const tr of tracks) {
+    const ch = tr.channel || 0, evs = [{ t: 0, o: 0, b: [0xff, 0x03].concat(vlq(str(tr.name).length), str(tr.name)) }];
+    for (const c of tr.ccs || []) evs.push({ t: c.t, o: 1, b: [0xb0 | ch, c.c, c.v] });
+    for (const n of tr.notes) { evs.push({ t: n.t, o: 3, b: [0x90 | ch, n.p, clamp(n.v, 1, 127)] }); evs.push({ t: n.t + n.d, o: 2, b: [0x80 | ch, n.p, 0] }); }
+    chunks.push(chunk('MTrk', enc(evs)));
+  }
+  return new Uint8Array([].concat(...chunks));
+};
+S.files = function (sc) {
+  const r = S.render(sc), meta = { bpm: sc.bpm, meter: sc.meter, markers: r.markers, title: sc.name };
+  const out = [];
+  if (sc.parts.strings.on && r.strings.notes.length) out.push({ part: 'Strings', data: S.writeMidi([{ name: 'Strings for STRIIIINGS (Player)', notes: r.strings.notes, ccs: r.strings.ccs }], meta) });
+  if (sc.parts.percs.on && r.percs.notes.length) out.push({ part: 'Percs', data: S.writeMidi([{ name: 'Percs for PERRCS (Player)', notes: r.percs.notes, ccs: r.percs.ccs }], meta) });
+  out.push({ part: 'Structure', data: S.writeMidi([], meta) });
+  return out;
+};
+
+/* ---------- your own track: read a MIDI file, find the chord of every bar ---------- */
+S.readMidi = function (u8) {
+  const d = u8 instanceof Uint8Array ? u8 : new Uint8Array(u8); let i = 0;
+  const rd32 = () => (d[i++] << 24 | d[i++] << 16 | d[i++] << 8 | d[i++]) >>> 0, rd16 = () => (d[i++] << 8) | d[i++];
+  if (String.fromCharCode(d[0], d[1], d[2], d[3]) !== 'MThd') throw new Error('not a MIDI file');
+  i = 4; const hl = rd32(); i = 8; rd16(); const ntr = rd16(), div = rd16(); i = 8 + hl;
+  const ppq = div & 0x8000 ? 480 : div; let bpm = null, meter = null; const notes = [], markers = [];
+  for (let k = 0; k < ntr && i < d.length; k++) {
+    const id = String.fromCharCode(d[i], d[i + 1], d[i + 2], d[i + 3]); i += 4; const len = rd32(), end = i + len;
+    if (id !== 'MTrk') { i = end; continue; }
+    let t = 0, rs = 0; const open = {};
+    while (i < end) {
+      let v = 0, b; do { b = d[i++]; v = (v << 7) | (b & 127); } while (b & 128); t += v;
+      let st = d[i];
+      if (st === 0xff) { const ty = d[i + 1]; i += 2; let l = 0; do { b = d[i++]; l = (l << 7) | (b & 127); } while (b & 128);
+        if (ty === 0x51 && bpm == null) bpm = 60000000 / ((d[i] << 16) | (d[i + 1] << 8) | d[i + 2]);
+        if (ty === 0x58 && meter == null) meter = d[i];
+        if (ty === 0x06) markers.push({ t, text: String.fromCharCode(...d.subarray(i, i + l)) });
+        i += l; continue; }
+      if (st === 0xf0 || st === 0xf7) { i++; let l = 0; do { b = d[i++]; l = (l << 7) | (b & 127); } while (b & 128); i += l; continue; }
+      if (st & 0x80) { rs = st; i++; } const hi = rs & 0xf0;
+      if (hi === 0xc0 || hi === 0xd0) { i += 1; continue; }
+      const a1 = d[i++], a2 = d[i++];
+      if (hi === 0x90 && a2 > 0) { (open[a1] = open[a1] || []).push({ t, p: a1, v: a2, ch: rs & 15 }); }
+      else if (hi === 0x80 || (hi === 0x90 && a2 === 0)) { const o = (open[a1] || []).shift(); if (o) { o.d = Math.max(1, t - o.t); notes.push(o); } }
+    }
+    i = end;
+  }
+  const f = 480 / ppq;
+  return { bpm: bpm ? Math.round(bpm) : null, meter: meter || 4, notes: notes.filter((n) => n.ch !== 9).map((n) => ({ t: Math.round(n.t * f), d: Math.round(n.d * f), p: n.p, v: n.v })), markers: markers.map((m) => ({ t: Math.round(m.t * f), text: m.text })) };
+};
+const KMAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88], KMIN = [6.33, 2.68, 3.52, 5.38, 2.6, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+S.detectKey = function (hist) {
+  let best = { root: 0, mode: 'minor', s: -1e9 };
+  for (let r = 0; r < 12; r++) for (const [mode, prof] of [['major', KMAJ], ['minor', KMIN]]) { let s = 0; for (let k = 0; k < 12; k++) s += hist[(r + k) % 12] * prof[k]; if (s > best.s) best = { root: r, mode, s }; }
+  return { root: best.root, mode: best.mode };
+};
+S.fromTrack = function (sc, midi) {
+  const meter = midi.meter || 4, BT = meter * S.PPQ, last = midi.notes.reduce((a, n) => Math.max(a, n.t + n.d), 0), bars = Math.max(1, Math.ceil((last - 10) / BT));
+  const hist = new Array(12).fill(0); midi.notes.forEach((n) => { hist[n.p % 12] += n.d; });
+  const key = S.detectKey(hist), chords = []; let prev = { root: key.root, q: key.mode === 'major' ? 'M' : 'm' };
+  const dens = [];
+  for (let b = 0; b < bars; b++) {
+    const a = b * BT, z = a + BT, w = new Array(12).fill(0), bassW = new Array(12).fill(0); let cnt = 0, lo = 999;
+    midi.notes.forEach((n) => { const s = Math.max(a, n.t), e = Math.min(z, n.t + n.d); if (e > s) { w[n.p % 12] += e - s; cnt++; lo = Math.min(lo, n.p); } });
+    midi.notes.forEach((n) => { if (n.p === lo) { const s = Math.max(a, n.t), e = Math.min(z, n.t + n.d); if (e > s) bassW[n.p % 12] += e - s; } });
+    dens.push(cnt);
+    if (!cnt) { chords.push(prev); continue; }
+    let best = null;
+    for (let r = 0; r < 12; r++) for (const q of ['M', 'm']) { const tones = triad(r, q); let s = 0; for (let k = 0; k < 12; k++) s += tones.includes(k) ? w[k] : -0.6 * w[k]; s += 0.4 * bassW[r]; if (!best || s > best.s) best = { root: r, q, s }; }
+    prev = { root: best.root, q: best.q }; chords.push(prev);
+  }
+  // sections: your markers when the file has them, else blocks of 8 bars, typed by how busy each block is
+  let sections = [];
+  const ms = (midi.markers || []).filter((m) => m.t < bars * BT).sort((x, y) => x.t - y.t);
+  const typeOf = (txt) => { const s = txt.toLowerCase(); return /intro/.test(s) ? 'intro' : /build|pre|bridge|rise/.test(s) ? 'build' : /chorus|drop|refrain|peak/.test(s) ? 'peak' : /break|film/.test(s) ? 'film' : /outro|end/.test(s) ? 'outro' : 'theme'; };
+  if (ms.length >= 2) { const starts = ms.map((m) => Math.round(m.t / BT)); if (starts[0] > 0) starts.unshift(0), ms.unshift({ text: 'Intro' }); starts.forEach((st, k) => { const nx = k + 1 < starts.length ? starts[k + 1] : bars; if (nx > st) sections.push({ id: 't' + k, type: typeOf(ms[k].text), bars: nx - st }); }); }
+  if (!sections.length) {
+    const avg = dens.reduce((a, x) => a + x, 0) / bars;
+    for (let b = 0, k = 0; b < bars; b += 8, k++) { const n = Math.min(8, bars - b), dd = dens.slice(b, b + n).reduce((a, x) => a + x, 0) / n; sections.push({ id: 't' + k, type: b === 0 ? 'intro' : b + n >= bars ? 'outro' : dd > avg * 1.15 ? 'peak' : 'theme', bars: n }); }
+  }
+  return Object.assign({}, sc, { fromTrack: true, filmMoment: false, meter, bpm: midi.bpm || sc.bpm, key, trackChords: chords, sections, tension: null, swell: null });
+};
+
+root.SCORE = S;
+if (typeof module !== 'undefined') module.exports = S;
+})(typeof window !== 'undefined' ? window : globalThis);
+
+</script>
+<script>
+/* Divine Score Machine: interface. Pick a feeling, draw the tension, get MIDI for STRIIIINGS and PERRCS. */
+(function () {
+'use strict';
+const S = window.SCORE;
+const VERSION = 'version 2026-10-22 04:00';
+const $ = (q) => document.querySelector(q);
+const SVGNS = 'http://www.w3.org/2000/svg';
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const k in attrs || {}) { const v = attrs[k]; if (v == null || v === false) continue; if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (k === 'style') el.setAttribute('style', v); else if (v === true) el.setAttribute(k, ''); else el.setAttribute(k, v); }
+  for (const c of kids.flat(Infinity)) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(String(c)));
+  return el;
+}
+function sv(tag, attrs) { const el = document.createElementNS(SVGNS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; }
+const st = { sc: S.newScore('suspense', { seed: 20261022 }), sel: 0, hint: 'Pick a feeling, draw the tension, then get MIDI for both.' };
+const sc = () => st.sc;
+function change(fn, keepLines) { fn(); if (!keepLines) { st.sc.tension = null; st.sc.swell = null; } st.sel = Math.min(st.sel, S.view(st.sc).sections.length - 1); render(); }
+function setHint(t) { st.hint = t; const e = $('#hint'); if (e) e.textContent = t; }
+
+/* ---------- downloads: plain .mid files, no zip ---------- */
+const safe = (s) => String(s || 'Untitled').replace(/[^A-Za-z0-9]+/g, '').slice(0, 40) || 'Untitled';
+function keyTag() { const k = sc().key; return S.pcName(k.root, k).replace('#', 'sharp').replace('b', 'flat').replace('Cflat', 'B') + (k.mode === 'minor' ? 'm' : ''); }
+function fileName(part) { const x = sc(); return 'DM_Score_' + safe(x.name) + '_' + safe(x.fromTrack ? 'MyTrack' : S.STYLES[x.style].name) + '_' + part + '_' + x.bpm + 'bpm_' + keyTag() + '.mid'; }
+function save(name, data) { const url = URL.createObjectURL(new Blob([data], { type: 'audio/midi' })); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); }
+function deliver(which) {
+  const files = S.files(sc()).filter((f) => !which || f.part === which);
+  if (!files.length) { setHint('Nothing to download: switch Strings or Percs on first.'); return; }
+  files.forEach((f, i) => setTimeout(() => save(fileName(f.part), f.data), i * 350));
+  setHint(files.length > 1 ? files.length + ' files on their way. Drop each on bar 1 in Studio One.' : fileName(files[0].part) + ' downloaded.');
+}
+
+/* ---------- your own track ---------- */
+function loadTrack(file) {
+  if (!file) return;
+  if (!/\.midi?$/i.test(file.name)) { setHint(file.name + ' is not a MIDI file. Drop the chords of your track as .mid.'); return; }
+  file.arrayBuffer().then((buf) => {
+    try {
+      const m = S.readMidi(new Uint8Array(buf)); if (!m.notes.length) { setHint('No notes found in ' + file.name + '.'); return; }
+      st.sc = S.fromTrack(Object.assign({}, sc(), { name: file.name.replace(/\.midi?$/i, '') }), m); st.sel = 0; render();
+      setHint('Read ' + file.name + ': ' + S.totalBars(sc()) + ' bars in ' + S.pcName(sc().key.root, sc().key) + ' ' + sc().key.mode + '. Strings and Percs now follow your chords.');
+    } catch (e) { setHint('This file could not be read as MIDI: ' + e.message + '.'); }
+  });
+}
+document.addEventListener('dragover', (e) => { e.preventDefault(); });
+document.addEventListener('drop', (e) => { e.preventDefault(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; loadTrack(f); });
+
+/* ---------- a line you draw: tension or swell, one value per bar ---------- */
+function lineSvg(id, label, values, auto, key, color) {
+  const n = values.length, W = 1000, H = 100, x = (b) => (b + 0.5) / n * W, y = (v) => 8 + (1 - v) * (H - 16);
+  const svg = sv('svg', { id, viewBox: '0 0 ' + W + ' ' + H, preserveAspectRatio: 'none', role: 'img', 'aria-label': label + ': drag to draw, double click to give it back to the machine', style: 'width:100%;height:100%;display:block;touch-action:none;cursor:crosshair' });
+  const pts = (arr) => arr.map((v, b) => x(b).toFixed(1) + ',' + y(v).toFixed(1)).join(' ');
+  svg.append(sv('polyline', { points: pts(auto), fill: 'none', stroke: color, 'stroke-opacity': '0.35', 'stroke-width': '1.5', 'stroke-dasharray': '5 4', 'vector-effect': 'non-scaling-stroke' }));
+  svg.append(sv('polygon', { points: '0,' + H + ' ' + pts(values) + ' ' + W + ',' + H, fill: color, 'fill-opacity': '0.09', stroke: 'none' }));
+  const line = sv('polyline', { points: pts(values), fill: 'none', stroke: color, 'stroke-width': '2.5', 'vector-effect': 'non-scaling-stroke' });
+  svg.append(line);
+  let down = false; const cur = values.slice();
+  const at = (e) => { const r = svg.getBoundingClientRect(); const b = S.clamp(Math.floor((e.clientX - r.left) / r.width * n), 0, n - 1); const v = S.clamp(1 - ((e.clientY - r.top) / r.height * H - 8) / (H - 16), 0, 1); return [b, Math.round(v * 100) / 100]; };
+  let lastB = null;
+  const paint = (e) => { const [b, v] = at(e); const from = lastB == null ? b : lastB; for (let k = Math.min(from, b); k <= Math.max(from, b); k++) cur[k] = v; lastB = b; line.setAttribute('points', pts(cur)); };
+  svg.addEventListener('pointerdown', (e) => { down = true; lastB = null; svg.setPointerCapture(e.pointerId); paint(e); });
+  svg.addEventListener('pointermove', (e) => { if (down) paint(e); });
+  const up = () => { if (!down) return; down = false; const arr = (sc()[key] || new Array(n).fill(null)).slice(); cur.forEach((v, b) => { if (v !== values[b]) arr[b] = v; }); change(() => { sc()[key] = arr; }, true); setHint(label + ' drawn. Double click the line to give it back to the machine.'); };
+  svg.addEventListener('pointerup', up); svg.addEventListener('pointercancel', up);
+  svg.addEventListener('dblclick', () => { change(() => { sc()[key] = null; }, true); setHint(label + ': the machine draws it again.'); });
+  return svg;
+}
+
+/* ---------- the screen ---------- */
+const TYPE_COL = { intro: '#262931', theme: '#262931', build: '#2F2A22', peak: '#3A2E1C', film: '#2A1E26', outro: '#262931' };
+const TYPE_FG = { intro: '#ECE7DD', theme: '#ECE7DD', build: '#F1D7A8', peak: '#F4C177', film: '#E3C6DA', outro: '#ECE7DD' };
+function seg(id, items, cur, onpick, label) {
+  return h('div', { class: 'seg', role: 'group', 'aria-label': label }, items.map(([k, t]) => h('button', { id: id + '_' + k, class: k === cur ? 'on' : '', 'aria-pressed': k === cur ? 'true' : 'false', onclick: () => onpick(k) }, t)));
+}
+function render() {
+  const x = sc(), v = S.view(x), total = S.totalBars(v), sum = S.summary(x), t = S.tensionOf(x), w = S.swellOf(x);
+  st.sel = S.clamp(st.sel, 0, v.sections.length - 1);
+  const style = S.STYLES[x.style];
+  const app = $('#app'); app.replaceChildren();
+  // header
+  app.append(h('header', { class: 'card top' },
+    h('div', { class: 'brand' }, h('span', { class: 'logo' }, 'Divine ', h('i', null, 'Score'), ' Machine'), h('span', { class: 'tag' }, 'for UJAM STRIIIINGS + PERRCS')),
+    h('button', { class: 'ghost', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
+    h('button', { id: 'newScore', class: 'ghost', title: 'A new score with the same feeling', onclick: () => { st.sc = S.newScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '🎲 New score'),
+    h('label', { class: 'lab' }, 'Name', h('input', { id: 'name', type: 'text', value: x.name, style: 'width:150px', onchange: (e) => change(() => { x.name = e.target.value.trim() || 'Untitled'; }, true) })),
+    h('label', { class: 'lab' }, 'Tempo', h('input', { id: 'bpm', type: 'number', min: 40, max: 200, value: x.bpm, style: 'width:72px', onchange: (e) => change(() => { x.bpm = S.clamp(Math.round(+e.target.value || x.bpm), 40, 200); }, true) })),
+    h('label', { class: 'lab' }, 'Key',
+      h('select', { id: 'keyRoot', disabled: x.fromTrack, title: x.fromTrack ? 'Found in your track' : 'Key', onchange: (e) => change(() => { x.key.root = +e.target.value; }, true) }, S.names(x.key).map((n, i) => h('option', { value: i, selected: i === x.key.root }, n))),
+      h('select', { id: 'keyMode', disabled: x.fromTrack, onchange: (e) => change(() => { x.key.mode = e.target.value; }, true) }, ['minor', 'major'].map((m) => h('option', { value: m, selected: m === x.key.mode }, m)))),
+    h('div', { class: 'grow' }),
+    h('button', { id: 'deliverAll', class: 'primary', onclick: () => deliver() }, '⬇ Download all')));
+  // style and start
+  app.append(h('section', { class: 'row' },
+    h('div', { class: 'card', style: 'flex:999 1 620px' }, h('div', { class: 'disp' }, 'What should your scene feel like?'),
+      S.GROUPS.map(([g, gname]) => h('div', { class: 'grp' }, h('div', { class: 'cap' }, gname),
+        h('div', { class: 'chips' }, S.STYLE_ORDER.filter((k) => S.STYLES[k].group === g).map((k) => h('button', { id: 'style_' + k, class: 'chip feel ' + g + (k === x.style ? ' on' : ''), 'aria-pressed': k === x.style ? 'true' : 'false', title: S.STYLES[k].line, onclick: () => { if (x.fromTrack) { change(() => { x.style = k; }, true); setHint(S.STYLES[k].name + ' colours your track now.'); } else { st.sc = S.newScore(k, { seed: x.seed, name: x.name }); render(); setHint(S.STYLES[k].line); } } }, h('b', null, S.STYLES[k].name), h('span', null, S.STYLES[k].like)))))),
+      h('div', { class: 'muted' }, (x.fromTrack ? 'Your track, feeling ' + style.name.toLowerCase() + '. ' : style.name + ': ') + style.line)),
+    h('div', { class: 'card', style: 'flex:1 1 300px' }, h('div', { class: 'cap' }, 'Start from'),
+      h('div', { class: 'two' },
+        h('button', { id: 'startFilm', class: 'big' + (!x.fromTrack ? ' on' : ''), onclick: () => { if (x.fromTrack) { st.sc = S.newScore(x.style, { name: x.name }); render(); setHint('A film score from scratch.'); } } }, h('b', null, 'Film score'), h('span', null, 'The machine writes it all')),
+        h('label', { id: 'startTrack', class: 'big drop' + (x.fromTrack ? ' on' : ''), title: 'Drop the chords of your track as a .mid file' }, h('b', null, 'With my track'), h('span', null, x.fromTrack ? 'Drop another .mid' : 'Drop your chord MIDI here'),
+          h('input', { id: 'trackFile', type: 'file', accept: '.mid,.midi,audio/midi', style: 'position:absolute;opacity:0;width:1px;height:1px', onchange: (e) => loadTrack(e.target.files[0]) }))))));
+  // main
+  const main = h('main', { class: 'card', style: 'flex:999 1 700px;min-width:0' });
+  main.append(h('div', { class: 'bar' }, h('span', { class: 'disp' }, 'The tension arc'), h('div', { class: 'grow' }),
+    h('label', { class: 'lab' }, h('input', { id: 'filmToggle', type: 'checkbox', checked: x.filmMoment, disabled: x.fromTrack, onchange: (e) => change(() => { x.filmMoment = e.target.checked; }) }), 'Film moment'),
+    seg('amt', Object.entries(S.AMOUNTS), x.amount, (k) => change(() => { x.amount = k; }, true), 'How much')));
+  const lanes = h('div', { class: 'lanes' });
+  const grow = (s) => 'flex:' + s.bars + ' 1 0;min-width:0';
+  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Tension'), h('span', null, 'draw it')), h('div', { class: 'draw' }, lineSvg('tensionSvg', 'Tension', t, S.autoTension(x), 'tension', '#E8A03A'))));
+  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }), h('div', { class: 'secs' }, v.sections.map((s, i) => h('button', { id: 'sec_' + i, class: 'sec' + (i === st.sel ? ' sel' : ''), style: grow(s) + ';background:' + TYPE_COL[s.type] + ';color:' + TYPE_FG[s.type] + (s.type === 'film' ? ';border:1px dashed #B88AA8' : ''), title: S.TYPES[s.type].name + ', ' + s.bars + ' bars. Tap to edit.', onclick: () => { st.sel = i; render(); } }, S.TYPES[s.type].name, ' ', h('span', { class: 'n' }, s.bars))))));
+  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('span', null, 'chords')), h('div', { class: 'secs mono' }, v.sections.map((s, i) => h('div', { style: grow(s), class: 'cell' }, sum[i].chords)))));
+  const laneRow = (part, title, plugin, col, bg) => h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', { style: 'color:' + col }, title), h('span', null, plugin)),
+    h('div', { class: 'secs blocks' }, v.sections.map((s, i) => { const txt = sum[i][part]; return h('div', { style: grow(s) + ';' + (txt ? 'background:' + bg + ';border:1px solid ' + col + '55;color:' + col : 'border:1px dashed #33363E;color:#6E6A63'), class: 'blk' }, txt || 'silent'); })));
+  lanes.append(laneRow('strings', 'Strings', 'STRIIIINGS', '#F4C177', 'rgba(232,160,58,0.16)'));
+  lanes.append(laneRow('percs', 'Percs', 'PERRCS', '#9CC7E3', 'rgba(156,199,227,0.14)'));
+  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Swell'), h('span', null, 'mod wheel')), h('div', { class: 'draw small' + (x.tricks.swell ? '' : ' off') }, lineSvg('swellSvg', 'Swell', w, S.autoSwell(x), 'swell', '#C9C2B5'))));
+  main.append(h('div', { class: 'scroll' }, lanes));
+  // the selected section
+  const s = v.sections[st.sel];
+  const realIdx = x.sections.indexOf(s);
+  main.append(h('div', { class: 'secedit' },
+    h('span', { class: 'disp small' }, S.TYPES[s.type].name),
+    h('label', { class: 'lab' }, 'Type', h('select', { id: 'secType', onchange: (e) => change(() => { s.type = e.target.value; if (s.type === 'film') x.filmMoment = true; }) }, S.TYPE_ORDER.map((k) => h('option', { value: k, selected: k === s.type }, S.TYPES[k].name)))),
+    h('div', { class: 'seg' }, h('button', { id: 'barsMinus', 'aria-label': 'Fewer bars', onclick: () => change(() => { s.bars = Math.max(1, s.bars - (s.bars > 4 ? 2 : 1)); }) }, '−'), h('span', { class: 'mid' }, s.bars + ' bars'), h('button', { id: 'barsPlus', 'aria-label': 'More bars', onclick: () => change(() => { s.bars = Math.min(64, s.bars + (s.bars >= 4 ? 2 : 1)); }) }, '+')),
+    h('button', { id: 'secAdd', class: 'ghost', disabled: x.fromTrack, onclick: () => change(() => { x.sections.splice(realIdx + 1, 0, { id: 'n' + Date.now(), type: s.type === 'peak' ? 'theme' : 'peak', bars: 8 }); st.sel++; }) }, '+ Section after'),
+    h('button', { id: 'secDel', class: 'ghost', disabled: x.sections.length < 2 || x.fromTrack, onclick: () => change(() => { x.sections.splice(realIdx, 1); }) }, 'Remove'),
+    h('span', { class: 'muted' }, 'Bars ' + (v.sections.slice(0, st.sel).reduce((a, q) => a + q.bars, 0) + 1) + ' to ' + v.sections.slice(0, st.sel + 1).reduce((a, q) => a + q.bars, 0) + ' of ' + total)));
+  // aside
+  const aside = h('aside', { style: 'flex:1 1 300px;display:flex;flex-direction:column;gap:12px' });
+  const partCard = (part, title, plugin, col) => { const P = x.parts[part]; return h('div', { class: 'card' },
+    h('div', { class: 'bar' }, h('b', { style: 'color:' + col + ';font-size:16px' }, title), h('span', { class: 'muted small' }, plugin), h('div', { class: 'grow' }),
+      h('label', { class: 'switch' }, h('input', { id: 'on_' + part, type: 'checkbox', checked: P.on, onchange: (e) => change(() => { P.on = e.target.checked; }, true) }), h('span', null, P.on ? 'on' : 'off'))),
+    h('label', { class: 'lab col' }, 'Where', h('select', { id: 'where_' + part, disabled: !P.on, onchange: (e) => change(() => { P.where = e.target.value; }, true) }, Object.entries(S.WHERE).map(([k, t]) => h('option', { value: k, selected: k === P.where }, t))))); };
+  aside.append(partCard('strings', 'Strings', 'STRIIIINGS', '#F4C177'), partCard('percs', 'Percs', 'PERRCS', '#9CC7E3'));
+  aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Tricks'), h('div', { class: 'chips' }, Object.entries(S.TRICKS).map(([k, tt]) => h('button', { id: 'trick_' + k, class: 'chip small' + (x.tricks[k] ? ' on' : ''), 'aria-pressed': x.tricks[k] ? 'true' : 'false', onclick: () => change(() => { x.tricks[k] = !x.tricks[k]; }, true) }, tt)))));
+  aside.append(h('div', { class: 'card film' }, h('b', { class: 'disp small', style: 'color:#E3C6DA' }, 'Film moment'), h('span', { class: 'muted' }, x.fromTrack ? 'With your own track the structure is yours: set a section to Film moment to hold your breath there.' : 'Bars where your track holds its breath: strings on a pedal tone, only metals in the air. Switch it on above, or set any section to Film moment.')));
+  aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Get the files'),
+    h('div', { class: 'col' }, ['Strings', 'Percs', 'Structure'].map((p) => h('button', { id: 'dl_' + p, class: 'ghost left', onclick: () => deliver(p) }, '⬇ ' + p, h('span', { class: 'fn' }, fileName(p))))),
+    h('div', { class: 'muted small' }, 'The files: load STRIIIINGS and PERRCS, switch Latch off, Sync on Note, and drop each file on bar 1. The swell rides the mod wheel: both plugins play softer as it goes up.')));
+  app.append(h('div', { class: 'row top-align' }, main, aside));
+  app.append(h('div', { id: 'hint', class: 'hint', role: 'status' }, st.hint));
+  app.append(h('footer', null, h('span', { class: 'noai' }, 'No AI inside'), ' Every note comes from music rules and a seeded dice. Fully mechanical. © ' + new Date().getFullYear() + ' Divine Monday. Divine Score Machine, ' + VERSION + '.', h('span', { class: 'man' }, 'Manual (PDF): ', ...[['English', 'EN'], ['Nederlands', 'NL'], ['Deutsch', 'DE']].map(([n, c]) => h('a', { href: '/divine-music-machine-v7/manuals/' + ({ EN: 'Divine-Score-Machine-Manual-EN', NL: 'Divine-Score-Machine-Handleiding-NL', DE: 'Divine-Score-Machine-Handbuch-DE' })[c] + '.pdf', target: '_blank', rel: 'noopener' }, n)))));
+}
+window.SCOREAPP = { st, render, deliver, loadTrack, fileName };
+render();
+})();
+
+</script>
+</body></html>

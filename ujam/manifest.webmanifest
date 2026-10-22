@@ -1,0 +1,31 @@
+{
+ "name": "Divine Music Machine Pro UJAM",
+ "short_name": "DM Pro UJAM",
+ "description": "Track arranged in one click, for UJAM plugins only. Totally free. No AI inside.",
+ "id": "./",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#101219",
+ "theme_color": "#101219",
+ "icons": [
+  {
+   "src": "/divine-music-machine-v7/icons/pro-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/divine-music-machine-v7/icons/pro-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/divine-music-machine-v7/icons/pro-maskable.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
