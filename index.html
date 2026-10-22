@@ -1937,7 +1937,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       const left = sec.bars - inBar;
       if (left <= 2) for (let s = 0; s < N; s += (left === 1 ? 1 : 2)) lanes[SN][s] = Math.max(lanes[SN][s], 50 + Math.round(s / N * 50));
     }
-    if (E.isBM(song) && machine) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
+    if (E.isBM(song) && (machine || !lanes.slice(8).some((l) => l && l.some((v) => v > 0)))) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
     if (mach && A.beatLanes) lanes.forEach((l, li) => { if (!A.beatLanes.includes(li) && li !== CR) l.fill(0); }); // a quiet verse plays only the bones of the beat
     E.laneFxApply(song, sec, inBar, lanes, N);
     if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
@@ -2604,7 +2604,7 @@ const VG = { family: 'guitar', ks: { style: nn('C#1'), open: nn('A#2'), half: nn
 E.BM_TITLES = ['BERSERK', 'BOUNCE', 'CHROMED', 'CIRCUITS', 'COZY', 'DOPE', 'EDEN', 'GLOOM', 'GLORY', 'HUSTLE', 'HYPE', 'IDOL', 'KANDY', 'KAYA', 'NEMESIS', 'RICO', 'VICE', 'VOID'];
 E.US_TITLES = ['2080', 'BOUNCE', 'CARAMEL', 'CORE', 'DELUXE', 'DRIVE', 'DUST', 'EUPHORIA', 'FLUID', 'GLAM', 'PIXEL', 'STRANGER', 'TURBO-XT', 'VORTEX', 'WEBCORE'];
 /* Beatmaker 3 loops on the black keys: C#1 Intro, D#1 Fill, F#1 Verse, G#1 Verse, A#1 Fill, C#2 Chorus, D#2 Chorus, F#2 Break, G#2 Special, A#2 Ending */
-E.BM_LOOPS = { intro: [42], verse: [42, 44], prechorus: [44], build: [44], chorus: [49, 51], drop: [51, 49], break: [54], outro: [42], fills: [39, 46], ending: 58 };
+E.BM_LOOPS = { intro: [42], verse: [42, 44], prechorus: [44], build: [44], chorus: [49, 51], drop: [51, 49], break: [54, 56], outro: [42], fills: [39, 46], ending: 58, introHit: 37 }; // a second break plays the Special part
 E.PLUGINS = {
   plain: { name: 'Plain MIDI', parts: ['bass', 'chords', 'pad', 'melody', 'answer'] },
   gm: { name: 'Plain MIDI (GM drums)', parts: ['beat'], drums: [36, 35, 38, 39, 42, 46, 37, 49] },
@@ -2644,7 +2644,7 @@ E.foldInto = foldInto;
 E.beatLoops = function (song, notes, L) {
   const BT = E.barTicks(song), total = E.totalBars(song), on = new Array(total).fill(false);
   notes.forEach((n) => { const b = Math.floor(n.t / BT); if (b >= 0 && b < total) on[b] = true; });
-  const out = [], seen = {}; let held = null, b0 = 0, last = L.verse[0], nf = 0;
+  const out = [], seen = {}; let held = null, b0 = 0, last = L.verse[0], nf = 0, intro = false;
   const release = (t) => { if (held) { out.push({ t: held.t, d: Math.max(30, t - held.t - 5), p: held.p, v: 100 }); held = null; } };
   song.sections.forEach((s, i) => {
     const k = seen[s.type] || 0; seen[s.type] = k + 1;
@@ -2654,6 +2654,7 @@ E.beatLoops = function (song, notes, L) {
       if (b === total - 1) { release(t0); if (on[b]) out.push({ t: t0, d: BT - 5, p: L.ending, v: 100 }); continue; }
       if (!on[b]) { release(t0); continue; }
       if (!held || held.p !== key) { release(t0); held = { p: key, t: t0 }; }
+      if (s.type === 'intro' && !intro && L.introHit) { out.push({ t: t0, d: 120, p: L.introHit, v: 100 }); intro = true; } // the Intro part once, then the held loop takes over
       const fill = s.type === 'fill' ? j === 0 : (j === s.bars - 1 && next && next.type !== s.type);
       if (fill) out.push({ t: t0, d: 120, p: L.fills[nf++ % L.fills.length], v: 100 });
     }
@@ -2701,10 +2702,20 @@ E.bmLayout = function (title) {
   return { keys, names, fold: names.map((nm, li) => (li < 8 ? li : E.foldName(nm))) };
 };
 // Beatmaker hits: every lane on its pad; the tiny timing drift is pulled onto the grid so the kit plays tight, swing stays
+E.bm808 = () => 0; // the 808 tune you set by ear, in semitones
 E.bmHits = function (song, notes, title) {
-  const keys = E.bmLayout(title).keys, S = E.STEP, seen = {};
+  const lay = E.bmLayout(title), keys = lay.keys, S = E.STEP, seen = {};
   const out = notes.map((n) => { const g = Math.round(n.t / S) * S; return { t: Math.abs(n.t - g) <= 30 ? g : n.t, d: n.d, v: n.v, p: keys[n.lane] }; });
-  return out.filter((n) => { const k = n.t + '_' + n.p; if (seen[k]) { seen[k].v = Math.max(seen[k].v, n.v); return false; } seen[k] = n; return true; }).sort((x, y) => x.t - y.t);
+  const hits = out.filter((n) => { const k = n.t + '_' + n.p; if (seen[k]) { seen[k].v = Math.max(seen[k].v, n.v); return false; } seen[k] = n; return true; });
+  // the 808: the very low keys D-1 to D0 tune it a semitone a key; it follows the chord of each bar it plays in
+  const bi = lay.names.indexOf('Bass'), bk = bi >= 0 ? keys[bi] : null, tune = [];
+  if (bk != null && hits.some((n) => n.p === bk)) {
+    const BT = E.barTicks(song), R = E.makeRenderer(song); let last = null;
+    const rootAt = (b) => { const at = E.sectionAt(song, b); if (!at) return null; const res = R.res(at.i); const ch = res.chords && !E.isEmpty('chords', res.chords) ? res.chords : res.ctxChords; const c = ch && ch.bars[at.inBar % song.L]; return c ? c.root : null; };
+    const bars = [...new Set(hits.filter((n) => n.p === bk).map((n) => Math.floor(n.t / BT)))].sort((a, b) => a - b);
+    for (const b of bars) { const r = rootAt(b); if (r == null) continue; let o = ((r - song.key.root + (E.bm808() || 0)) % 12 + 12) % 12; if (o > 6) o -= 12; const p = 20 + o; if (p === last) continue; last = p; tune.push({ t: Math.max(0, b * BT - 20), d: Math.max(30, BT - 40), p, v: 100 }); }
+  }
+  return tune.concat(hits).sort((x, y) => x.t - y.t || x.p - y.p);
 };
 E.isBM = (song) => !!(E.PLUGINS[song.parts.beat.plugin] || {}).loops;
 // Beatmaker's 16 pads in their own roles, learned from a hand made Beatmaker beat: soft ghost snares, HH 2 as a soft accent,
@@ -2712,21 +2723,25 @@ E.isBM = (song) => !!(E.PLUGINS[song.parts.beat.plugin] || {}).loops;
 E.bmRoles = function (song, sec, inBar, lanes, N, type, fill) {
   const nm = E.bmLayout(E.titleOf ? E.titleOf('beat', song.parts.beat.plugin) : '').names;
   while (lanes.length < 16) lanes.push(new Array(N).fill(0));
-  if (N !== 16) return;
+  if (N < 8) return;
   const at = function () { for (const x of arguments) { const i = nm.indexOf(x); if (i >= 0) return i; } return -1; };
-  const put = (li, s, v) => { if (li >= 0 && !lanes[li][s]) lanes[li][s] = v; };
-  const busy = type === 'verse' || type === 'chorus' || type === 'drop' || type === 'prechorus';
-  const back = lanes[SN][4] >= 80 || lanes[SN][12] >= 80 || lanes[CP][4] >= 80 || lanes[CP][12] >= 80;
-  if (back && !fill && type !== 'intro' && type !== 'break') { const g = at('Sn 2'); if (g !== SN) { if (!lanes[SN][7] && !lanes[K][7]) put(g, 7, 44); if (!lanes[SN][15]) put(g, 15, 40); } }
-  const eighths = [0, 2, 4, 6, 8, 10, 12, 14].filter((s) => lanes[HH][s]).length >= 4;
-  if (eighths && !fill) { const h2 = at('HH 2'); if (!lanes[HH][3]) put(h2, 3, 48); if (!lanes[HH][11]) put(h2, 11, 48); }
-  if (busy && !fill) { put(at('Perc 2'), 13, 70); if (inBar % 2 === 1) put(at('Perc 3'), 5, 60); }
-  if ((type === 'chorus' || type === 'drop') && sec.bars >= 8 && inBar >= sec.bars / 2 && !fill) { const rd = at('Cym 2'); for (let s = 0; s < 16; s += 4) put(rd, s, s === 0 ? 84 : 62); }
+  const put = (li, s, v) => { if (li >= 0 && s >= 0 && s < N && !lanes[li][s]) lanes[li][s] = v; };
+  const q = (x) => Math.min(N - 1, Math.round(N * x / 16)); // a place in a 16 step bar, scaled to this metre
+  const busy = type === 'verse' || type === 'chorus' || type === 'drop' || type === 'prechorus', big = type === 'chorus' || type === 'drop';
+  const back = N === 16 ? lanes[SN][4] >= 80 || lanes[SN][12] >= 80 || lanes[CP][4] >= 80 || lanes[CP][12] >= 80 : lanes[SN].some((v) => v >= 80) || lanes[CP].some((v) => v >= 80);
+  if (back && !fill && type !== 'intro' && type !== 'break') { const g = at('Sn 2'); if (g !== SN) { if (!lanes[SN][q(7)] && !lanes[K][q(7)]) put(g, q(7), 44); if (!lanes[SN][N - 1]) put(g, N - 1, 40); } }
+  const even = lanes[HH].filter((v, s) => v && s % 2 === 0).length >= N / 4;
+  if (even && !fill) { const h2 = at('HH 2'); if (!lanes[HH][q(3)]) put(h2, q(3), 48); if (!lanes[HH][q(11)]) put(h2, q(11), 48); }
+  if (busy && !fill) { put(at('Perc 2'), q(13), 70); if (inBar % 2 === 1) put(at('Perc 3'), q(5), 60); }
+  if (big && sec.bars >= 8 && inBar >= sec.bars / 2 && !fill) { const rd = at('Cym 2'); for (const s of E.meter(song).beatSteps) put(rd, s, s === 0 ? 84 : 62); }
+  if (big && inBar === 0 && !fill) put(at('Vox 1', 'Vox', 'FX 1', 'FX'), 0, 96); // a voice or an effect opens the chorus
+  const bass = at('Bass'); // the 808 of GLORY and HUSTLE plays with the kick, from the verse on
+  if (bass >= 0 && busy) lanes[K].forEach((v, s) => { if (v >= 70) put(bass, s, Math.max(60, v - 6)); });
   if (fill) {
     const tH = at('Tom H', 'Acc H'), tM = at('Tom M', 'Acc M'), tL = at('Tom L', 'Acc L'); if (tH < 0 || tL < 0) return;
-    const toms = [tH, tH, tM >= 0 ? tM : tH, tM >= 0 ? tM : tH, tL, tL];
-    [SN, CP].forEach((fl) => { for (let s = 8; s < 14; s++) if (lanes[fl][s]) { const t = toms[s - 8]; lanes[t][s] = Math.max(lanes[t][s], lanes[fl][s]); lanes[fl][s] = 0; } });
-    for (let s = 8; s < 16; s++) { lanes[HH][s] = 0; lanes[OH][s] = 0; }
+    const h0 = Math.floor(N / 2), span = N - 2 - h0, toms = [tH, tM >= 0 ? tM : tH, tL];
+    [SN, CP].forEach((fl) => { for (let s = h0; s < N - 2; s++) if (lanes[fl][s]) { const t = toms[Math.min(2, Math.floor((s - h0) * 3 / span))]; lanes[t][s] = Math.max(lanes[t][s], lanes[fl][s]); lanes[fl][s] = 0; } });
+    for (let s = h0; s < N; s++) { lanes[HH][s] = 0; lanes[OH][s] = 0; }
   }
 };
 E.applyMask = function (song, part, notes, pluginKey, settings) {
@@ -3092,7 +3107,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-22 02:10)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-22 02:30)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -3716,7 +3731,7 @@ function renderRight() {
       const lab = h('div', { class: 'lab' }, h('div', null, 'Feel'), h('div', { id: 'feel_' + p }, feelText(P.feel)));
       bindPad(pad, dot, p, lab);
       card.append(h('div', { class: 'row' }, h('span', { class: 'small' }, 'played by'), plugSel),
-        pl.titles ? h('div', { class: 'row' }, h('span', { class: 'small' }, 'title'), titleSel(p, P.plugin, () => render())) : '',
+        pl.titles ? h('div', { class: 'row' }, h('span', { class: 'small' }, 'title'), titleSel(p, P.plugin, () => render()), bm808Sel(p, P.plugin)) : '',
         pl.loops ? h('div', { class: 'small' }, 'You get two files: Player (its own loops per section) and Instrument (your exact hits).') :
         pl.family && !pl.noPlayer ? h('div', { class: 'small' }, NOTE_PARTS.includes(p) ? 'You get one file: Instrument, your exact notes.' : 'You get two files: Player (its own phrases) and Instrument (your exact notes).') : '',
         h('div', { class: 'feel' }, pad, lab, h('div', { class: 'grow' }),
@@ -4929,6 +4944,14 @@ const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekn
 const genreTag = (sg) => ((D.GENRES[sg.genre] || {}).name || sg.genre || '').replace(/[^A-Za-z0-9]+/g, '');
 // the Beatmaker or Usynth title per part, kept with your settings
 function titleFor(p, plugin) { const pl = D.PLUGINS[plugin]; const s = st.settings.titles || {}; const t = s[p] || (p === 'answer' ? s.melody : ''); return pl && pl.titles && pl.titles.includes(t) ? t : ''; }
+// the 808 tune, only for a title with a Bass pad: set it once by ear so the 808 sits in your key
+function bm808Sel(p, plugin) {
+  if (p !== 'beat' || !D.bmPads(titleFor(p, plugin)).includes('Bass')) return null;
+  const cur = st.settings.bm808 || 0;
+  return h('select', { id: 'bm808', 'aria-label': '808 tune', title: '808 tune: set it once by ear so the 808 sits in your key', onchange: (e) => { st.settings.bm808 = +e.target.value; store.set('dmm-settings-v1', st.settings); } },
+    Array.from({ length: 13 }, (_, i) => i - 6).map((o) => h('option', { value: o, selected: o === cur }, '808 tune ' + (o > 0 ? '+' + o : o))));
+}
+D.bm808 = () => st.settings.bm808 || 0;
 D.titleOf = (p, plugin) => titleFor(p, plugin);
 function titleSel(p, plugin, after) {
   const pl = D.PLUGINS[plugin]; if (!pl || !pl.titles) return null; const cur = titleFor(p, plugin);
@@ -5123,7 +5146,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-22 02:10. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-22 02:30. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
