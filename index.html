@@ -1937,6 +1937,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       const left = sec.bars - inBar;
       if (left <= 2) for (let s = 0; s < N; s += (left === 1 ? 1 : 2)) lanes[SN][s] = Math.max(lanes[SN][s], 50 + Math.round(s / N * 50));
     }
+    if (E.isBM(song) && machine) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
     if (mach && A.beatLanes) lanes.forEach((l, li) => { if (!A.beatLanes.includes(li) && li !== CR) l.fill(0); }); // a quiet verse plays only the bones of the beat
     E.laneFxApply(song, sec, inBar, lanes, N);
     if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
@@ -2690,7 +2691,6 @@ E.bmMap = function (title) {
   const at = function () { for (const nm of arguments) { const i = P.indexOf(nm); if (i >= 0) return E.BM_KEYS[i]; } return null; };
   return [36, 38, 40, at('Clap', 'Sn 3', 'Sn 2'), 45, at('HH O', 'HH 3', 'HH 2'), at('Perc 1', 'Perc', 'Tamb', 'Perc 2', 'HH 4', 'Acc M', 'Tom M'), at('Cym 1')];
 };
-// Beatmaker hits with the title's extra pads: HH 2 on the in between sixteenths of a chorus, toms rolling down in a fill bar, a Vox or FX hit to open each chorus
 E.BM_NAMES0 = { 36: 'Kick', 38: 'Kick 2', 40: 'Sn 1', 41: 'Sn 2', 43: 'Clap', 45: 'HH 1', 47: 'HH 2', 48: 'HH O', 50: 'Tom L', 52: 'Tom M', 53: 'Tom H', 55: 'Perc 1', 57: 'Perc 2', 59: 'Perc 3', 60: 'Cym 1', 62: 'Cym 2' };
 // which of the 8 machine lanes a pad sounds most like: where it lands in a plugin with 8 slots
 E.foldName = (nm) => (/^(Kck 2|Kick 2|Acc)$/.test(nm) ? K2 : /^(Kck|Kick|Bass)/.test(nm) ? K : /^Sn/.test(nm) ? SN : /^Clap/.test(nm) ? CP : /^HH (O|HO)/.test(nm) ? OH : /^HH/.test(nm) ? HH : /^Cym/.test(nm) ? CR : PC);
@@ -2700,24 +2700,34 @@ E.bmLayout = function (title) {
   const keys = base.concat(extra), names = keys.map((k) => (P.length === 16 ? P[E.BM_KEYS.indexOf(k)] : E.BM_NAMES0[k]));
   return { keys, names, fold: names.map((nm, li) => (li < 8 ? li : E.foldName(nm))) };
 };
+// Beatmaker hits: every lane on its pad; the tiny timing drift is pulled onto the grid so the kit plays tight, swing stays
 E.bmHits = function (song, notes, title) {
-  const P = E.bmPads(title), map = E.bmLayout(title).keys, own = notes.some((n) => n.lane >= 8), full = P.length === 16 && !own; // your own extra lanes: the machine adds none of its own
-  const key = (nm) => { const i = P.indexOf(nm); return i >= 0 ? E.BM_KEYS[i] : null; };
-  const BT = E.barTicks(song), steps = E.meter(song).steps, stepT = BT / steps, info = [], seen = {}; let b0 = 0;
-  song.sections.forEach((s, i) => { const next = song.sections[i + 1]; seen[s.type] = (seen[s.type] || 0) + 1;
-    for (let j = 0; j < s.bars; j++) info[b0 + j] = { type: s.type, first: j === 0, fill: s.type === 'fill' || (j === s.bars - 1 && !!next && next.type !== s.type) }; b0 += s.bars; });
-  const hh2 = key('HH 2'), tH = key('Tom H') || key('Acc H'), tM = key('Tom M') || key('Acc M'), tL = key('Tom L') || key('Acc L');
-  const accent = key('Vox 1') || key('Vox') || key('FX 1') || key('FX');
-  const out = [], playing = {};
-  notes.forEach((n) => {
-    const b = Math.floor(n.t / BT), inf = info[b] || {}, s = Math.round((n.t - b * BT) / stepT); playing[b] = true;
-    let p = map[n.lane];
-    if (full && n.lane === HH && hh2 && s % 2 === 1 && (inf.type === 'chorus' || inf.type === 'drop')) p = hh2;
-    if (full && inf.fill && (n.lane === SN || n.lane === PC) && s >= steps / 2 && tH && tL) { const q = (s - steps / 2) / (steps / 2); p = q < 0.4 ? tH : q < 0.7 ? (tM || tH) : tL; }
-    out.push({ t: n.t, d: n.d, v: n.v, p });
-  });
-  if (full && accent) info.forEach((inf, b) => { if (inf.first && (inf.type === 'chorus' || inf.type === 'drop') && playing[b]) out.push({ t: b * BT, d: stepT, p: accent, v: 96 }); });
-  return out.sort((x, y) => x.t - y.t);
+  const keys = E.bmLayout(title).keys, S = E.STEP, seen = {};
+  const out = notes.map((n) => { const g = Math.round(n.t / S) * S; return { t: Math.abs(n.t - g) <= 30 ? g : n.t, d: n.d, v: n.v, p: keys[n.lane] }; });
+  return out.filter((n) => { const k = n.t + '_' + n.p; if (seen[k]) { seen[k].v = Math.max(seen[k].v, n.v); return false; } seen[k] = n; return true; }).sort((x, y) => x.t - y.t);
+};
+E.isBM = (song) => !!(E.PLUGINS[song.parts.beat.plugin] || {}).loops;
+// Beatmaker's 16 pads in their own roles, learned from a hand made Beatmaker beat: soft ghost snares, HH 2 as a soft accent,
+// percussion as colour, a ride in the second half of a long chorus, toms only in the fill. Only on the machine's own material
+E.bmRoles = function (song, sec, inBar, lanes, N, type, fill) {
+  const nm = E.bmLayout(E.titleOf ? E.titleOf('beat', song.parts.beat.plugin) : '').names;
+  while (lanes.length < 16) lanes.push(new Array(N).fill(0));
+  if (N !== 16) return;
+  const at = function () { for (const x of arguments) { const i = nm.indexOf(x); if (i >= 0) return i; } return -1; };
+  const put = (li, s, v) => { if (li >= 0 && !lanes[li][s]) lanes[li][s] = v; };
+  const busy = type === 'verse' || type === 'chorus' || type === 'drop' || type === 'prechorus';
+  const back = lanes[SN][4] >= 80 || lanes[SN][12] >= 80 || lanes[CP][4] >= 80 || lanes[CP][12] >= 80;
+  if (back && !fill && type !== 'intro' && type !== 'break') { const g = at('Sn 2'); if (g !== SN) { if (!lanes[SN][7] && !lanes[K][7]) put(g, 7, 44); if (!lanes[SN][15]) put(g, 15, 40); } }
+  const eighths = [0, 2, 4, 6, 8, 10, 12, 14].filter((s) => lanes[HH][s]).length >= 4;
+  if (eighths && !fill) { const h2 = at('HH 2'); if (!lanes[HH][3]) put(h2, 3, 48); if (!lanes[HH][11]) put(h2, 11, 48); }
+  if (busy && !fill) { put(at('Perc 2'), 13, 70); if (inBar % 2 === 1) put(at('Perc 3'), 5, 60); }
+  if ((type === 'chorus' || type === 'drop') && sec.bars >= 8 && inBar >= sec.bars / 2 && !fill) { const rd = at('Cym 2'); for (let s = 0; s < 16; s += 4) put(rd, s, s === 0 ? 84 : 62); }
+  if (fill) {
+    const tH = at('Tom H', 'Acc H'), tM = at('Tom M', 'Acc M'), tL = at('Tom L', 'Acc L'); if (tH < 0 || tL < 0) return;
+    const toms = [tH, tH, tM >= 0 ? tM : tH, tM >= 0 ? tM : tH, tL, tL];
+    [SN, CP].forEach((fl) => { for (let s = 8; s < 14; s++) if (lanes[fl][s]) { const t = toms[s - 8]; lanes[t][s] = Math.max(lanes[t][s], lanes[fl][s]); lanes[fl][s] = 0; } });
+    for (let s = 8; s < 16; s++) { lanes[HH][s] = 0; lanes[OH][s] = 0; }
+  }
 };
 E.applyMask = function (song, part, notes, pluginKey, settings) {
   settings = settings || {};
@@ -3082,7 +3092,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-21 12:32)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-22 02:10)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -3336,7 +3346,8 @@ function barNowData(part) {
 }
 // make a part editable here; machine material becomes yours without changing the sound
 // global: switching a whole part to Yours works on the standard, wherever you stand
-function editable(part, global) {
+function editable(part, global) { const d = editable0(part, global); if (part === 'beat' && d && Array.isArray(d.lanes)) { const n = laneCount(), N = D.meter(song()).steps; while (d.lanes.length < n) d.lanes.push(new Array(N).fill(0)); } return d; }
+function editable0(part, global) {
   const sg = song(), t = curType(), P = sg.parts[part];
   if (!global && !st.scope) st.autoLock = { key: scopeKey(part), scope: scopeNow(part) };
   const tg = global ? 'std' : editTarget(part), sec = secNow();
@@ -3697,7 +3708,7 @@ function renderRight() {
     const card = h('div', { class: 'slot ' + (st.view === p ? 'selp ' : '') + (isOpen ? 'open' : 'closed'), id: 'slot_' + p }, head, seg);
     if (isOpen) {
       if (!D.pluginsFor(p).includes(P.plugin)) P.plugin = D.pluginsFor(p)[0];
-      const plugSel = h('select', { id: 'plug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => change(() => { P.plugin = e.target.value; }, { keep: true }) }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === P.plugin }, D.PLUGINS[k].name)));
+      const plugSel = h('select', { id: 'plug_' + p, 'aria-label': PART_NAMES[p] + ' played by', onchange: (e) => { const was = p === 'beat' ? laneDefs() : null; change(() => { P.plugin = e.target.value; }, { keep: true }); const ex = was ? extraLanesUsed(song()) : []; if (ex.length && !(D.PLUGINS[P.plugin] || {}).loops) toast(ex.map((li) => was[li] ? was[li].name + ' into ' + D.LANES[was[li].fold].name : 'Lane ' + (li + 1)).join(', ') + ': ' + D.PLUGINS[P.plugin].name + ' has 8 slots, so these lanes share a sound now.'); } }, D.pluginsFor(p).map((k) => h('option', { value: k, selected: k === P.plugin }, D.PLUGINS[k].name)));
       const pl = D.PLUGINS[P.plugin];
       const pad = h('div', { class: 'pad', role: 'slider', tabindex: 0, 'aria-label': PART_NAMES[p] + ' feel', 'aria-valuetext': feelText(P.feel), title: 'Left: ahead of the beat. Right: laid back. Top: tight. Bottom: loose.' });
       const dot = h('i', { style: 'left:' + ((P.feel.x + 1) / 2 * 100) + '%;top:' + (P.feel.y * 100) + '%;background:var(--' + p + ')' });
@@ -3705,7 +3716,7 @@ function renderRight() {
       const lab = h('div', { class: 'lab' }, h('div', null, 'Feel'), h('div', { id: 'feel_' + p }, feelText(P.feel)));
       bindPad(pad, dot, p, lab);
       card.append(h('div', { class: 'row' }, h('span', { class: 'small' }, 'played by'), plugSel),
-        pl.titles ? h('div', { class: 'row' }, h('span', { class: 'small' }, 'title'), titleSel(p, P.plugin)) : '',
+        pl.titles ? h('div', { class: 'row' }, h('span', { class: 'small' }, 'title'), titleSel(p, P.plugin, () => render())) : '',
         pl.loops ? h('div', { class: 'small' }, 'You get two files: Player (its own loops per section) and Instrument (your exact hits).') :
         pl.family && !pl.noPlayer ? h('div', { class: 'small' }, NOTE_PARTS.includes(p) ? 'You get one file: Instrument, your exact notes.' : 'You get two files: Player (its own phrases) and Instrument (your exact notes).') : '',
         h('div', { class: 'feel' }, pad, lab, h('div', { class: 'grow' }),
@@ -3737,7 +3748,8 @@ function grooveRows(sg, sec) {
 }
 function lanePanel() {
   const sg = song(); if (!sg.laneFeel) sg.laneFeel = D.LANE_FEEL0();
-  const rows = D.LANES.map((ln, li) => {
+  const LD = laneDefs(); while (sg.laneFeel.length < LD.length) sg.laneFeel.push({ swing: true, shift: 0 });
+  const rows = LD.map((ln, li) => {
     const L = sg.laneFeel[li];
     const sw = h('button', { class: 'lsw ' + (L.swing !== false ? 'on' : ''), 'aria-pressed': L.swing !== false, title: 'Swing on this lane', id: 'lsw_' + li, onclick: () => change(() => { L.swing = L.swing === false; }, { keep: true }) }, 'S');
     const val = h('span', { class: 'lval', id: 'lval_' + li }, fmtShift(L.shift || 0));
@@ -3862,7 +3874,7 @@ function takeOver() {
 // rows: the 8 drums (key 0 to 7) and the other parts (key = part name); same fields in sec.laneFx, mute bits in sec.laneOff
 function mixRows() {
   const sg = song(), rows = [];
-  if (sg.parts.beat.mode !== 'off') D.LANES.forEach((ln, li) => rows.push({ key: li, name: ln.name, color: 'beat', part: 'beat' }));
+  if (sg.parts.beat.mode !== 'off') laneDefs().forEach((ln, li) => rows.push({ key: li, name: ln.name, color: 'beat', part: 'beat' }));
   for (const p of D.MIX_PARTS) if (sg.parts[p] && sg.parts[p].mode !== 'off') rows.push({ key: p, name: PART_NAMES[p], color: p, part: p });
   return rows;
 }
@@ -3989,7 +4001,7 @@ function computeMix(si, level, r) {
   }
   return fx;
 }
-function mixWords(fx) { const nm = (k) => (/^\d+$/.test(k) ? D.LANES[k].name : PART_NAMES[k]).toLowerCase(); return Object.entries(fx).map(([k, f]) => { const dk = /^\d+$/.test(k) ? +k : k; return nm(k) + ' ' + [f.kind ? mixKinds(dk)[f.kind].toLowerCase() : '', f.prog ? mixProgs(dk)[f.prog].split(':')[0].toLowerCase() : ''].filter(Boolean).join(' + '); }).join(', '); }
+function mixWords(fx) { const nm = (k) => (/^\d+$/.test(k) ? (laneDefs()[k] || D.LANES[k] || { name: 'drum' }).name : PART_NAMES[k]).toLowerCase(); return Object.entries(fx).map(([k, f]) => { const dk = /^\d+$/.test(k) ? +k : k; return nm(k) + ' ' + [f.kind ? mixKinds(dk)[f.kind].toLowerCase() : '', f.prog ? mixProgs(dk)[f.prog].split(':')[0].toLowerCase() : ''].filter(Boolean).join(' + '); }).join(', '); }
 function randomizeMix(level) {
   const sg = song(), r = D.rng(D.newSeed());
   if (st.mixAll) {
@@ -4014,7 +4026,7 @@ function laneMore(key, ln, fx, n, from, to, fxChange) {
   const amt = fx.amt || 1;
   return h('div', { class: 'mixmore', id: 'mixMorePanel', style: 'grid-column:1 / -1;--beat:var(--' + ln.color + ')' },
     h('b', null, ln.name),
-    sel('mmKind_' + key, 'Variation', kinds, fx.kind || 'mix', (v) => fxChange(key, { kind: v, rnd: fx.rnd || D.newSeed() }, ln.name + ': ' + kinds[v].toLowerCase() + (v === 'swap' ? ', plays as ' + D.LANES[D.SWAP_TO[key]].name.toLowerCase() + ' now and then' : '') + '.')),
+    sel('mmKind_' + key, 'Variation', kinds, fx.kind || 'mix', (v) => fxChange(key, { kind: v, rnd: fx.rnd || D.newSeed() }, ln.name + ': ' + kinds[v].toLowerCase() + (v === 'swap' ? ', plays as ' + (D.LANES[D.SWAP_TO[key]] || { name: 'another drum' }).name.toLowerCase() + ' now and then' : '') + '.')),
     h('div', { class: 'mmrow' }, h('span', { class: 'small' }, 'Strength'), h('div', { class: 'seg mmamt' }, [[1, 'subtle'], [2, 'medium'], [3, 'wild']].map(([k, t]) => h('button', { id: 'mmAmt_' + key + '_' + k, class: amt === k ? 'on' : '', onclick: () => fxChange(key, { amt: k, rnd: fx.rnd || D.newSeed() }, ln.name + ' varies ' + t + '.') }, t)))),
     sel('mmEvery_' + key, 'How often', D.EVERY, fx.every || 1, (v) => fxChange(key, { every: v === 'cr' ? 'cr' : +v, rnd: fx.rnd || D.newSeed() }, ln.name + ' varies ' + D.EVERY[v] + '.')),
     sel('mmFrom_' + key, 'From', bars, from, (v) => fxChange(key, { from: +v, to: Math.max(+v, to) }, ln.name + ': only bars ' + (+v + 1) + ' to ' + (Math.max(+v, to) + 1) + '.')),
@@ -4136,7 +4148,7 @@ function renderEditor() {
 }
 function tapPads() {
   return h('div', { class: 'tappads', id: 'tapPads' }, h('span', { class: 'small' }, AU.playing ? 'Tap in while it plays (keys 1 to 8):' : 'Pads (keys 1 to 8). Press play to tap them in:'),
-    D.LANES.map((ln, li) => { const b = h('button', { class: 'tpad', id: 'tpad_' + li, title: ln.name + ' (key ' + (li + 1) + ')', onpointerdown: (e) => { e.preventDefault(); tapIn(li); } }); b.append(svgShape(li), h('span', null, String(li + 1))); return b; }));
+    laneDefs().map((ln, li) => { const b = h('button', { class: 'tpad', id: 'tpad_' + li, title: ln.name + (li < 8 ? ' (key ' + (li + 1) + ')' : ''), onpointerdown: (e) => { e.preventDefault(); tapIn(li); } }); b.append(svgShape(li), h('span', null, String(li + 1))); return b; }));
 }
 function svgShape(li) { const sv = s('svg', { width: 16, height: 16, viewBox: '0 0 16 16', 'aria-hidden': 'true' }); sv.append(laneShape(li, 8, 8, 6, { fill: cssv('--beat') })); return sv; }
 function tapIn(li) {
@@ -4149,7 +4161,7 @@ function tapIn(li) {
   if (at.i !== st.sec) { st.sec = at.i; }
   selectBar(inBar);
   change(() => { const d = editable('beat'); d.lanes[li][step] = Math.max(d.lanes[li][step] || 0, v); }, { keep: true });
-  setHint(D.LANES[li].name + ' tapped in, bar ' + (inBar + 1) + ', step ' + (step + 1) + '. ' + (inBar === 0 ? 'Bar 1 is the base: it plays in every bar.' : 'Only this bar.'));
+  setHint(laneDefs()[li].name + ' tapped in, bar ' + (inBar + 1) + ', step ' + (step + 1) + '. ' + (inBar === 0 ? 'Bar 1 is the base: it plays in every bar.' : 'Only this bar.'));
 }
 function renderEditorDynamic() { renderEditor(); }
 function clearPart() {
@@ -4159,7 +4171,17 @@ function clearPart() {
 }
 
 // --- shapes for drum lanes
-function laneDefs() { return D.LANES; }
+function laneDefs() {
+  const sg = song(), plug = sg.parts.beat.plugin; if (!(D.PLUGINS[plug] || {}).loops) return D.LANES;
+  const lay = D.bmLayout(titleFor('beat', plug));
+  return lay.names.map((nm, li) => ({ id: 'p' + li, name: nm, shape: D.LANES[lay.fold[li]].shape, fold: lay.fold[li] }));
+}
+const laneCount = () => laneDefs().length;
+// every extra lane you filled, as a short list: where it plays in a plugin with 8 slots
+function extraLanesUsed(sg) {
+  const used = new Set(); const walk = (o) => { if (!o || typeof o !== 'object') return; if (Array.isArray(o.lanes) && o.lanes.length > 8) o.lanes.forEach((l, li) => { if (li >= 8 && Array.isArray(l) && l.some((v) => v > 0)) used.add(li); }); for (const k in o) walk(o[k]); };
+  walk(sg); return [...used].sort((a, b) => a - b);
+}
 function laneShape(li, x, y, r, attrs) {
   const sh = (laneDefs()[li] || D.LANES[li] || D.LANES[7]).shape; const a = Object.assign({}, attrs);
   if (sh === 'circle') return s('circle', Object.assign({ cx: x, cy: y, r }, a));
@@ -4225,38 +4247,40 @@ function scopeSeg(part) {
   return frag;
 }
 // --- beat rings
-const RING_R = (li) => 182 - li * 19;
+let ringN = 8;
+const RING_R = (li) => (ringN > 8 ? 186 - li * 10.6 : 182 - li * 19);
+const ringShape = (li, x, y, r, a) => laneShape(li, x, y, ringN > 8 ? r * 0.62 : r, a);
 function beatRings() {
-  const sg = song(), N = D.meter(sg).steps, m = shownMat('beat'), data = m.data;
+  const sg = song(), N = D.meter(sg).steps, m = shownMat('beat'), data = m.data; ringN = laneCount();
   const svg = s('svg', { viewBox: '0 0 400 400', id: 'beatSvg', role: 'img', 'aria-label': 'Beat rings: one ring per drum, tap a step to place a hit, drag outward for louder' });
   const col = cssv('--beat'), line = cssv('--line'), faint = cssv('--faint'), fg = cssv('--fg');
   const ang = (step) => -Math.PI / 2 + step / N * Math.PI * 2;
   const pos = (li, step, extra) => { const r = RING_R(li) + (extra || 0); return [200 + r * Math.cos(ang(step)), 200 + r * Math.sin(ang(step))]; };
   // beat markers
-  D.meter(sg).beatSteps.forEach((b) => { const p1 = pos(0, b, 14), p2 = pos(7, b, -12); svg.append(s('line', { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], stroke: line, 'stroke-width': 1 })); });
-  for (let li = 0; li < 8; li++) {
+  D.meter(sg).beatSteps.forEach((b) => { const p1 = pos(0, b, 14), p2 = pos(ringN - 1, b, -12); svg.append(s('line', { x1: p1[0], y1: p1[1], x2: p2[0], y2: p2[1], stroke: line, 'stroke-width': 1 })); });
+  for (let li = 0; li < ringN; li++) {
     svg.append(s('circle', { cx: 200, cy: 200, r: RING_R(li), fill: 'none', stroke: line, 'stroke-width': 1 }));
     for (let st2 = 0; st2 < N; st2++) { const p = pos(li, st2); svg.append(s('circle', { cx: p[0], cy: p[1], r: 2, fill: faint })); }
   }
   // labels in the middle
   const lab = s('text', { x: 200, y: 196, 'text-anchor': 'middle', fill: faint, 'font-size': 11, 'font-family': 'IBM Plex Mono, monospace' }, 'kick outside');
   const lab2 = s('text', { x: 200, y: 211, 'text-anchor': 'middle', fill: faint, 'font-size': 11, 'font-family': 'IBM Plex Mono, monospace' }, 'crash inside');
-  svg.append(lab, lab2);
+  if (ringN <= 8) svg.append(lab, lab2); // 16 rings leave no room in the middle
   // shadows
   if (st.shadows) for (const sh of shadowsFor('beat')) { const p = pos(sh.lane, sh.s); const el = laneShape(sh.lane, p[0], p[1], 7, { fill: 'none', stroke: col, 'stroke-width': 1.5, 'stroke-dasharray': '3 2', class: 'shadow', 'pointer-events': 'all', 'data-lane': sh.lane, 'data-step': sh.s, style: 'cursor:pointer' }); el.setAttribute('fill', 'none'); el.setAttribute('stroke', col); svg.append(el); }
   // what the machine adds in this bar
   const tc = beatTouches(data);
-  for (const x of tc.hits) { const p = pos(x.lane, x.s, (x.v - 90) / 127 * 18); svg.append(laneShape(x.lane, p[0], p[1], 5 + x.v / 127 * 5, { fill: col, opacity: 0.32, class: 'touch', 'pointer-events': 'none' })); }
+  for (const x of tc.hits) { if (x.lane >= ringN) continue; const p = pos(x.lane, x.s, (x.v - 90) / 127 * 18); svg.append(laneShape(x.lane, p[0], p[1], 5 + x.v / 127 * 5, { fill: col, opacity: 0.32, class: 'touch', 'pointer-events': 'none' })); }
   if (tc.hits.length) svg.append(s('text', { x: 200, y: 228, 'text-anchor': 'middle', fill: col, 'font-size': 10.5, 'font-family': 'Figtree, sans-serif', class: 'touchlab' }, touchLabel(tc)));
   // hits
-  data.lanes.forEach((l, li) => l.forEach((v, st2) => { if (!v) return; const extra = (v - 90) / 127 * 18; const p = pos(li, st2, extra); svg.append(laneShape(li, p[0], p[1], 5 + v / 127 * 5, { fill: col, opacity: m.own || song().parts.beat.mode !== 'yours' ? (song().parts.beat.mode === 'machine' ? 0.75 : 1) : 0.6, class: 'hit', 'data-lane': li, 'data-step': st2 })); }));
+  data.lanes.forEach((l, li) => l.forEach((v, st2) => { if (!v || li >= ringN) return; const extra = (v - 90) / 127 * 18; const p = pos(li, st2, extra); svg.append(laneShape(li, p[0], p[1], 5 + v / 127 * 5, { fill: col, opacity: m.own || song().parts.beat.mode !== 'yours' ? (song().parts.beat.mode === 'machine' ? 0.75 : 1) : 0.6, class: 'hit', 'data-lane': li, 'data-step': st2 })); }));
   // playhead
   const ph = s('line', { id: 'ringHead', x1: 200, y1: 200, x2: 200, y2: 6, stroke: fg, 'stroke-width': 2, opacity: AU.playing ? 0.85 : 0 });
   svg.append(ph);
   // interaction
   let drag = null;
   const toLocal = (e) => { const r = svg.getBoundingClientRect(); const sc = 400 / Math.min(r.width, r.height); const ox = (r.width - Math.min(r.width, r.height)) / 2, oy = (r.height - Math.min(r.width, r.height)) / 2; return [(e.clientX - r.left - ox) * sc, (e.clientY - r.top - oy) * sc]; };
-  const nearest = (x, y) => { const dx = x - 200, dy = y - 200; const r = Math.hypot(dx, dy); let a = Math.atan2(dy, dx) + Math.PI / 2; if (a < 0) a += Math.PI * 2; const step = Math.round(a / (Math.PI * 2) * N) % N; let li = -1, bd = 12; for (let k = 0; k < 8; k++) { const d = Math.abs(r - RING_R(k)); if (d < bd) { bd = d; li = k; } } return { li, step, r }; };
+  const nearest = (x, y) => { const dx = x - 200, dy = y - 200; const r = Math.hypot(dx, dy); let a = Math.atan2(dy, dx) + Math.PI / 2; if (a < 0) a += Math.PI * 2; const step = Math.round(a / (Math.PI * 2) * N) % N; let li = -1, bd = ringN > 8 ? 6 : 12; for (let k = 0; k < ringN; k++) { const d = Math.abs(r - RING_R(k)); if (d < bd) { bd = d; li = k; } } return { li, step, r }; };
   svg.addEventListener('pointerdown', (e) => {
     const [x, y] = toLocal(e); const t = e.target;
     if (t.classList && t.classList.contains('shadow')) { const li = +t.dataset.lane, st2 = +t.dataset.step; change(() => { const d = editable('beat'); const sh = shadowsFor('beat', true).find((q) => q.lane === li && q.s === st2); d.lanes[li][st2] = sh ? sh.v : 96; }, { keep: false }); playLanePreview(li, 96); setHint(D.hintBeat(song(), editable('beat'))); return; }
@@ -4267,7 +4291,7 @@ function beatRings() {
     const before = snapshot();
     const d = editable('beat');
     const existed = d.lanes[li][step] > 0;
-    if (!existed) d.lanes[li][step] = [110, 80, 108, 96, 72, 80, 70, 96][li];
+    if (!existed) d.lanes[li][step] = ([110, 80, 108, 96, 72, 80, 70, 96][li] || 88);
     drag = { li, step, x, y, moved: false, existed, before, v0: d.lanes[li][step], d, el: svg.querySelector('.hit[data-lane="' + li + '"][data-step="' + step + '"]') };
     placeHit();
     playLanePreview(li, d.lanes[li][step]);
@@ -4292,20 +4316,20 @@ function beatRings() {
 // --- beat lines
 function beatLines() {
   const sg = song(), N = D.meter(sg).steps, m = shownMat('beat'), data = m.data;
-  const W = 60 + N * 40, H = 8 * 44 + 20;
+  const LD = laneDefs(), W = 60 + N * 40, H = LD.length * 44 + 20;
   const svg = s('svg', { viewBox: '0 0 ' + W + ' ' + H, id: 'beatSvg', role: 'img', 'aria-label': 'Beat lines: one row per drum' });
   const col = cssv('--beat'), line = cssv('--line'), faint = cssv('--faint'), mut = cssv('--muted');
-  for (let li = 0; li < 8; li++) {
+  for (let li = 0; li < LD.length; li++) {
     const y = 20 + li * 44 + 22;
-    svg.append(s('text', { x: 4, y: y + 4, fill: mut, 'font-size': 12, 'font-family': 'Figtree, sans-serif' }, D.LANES[li].name));
+    svg.append(s('text', { x: 4, y: y + 4, fill: mut, 'font-size': 12, 'font-family': 'Figtree, sans-serif' }, LD[li].name));
     svg.append(s('line', { x1: 60, y1: y, x2: W - 6, y2: y, stroke: line }));
     for (let k = 0; k < N; k++) { const x = 60 + k * 40 + 20; svg.append(s('rect', { x: x - 17, y: y - 19, width: 34, height: 38, rx: 6, fill: D.meter(sg).beatSteps.includes(k) ? cssv('--raise') : 'transparent', class: 'cell', 'data-lane': li, 'data-step': k })); }
   }
   if (st.shadows) for (const sh of shadowsFor('beat')) { const x = 60 + sh.s * 40 + 20, y = 20 + sh.lane * 44 + 22; const el = laneShape(sh.lane, x, y, 9, { class: 'shadow', 'pointer-events': 'all', 'data-lane': sh.lane, 'data-step': sh.s, style: 'cursor:pointer' }); el.setAttribute('fill', 'none'); el.setAttribute('stroke', col); el.setAttribute('stroke-dasharray', '3 2'); el.setAttribute('stroke-width', 1.5); svg.append(el); }
   const tc = beatTouches(data);
-  for (const x of tc.hits) { const cx = 60 + x.s * 40 + 20, cy = 20 + x.lane * 44 + 22 - (x.v - 90) / 127 * 14; svg.append(laneShape(x.lane, cx, cy, 6 + x.v / 127 * 7, { fill: col, opacity: 0.32, class: 'touch', 'pointer-events': 'none' })); }
+  for (const x of tc.hits) { if (x.lane >= LD.length) continue; const cx = 60 + x.s * 40 + 20, cy = 20 + x.lane * 44 + 22 - (x.v - 90) / 127 * 14; svg.append(laneShape(x.lane, cx, cy, 6 + x.v / 127 * 7, { fill: col, opacity: 0.32, class: 'touch', 'pointer-events': 'none' })); }
   if (tc.hits.length) svg.append(s('text', { x: W - 8, y: 13, 'text-anchor': 'end', fill: col, 'font-size': 12, 'font-family': 'Figtree, sans-serif', class: 'touchlab' }, touchLabel(tc)));
-  data.lanes.forEach((l, li) => l.forEach((v, k) => { if (!v) return; const x = 60 + k * 40 + 20, y = 20 + li * 44 + 22 - (v - 90) / 127 * 14; svg.append(laneShape(li, x, y, 6 + v / 127 * 7, { fill: col, class: 'hit', 'data-lane': li, 'data-step': k, opacity: song().parts.beat.mode === 'machine' ? 0.75 : 1 })); }));
+  data.lanes.forEach((l, li) => l.forEach((v, k) => { if (!v || li >= LD.length) return; const x = 60 + k * 40 + 20, y = 20 + li * 44 + 22 - (v - 90) / 127 * 14; svg.append(laneShape(li, x, y, 6 + v / 127 * 7, { fill: col, class: 'hit', 'data-lane': li, 'data-step': k, opacity: song().parts.beat.mode === 'machine' ? 0.75 : 1 })); }));
   svg.append(s('line', { id: 'lineHead', x1: 60, y1: 10, x2: 60, y2: H - 4, stroke: cssv('--fg'), 'stroke-width': 2, opacity: AU.playing ? 0.8 : 0 }));
   let drag = null;
   svg.addEventListener('pointerdown', (e) => {
@@ -4314,7 +4338,7 @@ function beatLines() {
     if (t.classList.contains('shadow')) { change(() => { const d = editable('beat'); d.lanes[li][k] = 96; }); playLanePreview(li, 96); return; }
     svg.setPointerCapture(e.pointerId);
     const before = snapshot(); const d = editable('beat'); const existed = d.lanes[li][k] > 0;
-    if (!existed) d.lanes[li][k] = [110, 80, 108, 96, 72, 80, 70, 96][li];
+    if (!existed) d.lanes[li][k] = ([110, 80, 108, 96, 72, 80, 70, 96][li] || 88);
     drag = { li, k, y: e.clientY, moved: false, existed, before, v0: d.lanes[li][k], d, el: svg.querySelector('.hit[data-lane="' + li + '"][data-step="' + k + '"]') }; placeLine(); playLanePreview(li, d.lanes[li][k]);
   });
   const placeLine = () => { const v = drag.d.lanes[drag.li][drag.k]; const x = 60 + drag.k * 40 + 20, y = 20 + drag.li * 44 + 22 - (v - 90) / 127 * 14; const ne = laneShape(drag.li, x, y, 6 + v / 127 * 7, { fill: col, class: 'hit', 'data-lane': drag.li, 'data-step': drag.k }); if (drag.el) drag.el.replaceWith(ne); else svg.append(ne); drag.el = ne; };
@@ -4742,6 +4766,12 @@ function env(g, t, a, peak, dur, rel) { g.gain.setValueAtTime(0.0001, t); g.gain
 function track(node, end) { AU.nodes.push({ node, end }); }
 function noiseSrc(t, dur) { const src = AU.ctx.createBufferSource(); src.buffer = AU.noise; src.start(t, Math.random() * 0.5); src.stop(t + dur); track(src, t + dur); return src; }
 function drum(li, t, v) {
+  if (li >= 8) {
+    const nm = D.bmLayout(titleFor('beat', 'beatmaker')).names[li] || '', tom = /^(Tom|Acc) ([LMH])/.exec(nm);
+    if (!tom) return drum(D.foldName(nm), t, v);
+    const ctx = AU.ctx, g = ctx.createGain(), o = ctx.createOscillator(), f = { L: 95, M: 135, H: 185 }[tom[2]]; g.connect(AU.master); o.type = 'sine';
+    o.frequency.setValueAtTime(f * 1.6, t); o.frequency.exponentialRampToValueAtTime(f, t + 0.08); o.connect(g); env(g, t, 0.002, Math.pow(v / 127, 1.4) * 0.55, 0.05, 0.22); o.start(t); o.stop(t + 0.4); track(o, t + 0.4); return;
+  }
   const ctx = AU.ctx, g = ctx.createGain(), amp = Math.pow(v / 127, 1.4); g.connect(AU.master);
   if (li === 0 || li === 1) { const o = ctx.createOscillator(); o.type = 'sine'; const f = li === 0 ? 1 : 0.8; o.frequency.setValueAtTime(150 * f, t); o.frequency.exponentialRampToValueAtTime(44 * f, t + 0.13); env(g, t, 0.002, amp * (li ? 0.6 : 1), 0.05, 0.09); o.connect(g); o.start(t); o.stop(t + 0.5); track(o, t + 0.5); }
   else if (li === 2) { const n = noiseSrc(t, 0.25), bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.8; n.connect(bp); bp.connect(g); env(g, t, 0.001, amp * 0.7, 0.02, 0.06); const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'triangle'; o.frequency.value = 190; o.connect(og); og.connect(AU.master); env(og, t, 0.001, amp * 0.35, 0.02, 0.04); o.start(t); o.stop(t + 0.2); track(o, t + 0.2); }
@@ -5093,7 +5123,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-21 12:32. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-22 02:10. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
