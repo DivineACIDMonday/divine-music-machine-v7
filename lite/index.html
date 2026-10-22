@@ -2099,6 +2099,12 @@ E.renderBar = function (song, part, gbar, res, opts) {
       if (lb % 2 === 1 && r.chance(0.5)) { const s = 2 + r.int(N - 3); if (!lanes[HH][s] && s % 2 === 1) lanes[HH][s] = 34 + r.int(14); }
       if (lb === song.L - 1 && r.chance(0.5)) { const cands = [6, 10, 14].filter((s) => s < N && !lanes[K][s] && !lanes[K][s - 1] && !lanes[K][s + 1] && !(lanes[SN][s] >= 90)); if (cands.length) lanes[K][r.pick(cands)] = 82; }
     }
+    // a long section moves on every 8 bars, like a DJ or a drummer would: phrase 1 is the base, every next phrase plays it a little different and ends in a short fill
+    if (machine && !shaped && sec.bars >= 12 && type !== 'break' && type !== 'fill' && N === 16) {
+      const ph = Math.floor(inBar / 8), pr = rng(hash(song.seed, 'phrase', sec.id, ph));
+      if (ph > 0) E.phraseVary(lanes, pr, N, ph);
+      if (inBar % 8 === 7 && inBar < sec.bars - 2) E.phraseFill(lanes, rng(hash(song.seed, 'pfill', sec.id, ph)), N, song.genre);
+    }
     if (inBar === 0 && (type === 'chorus' || type === 'drop' || type === 'build' && song.genre === 'techno') && lanes[CR]) lanes[CR][0] = 104;
     else if (lanes[CR] && machine) lanes[CR] = lanes[CR].map(() => 0);
     // groove: ghost notes, soft snares around the backbeat
@@ -2174,6 +2180,27 @@ E.renderBar = function (song, part, gbar, res, opts) {
 // a drummer's small changes from bar to bar, on top of your base. Not coin flips over the whole bar:
 // ghost notes sit in the pockets around the backbeat (a pickup just before it, an echo just after),
 // rise into the hit they lead to, never land on a kick, and there are more of them in busier sections and at the end of a phrase
+function shuf(r, a) { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = r.int(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+E.phraseVary = function (lanes, r, N, ph) {
+  const has = (li) => lanes[li] && lanes[li].some(Boolean);
+  const free = (s) => !lanes[K][s] && !(lanes[SN][s] >= 80) && !(lanes[CP][s] >= 80);
+  const ways = [
+    () => { if (!has(HH)) return false; for (let s = 1; s < N; s += 2) if (!lanes[HH][s] && !lanes[OH][s] && lanes[HH][s - 1] && r.chance(0.6)) lanes[HH][s] = 30 + r.int(12); return true; }, // busier hats
+    () => { let n = 0; for (const s of [N / 2 - 2, N - 2]) if (lanes[HH][s] && !lanes[OH][s]) { lanes[OH][s] = Math.max(60, lanes[HH][s]); lanes[HH][s] = 0; n++; } return n > 0; }, // hats open up
+    () => { const back = []; for (let s = 1; s < N; s++) if (lanes[SN][s] >= 80 || lanes[CP][s] >= 80) back.push(s); let n = 0; for (const b of back) for (const s of [b - 1, b + 3]) if (s > 0 && s < N && s % 2 === 1 && free(s) && !lanes[SN][s] && r.chance(0.55)) { lanes[SN][s] = 30 + r.int(10); n++; } return n > 0; }, // ghost snares
+    () => { let n = 0; for (const s of shuf(r, [3, 7, 11, 13, 15]).slice(0, 2)) if (!lanes[PC][s] && free(s)) { lanes[PC][s] = 46 + r.int(18); n++; } return n > 0; }, // a percussion answer
+    () => { if (!has(HH)) return false; for (let s = 0; s < N; s += 4) if (lanes[HH][s]) lanes[HH][s] = Math.min(110, lanes[HH][s] + 16); for (let s = 2; s < N; s += 4) if (lanes[HH][s]) lanes[HH][s] = Math.max(30, lanes[HH][s] - 14); return true; } // the hat accent moves
+  ];
+  const order = shuf(r, ways.map((w, i) => i));
+  let done = 0; for (const i of order) { if (done >= (ph > 1 ? 2 : 1)) break; if (ways[i]()) done++; }
+};
+E.phraseFill = function (lanes, r, N, g) {
+  const fl = g === 'techno' ? CP : SN, kind = r.pick(['roll', 'flam', 'drop']), st = N - 4;
+  if (kind === 'roll') for (let s = st; s < N; s++) lanes[fl][s] = Math.max(lanes[fl][s], 56 + (s - st) * 14 + r.int(6));
+  else if (kind === 'flam') { lanes[fl][N - 3] = Math.max(lanes[fl][N - 3], 70 + r.int(10)); lanes[fl][N - 1] = Math.max(lanes[fl][N - 1], 88 + r.int(10)); lanes[OH][N - 2] = Math.max(lanes[OH][N - 2], 72); lanes[HH][N - 2] = 0; }
+  else { for (let s = st; s < N; s++) lanes[K][s] = 0; lanes[fl][N - 2] = Math.max(lanes[fl][N - 2], 74 + r.int(10)); lanes[fl][N - 1] = Math.max(lanes[fl][N - 1], 90 + r.int(10)); }
+  for (let s = st + 1; s < N; s++) if (lanes[K][s] && kind !== 'drop' && lanes[fl][s] >= 70) lanes[K][s] = 0;
+};
 E.touchBar = function (lanes, r, N, kickVar, inBar, type) {
   const energy = E.DENSITY[type] != null ? E.DENSITY[type] : 0.7;
   const back = []; for (let s = 1; s < N; s++) if (lanes[SN][s] >= 80 || lanes[CP][s] >= 80) back.push(s);
@@ -2842,9 +2869,12 @@ E.beatLoops = function (song, notes, L) {
       const b = b0 + j, t0 = b * BT;
       if (b === total - 1) { release(t0); if (on[b]) out.push({ t: t0, d: BT - 5, p: L.ending, v: 100 }); continue; }
       if (!on[b]) { release(t0); continue; }
-      if (!held || held.p !== key) { release(t0); held = { p: key, t: t0 }; }
+      const ALT = { 42: 44, 44: 42, 49: 51, 51: 49, 54: 56, 56: 54 }, half = s.bars >= 16 ? Math.floor(s.bars / 8) * 4 : 99; // a long section switches to its sister loop halfway
+      const want = j >= half && ALT[key] ? ALT[key] : key;
+      if (!held || held.p !== want) { release(t0); held = { p: want, t: t0 }; }
       if (s.type === 'intro' && !intro && L.introHit) { out.push({ t: t0, d: 120, p: L.introHit, v: 100 }); intro = true; } // the Intro part once, then the held loop takes over
       const fill = s.type === 'fill' ? j === 0 : (j === s.bars - 1 && next && next.type !== s.type);
+      if (!fill && s.bars >= 12 && j % 8 === 7 && j < s.bars - 2 && s.type !== 'break') out.push({ t: t0, d: 120, p: L.fills[nf++ % L.fills.length], v: 100 }); // a fill at the end of every 8 bar phrase
       if (fill) out.push({ t: t0, d: 120, p: L.fills[nf++ % L.fills.length], v: 100 });
     }
     last = key; b0 += s.bars;
@@ -3313,7 +3343,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 01:30)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 01:45)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5371,7 +5401,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 01:30. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 01:45. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6232,7 +6262,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 01:30 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 01:45 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6268,7 +6298,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 01:30')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 01:45')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
