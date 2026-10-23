@@ -1288,6 +1288,18 @@ E.genMelody = function (song, type, ctx, seed) {
       notes.push({ s, d: Math.min(x.d, L * N - s), p, v });
     });
   }
+  // a note before a rest rings on, like a singer holding the end of a line: most in the lyrical genres, little in the tight ones
+  const SUS = { triphop: 1, dnb: 1, dub: 1, trance: 0.9, synthwave: 0.9, blues: 0.8, newwave: 0.6, house: 0.6, hiphop: 0.6, punk: 0.6, free: 0.6, techno: 0.5, eurodance: 0.5, garage: 0.4, breakbeat: 0.4, funk: 0.3, ebm: 0.3 }[song.genre];
+  if (SUS) {
+    notes.sort((a, b) => a.s - b.s);
+    notes.forEach((n, k) => {
+      let nx = L * N; for (let j = k + 1; j < notes.length; j++) if (notes[j].s > n.s) { nx = notes[j].s; break; }
+      const gap = nx - (n.s + n.d); if (gap < 2) return;
+      const end = gap >= 4 || Math.floor(nx / N) !== Math.floor(n.s / N); // the end of a phrase or of a bar
+      const add = Math.min(12, Math.round((gap - 1) * SUS * (end ? 1 : 0.5)));
+      if (add > 0) { n.d0 = n.d; n.d += add; }
+    });
+  }
   // end of loop resolves to a chord tone (root preferred) in chorus
   if (notes.length) {
     const last = notes[notes.length - 1];
@@ -1311,7 +1323,7 @@ E.genAnswer = function (song, type, ctx, seed) {
   const mode = r.pick(['echo', 'echo', 'turn', 'rise']);
   if (mel && mel.notes && mel.notes.length) {
     const ns = mel.notes.slice().sort((a, b) => a.s - b.s);
-    const busy = new Array(total).fill(false); for (const n of ns) for (let k = n.s; k < Math.min(total, n.s + n.d); k++) busy[k] = true;
+    const busy = new Array(total).fill(false); for (const n of ns) for (let k = n.s; k < Math.min(total, n.s + Math.min(n.d, n.d0 || n.d)); k++) busy[k] = true; // the melody's rests as it phrased them, before its notes rang on
     // the rests: runs of at least three free steps
     const gaps = []; let g0 = -1;
     for (let k = 0; k <= total; k++) { const free = k < total && !busy[k]; if (free && g0 < 0) g0 = k; if (!free && g0 >= 0) { if (k - g0 >= 3) gaps.push([g0, k]); g0 = -1; } }
@@ -1912,7 +1924,7 @@ const HARM_W = {
   prechorus: { full: 4, pad: 3, stabs: 3 }, chorus: { full: 5.5, stabs: 2.5, pad: 2 }, drop: { full: 4, stabs: 4, none: 2 },
   break: { drone: 3.5, pad: 3.5, none: 2, stabs: 1 }, build: { stabs: 4, none: 3, full: 3 }, outro: { pad: 4, drone: 3, full: 2, none: 1 }, fill: { full: 1 }
 };
-const HARM_G = { house: { stabs: 1.5, full: 1.3, drone: 0.6 }, acid: { none: 1.8, drone: 1.4, stabs: 1.2, full: 0.5, pad: 0.6 }, trance: { pad: 1.5, full: 1.3, none: 0.6 }, eurodance: { stabs: 1.5, full: 1.4, drone: 0.5 }, breakbeat: { stabs: 1.6, none: 1.4, full: 0.7 }, ebm: { none: 2, drone: 1.5, stabs: 1.2, full: 0.4, pad: 0.5 }, punk: { full: 4, stabs: 0.6, pad: 0, drone: 0.2, none: 0.6 }, techno: { stabs: 1.6, none: 1.5, drone: 1.4, full: 0.6, pad: 0.8 }, triphop: { drone: 1.6, pad: 1.4, none: 1.1, stabs: 0.8 }, hiphop: { stabs: 1.6, none: 1.4, full: 0.8 }, newwave: { full: 1.3, pad: 1.3, drone: 0.7 }, blues: { full: 3, stabs: 1.4, drone: 0, pad: 0.3, none: 0.4 }, dnb: { pad: 1.5, drone: 1.3, stabs: 1, none: 0.8 }, garage: { stabs: 1.6, full: 1.2, pad: 0.8 }, dub: { stabs: 1.6, none: 1.5, drone: 0.8, full: 0.6 }, synthwave: { pad: 1.6, full: 1.4, drone: 0.6 }, funk: { full: 1.6, stabs: 1.6, none: 0.6, pad: 0.4 } };
+const HARM_G = { house: { stabs: 1.5, full: 1.3, drone: 0.6 }, acid: { none: 1.8, drone: 1.4, stabs: 1.2, full: 0.5, pad: 0.6 }, trance: { pad: 1.5, full: 1.3, none: 0.6 }, eurodance: { stabs: 1.5, full: 1.4, drone: 0.5 }, breakbeat: { stabs: 1.6, none: 1.4, full: 0.7 }, ebm: { none: 2, drone: 1.5, stabs: 1.2, full: 0.4, pad: 0.5 }, punk: { full: 4, stabs: 0.6, pad: 0, drone: 0.2, none: 0.6 }, techno: { stabs: 1.6, none: 1.5, drone: 1.4, full: 0.6, pad: 0.8 }, triphop: { drone: 1.6, pad: 1.4, none: 1.1, stabs: 0.8 }, hiphop: { stabs: 1.6, none: 1.4, full: 0.8 }, newwave: { full: 1.3, pad: 1.3, drone: 0.7 }, blues: { full: 3, stabs: 1.4, drone: 0, pad: 0.3, none: 0.4 }, dnb: { pad: 1.5, drone: 1.3, stabs: 0.5, none: 0.8 }, garage: { stabs: 1.6, full: 1.2, pad: 0.8 }, dub: { stabs: 0.3, none: 1.5, drone: 0.8, full: 1.4 }, synthwave: { pad: 1.6, full: 1.4, drone: 0.6 }, funk: { full: 1.6, stabs: 1.6, none: 0.6, pad: 0.4 } };
 const LEAD_W = { techno: { melody: 4, riff: 2, chords: 1 }, triphop: { melody: 6, riff: 1.5, chords: 1 }, hiphop: { melody: 4, riff: 2, chords: 1.2 }, newwave: { melody: 5, riff: 1.5, chords: 1 }, blues: { melody: 7, riff: 0.6, chords: 1 }, free: { melody: 5, riff: 1.5, chords: 1 }, house: { melody: 5, riff: 1, chords: 2 }, acid: { melody: 2, riff: 4, chords: 0.5 }, trance: { melody: 6, riff: 1, chords: 1.5 }, eurodance: { melody: 6, riff: 1, chords: 1 }, breakbeat: { melody: 3, riff: 3, chords: 1 }, ebm: { melody: 3, riff: 4, chords: 0.5 }, punk: { melody: 5, riff: 1, chords: 2 }, dnb: { melody: 3, riff: 3, chords: 1 }, garage: { melody: 4, riff: 2, chords: 1.5 }, dub: { melody: 3, riff: 3, chords: 1 }, synthwave: { melody: 6, riff: 1.5, chords: 1 }, funk: { melody: 3, riff: 3, chords: 2 } };
 const INTRO_W = { dnb: { break: 3, hats: 2, solo: 1.5, silent: 1 }, garage: { hats: 2.5, kick: 1.5, solo: 1, break: 1, silent: 1 }, dub: { solo: 3, silent: 1.5, hats: 1 }, synthwave: { solo: 2.5, hats: 1.5, kick: 1.5, silent: 1 }, funk: { count: 2, solo: 2, break: 1.5, hats: 1, silent: 1 }, punk: { count: 4, solo: 2, silent: 1 }, newwave: { count: 1.5, hats: 2, solo: 2, break: 1, kick: 1, silent: 1 }, blues: { count: 2, solo: 2, hats: 2, silent: 1 }, hiphop: { solo: 3, break: 2, hats: 1.5, kick: 1, silent: 1, toms: 0.5 }, ebm: { kick: 3, break: 1, solo: 1, silent: 1 }, house: { hats: 2, kick: 2.5, solo: 1, break: 1, silent: 1 }, acid: { kick: 2, break: 2, hats: 1.5, silent: 1 }, trance: { kick: 2.5, hats: 2, silent: 1, break: 1 }, eurodance: { kick: 2, solo: 2, silent: 1 }, breakbeat: { break: 3, solo: 2, silent: 1, toms: 1 }, techno: { kick: 4, hats: 2.5, break: 1, silent: 1, toms: 0.5 }, def: { hats: 2.5, solo: 2.5, break: 2, kick: 1, toms: 1, silent: 1 } };
 const STOP_P = { punk: 0.6, breakbeat: 0.6, ebm: 0.5, house: 0.45, acid: 0.4, trance: 0.4, eurodance: 0.5, techno: 0.45, triphop: 0.5, hiphop: 0.6, newwave: 0.5, blues: 0.35, free: 0.5, dnb: 0.5, garage: 0.45, dub: 0.55, synthwave: 0.4, funk: 0.6 };
@@ -3230,7 +3242,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 02:35)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 02:50)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -4875,7 +4887,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-23 02:35. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-23 02:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
