@@ -1336,7 +1336,8 @@ E.genBeat = function (song, type, ctx, seed) {
       if (r.chance(0.3)) [3, 7, 11, 15].forEach((s) => setL(p, K2, s, 60 + r.int(16)));
     } else if (g === 'triphop') {
       setL(p, K, 0, 116); setL(p, K, 10, 102); if (r.chance(0.6)) setL(p, K, 7, 82);
-      setL(p, SN, 8, 116); if (r.chance(0.5)) setL(p, SN, 15, 42);
+      if (r.chance(0.3)) { setL(p, SN, 8, 116); if (r.chance(0.5)) setL(p, SN, 15, 42); } // half time: the snare on 3
+      else { setL(p, SN, 4, 112); setL(p, SN, 12, 116); if (r.chance(0.5)) setL(p, SN, 15, 40); } // the usual trip hop backbeat on 2 and 4
       for (let s = 0; s < 16; s += 2) setL(p, HH, s, s % 4 === 0 ? 74 : 52 + r.int(10));
       if (r.chance(0.6)) setL(p, OH, 14, 70);
       for (let s = 1; s < 16; s += 2) if (r.chance(0.5)) setL(p, PC, s, 34 + r.int(16));
@@ -3275,7 +3276,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 02:50)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 03:00)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5333,7 +5334,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 02:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 03:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
