@@ -938,7 +938,7 @@ Object.assign(E.GENRES, {
    melody you can sing. Over everything a light: the C at 523 Hz returns in every track, as root, third, fifth or ninth, never the same way twice.
    Before the biggest chorus it teases: the floor falls away, then everything lands at once, a step higher. Even a dark track ends in light. */
 Object.assign(E.GENRES, {
-  divine: { name: 'Divine Monday', bpm: [107, 135], def: 125, swing: 58, mode: 'either', L: 4, sevenths: 0.85, melScale: 'scale', mel: { density: 0.45, len: 2.4, range: [62, 84] }, chordRhythm: 'housestab', bass: 'organ',
+  divine: { name: 'Divine Monday', bpm: [107, 135], def: 125, swing: 58, mode: 'either', L: 4, sevenths: 0.85, melScale: 'scale', mel: { density: 0.42, len: 5, range: [62, 84] }, chordRhythm: 'housestab', bass: 'divine',
     sections: [['intro', 16], ['verse', 16], ['chorus', 16], ['verse', 16], ['chorus', 16], ['break', 16], ['build', 8], ['chorus', 32], ['outro', 16]],
     progs: { verse: [[0, 3, 0, 3], [0, 5, 3, 4], [0, 6, 5, 6], [5, 3, 0, 4]], chorus: [[5, 3, 0, 4], [0, 5, 3, 4], [3, 4, 0, 0], [0, 4, 5, 3]] } }
 });
@@ -1166,6 +1166,14 @@ E.BASS_STYLES = {
     for (let s = 0; s < o.N; s += 2) o.add(s, 1.5, (s / 2) % 2 ? o.oct : o.root, s % 4 === 0 ? 106 : 94);
     if (o.r.chance(0.35)) o.add(o.N - 1, 1, o.oct, 84);
   },
+  divine(o) { // the Divine Monday bass: weight on the one, a long note that leans into the bar, a push into the next chord
+    const r = rng(hash(o.song.seed, 'divinebass')), shape = r.pick(['bar', 'push', 'lean', 'roll']), big = o.type === 'chorus' || o.type === 'drop' || o.type === 'build';
+    const pick = o.nc.root !== o.c.root ? o.fifth : o.oct;
+    if (shape === 'bar' || !big && o.b % 2 === 0) { o.add(0, o.N - 2, o.root, 118); o.add(o.N - 2, 2, pick, 100); return; } // a whole bar, then a push
+    if (shape === 'push') { o.add(0, 10, o.root, 120); o.add(10, 4, o.oct, 106); o.add(14, 2, o.root, 98); return; }
+    if (shape === 'lean') { o.add(0, 6, o.root, 120); o.add(6, 8, o.root, 108); o.add(14, 2, pick, 100); return; }
+    o.add(0, 3, o.root, 120); o.add(3, 3, o.root, 104); o.add(6, 4, o.oct, 110); o.add(10, 6, o.root, 112); // a long, driving roll
+  },
   drone(o) { // ambient: a held low note, half a bar on the root and half on the fifth now and then
     if (o.b % 2 === 1 && o.r.chance(0.3)) { o.add(0, 8, o.root, 76); o.add(8, 8, o.fifth, 66); } else o.add(0, o.N, o.root, 76);
   },
@@ -1188,7 +1196,7 @@ E.BASS_STYLES = {
 };
 // which bass and chord style a song uses: its genre, or a borrowed one that fits the beat style
 const BASS_V = { techno: { offbeat: 5.5, rolling: 3, acid: 1.5 }, house: { organ: 5, euro: 2, funk: 1.5, offbeat: 1.5 }, trance: { rolling: 7, offbeat: 3 }, eurodance: { euro: 7, offbeat: 3 }, acid: { acid: 1 }, breakbeat: { kick: 4, acid: 3, funk: 3 }, ebm: { ebm: 7, pump8: 3 },
-  hiphop: { kick: 6, funk: 2.5, long: 1.5 }, triphop: { long: 7, kick: 3 }, newwave: { drive: 6, pump8: 2, funk: 2 }, punk: { pump8: 6, drive: 2.5 }, blues: { walk: 6, boogie: 3.5 }, free: { kick: 4, long: 2, drive: 2, funk: 1, rolling: 1 }, dnb: { reese: 5, dnbroll: 3, jumpup: 2.5 }, garage: { garage: 6, reese: 1.5, organ: 1.5 }, dub: { dub: 7, long: 2 }, synthwave: { drive: 5, pump8: 2.5, rolling: 1.5 }, funk: { funk: 5, disco: 3 }, dubtechno: { dubsub: 6, long: 2 }, minimal: { minimal: 6, offbeat: 2 }, ambient: { drone: 7, long: 2 }, chillout: { long: 4, kick: 2, dub: 1.5 }, club: { tech: 6, offbeat: 2, organ: 1 }, divine: { organ: 5, tech: 2, long: 1.5, funk: 1 } };
+  hiphop: { kick: 6, funk: 2.5, long: 1.5 }, triphop: { long: 7, kick: 3 }, newwave: { drive: 6, pump8: 2, funk: 2 }, punk: { pump8: 6, drive: 2.5 }, blues: { walk: 6, boogie: 3.5 }, free: { kick: 4, long: 2, drive: 2, funk: 1, rolling: 1 }, dnb: { reese: 5, dnbroll: 3, jumpup: 2.5 }, garage: { garage: 6, reese: 1.5, organ: 1.5 }, dub: { dub: 7, long: 2 }, synthwave: { drive: 5, pump8: 2.5, rolling: 1.5 }, funk: { funk: 5, disco: 3 }, dubtechno: { dubsub: 6, long: 2 }, minimal: { minimal: 6, offbeat: 2 }, ambient: { drone: 7, long: 2 }, chillout: { long: 4, kick: 2, dub: 1.5 }, club: { tech: 6, offbeat: 2, organ: 1 }, divine: { divine: 7, long: 1.5, tech: 1 } };
 const CHORD_V = { techno: { stab: 7, arp: 2, pad: 1 }, house: { housestab: 6, pump: 2, arp: 2 }, trance: { arp: 7, pad: 3 }, eurodance: { stab: 5, arp: 3, pump: 2 }, acid: { stab: 5, pad: 2.5, arp: 1.5 }, breakbeat: { stab: 6, power: 2, arp: 2 }, ebm: { stab: 7, arp: 3 },
   hiphop: { half: 6, housestab: 2, arp: 2 }, triphop: { pad: 7, arp: 3 }, newwave: { eighths: 5, pump: 2.5, arp: 2.5 }, punk: { power: 7, pump: 2, stab: 1.5 }, blues: { shuffle: 6, stab: 2, pad: 1.5 }, free: { half: 4, pump: 2, arp: 2, pad: 2 }, dnb: { pad: 4, rhodes: 4, stab: 2 }, garage: { housestab: 4, rhodes: 3, stab: 2 }, dub: { skank: 7, pad: 1.5 }, synthwave: { pad: 5, arp: 4, eighths: 1 }, funk: { chop: 6, housestab: 1.5, pump: 1.5 }, dubtechno: { dubchord: 7, pad: 1.5 }, minimal: { stab: 5, dubchord: 2, pad: 1 }, ambient: { pad: 7, arp: 1.5 }, chillout: { rhodes: 5, pad: 3, arp: 1 }, club: { housestab: 5, stab: 3, dubchord: 1 }, divine: { housestab: 4, rhodes: 3, dubchord: 2, pad: 1.5 } };
 E.BASS_NAMES = { auto: 'Machine choice', offbeat: 'Offbeat', rolling: 'Rolling', acid: 'Acid 303', organ: 'Organ', euro: 'Octave offbeat', funk: 'Funk hook', kick: 'With the kick', long: 'Long and deep', drive: 'Driving eighths', pump8: 'Root eighths', ebm: 'Sequencer', walk: 'Walking', boogie: 'Boogie', reese: 'Reese, long and deep', jumpup: 'Jump up stabs', dnbroll: 'Liquid roller', garage: 'Garage sub', dub: 'Dub, deep and melodic', disco: 'Disco octaves', drone: 'Drone, held low', minimal: 'Minimal, short and dry', tech: 'Tech house roller', dubsub: 'Dub techno sub' };
@@ -1852,7 +1860,7 @@ E.genAnswer = function (song, type, ctx, seed) {
       const before = ns.filter((n) => n.s < a).slice(-3); if (!before.length) continue;
       let phrase = before.map((n) => n.p);
       if (mode === 'turn') phrase = phrase.slice().reverse();
-      const len = Math.max(1, Math.min(4, Math.floor((b - a) / 2)));
+      const len = Math.max(1, Math.min(song.genre === 'divine' ? 8 : 4, Math.floor((b - a) / 2))); // Divine Monday answers with long notes too
       let t = a + (r.chance(0.5) ? 1 : 0);
       for (let k = 0; k < phrase.length && t < b - 1; k++) {
         const d = Math.min(len, b - t - 1); if (d < 1) break;
@@ -2315,6 +2323,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (part !== 'beat' && song.arr) { const lift = E.liftOf(song); if (lift && si >= lift.from) notes = notes.map((n) => Object.assign({}, n, { p: n.p + lift.by })); } // the last chorus a step higher
   if (part !== 'beat' && stopTime) notes = E.stopNotes(part, notes, 'hit', BT); // stop time: the band hits the one with the drums
   if (song.arr && song.raw && !bo && !lastBar) notes = E.rawNotes(song, part, notes, type + ':' + inBar + ':' + sec.bars, N, BT, isLastOfSec && !!nextSec && (!!endK || !!sec.fill && sec.fill !== 'auto' && sec.fill !== 'none'), A && A.boost);
+  if (song.genre === 'divine' && part !== 'beat' && part !== 'pad' && !bo) notes = notes.map((n) => Object.assign({}, n, { v: Math.min(127, Math.round(n.v * 1.12 + 4)) })); // Divine Monday plays with a bit more bite
   if (part === 'pad' && song.genre === 'divine' && !bo && !lastBar && song.parts.pad.mode !== 'off' && !(E.partIsOff && E.partIsOff(sec, inBar, part))) notes = notes.concat(E.lightC(song, inBar, res(si).ctxChords && res(si).ctxChords.bars[lb], si));
   return E.applyFeel(song, part, notes, gbar, opts);
 };
@@ -3488,7 +3497,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 04:15)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 04:30)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5546,7 +5555,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 04:15. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 04:30. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6407,7 +6416,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 04:15 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 04:30 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6443,7 +6452,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 04:15')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 04:30')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
