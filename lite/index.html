@@ -2503,7 +2503,7 @@ E.introLanes = function (song, core, recipe, inBar, bars, N, r) {
 // a bass riff that leads: one figure that keeps coming back (seeded per kind of section, so every chorus has the same riff)
 E.riffBar = function (song, type, chord, lb, BT, N, ownKey) {
   const r = rng(hash(song.seed, 'riff', type, song.genre));
-  const LONG = N === 16 && E.bassStyleOf(song) !== 'jumpup' && { dnb: [[0, 10], [0, 6, 10], [0, 12], [0, 8, 12], [0, 6]], dub: [[0, 6, 10], [0, 10], [0, 4, 10]] }[song.genre]; // a reese or a dub line leads with long, deep notes
+  const LONG = N === 16 && E.bassStyleOf(song) !== 'jumpup' && { dnb: [[0, 10], [0, 6, 10], [0, 12], [0, 8, 12], [0, 6]], dub: [[0, 6, 10], [0, 10], [0, 4, 10]], hiphop: [[0, 10], [0, 7, 10], [0, 3, 10], [0, 10, 14]], triphop: [[0, 10], [0, 8], [0, 6, 10]], garage: [[0, 6, 10], [0, 3, 6, 10, 14], [0, 7, 10, 13]], synthwave: [[0, 2, 4, 6, 8, 10, 12, 14]] }[song.genre]; // a leading bass in the shape of its genre: a reese, a dub line, an 808, the garage skip, synthwave eighths
   const fig = LONG ? r.pick(LONG) : r.pick(N === 16 ? [[0, 3, 6, 8, 11, 14], [0, 2, 3, 6, 7, 10, 12, 14], [0, 3, 6, 9, 12], [0, 3, 5, 8, 10, 13], [0, 6, 8, 10, 14], [0, 1, 4, 7, 8, 11, 14]] : [[0, 3, 6, 9], [0, 2, 5, 8, 10]]);
   const pcs = E.scalePcs(song.key), root = ownKey ? song.key.root : chord ? chord.root : song.key.root;
   const deg = (iv) => { const target = (root + iv) % 12; if (pcs.includes(target)) return iv; for (const d of [1, -1, 2, -2]) if (pcs.includes((root + iv + d + 12) % 12)) return iv + d; return iv; };
@@ -3347,7 +3347,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 02:20)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 02:35)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5405,7 +5405,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 02:20. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 02:35. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6266,7 +6266,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 02:20 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 02:35 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6302,7 +6302,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 02:20')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 02:35')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
