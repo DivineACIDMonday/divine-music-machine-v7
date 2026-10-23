@@ -1918,9 +1918,27 @@ E.renderBar = function (song, part, gbar, res, opts) {
   }
   if (part !== 'beat' && stopTime) notes = E.stopNotes(part, notes, 'hit', BT); // stop time: the band hits the one with the drums
   if (song.arr && song.raw && !bo && !lastBar) notes = E.rawNotes(song, part, notes, type + ':' + inBar + ':' + sec.bars, N, BT, isLastOfSec && !!nextSec && (!!endK || !!sec.fill && sec.fill !== 'auto' && sec.fill !== 'none'), A && A.boost); // raw: harder accents and pushes
+  if (part === 'bass' && !bo && !lastBar && notes.length) notes = E.bassGuard(song, si, notes, res(si).ctxChords && res(si).ctxChords.bars[lb], N, BT); // the bass stays the foundation, whatever varies on top
   if (song.genre === 'divine' && part !== 'beat' && part !== 'pad' && !bo) notes = notes.map((n) => Object.assign({}, n, { v: Math.min(127, Math.round(n.v * 1.12 + 4)) })); // Divine Monday plays with a bit more bite
   if (part === 'pad' && song.genre === 'divine' && !bo && !lastBar && song.parts.pad.mode !== 'off' && !(E.partIsOff && E.partIsOff(sec, inBar, part))) notes = notes.concat(E.lightC(song, inBar, res(si).ctxChords && res(si).ctxChords.bars[lb], si));
   return E.applyFeel(song, part, notes, gbar, opts);
+};
+// the foundation: one bass note at a time, and the root on the one (styles that live on the offbeat keep their offbeat)
+E.OFFBEAT_BASS = ['offbeat', 'rolling', 'euro', 'minimal', 'tech', 'organ', 'garage', 'acid'];
+E.bassMono = function (notes, style) { // one note at a time; a 303 keeps its slides, they are overlapping notes on purpose
+  notes = notes.slice().sort((a, b) => a.t - b.t || b.v - a.v); if (style === 'acid') return notes;
+  const mono = []; for (const n of notes) { const prev = mono[mono.length - 1]; if (prev && Math.abs(prev.t - n.t) < 30) continue; if (prev && prev.t + prev.d > n.t - 10) prev.d = Math.max(30, n.t - prev.t - 10); mono.push(Object.assign({}, n)); }
+  return mono.filter((n) => n.d >= 30);
+};
+E.bassGuard = function (song, si, notes, chord, N, BT) {
+  const style = E.bassStyleOf ? E.bassStyleOf(song) : '';
+  notes = E.bassMono(notes, style);
+  if (chord && notes.length && !E.OFFBEAT_BASS.includes(style) && !notes.some((n) => n.t < E.STEP)) {
+    const lift = E.liftOf ? E.liftOf(song) : null, root = (chord.root + (lift && si >= lift.from ? lift.by : 0)) % 12, first = notes[0];
+    const p = pitchNear(root, first.p);
+    if (first.t >= E.STEP * 2) notes.unshift({ t: 0, d: Math.max(30, first.t - 10), p, v: Math.max(first.v, 96) }); else { const t0 = first.t; first.t = 0; first.d += t0; }
+  }
+  return notes;
 };
 // a drummer's small changes from bar to bar, on top of your base. Not coin flips over the whole bar:
 // ghost notes sit in the pockets around the backbeat (a pickup just before it, an echo just after),
@@ -2380,6 +2398,7 @@ E.renderSong = function (song, part, opts) {
   const out = [];
   for (let b = 0; b < total; b++) for (const n of R.bar(part, b, opts)) out.push(Object.assign({}, n, { t: n.t + b * BT }));
   out.forEach((n) => { if (n.t < 0) n.t = 0; });
+  if (part === 'bass' && E.bassMono && !(song.parts.bass && song.parts.bass.mode === 'yours')) return E.bassMono(out, E.bassStyleOf ? E.bassStyleOf(s2) : ''); // across bar lines too
   return out;
 };
 E.polishedSong = function (song) {
@@ -3380,7 +3399,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 06:00)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 06:45)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5025,7 +5044,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-23 06:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-23 06:45. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
