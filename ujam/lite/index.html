@@ -912,8 +912,28 @@ Object.assign(E.GENRES, {
     sections: [['intro', 8], ['verse', 16], ['chorus', 8], ['verse', 16], ['chorus', 8], ['break', 8], ['chorus', 8], ['outro', 8]],
     progs: { verse: [[0, 0, 0, 0], [0, 0, 3, 3], [0, 3, 0, 3], [0, 6, 0, 6]], chorus: [[3, 4, 0, 0], [3, 3, 0, 0], [5, 3, 4, 0]] } }
 });
+/* ---------- five more genres: dub techno, minimal techno, ambient, chillout, club ----------
+   Techniques, never anyone's tracks: the chord stab and its echoes over a deep sub, the dry clicks and shifting motif of minimal,
+   long pads with barely a beat, a laid back beat under warm Rhodes, the Amsterdam club groove with a rolling bass and tribal percussion. */
+Object.assign(E.GENRES, {
+  dubtechno: { name: 'Dub techno', bpm: [116, 126], def: 120, swing: 52, mode: 'minor', L: 4, sevenths: 0.9, melScale: 'penta', mel: { density: 0.18, len: 3.5, range: [60, 79] }, chordRhythm: 'dubchord', bass: 'dubsub',
+    sections: [['intro', 16], ['verse', 16], ['chorus', 32], ['break', 16], ['chorus', 32], ['outro', 16]],
+    progs: { verse: [[0, 0, 0, 0], [0, 0, 3, 3], [0, 0, 5, 5]], chorus: [[0, 0, 3, 3], [5, 5, 0, 0], [0, 3, 0, 3], [0, 0, 0, 0]] } },
+  minimal: { name: 'Minimal techno', bpm: [124, 130], def: 126, swing: 54, mode: 'minor', L: 4, sevenths: 0.4, melScale: 'penta', mel: { density: 0.3, len: 1, range: [60, 76] }, chordRhythm: 'stab', bass: 'minimal',
+    sections: [['intro', 16], ['verse', 16], ['chorus', 32], ['break', 16], ['chorus', 32], ['outro', 16]],
+    progs: { verse: [[0, 0, 0, 0], [0, 0, 0, 3]], chorus: [[0, 0, 3, 3], [0, 0, 6, 6], [0, 0, 0, 0]] } },
+  ambient: { name: 'Ambient', bpm: [60, 90], def: 72, swing: 50, mode: 'either', L: 4, sevenths: 0.7, melScale: 'penta', mel: { density: 0.16, len: 6, range: [64, 84] }, chordRhythm: 'pad', bass: 'drone',
+    sections: [['intro', 16], ['verse', 16], ['chorus', 16], ['break', 16], ['chorus', 16], ['outro', 16]],
+    progs: { verse: [[0, 0, 5, 5], [0, 3, 0, 3], [0, 0, 3, 3]], chorus: [[3, 4, 0, 0], [5, 3, 0, 0], [0, 5, 3, 3]] } },
+  chillout: { name: 'Chillout', bpm: [85, 110], def: 96, swing: 56, mode: 'either', L: 4, sevenths: 0.85, melScale: 'scale', mel: { density: 0.35, len: 3, range: [62, 81] }, chordRhythm: 'rhodes', bass: 'long',
+    sections: [['intro', 8], ['verse', 16], ['chorus', 16], ['verse', 16], ['chorus', 16], ['break', 8], ['chorus', 16], ['outro', 8]],
+    progs: { verse: [[0, 5, 3, 4], [0, 3, 5, 4], [0, 6, 5, 6]], chorus: [[3, 4, 0, 5], [5, 3, 0, 4], [3, 0, 4, 5]] } },
+  club: { name: 'Club', bpm: [123, 128], def: 125, swing: 56, mode: 'minor', L: 4, sevenths: 0.6, melScale: 'penta', mel: { density: 0.35, len: 1.4, range: [62, 79] }, chordRhythm: 'housestab', bass: 'tech',
+    sections: [['intro', 16], ['verse', 16], ['build', 8], ['drop', 32], ['break', 16], ['build', 8], ['drop', 32], ['outro', 16]],
+    progs: { verse: [[0, 0, 0, 0], [0, 0, 5, 5], [0, 3, 0, 3]], chorus: [[0, 5, 3, 4], [5, 3, 0, 0], [0, 0, 3, 4]] } }
+});
 E.FLAVORS = { genre: 'Genre beat', funk: 'Funk sixteenths', discorock: 'Disco rock', latin: 'Latin', jungle: 'Jungle break' };
-const FLAVOR_W = { hiphop: { funk: 0.25 }, newwave: { funk: 0.15, discorock: 0.2, latin: 0.1 }, free: { funk: 0.15, discorock: 0.1, latin: 0.1 }, triphop: { latin: 0.12 }, house: { discorock: 0.15 }, punk: {}, blues: { latin: 0.08 }, dnb: { jungle: 0.35 }, garage: {}, dub: {}, synthwave: {}, funk: { discorock: 0.45 } };
+const FLAVOR_W = { hiphop: { funk: 0.25 }, newwave: { funk: 0.15, discorock: 0.2, latin: 0.1 }, free: { funk: 0.15, discorock: 0.1, latin: 0.1 }, triphop: { latin: 0.12 }, house: { discorock: 0.15 }, punk: {}, blues: { latin: 0.08 }, dnb: { jungle: 0.35 }, garage: {}, dub: {}, synthwave: {}, funk: { discorock: 0.45 }, dubtechno: {}, minimal: {}, ambient: {}, chillout: {}, club: {} };
 E.flavorOf = function (song) {
   if (!song.arr) return null;
   if (song.flavor) return song.flavor === 'genre' ? null : song.flavor;
@@ -1020,6 +1040,42 @@ E.beatFor = function (song, g, p, r) {
     if (r.chance(0.4)) [4, 12].forEach((s) => setL(p, PC, s, 62));
     return true;
   }
+  if (g === 'dubtechno') { // dub techno: a soft four on the floor, hats far away, a rim now and then; the chord echoes do the rest
+    [0, 4, 8, 12].forEach((s) => setL(p, K, s, 112)); [2, 6, 10, 14].forEach((s) => setL(p, OH, s, 56 + r.int(10)));
+    if (r.chance(0.6)) for (let s = 1; s < 16; s += 2) setL(p, HH, s, 30 + r.int(10));
+    if (r.chance(0.5)) [4, 12].forEach((s) => setL(p, CP, s, 64 + r.int(10)));
+    r.pick([[7], [11], [3, 13], [14]]).forEach((s) => setL(p, PC, s, 50 + r.int(14)));
+    return true;
+  }
+  if (g === 'minimal') { // minimal techno: a dry kick, small clicks and rims that shift, the clap soft or gone
+    [0, 4, 8, 12].forEach((s) => setL(p, K, s, 118)); [2, 6, 10, 14].forEach((s) => setL(p, HH, s, 72 + r.int(8)));
+    for (let s = 1; s < 16; s += 2) if (r.chance(0.35)) setL(p, HH, s, 28 + r.int(10));
+    if (r.chance(0.6)) [4, 12].forEach((s) => setL(p, CP, s, 72 + r.int(10)));
+    r.pick([[3, 7, 14], [3, 11], [5, 9, 15], [7, 10, 13]]).forEach((s) => setL(p, PC, s, 56 + r.int(16)));
+    if (r.chance(0.4)) setL(p, OH, 14, 60);
+    return true;
+  }
+  if (g === 'ambient') { // ambient: barely a beat, a soft pulse, a few far away sounds
+    if (r.chance(0.35)) setL(p, K, 0, 74);
+    r.pick([[6], [10], [6, 14], [3, 11]]).forEach((s) => setL(p, PC, s, 34 + r.int(14)));
+    if (r.chance(0.4)) [0, 4, 8, 12].forEach((s) => setL(p, HH, s, 26 + r.int(8)));
+    return true;
+  }
+  if (g === 'chillout') { // chillout: a laid back beat, the snare soft on 2 and 4, a shaker, plenty of air
+    r.pick([[0, 10], [0, 7, 10], [0, 8, 10]]).forEach((s) => setL(p, K, s, s ? 92 : 108));
+    const bk = r.chance(0.5) ? SN : CP; [4, 12].forEach((s) => setL(p, bk, s, 88 + r.int(8)));
+    for (let s = 0; s < 16; s += 2) setL(p, HH, s, s % 4 === 0 ? 62 : 46 + r.int(8));
+    if (r.chance(0.6)) for (let s = 1; s < 16; s += 2) setL(p, PC, s, 26 + r.int(10));
+    if (r.chance(0.4)) setL(p, OH, 14, 58);
+    return true;
+  }
+  if (g === 'club') { // Amsterdam club and tech house: four on the floor, the clap on 2 and 4, open hats on the offbeat, shuffled sixteenths and tribal percussion
+    [0, 4, 8, 12].forEach((s) => setL(p, K, s, 120)); [4, 12].forEach((s) => setL(p, CP, s, 102));
+    [2, 6, 10, 14].forEach((s) => setL(p, OH, s, 80 + r.int(8)));
+    for (let s = 0; s < 16; s++) if (s % 4 !== 2) setL(p, HH, s, s % 2 ? 38 + r.int(12) : 56 + r.int(8));
+    r.pick([[3, 7, 11, 13], [3, 9, 14], [7, 10, 13, 15], [1, 6, 11]]).forEach((s) => setL(p, PC, s, 58 + r.int(18)));
+    return true;
+  }
   return false;
 };
 // bass styles for the new genres, one bar at a time: o = { add, root, oct, fifth, c, nc, b, r, N, song }
@@ -1071,6 +1127,20 @@ E.BASS_STYLES = {
     for (let s = 0; s < o.N; s += 2) o.add(s, 1.5, (s / 2) % 2 ? o.oct : o.root, s % 4 === 0 ? 106 : 94);
     if (o.r.chance(0.35)) o.add(o.N - 1, 1, o.oct, 84);
   },
+  drone(o) { // ambient: a held low note, half a bar on the root and half on the fifth now and then
+    if (o.b % 2 === 1 && o.r.chance(0.3)) { o.add(0, 8, o.root, 76); o.add(8, 8, o.fifth, 66); } else o.add(0, o.N, o.root, 76);
+  },
+  minimal(o) { // minimal: short, dry notes in the gaps of the kick, a figure that hardly changes
+    const r = rng(hash(o.song.seed, 'minimal')), fig = r.pick([[2, 7], [3, 10], [2, 6, 11], [3, 8, 14], [6, 14]]);
+    fig.forEach((s, k) => o.add(s, 1, k === fig.length - 1 && r.chance(0.4) ? o.oct : o.root, k ? 96 : 106));
+  },
+  tech(o) { // the tech house roller: offbeat notes that bounce between root and octave, sixteenth pickups that drive it
+    const r = rng(hash(o.song.seed, 'tech')), fig = r.pick([[2, 3, 6, 10, 11, 14], [2, 6, 7, 10, 14], [2, 5, 6, 10, 13, 14], [2, 6, 10, 11, 14, 15]]);
+    fig.forEach((s) => o.add(s, s % 4 === 2 ? 1.5 : 1, s % 4 === 2 ? o.root : r.pick([o.oct, o.root, o.fifth]), s % 4 === 2 ? 108 : 88));
+  },
+  dubsub(o) { // the dub techno sub: one long, round note that moves only with the chord
+    o.add(0, o.N, o.root, 92);
+  },
   funk(o) { // a hook that keeps coming back: syncopated sixteenths, octave pops, the flat seven
     const r = rng(hash(o.song.seed, 'funk')), fig = r.pick([[0, 3, 6, 7, 10, 12, 14], [0, 2, 3, 7, 10, 11, 14], [0, 6, 7, 10, 13]]), pcs = E.scalePcs(o.song.key), rp = ((o.root % 12) + 12) % 12;
     const ivs = fig.map((_, k) => (k ? r.pick([0, 12, 7, 10, 3, 0]) : 0));
@@ -1079,11 +1149,11 @@ E.BASS_STYLES = {
 };
 // which bass and chord style a song uses: its genre, or a borrowed one that fits the beat style
 const BASS_V = { techno: { offbeat: 5.5, rolling: 3, acid: 1.5 }, house: { organ: 5, euro: 2, funk: 1.5, offbeat: 1.5 }, trance: { rolling: 7, offbeat: 3 }, eurodance: { euro: 7, offbeat: 3 }, acid: { acid: 1 }, breakbeat: { kick: 4, acid: 3, funk: 3 }, ebm: { ebm: 7, pump8: 3 },
-  hiphop: { kick: 6, funk: 2.5, long: 1.5 }, triphop: { long: 7, kick: 3 }, newwave: { drive: 6, pump8: 2, funk: 2 }, punk: { pump8: 6, drive: 2.5 }, blues: { walk: 6, boogie: 3.5 }, free: { kick: 4, long: 2, drive: 2, funk: 1, rolling: 1 }, dnb: { reese: 5, dnbroll: 3, jumpup: 2.5 }, garage: { garage: 6, reese: 1.5, organ: 1.5 }, dub: { dub: 7, long: 2 }, synthwave: { drive: 5, pump8: 2.5, rolling: 1.5 }, funk: { funk: 5, disco: 3 } };
+  hiphop: { kick: 6, funk: 2.5, long: 1.5 }, triphop: { long: 7, kick: 3 }, newwave: { drive: 6, pump8: 2, funk: 2 }, punk: { pump8: 6, drive: 2.5 }, blues: { walk: 6, boogie: 3.5 }, free: { kick: 4, long: 2, drive: 2, funk: 1, rolling: 1 }, dnb: { reese: 5, dnbroll: 3, jumpup: 2.5 }, garage: { garage: 6, reese: 1.5, organ: 1.5 }, dub: { dub: 7, long: 2 }, synthwave: { drive: 5, pump8: 2.5, rolling: 1.5 }, funk: { funk: 5, disco: 3 }, dubtechno: { dubsub: 6, long: 2 }, minimal: { minimal: 6, offbeat: 2 }, ambient: { drone: 7, long: 2 }, chillout: { long: 4, kick: 2, dub: 1.5 }, club: { tech: 6, offbeat: 2, organ: 1 } };
 const CHORD_V = { techno: { stab: 7, arp: 2, pad: 1 }, house: { housestab: 6, pump: 2, arp: 2 }, trance: { arp: 7, pad: 3 }, eurodance: { stab: 5, arp: 3, pump: 2 }, acid: { stab: 5, pad: 2.5, arp: 1.5 }, breakbeat: { stab: 6, power: 2, arp: 2 }, ebm: { stab: 7, arp: 3 },
-  hiphop: { half: 6, housestab: 2, arp: 2 }, triphop: { pad: 7, arp: 3 }, newwave: { eighths: 5, pump: 2.5, arp: 2.5 }, punk: { power: 7, pump: 2, stab: 1.5 }, blues: { shuffle: 6, stab: 2, pad: 1.5 }, free: { half: 4, pump: 2, arp: 2, pad: 2 }, dnb: { pad: 4, rhodes: 4, stab: 2 }, garage: { housestab: 4, rhodes: 3, stab: 2 }, dub: { skank: 7, pad: 1.5 }, synthwave: { pad: 5, arp: 4, eighths: 1 }, funk: { chop: 6, housestab: 1.5, pump: 1.5 } };
-E.BASS_NAMES = { auto: 'Machine choice', offbeat: 'Offbeat', rolling: 'Rolling', acid: 'Acid 303', organ: 'Organ', euro: 'Octave offbeat', funk: 'Funk hook', kick: 'With the kick', long: 'Long and deep', drive: 'Driving eighths', pump8: 'Root eighths', ebm: 'Sequencer', walk: 'Walking', boogie: 'Boogie', reese: 'Reese, long and deep', jumpup: 'Jump up stabs', dnbroll: 'Liquid roller', garage: 'Garage sub', dub: 'Dub, deep and melodic', disco: 'Disco octaves' };
-E.CHORD_NAMES = { auto: 'Machine choice', stab: 'Stabs on the offbeat', housestab: 'House piano stabs', arp: 'Arpeggio', pad: 'Long chords', pump: 'Pumping eighths', power: 'Power chords', half: 'Half notes', eighths: 'Eighths', shuffle: 'Shuffle comp', rhodes: 'Rhodes, syncopated', skank: 'Skank on 2 and 4', chop: 'Funk chops' };
+  hiphop: { half: 6, housestab: 2, arp: 2 }, triphop: { pad: 7, arp: 3 }, newwave: { eighths: 5, pump: 2.5, arp: 2.5 }, punk: { power: 7, pump: 2, stab: 1.5 }, blues: { shuffle: 6, stab: 2, pad: 1.5 }, free: { half: 4, pump: 2, arp: 2, pad: 2 }, dnb: { pad: 4, rhodes: 4, stab: 2 }, garage: { housestab: 4, rhodes: 3, stab: 2 }, dub: { skank: 7, pad: 1.5 }, synthwave: { pad: 5, arp: 4, eighths: 1 }, funk: { chop: 6, housestab: 1.5, pump: 1.5 }, dubtechno: { dubchord: 7, pad: 1.5 }, minimal: { stab: 5, dubchord: 2, pad: 1 }, ambient: { pad: 7, arp: 1.5 }, chillout: { rhodes: 5, pad: 3, arp: 1 }, club: { housestab: 5, stab: 3, dubchord: 1 } };
+E.BASS_NAMES = { auto: 'Machine choice', offbeat: 'Offbeat', rolling: 'Rolling', acid: 'Acid 303', organ: 'Organ', euro: 'Octave offbeat', funk: 'Funk hook', kick: 'With the kick', long: 'Long and deep', drive: 'Driving eighths', pump8: 'Root eighths', ebm: 'Sequencer', walk: 'Walking', boogie: 'Boogie', reese: 'Reese, long and deep', jumpup: 'Jump up stabs', dnbroll: 'Liquid roller', garage: 'Garage sub', dub: 'Dub, deep and melodic', disco: 'Disco octaves', drone: 'Drone, held low', minimal: 'Minimal, short and dry', tech: 'Tech house roller', dubsub: 'Dub techno sub' };
+E.CHORD_NAMES = { auto: 'Machine choice', stab: 'Stabs on the offbeat', housestab: 'House piano stabs', arp: 'Arpeggio', pad: 'Long chords', pump: 'Pumping eighths', power: 'Power chords', half: 'Half notes', eighths: 'Eighths', shuffle: 'Shuffle comp', rhodes: 'Rhodes, syncopated', skank: 'Skank on 2 and 4', chop: 'Funk chops', dubchord: 'Dub chord and its echoes' };
 E.bassStyleOf = (song) => {
   const fl = E.flavorOf(song), g = E.GENRES[song.genre];
   if (!song.arr) return g.bass;
@@ -1113,6 +1183,10 @@ E.CHORD_STYLES = {
   skank(o) { // the skank on 2 and 4, an organ bubble on the offbeats
     [4, 12].forEach((s) => o.add(s, 1, 86)); if (rng(hash(o.song.seed, 'bubble'))() < 0.5) [2, 6, 10, 14].forEach((s) => o.add(s, 0.75, 54));
   },
+  dubchord(o) { // the dub techno chord: one stab and its echoes, each softer, like a delay that keeps going
+    const r = rng(hash(o.song.seed, 'dubchord')), s0 = r.pick([2, 3, 6]), gap = r.pick([3, 3, 6]);
+    for (let s = s0, k = 0; s < o.N; s += gap, k++) o.add(s, 1.5, Math.max(30, 88 - k * 16));
+  },
   chop(o) { // funk guitar chops: short sixteenth stabs, an accent on the figure
     const r = rng(hash(o.song.seed, 'chop')), fig = r.pick([[2, 6, 7, 10, 14], [0, 3, 6, 10, 11, 14], [2, 5, 6, 10, 13, 14], [0, 2, 6, 8, 10, 14]]);
     fig.forEach((s, k) => o.add(s, 0.5, k % 2 ? 72 : 92));
@@ -1120,7 +1194,7 @@ E.CHORD_STYLES = {
 };
 // a form for the whole song, learned from records that tell a story with their arrangement
 E.FORMS = { auto: 'Machine choice', classic: 'Classic', quietloud: 'Quiet verse, loud chorus', ballad: 'Ballad: small start, drums later, a lift', twopart: 'Two parts: a bass breakdown, then all in', chant: 'Chant: call and answer' };
-const FORM_W = { punk: { classic: 3, quietloud: 3, twopart: 1 }, triphop: { classic: 4, ballad: 2, quietloud: 1 }, hiphop: { classic: 5, chant: 1, twopart: 1 }, newwave: { classic: 4, twopart: 1.5, ballad: 1, quietloud: 1 }, blues: { classic: 5, ballad: 1 }, techno: { classic: 5, chant: 1, twopart: 1.5 }, house: { classic: 4, ballad: 1, twopart: 1 }, acid: { classic: 4, chant: 1, twopart: 1.5, quietloud: 0.5 }, trance: { classic: 4, ballad: 1.5 }, eurodance: { classic: 4, ballad: 1 }, breakbeat: { classic: 4, quietloud: 1.5, twopart: 1 }, ebm: { classic: 2, chant: 4 }, free: { classic: 3, quietloud: 1, ballad: 1, twopart: 1, chant: 1 }, dnb: { classic: 4, twopart: 2, quietloud: 1 }, garage: { classic: 4, twopart: 1, chant: 1 }, dub: { classic: 4, twopart: 2.5, ballad: 0.5 }, synthwave: { classic: 4, ballad: 1.5, quietloud: 1 }, funk: { classic: 4, chant: 1.5, twopart: 1.5 } };
+const FORM_W = { punk: { classic: 3, quietloud: 3, twopart: 1 }, triphop: { classic: 4, ballad: 2, quietloud: 1 }, hiphop: { classic: 5, chant: 1, twopart: 1 }, newwave: { classic: 4, twopart: 1.5, ballad: 1, quietloud: 1 }, blues: { classic: 5, ballad: 1 }, techno: { classic: 5, chant: 1, twopart: 1.5 }, house: { classic: 4, ballad: 1, twopart: 1 }, acid: { classic: 4, chant: 1, twopart: 1.5, quietloud: 0.5 }, trance: { classic: 4, ballad: 1.5 }, eurodance: { classic: 4, ballad: 1 }, breakbeat: { classic: 4, quietloud: 1.5, twopart: 1 }, ebm: { classic: 2, chant: 4 }, free: { classic: 3, quietloud: 1, ballad: 1, twopart: 1, chant: 1 }, dnb: { classic: 4, twopart: 2, quietloud: 1 }, garage: { classic: 4, twopart: 1, chant: 1 }, dub: { classic: 4, twopart: 2.5, ballad: 0.5 }, synthwave: { classic: 4, ballad: 1.5, quietloud: 1 }, funk: { classic: 4, chant: 1.5, twopart: 1.5 }, dubtechno: { classic: 5, twopart: 1 }, minimal: { classic: 5, twopart: 1 }, ambient: { classic: 4, ballad: 2 }, chillout: { classic: 4, ballad: 2, quietloud: 1 }, club: { classic: 5, twopart: 1.5 } };
 E.formOf = function (song) {
   if (!song.arr) return 'classic';
   if (song.form && song.form !== 'auto') return song.form;
@@ -1152,7 +1226,7 @@ E.breakdownOf = function (song) {
 };
 E.callResponse = (song) => !!E.GENRES[song.genre].call || E.formOf(song) === 'chant';
 
-E.GENRE_ORDER = ['techno', 'house', 'acid', 'trance', 'eurodance', 'breakbeat', 'dnb', 'garage', 'ebm', 'triphop', 'hiphop', 'dub', 'newwave', 'synthwave', 'funk', 'punk', 'blues'];
+E.GENRE_ORDER = ['techno', 'minimal', 'dubtechno', 'house', 'club', 'acid', 'trance', 'eurodance', 'breakbeat', 'dnb', 'garage', 'ebm', 'triphop', 'chillout', 'ambient', 'hiphop', 'dub', 'newwave', 'synthwave', 'funk', 'punk', 'blues'];
 E.GENRE_ALL = ['free'].concat(E.GENRE_ORDER);
 E.TYPES = {
   intro: { name: 'Intro', energy: 0.35, color: 'yellow' },
@@ -1181,6 +1255,7 @@ E.newSong = function (genre, opts) {
     sections: g.sections.map((s, i) => ({ id: 's' + i + '_' + (r.int(1e6)), type: s[0], bars: s[1] })),
     parts: {}, mat: {}, seed: r.int(4294967295)
   };
+  if (genre === 'blues' && rng(hash(song.seed, 'minorblues'))() < 0.3) song.key.scale = 'minor'; // now and then a minor blues
   for (const p of E.PARTS) song.parts[p] = { mode: 'machine', lead: false, plugin: 'plain', ujMode: p === 'beat' || p === 'bass' || p === 'chords' ? 'player' : 'instrument', feel: E.defaultFeel(p, genre), seed: r.int(4294967295) };
   for (const t of E.TYPE_ORDER) { song.mat[t] = {}; for (const p of E.PARTS) song.mat[t][p] = null; }
   song.arr = 1; song.raw = E.RAW_DEFAULT[genre] != null ? E.RAW_DEFAULT[genre] : 0.4;
@@ -1223,6 +1298,11 @@ E.STRUCTS = {
   dub: (r) => { const o = [['intro', 8], ['verse', 16], ['chorus', 8], ['break', r.pick([8, 16])], ['verse', 16], ['chorus', 8]]; if (r.chance(0.5)) o.push(['break', 8], ['chorus', 8]); o.push(['outro', 8]); return o; },
   synthwave: (r) => { const o = [['intro', r.pick([8, 16])]]; for (let k = 0; k < 2; k++) o.push(['verse', 16], ['chorus', 16]); o.push(['break', 8], ['chorus', 16], ['outro', 8]); return o; },
   funk: (r) => { const o = [['intro', 8]]; for (let k = 0; k < 2; k++) o.push(['verse', 16], ['chorus', 8]); o.push(['break', 8], ['chorus', 8]); if (r.chance(0.5)) o.push(['chorus', 8]); o.push(['outro', 8]); return o; },
+  dubtechno: (r) => { const o = [['intro', r.pick([16, 32])], ['verse', 16], ['chorus', 32], ['break', r.pick([8, 16])], ['chorus', 32]]; if (r.chance(0.4)) o.push(['break', 8], ['chorus', 16]); o.push(['outro', 16]); return o; },
+  minimal: (r) => { const o = [['intro', 16], ['verse', 16], ['chorus', 32], ['break', r.pick([8, 16])], ['chorus', 32]]; if (r.chance(0.4)) o.push(['break', 8], ['chorus', 16]); o.push(['outro', 16]); return o; },
+  ambient: (r) => { const o = [['intro', 16], ['verse', 16], ['chorus', 16], ['break', r.pick([8, 16])], ['chorus', 16]]; if (r.chance(0.4)) o.push(['verse', 16]); o.push(['outro', 16]); return o; },
+  chillout: (r) => { const o = [['intro', 8]]; for (let k = 0; k < 2; k++) o.push(['verse', 16], ['chorus', 16]); o.push(['break', 8], ['chorus', 16], ['outro', 8]); return o; },
+  club: (r) => { const o = [['intro', 16], ['verse', 16], ['build', 8], ['drop', 32], ['break', r.pick([8, 16])], ['build', 8], ['drop', 32]]; o.push(['outro', 16]); return o; },
   newwave: (r) => { const o = [['intro', 8]], pre = r.chance(0.6); for (let k = 0; k < 2; k++) { o.push(['verse', 16]); if (pre) o.push(['prechorus', r.pick([4, 8])]); o.push(['chorus', 8]); } o.push(['break', 8], ['chorus', 8]); if (r.chance(0.5)) o.push(['chorus', 8]); o.push(['outro', 8]); return o; }
 };
 E.structureFor = function (song, seed) {
@@ -1342,6 +1422,7 @@ function chordFromDeg(song, deg, r) {
   if (g.dom && song.key.scale === 'major') {
     const c = E.diatonic(song.key, deg, false); return { root: c.root, q: '7', deg };
   }
+  if (g.dom && song.key.scale === 'minor' && deg === 4) return { root: (song.key.root + 7) % 12, q: '7', deg }; // a minor blues: the five stays a dominant seven
   let c = E.diatonic(song.key, deg, r.chance(g.sevenths));
   if (song.genre === 'techno' && deg === 0 && r.chance(0.25)) c = { root: c.root, q: 'sus2', deg: 0 };
   return c;
@@ -1452,8 +1533,8 @@ E.genBeat = function (song, type, ctx, seed) {
   }
   // a second kick in every genre: the doubles and ghost kicks trip hop and hip hop live on
   if (song.arr && N === 16 && !p[K2].some(Boolean)) {
-    const r2 = rng(hash(seed, 'k2')), P = { dnb: 0.25, garage: 0.4, dub: 0.2, synthwave: 0.2, funk: 0.5, breakbeat: 0.6, house: 0.2, punk: 0.3, acid: 0, trance: 0, eurodance: 0, ebm: 0, triphop: 0.8, hiphop: 0.7, newwave: 0.45, blues: 0.3, techno: 0.3, free: 0.5 }[g];
-    const figs = { dnb: [[7], [13]], garage: [[3], [13], [7, 13]], dub: [[14]], synthwave: [[14], [10]], funk: [[3], [13], [9]], breakbeat: [[3], [11], [13]], house: [[14]], punk: [[7]], triphop: [[11], [1], [3, 11], [9, 11], [6]], hiphop: [[3], [9], [15], [6, 9], [3, 15]], newwave: [[14], [10], [2, 14]], blues: [[15], [7]], techno: [[14], [2, 6, 10, 14], [15]] }[g] || [[3], [11]];
+    const r2 = rng(hash(seed, 'k2')), P = { dubtechno: 0.1, minimal: 0.25, ambient: 0, chillout: 0.4, club: 0.3, dnb: 0.25, garage: 0.4, dub: 0.2, synthwave: 0.2, funk: 0.5, breakbeat: 0.6, house: 0.2, punk: 0.3, acid: 0, trance: 0, eurodance: 0, ebm: 0, triphop: 0.8, hiphop: 0.7, newwave: 0.45, blues: 0.3, techno: 0.3, free: 0.5 }[g];
+    const figs = { club: [[14], [15]], minimal: [[3], [14]], chillout: [[7], [13]], dnb: [[7], [13]], garage: [[3], [13], [7, 13]], dub: [[14]], synthwave: [[14], [10]], funk: [[3], [13], [9]], breakbeat: [[3], [11], [13]], house: [[14]], punk: [[7]], triphop: [[11], [1], [3, 11], [9, 11], [6]], hiphop: [[3], [9], [15], [6, 9], [3, 15]], newwave: [[14], [10], [2, 14]], blues: [[15], [7]], techno: [[14], [2, 6, 10, 14], [15]] }[g] || [[3], [11]];
     if (r2.chance(P == null ? 0.5 : P)) r2.pick(figs).forEach((s) => { if (!p[K][s] && !(p[SN][s] >= 90)) setL(p, K2, s, (g === 'techno' && s % 4 === 2 ? 52 : 70) + r2.int(20)); });
   }
   // a little colour on the quiet lanes, so a section with only hats and percussion still has choices
@@ -1685,7 +1766,7 @@ E.genMelody = function (song, type, ctx, seed) {
     });
   }
   // a note before a rest rings on, like a singer holding the end of a line: most in the lyrical genres, little in the tight ones
-  const SUS = { triphop: 1, dnb: 1, dub: 1, trance: 0.9, synthwave: 0.9, blues: 0.8, newwave: 0.6, house: 0.6, hiphop: 0.6, punk: 0.6, free: 0.6, techno: 0.5, eurodance: 0.5, garage: 0.4, breakbeat: 0.4, funk: 0.3, ebm: 0.3 }[song.genre];
+  const SUS = { dubtechno: 1, ambient: 1, chillout: 0.9, minimal: 0.3, club: 0.4, triphop: 1, dnb: 1, dub: 1, trance: 0.9, synthwave: 0.9, blues: 0.8, newwave: 0.6, house: 0.6, hiphop: 0.6, punk: 0.6, free: 0.6, techno: 0.5, eurodance: 0.5, garage: 0.4, breakbeat: 0.4, funk: 0.3, ebm: 0.3 }[song.genre];
   if (SUS) {
     notes.sort((a, b) => a.s - b.s);
     notes.forEach((n, k) => {
@@ -2114,7 +2195,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       if (lb === song.L - 1 && r.chance(0.5)) { const cands = [6, 10, 14].filter((s) => s < N && !lanes[K][s] && !lanes[K][s - 1] && !lanes[K][s + 1] && !(lanes[SN][s] >= 90)); if (cands.length) lanes[K][r.pick(cands)] = 82; }
     }
     // a long section moves on every 8 bars, like a DJ or a drummer would: phrase 1 is the base, every next phrase plays it a little different and ends in a short fill
-    if (machine && !shaped && sec.bars >= 12 && type !== 'break' && type !== 'fill' && N === 16) {
+    if (machine && !shaped && sec.bars >= 12 && song.genre !== 'ambient' && type !== 'break' && type !== 'fill' && N === 16) {
       const ph = Math.floor(inBar / 8), pr = rng(hash(song.seed, 'phrase', sec.id, ph));
       if (ph > 0) E.phraseVary(lanes, pr, N, ph);
       if (inBar % 8 === 7 && inBar < sec.bars - 2) E.phraseFill(lanes, rng(hash(song.seed, 'pfill', sec.id, ph)), N, song.genre);
@@ -2129,7 +2210,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (fk === 'auto' && endK && machine) fk = endK; // the machine's own stop into what comes next
     if (fk !== 'auto' && fk !== 'none') { if (fk === 'hit' || fk === 'half' || !sec.fill && E.STOPS.includes(fk)) E.stopLanes(lanes, fk, N); else E.applyFill(song, lanes, fk, N, r); }
     if (inBar === 0 && sec !== song.sections[0]) { const prev = song.sections[si - 1]; if (prev && (prev.fill === 'gift' || prev.fill === 'crash' || prev.fill === 'hit' || song.arr && !prev.fill && !song.dgm && (E.arrangeOf(song, si - 1) || {}).stop === 'gift') && lanes[CR]) lanes[CR][0] = 110; }
-    if (fk === 'auto' && (type === 'fill' || isLastOfSec && nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && song.parts.beat.mode !== 'off' && type !== 'break') {
+    if (fk === 'auto' && song.genre !== 'ambient' && (type === 'fill' || isLastOfSec && nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && song.parts.beat.mode !== 'off' && type !== 'break') {
       const st = Math.floor(N / 2);
       const fl = song.genre === 'techno' ? CP : SN;
       for (let s = st; s < N; s++) { const v = clamp(48 + Math.round((s - st) / (N - st) * 60) + r.int(8), 30, 120); if (s % (song.genre === 'techno' || type === 'build' ? 1 : 2) === 0 || s >= N - 2) lanes[fl][s] = Math.max(lanes[fl][s], v); }
@@ -2405,10 +2486,10 @@ const HARM_W = {
   prechorus: { full: 4, pad: 3, stabs: 3 }, chorus: { full: 5.5, stabs: 2.5, pad: 2 }, drop: { full: 4, stabs: 4, none: 2 },
   break: { drone: 3.5, pad: 3.5, none: 2, stabs: 1 }, build: { stabs: 4, none: 3, full: 3 }, outro: { pad: 4, drone: 3, full: 2, none: 1 }, fill: { full: 1 }
 };
-const HARM_G = { house: { stabs: 1.5, full: 1.3, drone: 0.6 }, acid: { none: 1.8, drone: 1.4, stabs: 1.2, full: 0.5, pad: 0.6 }, trance: { pad: 1.5, full: 1.3, none: 0.6 }, eurodance: { stabs: 1.5, full: 1.4, drone: 0.5 }, breakbeat: { stabs: 1.6, none: 1.4, full: 0.7 }, ebm: { none: 2, drone: 1.5, stabs: 1.2, full: 0.4, pad: 0.5 }, punk: { full: 4, stabs: 0.6, pad: 0, drone: 0.2, none: 0.6 }, techno: { stabs: 1.6, none: 1.5, drone: 1.4, full: 0.6, pad: 0.8 }, triphop: { drone: 1.6, pad: 1.4, none: 1.1, stabs: 0.8 }, hiphop: { stabs: 1.6, none: 1.4, full: 0.8 }, newwave: { full: 1.3, pad: 1.3, drone: 0.7 }, blues: { full: 3, stabs: 1.4, drone: 0, pad: 0.3, none: 0.4 }, dnb: { pad: 1.5, drone: 1.3, stabs: 0.5, none: 0.8 }, garage: { stabs: 1.6, full: 1.2, pad: 0.8 }, dub: { stabs: 0.3, none: 1.5, drone: 0.8, full: 1.4 }, synthwave: { pad: 1.6, full: 1.4, drone: 0.6 }, funk: { full: 1.6, stabs: 1.6, none: 0.6, pad: 0.4 } };
-const LEAD_W = { techno: { melody: 4, riff: 2, chords: 1 }, triphop: { melody: 6, riff: 1.5, chords: 1 }, hiphop: { melody: 4, riff: 2, chords: 1.2 }, newwave: { melody: 5, riff: 1.5, chords: 1 }, blues: { melody: 7, riff: 0.6, chords: 1 }, free: { melody: 5, riff: 1.5, chords: 1 }, house: { melody: 5, riff: 1, chords: 2 }, acid: { melody: 2, riff: 4, chords: 0.5 }, trance: { melody: 6, riff: 1, chords: 1.5 }, eurodance: { melody: 6, riff: 1, chords: 1 }, breakbeat: { melody: 3, riff: 3, chords: 1 }, ebm: { melody: 3, riff: 4, chords: 0.5 }, punk: { melody: 5, riff: 1, chords: 2 }, dnb: { melody: 3, riff: 3, chords: 1 }, garage: { melody: 4, riff: 2, chords: 1.5 }, dub: { melody: 3, riff: 3, chords: 1 }, synthwave: { melody: 6, riff: 1.5, chords: 1 }, funk: { melody: 3, riff: 3, chords: 2 } };
-const INTRO_W = { dnb: { break: 3, hats: 2, solo: 1.5, silent: 1 }, garage: { hats: 2.5, kick: 1.5, solo: 1, break: 1, silent: 1 }, dub: { solo: 3, silent: 1.5, hats: 1 }, synthwave: { solo: 2.5, hats: 1.5, kick: 1.5, silent: 1 }, funk: { count: 2, solo: 2, break: 1.5, hats: 1, silent: 1 }, punk: { count: 4, solo: 2, silent: 1 }, newwave: { count: 1.5, hats: 2, solo: 2, break: 1, kick: 1, silent: 1 }, blues: { count: 2, solo: 2, hats: 2, silent: 1 }, hiphop: { solo: 3, break: 2, hats: 1.5, kick: 1, silent: 1, toms: 0.5 }, ebm: { kick: 3, break: 1, solo: 1, silent: 1 }, house: { hats: 2, kick: 2.5, solo: 1, break: 1, silent: 1 }, acid: { kick: 2, break: 2, hats: 1.5, silent: 1 }, trance: { kick: 2.5, hats: 2, silent: 1, break: 1 }, eurodance: { kick: 2, solo: 2, silent: 1 }, breakbeat: { break: 3, solo: 2, silent: 1, toms: 1 }, techno: { kick: 4, hats: 2.5, break: 1, silent: 1, toms: 0.5 }, def: { hats: 2.5, solo: 2.5, break: 2, kick: 1, toms: 1, silent: 1 } };
-const STOP_P = { punk: 0.6, breakbeat: 0.6, ebm: 0.5, house: 0.45, acid: 0.4, trance: 0.4, eurodance: 0.5, techno: 0.45, triphop: 0.5, hiphop: 0.6, newwave: 0.5, blues: 0.35, free: 0.5, dnb: 0.5, garage: 0.45, dub: 0.55, synthwave: 0.4, funk: 0.6 };
+const HARM_G = { house: { stabs: 1.5, full: 1.3, drone: 0.6 }, acid: { none: 1.8, drone: 1.4, stabs: 1.2, full: 0.5, pad: 0.6 }, trance: { pad: 1.5, full: 1.3, none: 0.6 }, eurodance: { stabs: 1.5, full: 1.4, drone: 0.5 }, breakbeat: { stabs: 1.6, none: 1.4, full: 0.7 }, ebm: { none: 2, drone: 1.5, stabs: 1.2, full: 0.4, pad: 0.5 }, punk: { full: 4, stabs: 0.6, pad: 0, drone: 0.2, none: 0.6 }, techno: { stabs: 1.6, none: 1.5, drone: 1.4, full: 0.6, pad: 0.8 }, triphop: { drone: 1.6, pad: 1.4, none: 1.1, stabs: 0.8 }, hiphop: { stabs: 1.6, none: 1.4, full: 0.8 }, newwave: { full: 1.3, pad: 1.3, drone: 0.7 }, blues: { full: 3, stabs: 1.4, drone: 0, pad: 0.3, none: 0.4 }, dnb: { pad: 1.5, drone: 1.3, stabs: 0.5, none: 0.8 }, garage: { stabs: 1.6, full: 1.2, pad: 0.8 }, dub: { stabs: 0.3, none: 1.5, drone: 0.8, full: 1.4 }, synthwave: { pad: 1.6, full: 1.4, drone: 0.6 }, funk: { full: 1.6, stabs: 1.6, none: 0.6, pad: 0.4 }, dubtechno: { full: 2, drone: 1, stabs: 0.2, none: 0.5, pad: 0.8 }, minimal: { none: 1.8, stabs: 1.5, drone: 1, full: 0.6, pad: 0.4 }, ambient: { pad: 2.5, drone: 1.5, full: 1, stabs: 0, none: 0.3 }, chillout: { full: 1.5, pad: 1.5, stabs: 0.4, none: 0.4 }, club: { stabs: 1.6, full: 1.2, none: 1, drone: 0.6 } };
+const LEAD_W = { techno: { melody: 4, riff: 2, chords: 1 }, triphop: { melody: 6, riff: 1.5, chords: 1 }, hiphop: { melody: 4, riff: 2, chords: 1.2 }, newwave: { melody: 5, riff: 1.5, chords: 1 }, blues: { melody: 7, riff: 0.6, chords: 1 }, free: { melody: 5, riff: 1.5, chords: 1 }, house: { melody: 5, riff: 1, chords: 2 }, acid: { melody: 2, riff: 4, chords: 0.5 }, trance: { melody: 6, riff: 1, chords: 1.5 }, eurodance: { melody: 6, riff: 1, chords: 1 }, breakbeat: { melody: 3, riff: 3, chords: 1 }, ebm: { melody: 3, riff: 4, chords: 0.5 }, punk: { melody: 5, riff: 1, chords: 2 }, dnb: { melody: 3, riff: 3, chords: 1 }, garage: { melody: 4, riff: 2, chords: 1.5 }, dub: { melody: 3, riff: 3, chords: 1 }, synthwave: { melody: 6, riff: 1.5, chords: 1 }, funk: { melody: 3, riff: 3, chords: 2 }, dubtechno: { melody: 1, riff: 1, chords: 5 }, minimal: { melody: 2, riff: 4, chords: 2 }, ambient: { melody: 5, riff: 0.3, chords: 2 }, chillout: { melody: 5, riff: 1, chords: 1.5 }, club: { melody: 2, riff: 4, chords: 2 } };
+const INTRO_W = { dubtechno: { kick: 3, hats: 2, silent: 1 }, minimal: { kick: 3, hats: 2 }, ambient: { solo: 2, silent: 3 }, chillout: { solo: 2, hats: 1.5, silent: 1 }, club: { kick: 3, hats: 2, break: 1 }, dnb: { break: 3, hats: 2, solo: 1.5, silent: 1 }, garage: { hats: 2.5, kick: 1.5, solo: 1, break: 1, silent: 1 }, dub: { solo: 3, silent: 1.5, hats: 1 }, synthwave: { solo: 2.5, hats: 1.5, kick: 1.5, silent: 1 }, funk: { count: 2, solo: 2, break: 1.5, hats: 1, silent: 1 }, punk: { count: 4, solo: 2, silent: 1 }, newwave: { count: 1.5, hats: 2, solo: 2, break: 1, kick: 1, silent: 1 }, blues: { count: 2, solo: 2, hats: 2, silent: 1 }, hiphop: { solo: 3, break: 2, hats: 1.5, kick: 1, silent: 1, toms: 0.5 }, ebm: { kick: 3, break: 1, solo: 1, silent: 1 }, house: { hats: 2, kick: 2.5, solo: 1, break: 1, silent: 1 }, acid: { kick: 2, break: 2, hats: 1.5, silent: 1 }, trance: { kick: 2.5, hats: 2, silent: 1, break: 1 }, eurodance: { kick: 2, solo: 2, silent: 1 }, breakbeat: { break: 3, solo: 2, silent: 1, toms: 1 }, techno: { kick: 4, hats: 2.5, break: 1, silent: 1, toms: 0.5 }, def: { hats: 2.5, solo: 2.5, break: 2, kick: 1, toms: 1, silent: 1 } };
+const STOP_P = { punk: 0.6, breakbeat: 0.6, ebm: 0.5, house: 0.45, acid: 0.4, trance: 0.4, eurodance: 0.5, techno: 0.45, triphop: 0.5, hiphop: 0.6, newwave: 0.5, blues: 0.35, free: 0.5, dnb: 0.5, garage: 0.45, dub: 0.55, synthwave: 0.4, funk: 0.6, dubtechno: 0.1, minimal: 0.2, ambient: 0, chillout: 0.25, club: 0.4 };
 E.STOPS = ['stop', 'gift', 'hit', 'drop', 'half']; // fills that stop the whole band, not only the drums
 // the plan of one section: who leads, what the harmony does, how it ends, who comes in when
 E.arrangeOf = function (song, si, salt) {
@@ -2516,7 +2597,7 @@ E.introLanes = function (song, core, recipe, inBar, bars, N, r) {
 // a bass riff that leads: one figure that keeps coming back (seeded per kind of section, so every chorus has the same riff)
 E.riffBar = function (song, type, chord, lb, BT, N, ownKey) {
   const r = rng(hash(song.seed, 'riff', type, song.genre));
-  const LONG = N === 16 && E.bassStyleOf(song) !== 'jumpup' && { dnb: [[0, 10], [0, 6, 10], [0, 12], [0, 8, 12], [0, 6]], dub: [[0, 6, 10], [0, 10], [0, 4, 10]], hiphop: [[0, 10], [0, 7, 10], [0, 3, 10], [0, 10, 14]], triphop: [[0, 10], [0, 8], [0, 6, 10]], garage: [[0, 6, 10], [0, 3, 6, 10, 14], [0, 7, 10, 13]], synthwave: [[0, 2, 4, 6, 8, 10, 12, 14]] }[song.genre]; // a leading bass in the shape of its genre: a reese, a dub line, an 808, the garage skip, synthwave eighths
+  const LONG = N === 16 && E.bassStyleOf(song) !== 'jumpup' && { dnb: [[0, 10], [0, 6, 10], [0, 12], [0, 8, 12], [0, 6]], dub: [[0, 6, 10], [0, 10], [0, 4, 10]], hiphop: [[0, 10], [0, 7, 10], [0, 3, 10], [0, 10, 14]], triphop: [[0, 10], [0, 8], [0, 6, 10]], garage: [[0, 6, 10], [0, 3, 6, 10, 14], [0, 7, 10, 13]], synthwave: [[0, 2, 4, 6, 8, 10, 12, 14]], dubtechno: [[0], [0, 8]], ambient: [[0], [0, 8]], chillout: [[0, 10], [0, 6, 10]] }[song.genre]; // a leading bass in the shape of its genre: a reese, a dub line, an 808, the garage skip, synthwave eighths
   const fig = LONG ? r.pick(LONG) : r.pick(N === 16 ? [[0, 3, 6, 8, 11, 14], [0, 2, 3, 6, 7, 10, 12, 14], [0, 3, 6, 9, 12], [0, 3, 5, 8, 10, 13], [0, 6, 8, 10, 14], [0, 1, 4, 7, 8, 11, 14]] : [[0, 3, 6, 9], [0, 2, 5, 8, 10]]);
   const pcs = E.scalePcs(song.key), root = ownKey ? song.key.root : chord ? chord.root : song.key.root;
   const deg = (iv) => { const target = (root + iv) % 12; if (pcs.includes(target)) return iv; for (const d of [1, -1, 2, -2]) if (pcs.includes((root + iv + d + 12) % 12)) return iv + d; return iv; };
@@ -2551,7 +2632,7 @@ E.liftOf = function (song) {
   return { from: li, by: r.pick([1, 2, 2]) };
 };
 // raw: harder accents, pushes, a sharper edge. 0 is as smooth as before
-E.RAW_DEFAULT = { punk: 0.8, ebm: 0.7, breakbeat: 0.65, acid: 0.6, house: 0.45, trance: 0.4, eurodance: 0.45, techno: 0.5, triphop: 0.45, hiphop: 0.55, newwave: 0.4, blues: 0.35, free: 0.4, dnb: 0.55, garage: 0.45, dub: 0.35, synthwave: 0.35, funk: 0.55 };
+E.RAW_DEFAULT = { punk: 0.8, ebm: 0.7, breakbeat: 0.65, acid: 0.6, house: 0.45, trance: 0.4, eurodance: 0.45, techno: 0.5, triphop: 0.45, hiphop: 0.55, newwave: 0.4, blues: 0.35, free: 0.4, dnb: 0.55, garage: 0.45, dub: 0.35, synthwave: 0.35, funk: 0.55, dubtechno: 0.3, minimal: 0.35, ambient: 0.15, chillout: 0.3, club: 0.45 };
 E.rawNotes = function (song, part, notes, gbar, N, BT, still, boost) {
   const x = clamp((song.raw || 0) + (boost || 0), 0, 1); if (!x || !notes.length) return notes;
   const r = rng(hash(song.seed, 'raw', part, gbar));
@@ -2613,7 +2694,7 @@ E.LANE_FEEL0 = () => E.LANES.map(() => ({ swing: true, shift: 0 }));
 /* ---------- humanize: players, not a grid (new songs; Feel tight switches it off) ----------
    the hihat hands, phrases that swell, chords strummed and rolled, lengths that breathe,
    a melody that sings toward its peak, the pocket between bass, snare and hats, and now and then a small slip */
-E.POCKET = { hiphop: { bass: 8, snare: 10, hats: -2 }, triphop: { bass: 10, snare: 14, hats: 2 }, blues: { bass: 6, snare: 8 }, newwave: { bass: 2, hats: -2 }, punk: { bass: -3, snare: -4, hats: -3 }, house: { bass: 3, hats: -3 }, techno: { bass: 2, hats: -2 }, acid: { bass: 1 }, trance: { hats: -2 }, eurodance: { bass: 2 }, breakbeat: { snare: 4, hats: -2 }, ebm: {}, free: { bass: 4, snare: 5 }, dnb: { hats: -2 }, garage: { bass: 3, snare: 4 }, dub: { bass: 8, snare: 6, hats: 2 }, synthwave: { hats: -1 }, funk: { bass: 3, snare: 4, hats: -2 } };
+E.POCKET = { hiphop: { bass: 8, snare: 10, hats: -2 }, triphop: { bass: 10, snare: 14, hats: 2 }, blues: { bass: 6, snare: 8 }, newwave: { bass: 2, hats: -2 }, punk: { bass: -3, snare: -4, hats: -3 }, house: { bass: 3, hats: -3 }, techno: { bass: 2, hats: -2 }, acid: { bass: 1 }, trance: { hats: -2 }, eurodance: { bass: 2 }, breakbeat: { snare: 4, hats: -2 }, ebm: {}, free: { bass: 4, snare: 5 }, dnb: { hats: -2 }, garage: { bass: 3, snare: 4 }, dub: { bass: 8, snare: 6, hats: 2 }, synthwave: { hats: -1 }, funk: { bass: 3, snare: 4, hats: -2 }, dubtechno: { hats: 2 }, minimal: { hats: -1 }, ambient: {}, chillout: { bass: 6, snare: 6, hats: 2 }, club: { bass: 2, hats: -2 } };
 const STRUM = ['punk', 'newwave', 'blues', 'free'];
 E.humanize = function (song, part, notes, gbar, f, tpms) {
   const h = clamp((f && f.y || 0) * 2, 0, 1); if (!h || !notes.length) return notes;
@@ -3325,7 +3406,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
   const BY = { techno: EL, acid: EL, trance: EL, eurodance: EL, breakbeat: EL, ebm: EL, house: Object.assign({}, EL, { chords: 'score' }), hiphop: Object.assign({}, EL, { chords: 'score' }),
     triphop: { beat: 'beatmaker', bass: 'royal', chords: 'score', pad: 'usynth', melody: 'silk2' }, newwave: { beat: 'vdrummer', bass: 'usynth', chords: 'carbon', pad: 'usynth', melody: 'usynth' },
     punk: { beat: 'vdrummer', bass: 'royal', chords: 'iron2', pad: 'usynth', melody: 'iron2' }, blues: { beat: 'vdrummer', bass: 'royal', chords: 'silk2', pad: 'score', melody: 'silk2' }, free: { beat: 'vdrummer', bass: 'royal', chords: 'score', pad: 'usynth', melody: 'usynth' },
-    dnb: Object.assign({}, EL, { chords: 'score' }), garage: Object.assign({}, EL, { chords: 'score' }), synthwave: EL, dub: { beat: 'vdrummer', bass: 'royal', chords: 'carbon', pad: 'score', melody: 'usynth' }, funk: { beat: 'vdrummer', bass: 'slap', chords: 'silk2', pad: 'score', melody: 'usynth' } };
+    dnb: Object.assign({}, EL, { chords: 'score' }), garage: Object.assign({}, EL, { chords: 'score' }), synthwave: EL, dub: { beat: 'vdrummer', bass: 'royal', chords: 'carbon', pad: 'score', melody: 'usynth' }, funk: { beat: 'vdrummer', bass: 'slap', chords: 'silk2', pad: 'score', melody: 'usynth' }, dubtechno: EL, minimal: EL, club: EL, ambient: EL, chillout: { beat: 'beatmaker', bass: 'royal', chords: 'score', pad: 'usynth', melody: 'silk2' } };
   const fix = (sg, fresh) => { if (!sg || !sg.parts) return sg; const d = BY[sg.genre] || BY.free;
     for (const p in sg.parts) { const P = sg.parts[p], l = E.pluginsFor(p); if (!l.length || l.includes(P.plugin)) continue;
       let k = p === 'answer' ? (sg.parts.melody && l.includes(sg.parts.melody.plugin) ? sg.parts.melody.plugin : (l.includes(d.melody) ? d.melody : l[0])) : d[p];
@@ -3380,7 +3461,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 03:00)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-23 03:30)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -3761,7 +3842,7 @@ function setGenre(g) {
   setHint(D.GENRES[g].name + ': ' + genreLine(g) + (yours.length ? ' Your ' + yours.map((p) => PART_NAMES[p].toLowerCase()).join(', ') + ' moved along too. Undo brings it back.' : ''));
 }
 function genreLine(g) {
-  return { free: 'no rules, it goes where you go. Tap Suggest any time to hear what it sounds like.', techno: 'four on the floor, offbeat bass, short chord stabs.', triphop: 'slow and swung, half time snare, long dark pads.', dnb: 'two step at 174: kick on 1 and the and of 3, a reese or jump up bass, liquid Rhodes or a jungle break.', garage: 'the shuffled two step: skippy kicks, warm stabs, a sub between the kicks.', dub: 'one drop: kick and rim on 3, a deep melodic bass, the skank on 2 and 4, lots of space.', synthwave: 'the 80s: a big gated snare, driving eighth bass, wide pads and arpeggios.', funk: 'funk sixteenths or disco hats, slap or octave bass, guitar chops.', hiphop: 'boom bap swing, bass on the kick, warm sevenths.', newwave: 'straight and driving, eighth note bass and chords.', blues: '12 bar shuffle, dominant sevenths, walking bass.', house: 'four on the floor, offbeat open hats, organ bass and piano stabs.', acid: 'a sliding, squelching 303 line, accents and slides, the kick on every beat.', trance: 'arpeggios, a rolling bass, long breakdowns that build back up.', eurodance: 'offbeat octave bass, big stabs, a chorus you sing along with.', breakbeat: 'chopped breaks at full speed, a dirty riff on top.', ebm: 'the stomp: kick on every beat, a sequenced bass, call and answer.', punk: 'fast and loud: power chords in eighths, the skate beat.', }[g] || '';
+  return { free: 'no rules, it goes where you go. Tap Suggest any time to hear what it sounds like.', techno: 'four on the floor, offbeat bass, short chord stabs.', triphop: 'slow and swung, half time snare, long dark pads.', dnb: 'two step at 174: kick on 1 and the and of 3, a reese or jump up bass, liquid Rhodes or a jungle break.', garage: 'the shuffled two step: skippy kicks, warm stabs, a sub between the kicks.', dub: 'one drop: kick and rim on 3, a deep melodic bass, the skank on 2 and 4, lots of space.', synthwave: 'the 80s: a big gated snare, driving eighth bass, wide pads and arpeggios.', funk: 'funk sixteenths or disco hats, slap or octave bass, guitar chops.', dubtechno: 'a soft four on the floor, a deep sub, one chord stab and its echoes.', minimal: 'a dry kick, small clicks and rims, short bass notes, one motif that shifts.', ambient: 'barely a beat, long pads, a slow melody with lots of space.', chillout: 'a laid back beat, warm bass, Rhodes and pads.', club: 'Amsterdam club and tech house: four on the floor, a rolling bass, tribal percussion.', hiphop: 'boom bap swing, bass on the kick, warm sevenths.', newwave: 'straight and driving, eighth note bass and chords.', blues: '12 bar shuffle, dominant sevenths, walking bass.', house: 'four on the floor, offbeat open hats, organ bass and piano stabs.', acid: 'a sliding, squelching 303 line, accents and slides, the kick on every beat.', trance: 'arpeggios, a rolling bass, long breakdowns that build back up.', eurodance: 'offbeat octave bass, big stabs, a chorus you sing along with.', breakbeat: 'chopped breaks at full speed, a dirty riff on top.', ebm: 'the stomp: kick on every beat, a sequenced bass, call and answer.', punk: 'fast and loud: power chords in eighths, the skate beat.', }[g] || '';
 }
 function suggestionBox(withSwitch) {
   const list = D.suggestGenre(song()).slice(0, 2);
@@ -5438,7 +5519,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 03:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-23 03:30. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -5989,8 +6070,8 @@ const GROUPS = [
   { key: 'chords', name: 'Chords', parts: ['chords', 'pad'], line: 'chords and pad' },
   { key: 'melody', name: 'Melody', parts: ['melody', 'answer'], line: 'melody and answer' }
 ];
-const GENRE_LINE = { free: 'Anything goes. A surprise every time.', house: 'Organ bass, piano stabs, four on the floor.', acid: 'The squelching 303 line.', trance: 'Arpeggios and big breakdowns.', eurodance: 'Offbeat bass, made for singing along.', breakbeat: 'Chopped breaks at full speed.', ebm: 'The stomp, a sequenced bass, a chant.', punk: 'Fast, loud, power chords.', techno: 'Four on the floor, driving and hypnotic.', triphop: 'Slow, swung and dark.', hiphop: 'Boom bap, laid back.', newwave: 'Bright synths, 80s pulse.', blues: 'Twelve bars, swing and soul.', dnb: 'Two step at 174, a rolling bass.', garage: 'Shuffled two step, warm stabs.', dub: 'One drop, deep bass, lots of space.', synthwave: '80s arps and a gated snare.', funk: 'Slap bass, guitar chops, disco hats.' };
-const GENRE_COLOR = { free: '--accent', house: '--pad', acid: '--build', trance: '--prechorus', eurodance: '--melody', breakbeat: '--drop', ebm: '--outro', punk: '--chorus', techno: '--chorus', triphop: '--pad', hiphop: '--beat', newwave: '--melody', blues: '--bass', dnb: '--drop', garage: '--melody', dub: '--break', synthwave: '--prechorus', funk: '--answer' };
+const GENRE_LINE = { free: 'Anything goes. A surprise every time.', house: 'Organ bass, piano stabs, four on the floor.', acid: 'The squelching 303 line.', trance: 'Arpeggios and big breakdowns.', eurodance: 'Offbeat bass, made for singing along.', breakbeat: 'Chopped breaks at full speed.', ebm: 'The stomp, a sequenced bass, a chant.', punk: 'Fast, loud, power chords.', techno: 'Four on the floor, driving and hypnotic.', triphop: 'Slow, swung and dark.', hiphop: 'Boom bap, laid back.', newwave: 'Bright synths, 80s pulse.', blues: 'Twelve bars, swing and soul.', dnb: 'Two step at 174, a rolling bass.', garage: 'Shuffled two step, warm stabs.', dub: 'One drop, deep bass, lots of space.', synthwave: '80s arps and a gated snare.', funk: 'Slap bass, guitar chops, disco hats.', dubtechno: 'Deep sub, echoing chords.', minimal: 'Dry clicks, one shifting motif.', ambient: 'Long pads, barely a beat.', chillout: 'Laid back, warm Rhodes.', club: 'The Amsterdam tech house groove.' };
+const GENRE_COLOR = { free: '--accent', house: '--pad', acid: '--build', trance: '--prechorus', eurodance: '--melody', breakbeat: '--drop', ebm: '--outro', punk: '--chorus', techno: '--chorus', triphop: '--pad', hiphop: '--beat', newwave: '--melody', blues: '--bass', dnb: '--drop', garage: '--melody', dub: '--break', synthwave: '--prechorus', funk: '--answer', dubtechno: '--pad', minimal: '--chorus', ambient: '--melody', chillout: '--prechorus', club: '--build' };
 
 const L = { root: null };
 // the UJAM edition: every part goes to a UJAM plugin of your choice
@@ -6000,7 +6081,7 @@ const UJ_ELECTRO = { beat: 'beatmaker', bass: 'usynth', chords: 'usynth', pad: '
 const UJ_DEFAULT = { techno: UJ_ELECTRO, acid: UJ_ELECTRO, trance: UJ_ELECTRO, eurodance: UJ_ELECTRO, breakbeat: UJ_ELECTRO, ebm: UJ_ELECTRO, house: Object.assign({}, UJ_ELECTRO, { chords: 'score' }), hiphop: Object.assign({}, UJ_ELECTRO, { chords: 'score' }),
   triphop: { beat: 'beatmaker', bass: 'royal', chords: 'score', pad: 'usynth', melody: 'silk2' }, newwave: { beat: 'vdrummer', bass: 'usynth', chords: 'carbon', pad: 'usynth', melody: 'usynth' },
   punk: { beat: 'vdrummer', bass: 'royal', chords: 'iron2', pad: 'usynth', melody: 'iron2' }, blues: { beat: 'vdrummer', bass: 'royal', chords: 'silk2', pad: 'score', melody: 'silk2' }, free: { beat: 'vdrummer', bass: 'royal', chords: 'score', pad: 'usynth', melody: 'usynth' }, dnb: Object.assign({}, UJ_ELECTRO, { chords: 'score' }), garage: Object.assign({}, UJ_ELECTRO, { chords: 'score' }), synthwave: UJ_ELECTRO,
-  dub: { beat: 'vdrummer', bass: 'royal', chords: 'carbon', pad: 'score', melody: 'usynth' }, funk: { beat: 'vdrummer', bass: 'slap', chords: 'silk2', pad: 'score', melody: 'usynth' } };
+  dub: { beat: 'vdrummer', bass: 'royal', chords: 'carbon', pad: 'score', melody: 'usynth' }, funk: { beat: 'vdrummer', bass: 'slap', chords: 'silk2', pad: 'score', melody: 'usynth' }, dubtechno: UJ_ELECTRO, minimal: UJ_ELECTRO, club: UJ_ELECTRO, ambient: UJ_ELECTRO, chillout: { beat: 'beatmaker', bass: 'royal', chords: 'score', pad: 'usynth', melody: 'silk2' } };
 const ujPick = (part, genre) => { const s = store.get(KP + 'plug-' + part, null); return s && UJ_CHOICES[part].includes(s) ? s : (UJ_DEFAULT[genre] || UJ_DEFAULT.free)[part]; };
 function ujApply(sg, part, key) { sg.parts[part].plugin = key; if (part === 'melody') sg.parts.answer.plugin = D.PLUGINS[key].parts.includes('answer') ? key : 'usynth'; }
 const isOn = (g) => g.parts.some((p) => song().parts[p].mode !== 'off');
@@ -6299,7 +6380,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 03:00 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-23 03:30 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6335,7 +6416,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 03:00')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-23 03:30')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
