@@ -1970,7 +1970,7 @@ E.hypnoTheme = function (song) {
 E.hypnoRank = (cell) => (cell === 'P' ? 0 : cell === 'R' ? -1 : +cell.slice(1));
 E.genHypno = function (song, type, ctx, seed) {
   const g = E.GENRES[song.genre], N = 16, L = song.L, [lo, hi] = g.mel.range, th = E.hypnoTheme(song), chords = ctx.chords, energy = E.TYPES[type].energy;
-  const pedal = pitchNear((song.key.root + th.pedal) % 12, hi - 3), slow = type === 'break' || type === 'intro' || type === 'outro', notes = [];
+  const pedal = pitchNear((song.key.root + th.pedal) % 12, hi - 3), slow = type === 'break', notes = [];
   for (let t = 0; t < L * N; t++) {
     const cell = th.cells[t % th.C]; if (cell === 'R') continue;
     if (slow && t % 4) continue; // the breakdown: the same theme, slow and big
@@ -1988,9 +1988,9 @@ E.hypnoJourney = function (song, sec, inBar, notes, N) {
   const rankOf = (n) => E.hypnoRank(th.cells[((((inBar % song.L) * N + Math.round(n.t / E.STEP)) % th.C) + th.C) % th.C]);
   const grow = t === 'intro' || t === 'build' || t === 'prechorus';
   let out = notes;
-  if (grow) { const vis = 1 + Math.floor(x * (th.mc + 1)); out = out.filter((n) => rankOf(n) < vis); }
+  if (grow || t === 'outro') { const vis = 1 + Math.floor((grow ? x : 1 - x + 1 / sec.bars) * (th.mc + 1)); out = out.filter((n) => rankOf(n) < vis); } // an outro lets the notes go one by one
   const gate = grow ? 0.3 + 0.7 * x : t === 'break' ? 1 : t === 'verse' ? 0.6 : 0.9;
-  const vel = grow ? 0.6 + 0.45 * x : t === 'break' ? 0.7 + 0.35 * Math.max(0, (x - 0.6) / 0.4) : 1;
+  const vel = t === 'outro' ? 1 - 0.45 * x : grow ? 0.6 + 0.45 * x : t === 'break' ? 0.7 + 0.35 * Math.max(0, (x - 0.6) / 0.4) : 1;
   const k = t === 'chorus' || t === 'drop' || t === 'verse' ? Math.floor(inBar / 8) : 0, target = k ? ((k - 1) % th.mc) + 1 : -1;
   return out.map((n) => {
     let p = n.p; if (target > 0 && rankOf(n) === target) { for (let q = p + 1; q <= p + 2; q++) if (scale.includes(((q % 12) + 12) % 12)) { p = q; break; } } // one change at a time
@@ -2012,6 +2012,39 @@ E.echoes = function (notes, BT) {
     if (nx >= n.t + 2 * E3 + E.STEP && n.t + 2 * E3 < BT) out.push({ t: n.t + 2 * E3, d: Math.min(n.d, E.STEP * 2), p: n.p, v: Math.max(16, Math.round(n.v * 0.25)) });
   });
   return out.sort((a, b) => a.t - b.t);
+};
+// the train: one ride through space and time, for trance and its neighbours
+E.TRAIN = { trance: 1, techno: 0.6, minimal: 0.6, dubtechno: 0.7, acid: 0.5, club: 0.6, divine: 0.5 };
+E.trainOf = (song) => !!song.arr && !!E.TRAIN[song.genre];
+// does a part play in a section, by the machine's own plan
+E.partIn = function (song, si, part) {
+  const sec = song.sections[si]; if (!sec) return false;
+  if (!(ACTIVE[sec.type] || {})[part] && !(part === 'melody' && E.hypnoOf(song)) && !(part === 'bass' && sec.type === 'break' && E.trainOf(song))) return false;
+  const A = E.arrangeOf(song, si); if (!A) return true;
+  if (A.only && !A.only.includes(part)) return false;
+  if (part === 'chords' && (A.harm === 'none' || A.harm === 'pad' || A.harm === 'drone')) return false;
+  if (part === 'pad' && (A.harm === 'none' || A.harm === 'stabs' || A.harm === 'full' && !A.padToo)) return false;
+  if ((part === 'melody' || part === 'answer') && A.lead === 'chords') return false;
+  return true;
+};
+// a part that comes in grows in over the first bars, a part that leaves fades over the last bars: no blocks
+E.trainFade = function (song, si, sec, inBar, part, notes) {
+  const R = Math.min(4, Math.floor(sec.bars / 2)); if (R < 1) return notes;
+  let g = 1;
+  if (si > 0 && inBar < R && !E.partIn(song, si - 1, part)) g = Math.min(g, 0.45 + 0.55 * (inBar + 1) / R);
+  if (song.sections[si + 1] && inBar >= sec.bars - R && !E.partIn(song, si + 1, part)) g = Math.min(g, 0.45 + 0.55 * (sec.bars - inBar) / R);
+  return g >= 1 ? notes : notes.map((n) => Object.assign({}, n, { v: clamp(Math.round(n.v * g), 20, 127) }));
+};
+// the second voice: long notes on the chord tones, moving as little as it can, the glue between the sections
+E.genLongVoice = function (song, type, ctx, seed) {
+  const N = E.meter(song).steps, L = song.L, chords = ctx.chords, r = rng(hash(seed, 'longvoice')), notes = []; let prev = 67 + r.int(4);
+  for (let b = 0; b < L; b++) {
+    const c = chords && chords.bars[b] || { root: song.key.root, q: 'm' }, pcs = E.chordPcs(c);
+    let best = prev, bd = 99; for (let p = 60; p <= 76; p++) if (pcs.includes(p % 12) && Math.abs(p - prev) < bd) { bd = Math.abs(p - prev); best = p; }
+    if (r.chance(0.25)) { notes.push({ s: b * N, d: N / 2, p: best, v: 66 }); let q = best; for (let p = best + 1; p <= best + 4; p++) if (pcs.includes(p % 12)) { q = p; break; } notes.push({ s: b * N + N / 2, d: N / 2, p: q, v: 62 }); prev = q; }
+    else { const last = notes[notes.length - 1]; if (last && last.p === best && last.s + last.d === b * N) last.d += N; else notes.push({ s: b * N, d: N, p: best, v: 64 + r.int(6) }); prev = best; }
+  }
+  return { notes };
 };
 // how many times this kind of section came before: a chorus or drop that comes back grows
 E.occOf = (song, si) => song.sections.slice(0, si).filter((x) => x.type === song.sections[si].type).length;
@@ -2054,6 +2087,7 @@ E.genSing = function (song, type, ctx, seed) {
 // it listens to where the melody breathes and answers there with a turn of the last phrase,
 // a third or a sixth lower, in the melody's own scale; with no melody it stays silent
 E.genAnswer = function (song, type, ctx, seed) {
+  if (E.hypnoOf(song) && E.trainOf(song)) return E.genLongVoice(song, type, ctx, seed); // over the pulse: a voice of long notes
   const r = rng(seed), N = E.meter(song).steps, L = song.L, total = N * L;
   const mel = ctx.melodyOut || ctx.melodyUser;
   const sc = melodyScale(song).slice().sort((a, b) => a - b);
@@ -2371,6 +2405,11 @@ const ACTIVE = {
 E.partActive = function (song, part, type, inBar, bars) {
   const a = ACTIVE[type][part];
   if (song.parts[part].mode === 'yours') { const u = E.userSource(song, part, type); if (u && u.own && !u.auto) return true; }
+  if (E.trainOf(song) && song.parts[part] && song.parts[part].mode === 'machine') { // the train: the thread and the wheels never stop
+    if (part === 'melody' && E.hypnoOf(song)) return true;
+    if (part === 'answer' && E.hypnoOf(song) && type !== 'intro' && type !== 'outro') return true;
+    if (part === 'bass' && type === 'break') return true;
+  }
   if (type === 'break' && part === 'bass' && song.arr && E.MYST[song.genre] && E.pedalOf(song) && song.parts.bass.mode === 'machine') return true; // the breakdown keeps a low pedal tone
   if (type === 'break' && part === 'melody' && song.arr && song.genre === 'trance' && song.parts.melody.mode === 'machine') return inBar >= Math.min(4, bars / 2); // the trance breakdown: the theme comes in early
   if (type === 'break' && part === 'bass' && song.arr && E.arcOf(song) === 'plateau' && song.parts.bass.mode === 'machine') return inBar >= bars / 2; // a steady genre never empties the floor
@@ -2493,6 +2532,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     }
     if (E.kitOf(song) && (machine || !lanes.slice(8).some((l) => l && l.some((v) => v > 0)))) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
     if (mach && A.beatLanes) lanes.forEach((l, li) => { if (!A.beatLanes.includes(li) && li !== CR) l.fill(0); }); // a quiet verse plays only the bones of the beat
+    if (machine && type === 'break' && E.trainOf(song) && N === 16 && lanes[HH] && !lanes[HH].some(Boolean)) for (let s = 2; s < N; s += 4) lanes[HH][s] = 34 + ((s * 7 + inBar) % 10); // the wheels keep turning in the break, softly
     E.laneFxApply(song, sec, inBar, lanes, N);
     if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
     if (E.STOPS.includes(fk)) { if (fk === 'hit' || fk === 'half' || !sec.fill) E.stopLanes(lanes, fk, N); else E.applyFill(song, lanes, fk, N, r); } // a stop stays a stop, whatever the mixer adds
@@ -2547,6 +2587,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     else if (type === 'build' && E.MYST[song.genre]) notes = E.buildRise(song, sec, inBar, notes);
     if (E.echoOf(song) && !(E.hypnoOf(song) && type !== 'break' && type !== 'intro' && type !== 'outro')) notes = E.echoes(notes, BT);
   }
+  if (mach && part !== 'beat' && notes.length && E.trainOf(song)) { notes = E.trainFade(song, si, sec, inBar, part, notes); if (part === 'bass' && type === 'break') notes = notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.75) })); }
   if (part === 'bass' && !bo && !lastBar && notes.length) notes = E.bassGuard(song, si, notes, res(si).ctxChords && res(si).ctxChords.bars[lb], N, BT); // the bass stays the foundation, whatever varies on top
   if (song.genre === 'divine' && part !== 'beat' && part !== 'pad' && !bo) notes = notes.map((n) => Object.assign({}, n, { v: Math.min(127, Math.round(n.v * 1.12 + 4)) })); // Divine Monday plays with a bit more bite
   if (part === 'pad' && song.genre === 'divine' && !bo && !lastBar && song.parts.pad.mode !== 'off' && !(E.partIsOff && E.partIsOff(sec, inBar, part))) notes = notes.concat(E.lightC(song, inBar, res(si).ctxChords && res(si).ctxChords.bars[lb], si));
@@ -2822,6 +2863,10 @@ E.arrangeOf = function (song, si, salt) {
     if (plan.recipe === 'silent') { delete plan.enter.beat; delete plan.enter.chords; delete plan.enter.pad; }
   }
   E.applyForm(song, si, plan, o, r);
+  if (E.trainOf(song)) { // the train: a stop is at most one bar without the kick; the thread leads everywhere and is never layered in or out
+    if (plan.stop === 'gift' || plan.stop === 'hit' || plan.stop === 'stop') plan.stop = 'drop';
+    if (E.hypnoOf(song)) { if (!(o.lead && o.lead !== 'auto') && plan.lead === 'chords') plan.lead = 'melody'; delete plan.enter.melody; delete plan.exit.melody; delete plan.exit.answer; }
+  }
   if (g === 'trance' && t === 'break') { if (!o.harm) { plan.harm = 'full'; plan.padToo = true; } if (!(o.lead && o.lead !== 'auto')) plan.lead = 'melody'; } // the breakdown is the big moment: chords, pad and the theme
   if ((t === 'chorus' || t === 'drop') && E.hookOf(song) && plan.lead === 'chords' && !(o.lead && o.lead !== 'auto')) plan.lead = 'melody'; // a song with a hook sings it in every big section
   if ((t === 'chorus' || t === 'drop') && song.arr) { const k = E.occOf(song, si); plan.grow = k; if (k >= 1 && plan.harm === 'full' && !o.harm) plan.padToo = true; } // a chorus that comes back grows
@@ -2829,9 +2874,9 @@ E.arrangeOf = function (song, si, salt) {
     if (dp && (t === 'verse' || t === 'chorus') && sec.bars >= 8 && !plan.only && !plan.noBeat && !plan.stoptime && pr.chance(dp)) { plan.beatDrop = []; for (let b = 7; b < sec.bars - 1; b += 8) if (pr.chance(0.6) || !plan.beatDrop.length) plan.beatDrop.push(b); }
     if (g === 'divine' && t === 'intro' && pr.chance(0.6)) plan.enter = {}; } // Divine starts hot: everybody from the first bar
   { const st = { funk: 0.3, blues: 0.35, punk: 0.25, newwave: 0.18, hiphop: 0.15, breakbeat: 0.15, free: 0.12, house: 0.08, eurodance: 0.08 }[g] || 0;
-    if ((t === 'verse' || t === 'chorus') && sec.bars >= 8 && !plan.noBeat && !plan.only && !Object.keys(plan.enter).length && si === E.stoptimeSlot(song) && r.chance(st)) plan.stoptime = sec.bars >= 12 ? 4 : 2; // stop time: one hit per bar, then the groove comes back
+    if ((t === 'verse' || t === 'chorus') && sec.bars >= 8 && !plan.noBeat && !plan.only && !Object.keys(plan.enter).length && si === E.stoptimeSlot(song) && !E.trainOf(song) && r.chance(st)) plan.stoptime = sec.bars >= 12 ? 4 : 2; // stop time: one hit per bar, then the groove comes back
     const db = { dnb: 0.3, garage: 0.15, dub: 0.25, funk: 0.2, hiphop: 0.25, breakbeat: 0.3, triphop: 0.15, newwave: 0.12, punk: 0.15, techno: 0.12, house: 0.12, free: 0.15 }[g] || 0.08;
-    if (!plan.stoptime && (t === 'verse' || t === 'chorus' || t === 'drop') && !E.isFirstOfType(song, si) && sec.bars >= 8 && !plan.only && !plan.noBeat && !Object.keys(plan.enter).length && r.chance(db)) plan.drumsUntil = 2; // the drums alone for two bars, then everybody slams back in
+    if (!plan.stoptime && (t === 'verse' || t === 'chorus' || t === 'drop') && !E.isFirstOfType(song, si) && sec.bars >= 8 && !plan.only && !plan.noBeat && !Object.keys(plan.enter).length && r.chance(db) && !E.trainOf(song)) plan.drumsUntil = 2; // the drums alone for two bars, then everybody slams back in
   }
   if (plan.lead === 'chords' && (plan.harm === 'none' || plan.harm === 'drone')) plan.lead = 'melody';
   if (plan.lead === 'chords' && plan.harm === 'pad') plan.harm = 'full'; // the chords lead: they really play
@@ -3754,7 +3799,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 22:50)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 23:40)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5812,7 +5857,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 22:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 23:40. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
