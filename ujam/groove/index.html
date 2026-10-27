@@ -1177,6 +1177,9 @@ function chordFromDeg(song, deg, r) {
   if (g.dom && song.key.scale === 'minor' && deg === 4) return { root: (song.key.root + 7) % 12, q: '7', deg }; // a minor blues: the five stays a dominant seven
   let c = E.diatonic(song.key, deg, r.chance(g.sevenths));
   if (song.genre === 'techno' && deg === 0 && r.chance(0.25)) c = { root: c.root, q: 'sus2', deg: 0 };
+  const my = E.MYST[song.genre] || 0;
+  if (my && song.key.scale !== 'major') { if (deg === 5 && r.chance(0.12 * my)) return { root: (song.key.root + 1) % 12, q: 'M', deg }; if (deg === 4 && r.chance(0.3 * my)) return { root: (song.key.root + 7) % 12, q: 'M', deg }; } // a dark bII, a tense major V
+  if (my && (c.q === 'm' || c.q === 'M') && r.chance(0.25 * my)) c = { root: c.root, q: r.chance(0.5) ? 'sus2' : 'sus4', deg: c.deg }; // sus chords: open, unresolved
   return c;
 }
 // score a chord against notes in one bar
@@ -1421,6 +1424,7 @@ E.genBass = function (song, type, ctx, seed) {
     const nc = chords.bars[(b + 1) % L] || c;
     const root = pitchNear(c.root, centre), fifth = root + 7 > 50 ? root - 5 : root + 7, oct = root + 12 <= 52 ? root + 12 : root - 12;
     const add = (s, d, p, v) => { if (s < N) notes.push({ s: b * N + s, d: Math.max(1, Math.min(d, N - s)), p, v }); };
+    if (type === 'break' && E.MYST[song.genre] && E.pedalOf(song)) { add(0, N, pitchNear(song.key.root, centre), 78); continue; } // the pedal: one low tone while the chords move above it
     if (E.BASS_STYLES[style]) E.BASS_STYLES[style]({ add, root, oct, fifth, c, nc, b, r, N, song, type });
     else if (style === 'offbeat') {
       for (let s = 2; s < N; s += 4) add(s, 2, r.chance(0.15) ? oct : root, 96 + r.int(10));
@@ -1491,6 +1495,7 @@ E.genMelody = function (song, type, ctx, seed) {
     for (let b = 0; b < L; b++) { const c = ctx.chords && ctx.chords.bars[b] || { root: song.key.root }; let rp = alo; while (((rp % 12) + 12) % 12 !== c.root) rp++; E.acidBar(song, b + 7, rp, 0.45 + E.TYPES[type].energy * 0.15, 'acidmel').forEach((n) => { if (n.p <= ahi + 12) out.push({ s: b * N + n.s, d: n.d, p: n.p, v: n.v }); }); }
     return { notes: dedupeMono(out) };
   }
+  if (E.hypnoOf(song)) return E.genHypno(song, type, ctx, seed);
   if (E.hookOf(song)) return E.genHook(song, type, ctx, seed);
   if (E.singOf(song)) return E.genSing(song, type, ctx, seed);
   const energy = E.TYPES[type].energy;
@@ -1602,7 +1607,7 @@ E.genHook = function (song, type, ctx, seed) {
     cl.forEach((s, k) => {
       let role = shape[k % shape.length]; if (answer && k >= cl.length - 2) role += 1;
       let p = tones[clamp(ai + role, 0, tones.length - 1)];
-      if (last && k === cl.length - 1) p = pitchNear(c.root, tones[ai]);
+      if (last && k === cl.length - 1) p = E.MYST[song.genre] ? pitchNear((c.root + (pass.chance(0.5) ? 7 : 2)) % 12, tones[ai]) : pitchNear(c.root, tones[ai]); // the end of the phrase: on the root, or open on the fifth or the ninth
       else if (s % 4 && pass.chance(0.25)) { const dir = pass.chance(0.5) ? 1 : -1; for (let q = p + dir; Math.abs(q - p) <= 2; q += dir) if (scaleP.includes(((q % 12) + 12) % 12)) { p = q; break; } } // a passing note between the chord tones
       const nx = k + 1 < cl.length ? cl[k + 1] : N;
       notes.push({ s: b * N + s, d: answer && k === cl.length - 1 ? Math.max(2, 8 - s) : Math.max(1, nx - s), p: clamp(p, lo - 2, hi + 5), v: clamp(Math.round(92 + (s === 0 ? 10 : s % 4 ? 4 : 0) + energy * 10 - (slow ? 12 : 0)), 50, 124) });
@@ -1638,6 +1643,64 @@ E.freshSong = function (genre, opts) {
   recent.push(pick.fp); recent = recent.slice(-30);
   try { localStorage.setItem('dmmu-recent-songs', JSON.stringify(recent)); } catch (e) {}
   return pick.sg;
+};
+// mystery and hypnosis, for the genres that live on it (trance most, the others milder)
+E.MYST = { trance: 1, techno: 0.6, acid: 0.4, dubtechno: 0.5, minimal: 0.6, chillout: 0.4, divine: 0.4 };
+E.hypnoOf = (song) => !!song.arr && E.meter(song).steps === 16 && song.L === 4 && rng(hash(song.seed, 'hypno', song.genre))() < ({ trance: 0.7, techno: 0.5, acid: 0.3, dubtechno: 0.4, minimal: 0.5, chillout: 0.25, divine: 0.25 }[song.genre] || 0);
+E.pedalOf = (song) => !!song.arr && rng(hash(song.seed, 'pedal', song.genre))() < (E.MYST[song.genre] || 0) * 0.8;
+E.echoOf = (song) => !!song.arr && rng(hash(song.seed, 'echo', song.genre))() < ({ trance: 0.6, techno: 0.4, dubtechno: 0.8, chillout: 0.5, divine: 0.4, dub: 0.6, ambient: 0.5, triphop: 0.4, minimal: 0.3 }[song.genre] || 0);
+// the theme: a cycle of 3, 5, 6 or 7 sixteenths. P is the pedal tone on top, M1 to M3 move with the chords, R is a rest
+E.hypnoTheme = function (song) {
+  const R = rng(hash(song.seed, 'hypnotheme')), C = R.pick([3, 5, 5, 6, 7]), mc = C <= 3 ? 2 : R.pick([2, 3]);
+  const rest = []; for (let k = 1; k <= mc; k++) rest.push('M' + k); while (rest.length < C - 1) rest.push(R.pick(['P', 'R', 'M1', 'M2']));
+  for (let i = rest.length - 1; i > 0; i--) { const j = R.int(i + 1); [rest[i], rest[j]] = [rest[j], rest[i]]; }
+  return { C, cells: ['P'].concat(rest), mc, pedal: R.pick([0, 7, 0, 3]) };
+};
+E.hypnoRank = (cell) => (cell === 'P' ? 0 : cell === 'R' ? -1 : +cell.slice(1));
+E.genHypno = function (song, type, ctx, seed) {
+  const g = E.GENRES[song.genre], N = 16, L = song.L, [lo, hi] = g.mel.range, th = E.hypnoTheme(song), chords = ctx.chords, energy = E.TYPES[type].energy;
+  const pedal = pitchNear((song.key.root + th.pedal) % 12, hi - 3), slow = type === 'break' || type === 'intro' || type === 'outro', notes = [];
+  for (let t = 0; t < L * N; t++) {
+    const cell = th.cells[t % th.C]; if (cell === 'R') continue;
+    if (slow && t % 4) continue; // the breakdown: the same theme, slow and big
+    const b = Math.floor(t / N), c = chords && chords.bars[b] || { root: song.key.root, q: 'm' }, pcs = E.chordPcs(c);
+    let p = pedal;
+    if (cell !== 'P') { const below = []; for (let q = pedal - 1; q >= pedal - 12; q--) if (pcs.includes(((q % 12) + 12) % 12)) below.push(q); const k = +cell.slice(1) - 1; p = below.length ? below[Math.min(k, below.length - 1)] : pedal - 5; }
+    notes.push({ s: t, d: slow ? 4 : 1, p, v: clamp(Math.round(84 + (cell === 'P' ? 6 : 0) + (t % 4 === 0 ? 6 : 0) + energy * 10 - (slow ? 6 : 0)), 50, 120) });
+  }
+  return { notes: dedupeMono(notes) };
+};
+// the journey without automation: in an intro or build the motif grows note by note, opens from short to long and from soft to bright,
+// and jumps an octave in the last two bars; in a big section one note changes every eight bars; a breakdown swells at its end
+E.hypnoJourney = function (song, sec, inBar, notes, N) {
+  const th = E.hypnoTheme(song), t = sec.type, x = (inBar + 1) / sec.bars, scale = melodyScale(song);
+  const rankOf = (n) => E.hypnoRank(th.cells[((((inBar % song.L) * N + Math.round(n.t / E.STEP)) % th.C) + th.C) % th.C]);
+  const grow = t === 'intro' || t === 'build' || t === 'prechorus';
+  let out = notes;
+  if (grow) { const vis = 1 + Math.floor(x * (th.mc + 1)); out = out.filter((n) => rankOf(n) < vis); }
+  const gate = grow ? 0.3 + 0.7 * x : t === 'break' ? 1 : t === 'verse' ? 0.6 : 0.9;
+  const vel = grow ? 0.6 + 0.45 * x : t === 'break' ? 0.7 + 0.35 * Math.max(0, (x - 0.6) / 0.4) : 1;
+  const k = t === 'chorus' || t === 'drop' || t === 'verse' ? Math.floor(inBar / 8) : 0, target = k ? ((k - 1) % th.mc) + 1 : -1;
+  return out.map((n) => {
+    let p = n.p; if (target > 0 && rankOf(n) === target) { for (let q = p + 1; q <= p + 2; q++) if (scale.includes(((q % 12) + 12) % 12)) { p = q; break; } } // one change at a time
+    if (grow && sec.bars >= 4 && inBar >= sec.bars - 2 && p + 12 <= 96) p += 12;
+    return Object.assign({}, n, { p, d: Math.max(30, Math.round(n.d * gate)), v: clamp(Math.round(n.v * vel), 20, 127) });
+  });
+};
+// a build rises for every lead in these genres: softer at the start, an octave up in the last two bars
+E.buildRise = function (song, sec, inBar, notes) {
+  const x = (inBar + 1) / sec.bars;
+  return notes.map((n) => Object.assign({}, n, { p: sec.bars >= 4 && inBar >= sec.bars - 2 && n.p + 12 <= 96 ? n.p + 12 : n.p, v: clamp(Math.round(n.v * (0.65 + 0.4 * x)), 20, 127) }));
+};
+// written echoes: the classic dotted eighth, softer each time, only where the line leaves room
+E.echoes = function (notes, BT) {
+  const s = notes.slice().sort((a, b) => a.t - b.t), out = s.slice(), E3 = E.STEP * 3;
+  s.forEach((n, i) => {
+    if (n.d < E.STEP * 2) return; const nx = s[i + 1] ? s[i + 1].t : BT;
+    if (nx >= n.t + E3 + E.STEP && n.t + E3 < BT) out.push({ t: n.t + E3, d: Math.min(n.d, E.STEP * 2), p: n.p, v: Math.max(20, Math.round(n.v * 0.45)) });
+    if (nx >= n.t + 2 * E3 + E.STEP && n.t + 2 * E3 < BT) out.push({ t: n.t + 2 * E3, d: Math.min(n.d, E.STEP * 2), p: n.p, v: Math.max(16, Math.round(n.v * 0.25)) });
+  });
+  return out.sort((a, b) => a.t - b.t);
 };
 // how many times this kind of section came before: a chorus or drop that comes back grows
 E.occOf = (song, si) => song.sections.slice(0, si).filter((x) => x.type === song.sections[si].type).length;
@@ -2005,6 +2068,7 @@ const ACTIVE = {
 E.partActive = function (song, part, type, inBar, bars) {
   const a = ACTIVE[type][part];
   if (song.parts[part].mode === 'yours') { const u = E.userSource(song, part, type); if (u && u.own && !u.auto) return true; }
+  if (type === 'break' && part === 'bass' && song.arr && E.MYST[song.genre] && E.pedalOf(song) && song.parts.bass.mode === 'machine') return true; // the breakdown keeps a low pedal tone
   if (type === 'break' && part === 'melody' && song.arr && song.genre === 'trance' && song.parts.melody.mode === 'machine') return inBar >= Math.min(4, bars / 2); // the trance breakdown: the theme comes in early
   if (type === 'break' && part === 'bass' && song.arr && E.arcOf(song) === 'plateau' && song.parts.bass.mode === 'machine') return inBar >= bars / 2; // a steady genre never empties the floor
   if (a >= 1) return true; if (a <= 0) return false;
@@ -2157,6 +2221,11 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (part !== 'beat' && stopTime) notes = E.stopNotes(part, notes, 'hit', BT); // stop time: the band hits the one with the drums
   if (song.arr && song.raw && !bo && !lastBar) notes = E.rawNotes(song, part, notes, type + ':' + inBar + ':' + sec.bars, N, BT, isLastOfSec && !!nextSec && (!!endK || !!sec.fill && sec.fill !== 'auto' && sec.fill !== 'none'), A && A.boost); // raw: harder accents and pushes
   if (mach && part === 'melody' && A.grow && notes.length && (A.grow >= 2 || song.sections.map((x) => x.type).lastIndexOf(sec.type) === si) && !['blues', 'songwriter', 'hiphop', 'punk', 'ambient', 'dub', 'triphop', 'acid', 'dubtechno', 'minimal'].includes(song.genre)) notes = notes.concat(notes.map((n) => Object.assign({}, n, { p: n.p + 12, v: Math.round(n.v * 0.7) })).filter((n) => n.p <= 96)); // the last big chorus: the lead doubled an octave up
+  if (mach && part === 'melody' && notes.length) { // the journey and the echoes
+    if (E.hypnoOf(song)) notes = E.hypnoJourney(song, sec, inBar, notes, N);
+    else if (type === 'build' && E.MYST[song.genre]) notes = E.buildRise(song, sec, inBar, notes);
+    if (E.echoOf(song) && !(E.hypnoOf(song) && type !== 'break' && type !== 'intro' && type !== 'outro')) notes = E.echoes(notes, BT);
+  }
   if (part === 'bass' && !bo && !lastBar && notes.length) notes = E.bassGuard(song, si, notes, res(si).ctxChords && res(si).ctxChords.bars[lb], N, BT); // the bass stays the foundation, whatever varies on top
   if (song.genre === 'divine' && part !== 'beat' && part !== 'pad' && !bo) notes = notes.map((n) => Object.assign({}, n, { v: Math.min(127, Math.round(n.v * 1.12 + 4)) })); // Divine Monday plays with a bit more bite
   if (part === 'pad' && song.genre === 'divine' && !bo && !lastBar && song.parts.pad.mode !== 'off' && !(E.partIsOff && E.partIsOff(sec, inBar, part))) notes = notes.concat(E.lightC(song, inBar, res(si).ctxChords && res(si).ctxChords.bars[lb], si));
@@ -3652,7 +3721,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 22:20)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 22:50)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5297,7 +5366,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-27 22:20. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-27 22:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
