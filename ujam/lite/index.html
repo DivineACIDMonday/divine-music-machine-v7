@@ -1947,7 +1947,32 @@ E.genMelody = function (song, type, ctx, seed) {
     const c = chords && chords.bars[Math.floor(last.s / N) % L];
     if (c && type === 'chorus') last.p = pitchNear(c.root, last.p);
   }
-  return { notes: dedupeMono(notes) };
+  return { notes: dedupeMono(E.flow(song, 'melody', notes)) };
+};
+// a line that flows: inside a phrase a note rings until the next one; the rests between phrases stay. The tight genres keep some bite
+E.FLOW = { funk: 0.7, acid: 0.6, ebm: 0.65, punk: 0.75, minimal: 0.65, techno: 0.85, breakbeat: 0.85, eurodance: 0.9, house: 0.9, club: 0.85, garage: 0.85 };
+E.flow = function (song, part, notes) {
+  if (!song.arr || E.GENRES[song.genre].melStyle === 'acid' || !notes || notes.length < 2) return notes;
+  const amt = E.FLOW[song.genre] != null ? E.FLOW[song.genre] : 0.97, maxGap = part === 'answer' ? 2 : 4;
+  const ns = notes.slice().sort((a, b) => a.s - b.s);
+  ns.forEach((n, k) => {
+    let nx = null; for (let j = k + 1; j < ns.length; j++) if (ns[j].s > n.s) { nx = ns[j]; break; }
+    if (!nx) return; const ioi = nx.s - n.s, gap = ioi - n.d; if (gap <= 0 || gap > maxGap) return;
+    const target = nx.p === n.p ? Math.floor(ioi * Math.min(amt, 0.9)) : amt >= 0.95 ? ioi : Math.floor(ioi * amt);
+    if (target > n.d) { if (n.d0 == null) n.d0 = n.d; n.d = target; }
+  });
+  return ns;
+};
+// full stops where they fit: one or two per song, only into a bigger section
+E.stopSlots = function (song) {
+  const S = song.sections, c = [];
+  S.forEach((x, i) => { const nx = S[i + 1]; if (nx && x.type !== 'fill' && nx.type !== 'fill' && x.bars >= 2 && E.TYPES[nx.type].energy > E.TYPES[x.type].energy + 0.05) c.push(i); });
+  const r = rng(hash(song.seed, 'stopslots')); for (let i = c.length - 1; i > 0; i--) { const j = r.int(i + 1); [c[i], c[j]] = [c[j], c[i]]; }
+  return c.slice(0, 1 + (r.chance(0.35) ? 1 : 0));
+};
+E.stoptimeSlot = function (song) {
+  const c = []; song.sections.forEach((x, i) => { if ((x.type === 'verse' || x.type === 'chorus') && x.bars >= 8) c.push(i); });
+  return c.length ? c[rng(hash(song.seed, 'stoptimeslot')).int(c.length)] : -1;
 };
 // a lead that sings: short lines with a long note in them, a bend into it now and then, and rest between the lines for the answer
 E.SING_P = { blues: 0.85, ambient: 0.35, chillout: 0.3, triphop: 0.3, dnb: 0.3, divine: 0.3, dub: 0.25, synthwave: 0.25, trance: 0.2, dubtechno: 0.25, house: 0.15, garage: 0.15, hiphop: 0.15, newwave: 0.15, funk: 0.12, free: 0.15, techno: 0.1, club: 0.1, minimal: 0.08, eurodance: 0.12, punk: 0.1, breakbeat: 0.1, ebm: 0.06, acid: 0, songwriter: 0.65 };
@@ -1982,7 +2007,7 @@ E.genSing = function (song, type, ctx, seed) {
       notes.push({ s, d: Math.min(x.d, L * N - s), p, v });
     });
   });
-  return { notes: dedupeMono(notes.sort((a, b) => a.s - b.s)) };
+  return { notes: dedupeMono(E.flow(song, 'melody', notes.sort((a, b) => a.s - b.s))) };
 };
 /* ---------- answer melody: replies to the main melody in its rests ---------- */
 // it listens to where the melody breathes and answers there with a turn of the last phrase,
@@ -2018,7 +2043,7 @@ E.genAnswer = function (song, type, ctx, seed) {
       }
     }
   }
-  return { notes: out.sort((x, y) => x.s - y.s) };
+  return { notes: E.flow(song, 'answer', out.sort((x, y) => x.s - y.s)) };
 };
 function dedupeMono(notes) {
   notes.sort((a, b) => a.s - b.s);
@@ -2729,7 +2754,7 @@ E.arrangeOf = function (song, si, salt) {
   if (plan.lead === 'chords' && (plan.harm === 'none' || plan.harm === 'drone')) plan.harm = 'stabs';
   plan.line = plan.harm === 'drone' && song.key.scale !== 'major' && r.chance(0.55); // the falling line inside the drone
   const next = song.sections[si + 1], up = next && E.TYPES[next.type].energy > E.TYPES[t].energy + 0.05;
-  plan.stop = next && t !== 'fill' && next.type !== 'fill' && sec.bars >= 2 && (up ? r.chance(STOP_P[g] || 0.5) : r.chance(0.15)) ? (up ? pickW(r, { gift: 3, hit: 2.5, drop: 2, stop: 1.5, half: 1.5 }) : pickW(r, { half: 2, drop: 1 })) : null;
+  plan.stop = next && t !== 'fill' && next.type !== 'fill' && sec.bars >= 2 && (up ? E.stopSlots(song).includes(si) && r.chance(Math.min(0.85, (STOP_P[g] || 0.5) * 1.4)) : r.chance(0.06)) ? (up ? pickW(r, { gift: 3, hit: 2.5, drop: 2, stop: 1.5, half: 1.5 }) : pickW(r, { half: 2, drop: 1 })) : null;
   // layers: parts come in one by one in a long opening, and leave one by one in a long ending
   plan.enter = {}; plan.exit = {};
   const firstOf = E.isFirstOfType(song, si), step = sec.bars >= 16 ? 4 : 2;
@@ -2752,7 +2777,7 @@ E.arrangeOf = function (song, si, salt) {
     if (dp && (t === 'verse' || t === 'chorus') && sec.bars >= 8 && !plan.only && !plan.noBeat && !plan.stoptime && pr.chance(dp)) { plan.beatDrop = []; for (let b = 7; b < sec.bars - 1; b += 8) if (pr.chance(0.6) || !plan.beatDrop.length) plan.beatDrop.push(b); }
     if (g === 'divine' && t === 'intro' && pr.chance(0.6)) plan.enter = {}; } // Divine starts hot: everybody from the first bar
   { const st = { funk: 0.3, blues: 0.35, punk: 0.25, newwave: 0.18, hiphop: 0.15, breakbeat: 0.15, free: 0.12, house: 0.08, eurodance: 0.08 }[g] || 0;
-    if ((t === 'verse' || t === 'chorus') && sec.bars >= 8 && !plan.noBeat && !plan.only && !Object.keys(plan.enter).length && r.chance(st)) plan.stoptime = sec.bars >= 12 ? 4 : 2; // stop time: one hit per bar, then the groove comes back
+    if ((t === 'verse' || t === 'chorus') && sec.bars >= 8 && !plan.noBeat && !plan.only && !Object.keys(plan.enter).length && si === E.stoptimeSlot(song) && r.chance(st)) plan.stoptime = sec.bars >= 12 ? 4 : 2; // stop time: one hit per bar, then the groove comes back
     const db = { dnb: 0.3, garage: 0.15, dub: 0.25, funk: 0.2, hiphop: 0.25, breakbeat: 0.3, triphop: 0.15, newwave: 0.12, punk: 0.15, techno: 0.12, house: 0.12, free: 0.15 }[g] || 0.08;
     if (!plan.stoptime && (t === 'verse' || t === 'chorus' || t === 'drop') && !E.isFirstOfType(song, si) && sec.bars >= 8 && !plan.only && !plan.noBeat && !Object.keys(plan.enter).length && r.chance(db)) plan.drumsUntil = 2; // the drums alone for two bars, then everybody slams back in
   }
@@ -3697,7 +3722,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 20:40)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 21:00)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5755,7 +5780,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 20:40. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 21:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6616,7 +6641,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-27 20:40 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-27 21:00 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6652,7 +6677,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-27 20:40')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-27 21:00')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
