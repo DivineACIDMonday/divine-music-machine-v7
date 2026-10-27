@@ -1970,7 +1970,7 @@ E.hypnoTheme = function (song) {
 E.hypnoRank = (cell) => (cell === 'P' ? 0 : cell === 'R' ? -1 : +cell.slice(1));
 E.genHypno = function (song, type, ctx, seed) {
   const g = E.GENRES[song.genre], N = 16, L = song.L, [lo, hi] = g.mel.range, th = E.hypnoTheme(song), chords = ctx.chords, energy = E.TYPES[type].energy;
-  const pedal = pitchNear((song.key.root + th.pedal) % 12, hi - 3), slow = type === 'break', notes = [];
+  const pedal = pitchNear((song.key.root + th.pedal) % 12, hi - 3), slow = type === 'break' || !E.trainOf(song) && (type === 'intro' || type === 'outro'), notes = [];
   for (let t = 0; t < L * N; t++) {
     const cell = th.cells[t % th.C]; if (cell === 'R') continue;
     if (slow && t % 4) continue; // the breakdown: the same theme, slow and big
@@ -1988,9 +1988,9 @@ E.hypnoJourney = function (song, sec, inBar, notes, N) {
   const rankOf = (n) => E.hypnoRank(th.cells[((((inBar % song.L) * N + Math.round(n.t / E.STEP)) % th.C) + th.C) % th.C]);
   const grow = t === 'intro' || t === 'build' || t === 'prechorus';
   let out = notes;
-  if (grow || t === 'outro') { const vis = 1 + Math.floor((grow ? x : 1 - x + 1 / sec.bars) * (th.mc + 1)); out = out.filter((n) => rankOf(n) < vis); } // an outro lets the notes go one by one
+  if (grow || t === 'outro' && E.trainOf(song)) { const vis = 1 + Math.floor((grow ? x : 1 - x + 1 / sec.bars) * (th.mc + 1)); out = out.filter((n) => rankOf(n) < vis); } // an outro lets the notes go one by one
   const gate = grow ? 0.3 + 0.7 * x : t === 'break' ? 1 : t === 'verse' ? 0.6 : 0.9;
-  const vel = t === 'outro' ? 1 - 0.45 * x : grow ? 0.6 + 0.45 * x : t === 'break' ? 0.7 + 0.35 * Math.max(0, (x - 0.6) / 0.4) : 1;
+  const vel = t === 'outro' && E.trainOf(song) ? 1 - 0.45 * x : grow ? 0.6 + 0.45 * x : t === 'break' ? 0.7 + 0.35 * Math.max(0, (x - 0.6) / 0.4) : 1;
   const k = t === 'chorus' || t === 'drop' || t === 'verse' ? Math.floor(inBar / 8) : 0, target = k ? ((k - 1) % th.mc) + 1 : -1;
   return out.map((n) => {
     let p = n.p; if (target > 0 && rankOf(n) === target) { for (let q = p + 1; q <= p + 2; q++) if (scale.includes(((q % 12) + 12) % 12)) { p = q; break; } } // one change at a time
@@ -3826,7 +3826,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 23:55)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 00:05)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5884,7 +5884,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 23:55. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 00:05. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
