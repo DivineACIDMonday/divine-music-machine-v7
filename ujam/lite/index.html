@@ -2041,7 +2041,7 @@ E.freshSong = function (genre, opts) {
 };
 // mystery and hypnosis, for the genres that live on it (trance most, the others milder)
 E.MYST = { trance: 1, techno: 0.6, acid: 0.4, dubtechno: 0.5, minimal: 0.6, chillout: 0.4, divine: 0.4 };
-E.hypnoOf = (song) => !!song.arr && E.meter(song).steps === 16 && song.L === 4 && rng(hash(song.seed, 'hypno', song.genre))() < ({ trance: 0.7, techno: 0.5, acid: 0.3, dubtechno: 0.4, minimal: 0.5, chillout: 0.25, divine: 0.25 }[song.genre] || 0);
+E.hypnoOf = (song) => !!song.arr && E.meter(song).steps === 16 && song.L === 4 && rng(hash(song.seed, 'hypno', song.genre))() < ({ trance: 1, techno: 0.5, acid: 0.3, dubtechno: 0.4, minimal: 0.5, chillout: 0.25, divine: 0.25 }[song.genre] || 0);
 E.pedalOf = (song) => !!song.arr && rng(hash(song.seed, 'pedal', song.genre))() < (E.MYST[song.genre] || 0) * 0.8;
 E.echoOf = (song) => !!song.arr && rng(hash(song.seed, 'echo', song.genre))() < ({ trance: 0.6, techno: 0.4, dubtechno: 0.8, chillout: 0.5, divine: 0.4, dub: 0.6, ambient: 0.5, triphop: 0.4, minimal: 0.3 }[song.genre] || 0);
 // the theme: a cycle of 3, 5, 6 or 7 sixteenths. P is the pedal tone on top, M1 to M3 move with the chords, R is a rest
@@ -2130,6 +2130,13 @@ E.genLongVoice = function (song, type, ctx, seed) {
   }
   return { notes };
 };
+// in a drop of trance the second voice sings the hook, slow and long, over the pulse
+E.longHook = function (song, type, ctx, seed) {
+  const N = 16, L = song.L, src = (E.genHook(song, type, ctx, seed).notes || []).slice().sort((a, b) => a.s - b.s);
+  const keep = src.filter((n, i) => n.s % 4 === 0 || n.d >= 3 || i === 0);
+  const out = keep.map((n, i) => { const nx = keep[i + 1], end = nx ? nx.s : L * N; let p = n.p; while (p > 79) p -= 12; while (p < 62) p += 12; return { s: n.s, d: Math.max(2, Math.min(end - n.s, N)), p, v: 66 + ((n.s * 5) % 9) }; });
+  return { notes: out };
+};
 // how many times this kind of section came before: a chorus or drop that comes back grows
 E.occOf = (song, si) => song.sections.slice(0, si).filter((x) => x.type === song.sections[si].type).length;
 // a lead that sings: short lines with a long note in them, a bend into it now and then, and rest between the lines for the answer
@@ -2171,7 +2178,7 @@ E.genSing = function (song, type, ctx, seed) {
 // it listens to where the melody breathes and answers there with a turn of the last phrase,
 // a third or a sixth lower, in the melody's own scale; with no melody it stays silent
 E.genAnswer = function (song, type, ctx, seed) {
-  if (E.hypnoOf(song) && E.trainOf(song)) return E.genLongVoice(song, type, ctx, seed); // over the pulse: a voice of long notes
+  if (E.hypnoOf(song) && E.trainOf(song)) return song.genre === 'trance' && (type === 'drop' || type === 'chorus') ? E.longHook(song, type, ctx, seed) : E.genLongVoice(song, type, ctx, seed); // over the pulse: a voice of long notes, the hook in the drops
   const r = rng(seed), N = E.meter(song).steps, L = song.L, total = N * L;
   const mel = ctx.melodyOut || ctx.melodyUser;
   const sc = melodyScale(song).slice().sort((a, b) => a - b);
@@ -3903,7 +3910,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 23:40)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 23:55)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5961,7 +5968,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 23:40. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 23:55. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6822,7 +6829,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-27 23:40 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-27 23:55 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6858,7 +6865,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-27 23:40')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-27 23:55')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
