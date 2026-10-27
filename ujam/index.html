@@ -1907,14 +1907,14 @@ E.genHook = function (song, type, ctx, seed) {
     const pcs = E.chordPcs(c), tones = []; for (let p = lo; p <= hi + 5; p++) if (pcs.includes(((p % 12) + 12) % 12)) tones.push(p);
     if (!tones.length) continue;
     const ai = nearestIdx(tones, prev != null ? prev : centre), last = b === L - 1, answer = b % 2 === 1;
-    let cl = cell.slice(); if (last) cl = cl.filter((s) => s < 10).concat([10]);
+    let cl = cell.slice(); if (answer) { cl = cl.filter((s) => s < 7); if (!cl.length) cl = [0]; } // bars 2 and 4 hold after their first half: the answer replies in the room that leaves
     if (slow) cl = cl.filter((s, k) => k % 2 === 0);
     cl.forEach((s, k) => {
       let role = shape[k % shape.length]; if (answer && k >= cl.length - 2) role += 1;
       let p = tones[clamp(ai + role, 0, tones.length - 1)];
       if (last && k === cl.length - 1) p = pitchNear(c.root, tones[ai]);
       const nx = k + 1 < cl.length ? cl[k + 1] : N;
-      notes.push({ s: b * N + s, d: last && k === cl.length - 1 ? N - s : Math.max(1, nx - s), p: clamp(p, lo - 2, hi + 5), v: clamp(Math.round(92 + (s === 0 ? 10 : s % 4 ? 4 : 0) + energy * 10 - (slow ? 12 : 0)), 50, 124) });
+      notes.push({ s: b * N + s, d: answer && k === cl.length - 1 ? Math.max(2, 8 - s) : Math.max(1, nx - s), p: clamp(p, lo - 2, hi + 5), v: clamp(Math.round(92 + (s === 0 ? 10 : s % 4 ? 4 : 0) + energy * 10 - (slow ? 12 : 0)), 50, 124) });
     });
     prev = tones[ai];
   }
@@ -3675,7 +3675,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 21:50)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 22:00)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5733,7 +5733,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 21:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-27 22:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
