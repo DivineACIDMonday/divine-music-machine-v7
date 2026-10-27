@@ -481,7 +481,7 @@ Object.assign(E.GENRES, {
     progs: { verse: [[0, 0, 0, 0], [0, 0, 6, 6], [0, 0, 5, 5]], chorus: [[0, 0, 0, 0], [0, 6, 0, 6], [0, 0, 3, 3]] } },
   trance: { name: 'Trance', bpm: [132, 140], def: 136, swing: 50, mode: 'minor', L: 4, sevenths: 0.1, melScale: 'scale', mel: { density: 0.5, len: 2.4, range: [64, 84] }, chordRhythm: 'arp', bass: 'rolling',
     sections: [['intro', 16], ['verse', 16], ['build', 8], ['chorus', 16], ['break', 16], ['build', 16], ['chorus', 16], ['outro', 8]],
-    progs: { verse: [[0, 5, 2, 6], [0, 6, 5, 6], [5, 3, 0, 4], [0, 3, 5, 6]], chorus: [[5, 3, 0, 6], [0, 5, 3, 6], [5, 6, 0, 0]] } },
+    progs: { verse: [[0, 5, 2, 6], [0, 6, 5, 6], [5, 3, 0, 4], [0, 3, 5, 6], [0, 2, 5, 6], [0, 4, 5, 3], [3, 5, 0, 6], [5, 6, 0, 4]], chorus: [[5, 3, 0, 6], [0, 5, 3, 6], [5, 6, 0, 0], [0, 5, 3, 4], [3, 5, 0, 6], [5, 2, 3, 0], [0, 6, 3, 4], [5, 6, 4, 0]] } },
   eurodance: { name: 'Eurodance', bpm: [126, 140], def: 132, swing: 50, mode: 'minor', L: 4, sevenths: 0.1, melScale: 'scale', mel: { density: 0.65, len: 1.4, range: [64, 81] }, chordRhythm: 'stab', bass: 'euro',
     sections: [['intro', 8], ['verse', 16], ['prechorus', 8], ['chorus', 16], ['verse', 16], ['prechorus', 8], ['chorus', 16], ['break', 8], ['chorus', 16], ['outro', 8]],
     progs: { verse: [[0, 5, 6, 4], [0, 6, 5, 6], [0, 3, 6, 4]], chorus: [[0, 5, 2, 6], [5, 6, 0, 0], [0, 6, 5, 4]] } },
@@ -1587,8 +1587,9 @@ E.hookOf = (song) => !!song.arr && E.meter(song).steps === 16 && song.L === 4 &&
 E.genHook = function (song, type, ctx, seed) {
   const g = E.GENRES[song.genre], N = 16, L = song.L, [lo, hi] = g.mel.range, chords = ctx.chords, energy = E.TYPES[type].energy;
   const R = rng(hash(song.seed, 'hooktheme'));
-  const cell = R.pick([[0, 3, 6, 8, 10, 12, 14], [0, 3, 6, 10, 12], [0, 2, 3, 6, 8, 11, 12, 14], [0, 4, 6, 8, 12, 14], [0, 3, 6, 9, 12, 14], [0, 2, 4, 6, 7, 10, 12]]);
-  const shape = R.pick([[1, 0, 1, 2, 1, 0, -1, 0], [-1, 0, 1, 2, 1, 0, 1, -1], [1, 1, 2, 1, 0, 0, -1, 1], [2, 1, 0, 1, 2, 1, 0, -1], [-1, 1, 0, 2, 1, -1, 0, 1], [1, -1, 1, 0, 1, -1, 2, 1]]);
+  const cell = []; for (let tries = 0; tries < 8 && cell.length < 4; tries++) { cell.length = 0; let x = 0; while (x < 16) { cell.push(x); x += R.pick([2, 2, 3, 3, 3, 4, 1, 2]); } } // the rhythm: groups of 2, 3 and 4 sixteenths, every song its own
+  const shape = []; { let rr = R.pick([-1, 0, 1, 2]); for (let k = 0; k < cell.length; k++) { shape.push(rr); rr = clamp(rr + R.pick([-1, -1, 1, 1, 0, 2, -2]), -2, 3); } } // the line: a walk over the chord tones
+  const scaleP = melodyScale(song), pass = rng(hash(song.seed, 'hookpass'));
   const slow = type === 'break' || type === 'intro' || type === 'outro', centre = (lo + hi) / 2 + 2;
   const notes = []; let prev = null;
   for (let b = 0; b < L; b++) {
@@ -1602,12 +1603,41 @@ E.genHook = function (song, type, ctx, seed) {
       let role = shape[k % shape.length]; if (answer && k >= cl.length - 2) role += 1;
       let p = tones[clamp(ai + role, 0, tones.length - 1)];
       if (last && k === cl.length - 1) p = pitchNear(c.root, tones[ai]);
+      else if (s % 4 && pass.chance(0.25)) { const dir = pass.chance(0.5) ? 1 : -1; for (let q = p + dir; Math.abs(q - p) <= 2; q += dir) if (scaleP.includes(((q % 12) + 12) % 12)) { p = q; break; } } // a passing note between the chord tones
       const nx = k + 1 < cl.length ? cl[k + 1] : N;
       notes.push({ s: b * N + s, d: answer && k === cl.length - 1 ? Math.max(2, 8 - s) : Math.max(1, nx - s), p: clamp(p, lo - 2, hi + 5), v: clamp(Math.round(92 + (s === 0 ? 10 : s % 4 ? 4 : 0) + energy * 10 - (slow ? 12 : 0)), 50, 124) });
     });
     prev = tones[ai];
   }
   return { notes: dedupeMono(E.flow(song, 'melody', notes)) };
+};
+// every New is new: a song's fingerprint (the start of its melody and its chords, relative to the key) is kept for the last 30 songs
+// made in this browser; a new song that sounds like one of them is rolled again
+E.fingerprint = function (song) {
+  const S = song.sections; let si = S.findIndex((x) => x.type === 'chorus' || x.type === 'drop'); if (si < 0) si = S.findIndex((x) => x.type === 'verse'); if (si < 0) si = 0;
+  const BT = E.barTicks(song), b0 = S.slice(0, si).reduce((a, x) => a + x.bars, 0) * BT, b1 = b0 + Math.min(4, S[si].bars) * BT, rel = (p) => (((p - song.key.root) % 12) + 12) % 12;
+  const mel = E.renderSong(song, 'melody', { polished: true }).filter((n) => n.t >= b0 && n.t < b1).sort((a, b) => a.t - b.t).slice(0, 16).map((n) => rel(n.p) + ':' + Math.round(((n.t - b0) % BT) / E.STEP));
+  const ch = []; E.renderSong(song, 'chords', { polished: true }).forEach((n) => { if (n.t < b0 || n.t >= b1) return; const b = Math.floor((n.t - b0) / BT); ch[b] = ch[b] == null ? n.p : Math.min(ch[b], n.p); });
+  return { g: song.genre, mel, ch: ch.map((p) => (p == null ? '-' : rel(p))).join(',') };
+};
+E.fpSimilar = function (a, b) {
+  if (!a || !b || a.g !== b.g) return false;
+  const n = Math.max(a.mel.length, b.mel.length); if (!n) return a.ch === b.ch && !!a.ch;
+  let same = 0; for (let i = 0; i < n; i++) if (a.mel[i] && a.mel[i] === b.mel[i]) same++;
+  const o = same / n; return o >= 0.6 || a.ch === b.ch && o >= 0.35;
+};
+E.freshSong = function (genre, opts) {
+  let recent = []; try { recent = JSON.parse(localStorage.getItem('dmm-recent-songs') || '[]') || []; } catch (e) { recent = []; }
+  let pick = null;
+  for (let k = 0; k < 12; k++) {
+    const sg = E.newSong(genre, opts); let fp = null;
+    try { fp = E.fingerprint(sg); } catch (e) { return sg; }
+    if (!pick) pick = { sg, fp };
+    if (!recent.some((r) => E.fpSimilar(r, fp))) { pick = { sg, fp }; break; }
+  }
+  recent.push(pick.fp); recent = recent.slice(-30);
+  try { localStorage.setItem('dmm-recent-songs', JSON.stringify(recent)); } catch (e) {}
+  return pick.sg;
 };
 // how many times this kind of section came before: a chorus or drop that comes back grows
 E.occOf = (song, si) => song.sections.slice(0, si).filter((x) => x.type === song.sections[si].type).length;
@@ -3602,7 +3632,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 22:00)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-27 22:20)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5247,7 +5277,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-27 22:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-27 22:20. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
