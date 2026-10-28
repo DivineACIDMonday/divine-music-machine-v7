@@ -2144,7 +2144,7 @@ E.streamOf = (song) => E.streamK(song) > 0;
 // soft and even: the loud and the soft move toward the middle
 E.STREAM_MID = { melody: 74, answer: 64, bass: 80, chords: 64, pad: 60 };
 E.streamCalm = function (song, part, notes) {
-  const k = E.streamK(song), mid = E.STREAM_MID[part]; if (!k || !mid || !Array.isArray(notes)) return notes;
+  const k = E.streamK(song), mid = E.beachOf(song) ? { melody: 70, answer: 60, bass: 70, chords: 56, pad: 56 }[part] : E.STREAM_MID[part]; if (!k || !mid || !Array.isArray(notes)) return notes;
   const cap = Math.round(108 - 20 * k);
   return notes.map((n) => Object.assign({}, n, { v: clamp(Math.round(mid + (n.v - mid) * (1 - 0.6 * k)), 18, cap) }));
 };
@@ -2156,6 +2156,33 @@ E.streamChords = function (notes, BT) {
   const kept = []; groups.forEach((g) => { const last = kept[kept.length - 1]; if (last && key(last) === key(g)) return; kept.push(g); });
   const out = []; kept.forEach((g, i) => { const end = i + 1 < kept.length ? kept[i + 1].t : BT; g.ns.forEach((n) => out.push(Object.assign({}, n, { d: Math.max(n.d, g.ns.length === 1 ? Math.min(BT - g.t, BT / 2) : 0, end - g.t - 10) }))); });
   return out;
+};
+// the beach: soft waves roll up the sand and roll all the way out. Never the same wave twice
+E.BEACH = { chillout: 1 };
+E.beachOf = (song) => !!song.arr && !!E.BEACH[song.genre];
+// the bass: one long round note that arrives a little late or right on time, and sometimes, not always, rolls on to a second note
+E.beachBass = function (song, chord, next, BT, r) {
+  const S = E.STEP, root = pitchNear(chord.root, 38), pcs = E.chordPcs(chord), v = 62 + r.int(12), out = [];
+  const t0 = r.chance(0.3) ? Math.round(S * (0.5 + r() * 1.5)) : 0; // the wave arrives when it arrives
+  const roll = r();
+  if (roll < 0.5) out.push({ t: t0, d: BT - t0 - 20, p: root, v });
+  else {
+    const at = Math.round(S * (8 + r.int(6)) + (r.chance(0.5) ? S / 2 : 0)), opts = [];
+    pcs.forEach((pc) => { if (pc !== chord.root % 12) opts.push(pitchNear(pc, root + 5)); });
+    opts.push(root + 12); if (next) opts.push(pitchNear(next.root, root) + (r.chance(0.5) ? -1 : 1)); // a fifth, an octave, a colour of the chord, or a step toward the next
+    const p2 = clamp(opts[r.int(opts.length)], 28, 52);
+    out.push({ t: t0, d: at - t0 - 15, p: root, v }); out.push({ t: at, d: BT - at - 20, p: p2, v: Math.max(40, v - 8 - r.int(8)) });
+  }
+  return out;
+};
+// the chords: one wave, rolled softly from low to high, held until the bar runs out
+E.beachChords = function (song, chord, again, BT, r) {
+  const S = E.STEP, pcs = E.chordPcs(chord), ps = []; let p = 55; while (!pcs.includes(((p % 12) + 12) % 12)) p++;
+  while (ps.length < 4 && p <= 76) { if (pcs.includes(((p % 12) + 12) % 12)) ps.push(p); p++; }
+  if (r.chance(0.35)) { const nine = pitchNear((chord.root + 2) % 12, 72); if (!ps.includes(nine) && nine <= 79) ps.push(nine); } // now and then the colour of a ninth
+  const use = again && r.chance(0.4) ? ps.slice(-2) : ps; // the same chord again: sometimes only a ripple on top
+  const t0 = r.chance(0.35) ? Math.round(S * r()) : 0, step = Math.round(S * (0.12 + r() * 0.3)), base = (again ? 44 : 52) + r.int(10);
+  return use.map((q, i) => { const t = t0 + i * step; return { t, d: BT - t - 15, p: q, v: base + i * 2 + r.int(4) }; });
 };
 // how many times this kind of section came before: a chorus or drop that comes back grows
 E.occOf = (song, si) => song.sections.slice(0, si).filter((x) => x.type === song.sections[si].type).length;
@@ -2645,7 +2672,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     }
     if (E.kitOf(song) && (machine || !lanes.slice(8).some((l) => l && l.some((v) => v > 0)))) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
     if (mach && A.beatLanes) lanes.forEach((l, li) => { if (!A.beatLanes.includes(li) && li !== CR) l.fill(0); }); // a quiet verse plays only the bones of the beat
-    if (machine && E.streamOf(song)) { const k = E.streamK(song); [[HH, 0.35], [OH, 0.3], [K, 0.15], [SN, 0.2], [CP, 0.2]].forEach(([li, a]) => { if (lanes[li]) lanes[li] = lanes[li].map((v) => v ? Math.max(12, Math.round(v * (1 - a * k))) : 0); }); if (k >= 0.8 && N === 16 && lanes[HH]) for (let s = 1; s < N; s += 2) lanes[HH][s] = 0; } // the stream: the beat carries, it does not push
+    if (machine && E.streamOf(song)) { const k = E.streamK(song); [[HH, 0.35], [OH, 0.3], [K, 0.15], [SN, 0.2], [CP, 0.2]].forEach(([li, a]) => { if (lanes[li]) lanes[li] = lanes[li].map((v) => v ? Math.max(12, Math.round(v * (1 - a * k))) : 0); }); if (k >= 0.8 && N === 16 && lanes[HH]) for (let s = 1; s < N; s += 2) lanes[HH][s] = 0; if (E.beachOf(song) && N === 16) { const rk = rng(hash(song.seed, 'beachkick', si, inBar)), keep3 = rk.chance(0.55); if (lanes[K]) lanes[K] = lanes[K].map((v, s) => s === 0 || s === 8 && keep3 ? v : 0); if (lanes[K2]) lanes[K2].fill(0); [[HH, 0.8], [OH, 0.7], [SN, 0.75], [CP, 0.75], [PC, 0.8]].forEach(([li, a]) => { if (lanes[li]) lanes[li] = lanes[li].map((v) => v ? Math.max(10, Math.round(v * a)) : 0); }); } } // the stream: the beat carries, it does not push
     if (machine && type === 'break' && E.trainOf(song) && N === 16 && lanes[HH] && !lanes[HH].some(Boolean)) for (let s = 2; s < N; s += 4) lanes[HH][s] = 34 + ((s * 7 + inBar) % 10); // the wheels keep turning in the break, softly
     E.laneFxApply(song, sec, inBar, lanes, N);
     if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
@@ -2706,6 +2733,11 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (mach && part !== 'beat' && notes.length && E.streamOf(song) && !E.trainOf(song)) notes = E.trainFade(song, si, sec, inBar, part, notes);
   if (mach && part !== 'beat' && notes.length && E.trainOf(song)) { notes = E.trainFade(song, si, sec, inBar, part, notes); if (part === 'bass' && type === 'break') notes = notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.75) })); }
   if (part === 'bass' && !bo && !lastBar && notes.length) notes = E.bassGuard(song, si, notes, res(si).ctxChords && res(si).ctxChords.bars[lb], N, BT); // the bass stays the foundation, whatever varies on top
+  if (mach && E.beachOf(song) && (part === 'bass' || part === 'chords') && notes.length && res(si).ctxChords) { // the beach: waves, not patterns
+    const cb = res(si).ctxChords.bars, ch = cb[lb], rb = rng(hash(song.seed, 'beach', part, si, inBar));
+    if (ch) notes = part === 'bass' ? E.beachBass(song, ch, cb[(lb + 1) % song.L], BT, rb) : E.beachChords(song, ch, inBar > 0 && cb[(lb + song.L - 1) % song.L] && cb[(lb + song.L - 1) % song.L].root === ch.root && cb[(lb + song.L - 1) % song.L].q === ch.q, BT, rb);
+  }
+  if (mach && E.beachOf(song) && part !== 'beat' && notes.length) { const br = rng(hash(song.seed, 'breath', si)), len = 2 + br.int(3), ph = br() * Math.PI, g = 0.9 + 0.1 * Math.sin(ph + Math.PI * 2 * inBar / len); notes = notes.map((n) => Object.assign({}, n, { v: clamp(Math.round(n.v * g), 16, 127) })); } // everything breathes together, a slow uneven breath
   if (song.genre === 'divine' && part !== 'beat' && part !== 'pad' && !bo) notes = notes.map((n) => Object.assign({}, n, { v: Math.min(127, Math.round(n.v * 1.12 + 4)) })); // Divine Monday plays with a bit more bite
   if (part === 'pad' && song.genre === 'divine' && !bo && !lastBar && song.parts.pad.mode !== 'off' && !(E.partIsOff && E.partIsOff(sec, inBar, part))) notes = notes.concat(E.lightC(song, inBar, res(si).ctxChords && res(si).ctxChords.bars[lb], si));
   const felt = E.applyFeel(song, part, notes, gbar, opts);
@@ -3944,7 +3976,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 03:40)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 04:00)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -6002,7 +6034,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 03:40. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 04:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6863,7 +6895,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-28 03:40 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-28 04:00 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -6899,7 +6931,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-28 03:40')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-28 04:00')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
