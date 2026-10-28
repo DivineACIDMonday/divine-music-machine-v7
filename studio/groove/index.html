@@ -37,7 +37,7 @@ button:focus-visible,a:focus-visible{outline:3px solid #5b4bd6;outline-offset:2p
 .secs{display:flex;flex-direction:column;gap:6px}
 .sec{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--bg);border:none;text-align:left;width:100%}
 .sec i{width:8px;height:26px;border-radius:4px;flex:none}.sec span{flex:1;font-size:15px;font-weight:600}.sec small{font-size:13px;color:var(--faint)}
-.sec.on{background:var(--ink);color:var(--onink)}.sec.on small{color:var(--onink);opacity:.7}
+.sec.on{background:color-mix(in srgb,var(--accent) 16%,var(--card));color:var(--ink);box-shadow:inset 0 0 0 2px var(--accent)}.sec.on small{color:var(--soft)}
 .part{background:var(--card);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
 .prow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.prow .dot{width:12px;height:12px;border-radius:50%;flex:none}.prow .nm{flex:1;font-weight:600}
 .mode{display:flex;background:var(--bg);border-radius:10px;padding:3px}
@@ -71,7 +71,7 @@ foot{display:block}
 .bpm{display:inline-flex;align-items:center;gap:4px;height:44px;padding:0 6px;border:1px solid var(--line);border-radius:12px;background:var(--card)}.bpm button{width:30px;height:30px;border:none;border-radius:8px;background:var(--bg);color:var(--ink);font-size:17px;cursor:pointer;padding:0}.bpm input{width:44px;border:none;background:transparent;color:var(--ink);font:700 16px Inter,system-ui,sans-serif;text-align:center;-moz-appearance:textfield}.bpm input::-webkit-inner-spin-button,.bpm input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.bpm span{font-size:13px;color:var(--soft);margin-right:4px}
 .ksel select{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:13px;padding:2px 8px;border-radius:8px;margin:0 2px}
 .gsel{margin-top:6px;position:relative;display:inline-block}.gsel select{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid transparent;background:transparent;font-size:22px;font-weight:700;padding:2px 30px 2px 12px;border-radius:12px;text-align:center}.gsel select:hover,.gsel select:focus{border-color:var(--line);background:var(--bg)}.gsel::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--soft);pointer-events:none}.gsel option{font-size:15px;font-weight:500}
-.secs{position:relative}.sec .grip{cursor:grab;touch-action:none;user-select:none;color:var(--faint);font-size:16px;padding:4px 2px;margin:-4px 0;flex:none}.sec.dragging{position:relative;z-index:5;opacity:.85;box-shadow:0 8px 24px rgba(0,0,0,.4)}.dropmark{position:absolute;left:0;right:0;height:3px;border-radius:2px;background:var(--accent);pointer-events:none}div.sec{cursor:pointer}.sec.on{flex-wrap:wrap;cursor:default}.sec.on .stype{flex:1;min-width:0;font:600 15px Inter,system-ui,sans-serif;border:1px solid transparent;border-radius:8px;padding:3px 6px;background:transparent;color:var(--onink)}.sec.on .stype:hover,.sec.on .stype:focus{border-color:currentColor}.sec.on .stype option{color:var(--ink);background:var(--card)}.sec.on .del{width:30px;height:30px;border:none;border-radius:8px;background:transparent;cursor:pointer;font-size:15px;padding:0}.sec.on .del:disabled{opacity:.3}.sec.on .bctl{flex:0 0 100%;justify-content:flex-end;margin-top:6px}.addsec{height:40px;font-size:14px;margin-top:4px;border-style:dashed}
+.secs{position:relative}.sec .grip{cursor:grab;touch-action:none;user-select:none;color:var(--faint);font-size:16px;padding:4px 2px;margin:-4px 0;flex:none}.sec.dragging{position:relative;z-index:5;opacity:.85;box-shadow:0 8px 24px rgba(0,0,0,.4)}.dropmark{position:absolute;left:0;right:0;height:3px;border-radius:2px;background:var(--accent);pointer-events:none}div.sec{cursor:pointer}.sec.on{flex-wrap:wrap;cursor:default}.sec.on .stype{flex:1;min-width:0;font:600 15px Inter,system-ui,sans-serif;border:1px solid transparent;border-radius:8px;padding:3px 6px;background:transparent;color:var(--ink)}.sec.on .stype:hover,.sec.on .stype:focus{border-color:currentColor}.sec.on .stype option{color:var(--ink);background:var(--card)}.sec.on .del{width:30px;height:30px;border:none;border-radius:8px;background:transparent;cursor:pointer;font-size:15px;padding:0}.sec.on .del:disabled{opacity:.3}.sec.on .bctl{flex:0 0 100%;justify-content:flex-end;margin-top:6px}.addsec{height:40px;font-size:14px;margin-top:4px;border-style:dashed}
 .sec .bctl{flex:none;display:inline-flex;align-items:center;gap:6px;margin-left:auto}.bctl button{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:17px;line-height:1;cursor:pointer;padding:0}.bctl button:disabled{opacity:.35;cursor:default}.bctl small{min-width:54px;text-align:center}
 @media (max-width:600px){.stage{min-height:300px}.prow .strip{order:9;flex:0 0 100%!important}.prow .strip button{height:28px!important}.tip{left:12px!important;right:12px!important;bottom:12px!important;width:auto!important}}
 .tip{position:fixed;left:20px;bottom:20px;width:340px;z-index:50;background:var(--card);color:var(--ink);border:1px solid var(--line, var(--track));border-radius:18px;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:14px;line-height:1.45}
@@ -80,7 +80,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 00:40</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 00:45</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3372,7 +3372,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 00:40';
+const VERSION = '2026-10-29 00:45';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
