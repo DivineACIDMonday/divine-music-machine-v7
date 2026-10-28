@@ -75,7 +75,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 22:30</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 22:45</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3367,7 +3367,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 22:30';
+const VERSION = '2026-10-28 22:45';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3494,7 +3494,7 @@ const RIP = { list: [], raf: 0, calm: window.matchMedia && window.matchMedia('(p
 const RIP_LIFE = { beat: 1.3, bass: 2.2, chords: 3.2, pad: 3.8, melody: 1.6, answer: 1.6 };
 const RIP_REACH = { kick: 1, snare: 0.82, bass: 0.92, chords: 1, pad: 1, melody: 0.74, answer: 0.5 };
 function addRipple(part, t, v, lane) {
-  if (RIP.calm) return; if (st.mode === 'get') { rainDrop(part, lane, t, v); return; }
+  if (RIP.calm) return; if ((st.mode === 'get' || st.mode === 'edit')) { rainDrop(part, lane, t, v); return; }
   if (part === 'chords' || part === 'pad') { const last = RIP.lastWave && RIP.lastWave[part]; const bar = barSec(song()); if (last != null && t - last < bar * 0.9 && t >= last) return; RIP.lastWave = Object.assign({}, RIP.lastWave, { [part]: t }); }
   const kind = part === 'beat' ? (lane <= 1 ? 'kick' : 'snare') : part;
   // every drop lands somewhere of its own: the kick in the middle, the others around it
@@ -3849,9 +3849,9 @@ function openSongFile() { const inp = h('input', { type: 'file', accept: '.json,
 
 /* ---------- screen D: get it, with a preview ---------- */
 const RAIN = { list: [], raf: 0 };
-function rainDrop(part, lane, t, v) { if (RIP.calm || st.mode !== 'get') return; RAIN.list.push({ part, lane, t, v, x: 0.04 + Math.random() * 0.92, life: 2.4 + Math.random() * 1.6 }); if (RAIN.list.length > 160) RAIN.list.splice(0, RAIN.list.length - 160); if (!RAIN.raf) RAIN.raf = requestAnimationFrame(drawRain); }
+function rainDrop(part, lane, t, v) { if (RIP.calm || !(st.mode === 'get' || st.mode === 'edit')) return; RAIN.list.push({ part, lane, t, v, x: 0.04 + Math.random() * 0.92, life: 2.4 + Math.random() * 1.6 }); if (RAIN.list.length > 160) RAIN.list.splice(0, RAIN.list.length - 160); if (!RAIN.raf) RAIN.raf = requestAnimationFrame(drawRain); }
 function drawRain() {
-  RAIN.raf = 0; let cv = $('canvas.rain'); if (st.mode !== 'get' || !AU.ctx) { if (cv) cv.remove(); return; }
+  RAIN.raf = 0; let cv = $('canvas.rain'); if (!(st.mode === 'get' || st.mode === 'edit') || !AU.ctx) { if (cv) cv.remove(); return; }
   if (!cv) { cv = h('canvas', { class: 'rain', 'aria-hidden': 'true', style: 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:0' }); document.body.prepend(cv); }
   const dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight; if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); const now = AU.ctx.currentTime;
@@ -3884,7 +3884,7 @@ function renderGet() {
     h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, GROOVE ? 'Plus a Structure file with every section as a marker. Pick your drum plugin and the hits land on the right keys of that plugin.' : 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
 }
 
-function render() { grooveOnly(song()); setTimeout(showTip, 0); document.body.classList.toggle('getmode', st.mode === 'get'); renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } if (st.mode === 'get') { renderGet(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
+function render() { grooveOnly(song()); setTimeout(showTip, 0); document.body.classList.toggle('getmode', (st.mode === 'get' || st.mode === 'edit')); renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } if (st.mode === 'get') { renderGet(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
 
 
 /* ---------- first time tips: one card per screen, once ---------- */
