@@ -80,7 +80,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 00:45</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 00:50</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3372,7 +3372,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 00:45';
+const VERSION = '2026-10-29 00:50';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3414,7 +3414,7 @@ function makeSong(genre) {
   stopAll();
   const sg = D.freshSong(genre, { name: 'Untitled' });
   sg.raw = VARIATION.gentle; sg.studioVar = 'gentle'; for (const p of PARTS) { const k = store.get(KP + 'plug-' + p, null); if (k && D.pluginsFor(p).includes(k)) sg.parts[p].plugin = k; }
-  st.song = sg; st.hist = []; st.fut = []; st.sec = Math.max(0, sg.sections.findIndex((x) => x.type === 'verse' || x.type === 'chorus' || x.type === 'drop'));
+  st.song = sg; st.hist = []; st.fut = []; st.sec = 0;
   count('new/' + genre); save(); closeStart(); render();
 }
 function newSongSame() { const sg = song(); const parts = PARTS.filter((p) => sg.parts[p].mode === 'machine'); if (!parts.length) { toast('Every part is DIY or off, so the dice leave them as they are.'); return; } change(() => { for (const p of parts) sg.parts[p].seed = D.newSeed(); }); toast('New ideas for every Machine part. DIY parts stayed.', { label: 'Undo', fn: undo }); }

@@ -128,7 +128,7 @@ function makeSong(genre) {
   stopAll();
   const sg = D.freshSong(genre, { name: 'Untitled' });
   sg.raw = VARIATION.gentle; sg.studioVar = 'gentle'; for (const p of PARTS) { const k = store.get(KP + 'plug-' + p, null); if (k && D.pluginsFor(p).includes(k)) sg.parts[p].plugin = k; }
-  st.song = sg; st.hist = []; st.fut = []; st.sec = Math.max(0, sg.sections.findIndex((x) => x.type === 'verse' || x.type === 'chorus' || x.type === 'drop'));
+  st.song = sg; st.hist = []; st.fut = []; st.sec = 0;
   count('new/' + genre); save(); closeStart(); render();
 }
 function newSongSame() { const sg = song(); const parts = PARTS.filter((p) => sg.parts[p].mode === 'machine'); if (!parts.length) { toast('Every part is DIY or off, so the dice leave them as they are.'); return; } change(() => { for (const p of parts) sg.parts[p].seed = D.newSeed(); }); toast('New ideas for every Machine part. DIY parts stayed.', { label: 'Undo', fn: undo }); }
