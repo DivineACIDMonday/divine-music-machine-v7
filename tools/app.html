@@ -7,7 +7,7 @@
 <style>
 :root{--bg:#F4F3F8;--card:#fff;--ink:#1E1D2B;--soft:#5E5A72;--faint:#6B6780;--line:#E4E2EC;--mute:#EDEBF5;--accent:#E8836B;
 --beat:#E8836B;--bass:#8E7CF0;--chords:#4FB7A3;--pad:#6FA8DC;--melody:#E07BB0;--answer:#E2B04A;
---onink:#fff;--chip:#fff;--track:#F1EFF7;--dotc:#CFCBDD;--warnbg:#FBF3E1;--warnfg:#6A4A06;--intro:#B9B4CC;--verse:#8E7CF0;--prechorus:#A99BF5;--chorus:#E8836B;--drop:#E8836B;--break:#6FA8DC;--build:#E2B04A;--fill:#CFCBDD;--outro:#B9B4CC}
+--onink:#fff;--chip:#fff;--track:#F1EFF7;--dotc:#CFCBDD;--warnbg:#FBF3E1;--warnfg:#6A4A06;--l0:#E8836B;--l1:#F0A27A;--l2:#E2B04A;--l3:#E07BB0;--l4:#4FB7A3;--l5:#6FA8DC;--l6:#8E7CF0;--l7:#B7B1D6;--intro:#B9B4CC;--verse:#8E7CF0;--prechorus:#A99BF5;--chorus:#E8836B;--drop:#E8836B;--break:#6FA8DC;--build:#E2B04A;--fill:#CFCBDD;--outro:#B9B4CC}
 :root[data-theme="dark"]{--bg:#101219;--card:#191B26;--ink:#ECEAF5;--soft:#ABA7BF;--faint:#9692AC;--line:#2C2F40;--mute:#262938;--onink:#14151E;--chip:#2E3144;--track:#232636;--dotc:#454960;--warnbg:#3A2F14;--warnfg:#F2D493;--intro:#6E6A85;--outro:#6E6A85;--fill:#4A4D63}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
@@ -219,8 +219,8 @@ function drawRipples() {
   const live = RIP.list.filter((r) => r.t <= now).length, budget = Math.min(1, Math.sqrt(7 / Math.max(7, live)));
   for (const r of RIP.list) { const k = (now - r.t) / RIP_LIFE[r.part]; if (k < 0) continue; const e = 1 - Math.pow(1 - k, 2.2), rad = r0 + (rMax * r.reach - r0) * e, wave = r.part === 'chords' || r.part === 'pad';
     const a = budget * (wave ? 0.17 : 0.26) * (0.45 + 0.55 * r.v / 127) * Math.pow(1 - k, 1.6), lw = wave ? 3.2 : r.kind === 'kick' || r.part === 'bass' ? 2.4 : 1.6, cx = W / 2 + (st.view === 'drops' ? r.ox * M : 0), cy = (st.view === 'drops' ? H / 2 + r.oy * M : (STAGEC.y || H / 2));
-    const shp = r.part === 'beat' ? LANE_SHAPE[r.lane] || 'circle' : 'circle'; g.strokeStyle = cssv('--' + r.part); g.globalAlpha = a * 0.3; g.lineWidth = lw * 4; ripPath(g, shp, cx, cy, rad); g.stroke(); g.globalAlpha = a; g.lineWidth = lw; ripPath(g, shp, cx, cy, rad); g.stroke();
-    if (k < 0.12) { g.globalAlpha = (1 - k / 0.12) * 0.9; g.fillStyle = cssv('--' + r.part); g.beginPath(); g.arc(cx, cy, wave ? 7 : 5, 0, Math.PI * 2); g.fill(); } }
+    const shp = r.part === 'beat' ? LANE_SHAPE[r.lane] || 'circle' : 'circle'; g.strokeStyle = r.part === 'beat' ? cssv('--l' + Math.min(7, r.lane || 0)) : cssv('--' + r.part); g.globalAlpha = a * 0.3; g.lineWidth = lw * 4; ripPath(g, shp, cx, cy, rad); g.stroke(); g.globalAlpha = a; g.lineWidth = lw; ripPath(g, shp, cx, cy, rad); g.stroke();
+    if (k < 0.12) { g.globalAlpha = (1 - k / 0.12) * 0.9; g.fillStyle = r.part === 'beat' ? cssv('--l' + Math.min(7, r.lane || 0)) : cssv('--' + r.part); g.beginPath(); g.arc(cx, cy, wave ? 7 : 5, 0, Math.PI * 2); g.fill(); } }
   g.globalAlpha = 1; if (RIP.list.length || AU.playing) RIP.raf = requestAnimationFrame(drawRipples);
 }
 
@@ -256,7 +256,7 @@ function stageCircle(bar) {
   const sg = song(), N = D.meter(sg).steps, BT = D.barTicks(sg), notes = barNotes(bar), sv = s('svg', { viewBox: '0 0 400 400', width: 420, height: 420, role: 'img', 'aria-label': 'Circle: the bar as a ring, every part on its own ring' });
   PARTS.forEach((p, k) => { const r = 180 - k * 26; sv.append(s('circle', { cx: 200, cy: 200, r, fill: 'none', stroke: cssv('--track'), 'stroke-width': 18 }));
     for (let i = 0; i < N; i++) { const a = -Math.PI / 2 + i / N * Math.PI * 2; sv.append(s('circle', { cx: 200 + r * Math.cos(a), cy: 200 + r * Math.sin(a), r: 2, fill: cssv('--dotc') })); }
-    notes[p].forEach((n) => { const a = -Math.PI / 2 + Math.max(0, n.t) / BT * Math.PI * 2, x = 200 + r * Math.cos(a), y = 200 + r * Math.sin(a), rr = 4 + 6 * n.v / 127; if (p === 'beat') sv.append(shapeSvg(LANE_SHAPE[n.lane] || 'dot', x, y, rr, { fill: cssv('--beat') })); else { const len = Math.min(Math.PI * 1.8, Math.max(0.001, n.d / BT * Math.PI * 2)); sv.append(s('path', { d: arc(200, 200, r, a, a + len), fill: 'none', stroke: cssv('--' + p), 'stroke-width': (5 + 7 * n.v / 127).toFixed(1), 'stroke-linecap': 'round' })); } }); });
+    notes[p].forEach((n) => { const a = -Math.PI / 2 + Math.max(0, n.t) / BT * Math.PI * 2, x = 200 + r * Math.cos(a), y = 200 + r * Math.sin(a), rr = 4 + 6 * n.v / 127; if (p === 'beat') sv.append(shapeSvg(LANE_SHAPE[n.lane] || 'dot', x, y, rr, { fill: cssv('--l' + Math.min(7, n.lane)) })); else { const len = Math.min(Math.PI * 1.8, Math.max(0.001, n.d / BT * Math.PI * 2)); sv.append(s('path', { d: arc(200, 200, r, a, a + len), fill: 'none', stroke: cssv('--' + p), 'stroke-width': (5 + 7 * n.v / 127).toFixed(1), 'stroke-linecap': 'round' })); } }); });
   sv.append(s('line', { x1: 200, y1: 200, x2: 200, y2: 10, stroke: cssv('--ink'), 'stroke-width': 2, id: 'stageHead', 'data-kind': 'circle', opacity: AU.playing ? 0.85 : 0 }));
   return sv;
 }
@@ -413,6 +413,17 @@ function tapNote(step, pitch) {
     if (hit >= 0) d.notes.splice(hit, 1); else { if (p === 'bass') d.notes = d.notes.filter((n) => n.s !== s0); d.notes.push({ s: s0, d: Math.min(DEF_LEN[p] || 2, N - step), p: pitch, v: 96 }); d.notes.sort((x, y) => x.s - y.s); } });
   previewNote(p, pitch);
 }
+function dragStart(e, t) {
+  e.preventDefault(); const sx = e.clientX, sy = e.clientY, el = window;
+  st.drag = Object.assign({}, t, { moved: false, nv: t.v, nd: t.d });
+  const move = (m) => { const dx = m.clientX - sx, dy = sy - m.clientY; if (!st.drag) return; if (!st.drag.moved && Math.abs(dx) < 5 && Math.abs(dy) < 5) return; if (!t.v) return; st.drag.moved = true; st.drag.nv = D.clamp(Math.round(t.v + dy * 1.2), 15, 127); if (t.kind === 'note') st.drag.nd = Math.max(1, t.d + Math.round(dx / 38)); redrawGrid(); };
+  const up = () => { el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); const g = st.drag; st.drag = null; if (!g) return;
+    if (!g.moved) { if (g.kind === 'beat') tapBeat(g.li, g.i); else tapNote(g.i, g.q); return; }
+    if (g.kind === 'beat') editSel((d) => { d.lanes[g.li][g.i] = g.nv; });
+    else editSel((d, k, N) => { const n = d.notes.find((m) => m.s === k * N + g.step && m.p === g.q); if (n) { n.v = g.nv; n.d = Math.min(g.nd, N - g.step); } }); };
+  el.addEventListener('pointermove', move); el.addEventListener('pointerup', up); el.addEventListener('pointercancel', up);
+}
+function redrawGrid() { const old = document.querySelector('#gridWrap'); if (old) { old.innerHTML = ''; old.append(grid()); } }
 function setChord(deg) { const sg = song(); editSel((d, k) => { d.bars[k] = D.diatonic(sg.key, deg, false); }); }
 function selectBar(b) { if (st.selFresh) { st.selFresh = false; if (!st.sel.includes(b)) { st.sel = [b]; st.eBar = b; renderEdit(); return; } } const i = st.sel.indexOf(b); if (i >= 0 && st.sel.length > 1) { st.sel.splice(i, 1); if (st.eBar === b) st.eBar = st.sel[st.sel.length - 1]; } else if (i < 0) { st.sel.push(b); st.eBar = b; } else st.eBar = b; renderEdit(); }
 function copyNext() { const sec = secNow(), f = st.eBar; if (f + 1 >= sec.bars) { toast('This is the last bar of ' + secLabel(st.sec) + '.'); return; } const p = st.ePart;
@@ -449,10 +460,10 @@ function grid() {
   }
   if (p === 'beat') {
     const H = 8 * 44 + 20, sv = s('svg', { viewBox: '0 0 ' + (X0 + N * CW + 10) + ' ' + H, width: '100%', style: 'max-width:' + (X0 + N * CW + 10) + 'px', role: 'img', 'aria-label': 'Beat grid: tap a step to add or remove a hit' });
-    for (let li = 0; li < 8; li++) { const y = 20 + li * 44 + 18, col = cssv('--beat'); const t = s('text', { x: 0, y: y + 5, 'font-size': 13, 'font-weight': 600, fill: cssv('--soft'), 'font-family': 'Inter, sans-serif' }); t.textContent = LANE_NAMES[li]; sv.append(t);
+    for (let li = 0; li < 8; li++) { const y = 20 + li * 44 + 18, col = cssv('--l' + li); const t = s('text', { x: 0, y: y + 5, 'font-size': 13, 'font-weight': 600, fill: col, 'font-family': 'Inter, sans-serif' }); t.textContent = LANE_NAMES[li]; sv.append(t);
       for (let i = 0; i < N; i++) { const x = X0 + i * CW + CW / 2, on = fv.lanes[li] && fv.lanes[li][i], shd = sh && sh.lanes && sh.lanes[li] && sh.lanes[li][i];
-        const cell = s('rect', { x: X0 + i * CW + 2, y: y - 18, width: CW - 4, height: 36, rx: 8, fill: i % 4 === 0 ? cssv('--mute') : cssv('--track'), style: 'cursor:pointer' }); cell.addEventListener('click', () => tapBeat(li, i)); sv.append(cell);
-        if (on) { const el = shapeSvg(LANE_SHAPE[li], x, y, 7 + 6 * on / 127, { fill: col, style: 'pointer-events:none' }); sv.append(el); }
+        const cell = s('rect', { x: X0 + i * CW + 2, y: y - 18, width: CW - 4, height: 36, rx: 8, fill: i % 4 === 0 ? cssv('--mute') : cssv('--track'), style: 'cursor:pointer' }); cell.addEventListener('pointerdown', (e) => dragStart(e, { kind: 'beat', li, i, v: on || 0 })); sv.append(cell);
+        const dv = st.drag && st.drag.kind === 'beat' && st.drag.li === li && st.drag.i === i && st.drag.moved ? st.drag.nv : on; if (dv) { const el = shapeSvg(LANE_SHAPE[li], x, y, 5 + 9 * dv / 127, { fill: col, opacity: (0.45 + 0.55 * dv / 127).toFixed(2), style: 'pointer-events:none' }); sv.append(el); }
         else if (shd) { const el = shapeSvg(LANE_SHAPE[li], x, y, 8, { fill: cssv('--dotc'), opacity: 0.8, style: 'pointer-events:none' }); sv.append(el); } } }
     sv.append(s('line', { id: 'gridHead', 'data-x0': X0, 'data-w': N * CW, x1: X0, x2: X0, y1: 0, y2: H, stroke: cssv('--answer'), 'stroke-width': 3, opacity: 0, style: 'pointer-events:none' }));
     return sv;
@@ -461,9 +472,9 @@ function grid() {
   const RH = 26, H = rows.length * RH + 10, sv = s('svg', { viewBox: '0 0 ' + (X0 + N * CW + 10) + ' ' + H, width: '100%', style: 'max-width:' + (X0 + N * CW + 10) + 'px', role: 'img', 'aria-label': PART_NAMES[p] + ' grid: tap a step and a pitch to add or remove a note' });
   const rowOf = (q) => { let best = 0, bd = 99; rows.forEach((r, i) => { if (Math.abs(r - q) < bd) { bd = Math.abs(r - q); best = i; } }); return best; };
   rows.forEach((q, ri) => { const y = 5 + ri * RH, isRoot = ((q % 12) + 12) % 12 === sg.key.root; const t = s('text', { x: 0, y: y + 17, 'font-size': 12, 'font-weight': isRoot ? 700 : 500, fill: cssv('--soft'), 'font-family': 'Inter, sans-serif' }); t.textContent = D.pcName(((q % 12) + 12) % 12) + Math.floor(q / 12 - 1); sv.append(t);
-    for (let i = 0; i < N; i++) { const cell = s('rect', { x: X0 + i * CW + 1, y: y + 1, width: CW - 2, height: RH - 2, rx: 5, fill: isRoot ? cssv('--mute') : i % 4 === 0 ? cssv('--mute') : cssv('--track'), style: 'cursor:pointer' }); cell.addEventListener('click', () => tapNote(i, q)); sv.append(cell); } });
+    for (let i = 0; i < N; i++) { const cell = s('rect', { x: X0 + i * CW + 1, y: y + 1, width: CW - 2, height: RH - 2, rx: 5, fill: isRoot ? cssv('--mute') : i % 4 === 0 ? cssv('--mute') : cssv('--track'), style: 'cursor:pointer' }); cell.addEventListener('pointerdown', (e) => { const n = fv.notes.find((m) => m.p === q && i >= m.step && i < m.step + Math.max(1, m.d)); dragStart(e, { kind: 'note', i, q, step: n ? n.step : i, v: n ? n.v || 96 : 0, d: n ? n.d : 0 }); }); sv.append(cell); } });
   if (sh && sh.notes) sh.notes.forEach((n) => { if (fv.notes.some((m) => m.step === n.step && Math.abs(m.p - n.p) < 1)) return; const ri = rowOf(n.p), y = 5 + ri * RH; sv.append(s('rect', { x: X0 + n.step * CW + 4, y: y + 6, width: Math.max(10, Math.min(n.d, N - n.step) * CW - 8), height: RH - 12, rx: 5, fill: 'none', stroke: cssv('--dotc'), 'stroke-width': 2, 'stroke-dasharray': '4 3', style: 'pointer-events:none' })); });
-  fv.notes.forEach((n) => { const ri = rowOf(n.p), y = 5 + ri * RH; sv.append(s('rect', { x: X0 + n.step * CW + 3, y: y + 4, width: Math.max(12, Math.min(n.d, N - n.step) * CW - 6), height: RH - 8, rx: 6, fill: cssv('--' + p), style: 'pointer-events:none' })); });
+  fv.notes.forEach((n) => { const g = st.drag && st.drag.kind === 'note' && st.drag.moved && st.drag.step === n.step && st.drag.q === n.p ? st.drag : null, d = g ? g.nd : n.d, v = g ? g.nv : n.v || 96, ri = rowOf(n.p), y = 5 + ri * RH; sv.append(s('rect', { x: X0 + n.step * CW + 3, y: y + 4, width: Math.max(12, Math.min(d, N - n.step) * CW - 6), height: RH - 8, rx: 6, fill: cssv('--' + p), opacity: (0.4 + 0.6 * v / 127).toFixed(2), style: 'pointer-events:none' })); });
   sv.append(s('line', { id: 'gridHead', 'data-x0': X0, 'data-w': N * CW, x1: X0, x2: X0, y1: 0, y2: H, stroke: cssv('--answer'), 'stroke-width': 3, opacity: 0, style: 'pointer-events:none' }));
   return sv;
 }
@@ -479,13 +490,13 @@ function renderEdit() {
     h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
       h('button', { class: 'ib', onclick: copyNext }, 'Copy to next →'), h('button', { class: 'ib', onclick: newIdeaBars }, '⚄ New idea'), h('button', { class: 'ib', onclick: backToMachine, disabled: !st.sel.some(edited) || null }, 'Back to machine')),
     h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px' }, Array.from({ length: sec.bars }, (_, b) => { const on = st.sel.includes(b), f = b === st.eBar;
-      return h('button', { 'data-bar': b, style: 'position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => selectBar(b) }, h('span', null, (b + 1) + (edited(b) ? ' •' : '')), h('span', { 'aria-hidden': 'true', style: 'position:absolute;left:6px;right:6px;bottom:5px;height:4px;border-radius:2px;background:' + (on ? 'rgba(20,21,30,.25)' : 'var(--track)') }, h('span', { style: 'display:block;height:100%;border-radius:2px;width:' + Math.round(barLevel(b) * 100) + '%;background:' + (on ? '#14151E' : 'var(--' + p + ')') }))); })));
-  const main = h('main', { class: 'mid', style: 'flex:999 1 560px' }, h('div', { class: 'hint' }, p === 'beat' ? 'Tap a step. Grey shapes are the machine’s idea: tap one to keep it.' : p === 'chords' ? '' : 'Tap a step and a pitch. Dashed notes are the machine’s idea: tap to keep.'), grid(),
+      return h('button', { 'data-bar': b, style: 'position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => selectBar(b) }, h('span', null, (b + 1) + (edited(b) ? ' •' : '')));  })));
+  const main = h('main', { class: 'mid', style: 'flex:999 1 560px' }, h('div', { class: 'hint' }, p === 'beat' ? 'Tap a step to add or remove a hit. Press and drag up or down: louder or softer. Grey shapes are the machine’s idea.' : p === 'chords' ? '' : 'Tap a step and a pitch. Press a note and drag: up or down for loudness, left or right for length. Dashed notes are the machine’s idea.'), h('div', { id: 'gridWrap', style: 'width:100%;display:flex;justify-content:center;touch-action:none' }, grid()),
     h('div', { style: 'display:flex;gap:12px;align-items:center' }, h('button', { class: 'play', 'aria-label': AU.playing ? 'Stop' : 'Play this section', onclick: () => { if (AU.playing) stopAll(); else startPlay(D.sectionStart(sg, st.sec) + st.eBar); renderEdit(); } }, AU.playing ? '■' : '▶'), h('span', { style: 'color:var(--soft);font-size:14px' }, 'Loops ' + secLabel(st.sec))));
   const side = h('aside', { class: 'right' }, h('section', { class: 'card', style: 'display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab' }, 'Mix · for the chosen bars'), h('span', { style: 'font-weight:600;font-size:14px' }, 'Loudness'),
     h('div', { class: 'seg', role: 'group', 'aria-label': 'Loudness' }, [['steady', 'Steady'], ['swell', 'Swell'], ['fade', 'Fade']].map(([k, n]) => h('button', { class: loudNow() === k ? 'on' : '', 'aria-pressed': loudNow() === k ? 'true' : 'false', onclick: () => setLoud(k) }, n))),
     h('div', { style: 'font-size:12px;color:var(--faint)' }, 'Swell and Fade run from the first to the last chosen bar. The line under each bar shows how loud it plays.')));
-  wrap.append(head, bars, main, side);
+  wrap.append(head, bars, main);
 }
 
 function render() { renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
