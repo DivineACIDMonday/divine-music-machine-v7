@@ -2199,16 +2199,16 @@ E.liquidBass = function (notes, BT, k) {
 };
 // drum and bass is a loop: one flavour per track, a loop of 2 or 4 bars that keeps coming back; a phrase may change one thing, the fills stay where they are
 E.DNB_LOOPS = {
-  roller: { A: { k: [0, 10], s: [4, 12], g: [7] }, B: { k: [0, 10], s: [4, 12], g: [14] }, C: { k: [0, 10, 13], s: [4, 12], g: [7] } },
-  amen: { A: { k: [0, 2, 10, 11], s: [4, 12], g: [7, 9, 15] }, B: { k: [0, 2, 10], s: [4, 12], g: [7, 9, 14] }, C: { k: [0, 2, 10, 11], s: [4, 12, 15], g: [7, 9] } },
+  roller: { A: { k: [0, 10], s: [4, 12], g: [] }, B: { k: [0, 10], s: [4, 12], g: [7] }, C: { k: [0, 10], s: [4, 12], g: [14] } },
+  amen: { A: { k: [0, 2, 10], s: [4, 12], g: [7] }, B: { k: [0, 2, 10], s: [4, 12], g: [9] }, C: { k: [0, 2, 10, 11], s: [4, 12], g: [7] } },
   halftime: { A: { k: [0, 3], s: [8], g: [14] }, B: { k: [0, 10], s: [8], g: [6, 15] }, C: { k: [0, 3, 13], s: [8], g: [11] } },
   steppers: { A: { k: [0, 6, 10], s: [4, 12], g: [] }, B: { k: [0, 6, 10, 14], s: [4, 12], g: [] }, C: { k: [0, 10, 14], s: [4, 12], g: [7] } }
 };
 E.dnbOn = (song) => E.liquidK(song) >= 0.8 && E.meter(song).steps === 16;
-E.dnbFlavour = (song) => { const r = rng(hash(song.seed, 'dnbflavour')); return pickW(r, { roller: 4, amen: 2.5, steppers: 2, halftime: 1.5 }); };
+E.dnbFlavour = (song) => { const r = rng(hash(song.seed, 'dnbflavour')); return pickW(r, { roller: 6, halftime: 3, steppers: 1, amen: 0.5 }); };
 E.dnbBar = function (song, si, inBar) {
   const r = rng(hash(song.seed, 'dnbloop')), L = E.DNB_LOOPS[E.dnbFlavour(song)], len = r.chance(0.5) ? 2 : 4;
-  const ph = Math.floor(inBar / 8), pr = rng(hash(song.seed, 'dnbphrase', si, ph)), mode = ph === 0 ? 0 : pr.int(3);
+  const ph = Math.floor(inBar / 8), pr = rng(hash(song.seed, 'dnbphrase', si, ph)), mode = ph === 0 ? 0 : pr.chance(0.5) ? 0 : 2;
   const order = len === 2 ? ['A', mode === 2 ? 'C' : 'B'] : ['A', 'B', 'A', mode === 2 ? 'B' : 'C'];
   const b = L[order[inBar % len]], g = b.g.slice(); if (mode === 1) { const x = [5, 11, 15][pr.int(3)]; if (!g.includes(x) && !b.k.includes(x) && !b.s.includes(x)) g.push(x); }
   return { k: b.k, s: b.s, g };
@@ -2221,13 +2221,17 @@ E.dnbLoop = function (song, si, sec, inBar, lanes, N, type) {
   lanes[SN] = lanes[SN].map((v, s) => b.s.includes(s) ? Math.round(112 * soft) : b.g.includes(s) && type !== 'break' ? 36 : 0);
 };
 // the bass and the chords of drum and bass start on the kicks of the loop; the bass glides on to the next kick, the chords are short and soft
-E.dnbLock = function (song, si, sec, inBar, part, notes, BT, type) {
+E.dnbLock = function (song, si, sec, inBar, part, notes, BT, type, chord) {
   const b = E.dnbBar(song, si, inBar), S = E.STEP, ons = b.k.slice().sort((x, y) => x - y).map((s) => s * S);
   const src = notes.slice().sort((x, y) => x.t - y.t); if (!src.length) return notes;
-  if (part === 'bass') {
-    const at = (t) => { let n = src[0]; for (const x of src) if (x.t <= t + 30) n = x; return n; };
-    return ons.map((t, i) => { const nx = ons[i + 1], n = at(t); return { t, d: nx != null ? nx - t + 40 : BT - t - 10, p: n.p, v: clamp(i === 0 ? Math.max(n.v, 100) : n.v, 60, 120) }; });
+  if (part === 'bass') { // one long sub on the one; a second note on the kick of the three-and only when the harmony moves there
+    const at = (t) => { let n = src[0]; for (const x of src) if (x.t <= t + 30) n = x; return n; }, a = at(0), t2 = ons.find((t) => t >= 8 * S && t <= 11 * S), b2 = t2 != null ? at(t2) : null;
+    const first = { t: 0, d: BT - 10, p: a.p, v: clamp(Math.max(a.v, 100), 60, 120) };
+    if (b2 && b2.p % 12 !== a.p % 12) { first.d = t2 + 40; return [first, { t: t2, d: BT - t2 - 10, p: b2.p, v: clamp(b2.v, 70, 115) }]; }
+    return [first];
   }
+  if (inBar % 2 === 1) return []; // the chords: one soft touch every two bars that rings out, the pad carries the rest
+  { const ps = chord ? E.voice(chord, null, 55, 72) : src.filter((n) => n.t - src[0].t < 40).map((n) => n.p); return ps.map((p, i) => ({ t: i * 12, d: BT - 20, p, v: 60 + (i % 3) })); }
   const groups = []; src.forEach((n) => { const g = groups[groups.length - 1]; if (g && n.t - g.t < 40) g.ns.push(n); else groups.push({ t: n.t, ns: [n] }); });
   const at = (t) => { let g = groups[0]; for (const x of groups) if (x.t <= t + 30) g = x; return g; }, long = type === 'break' || type === 'intro' || type === 'outro', out = [];
   ons.forEach((t, i) => { const nx = ons[i + 1] != null ? ons[i + 1] : BT, d = long ? nx - t - 10 : Math.min(S * 3, nx - t - 10); at(t).ns.forEach((n) => out.push({ t, d, p: n.p, v: clamp(i === 0 ? 74 : 66, 40, 100) })); });
@@ -2241,7 +2245,7 @@ E.hatWind = function (song, si, sec, inBar, lanes, N, type, fillBar) {
   const len = 3 + r.int(4), wave = 0.5 + 0.5 * Math.sin(r() * 6.28 + 2 * Math.PI * inBar / len), g = 1 - 0.32 * k * wave;
   const lastPh = ph >= Math.floor((sec.bars - 1) / 8), out = sec.bars >= 16 && !fillBar && type !== 'build' && type !== 'intro' && type !== 'outro' && !lastPh;
   if (lk) {
-    let sh = type === 'drop' || type === 'chorus' ? 1 : 2; for (let p = 1; p <= ph; p++) { const rp = pr(p); if (!rp.chance(0.45)) sh = clamp(sh + (rp.chance(0.5) ? 1 : -1), 0, 2); }
+    let sh = type === 'drop' || type === 'chorus' ? 1 : 2; if (E.dnbOn(song)) sh = 2; else for (let p = 1; p <= ph; p++) { const rp = pr(p); if (!rp.chance(0.45)) sh = clamp(sh + (rp.chance(0.5) ? 1 : -1), 0, 2); }
     const keep = (s) => sh === 0 || (sh === 1 ? s % 2 === 0 : s % 4 === 2), base = (s) => s % 4 === 2 ? 74 : s % 2 === 0 ? 58 : 42;
     lanes[HH] = lanes[HH].map((v, s) => keep(s) ? Math.max(16, Math.round(base(s) * g)) : 0);
     if (out && ph > 0 && inPh >= 4 && inPh < 6 && r.chance(0.35 * lk)) lanes[HH].fill(0); // two bars without: the snare and the bass carry
@@ -2809,7 +2813,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     else if (type === 'build' && E.MYST[song.genre]) notes = E.buildRise(song, sec, inBar, notes);
     if (E.echoOf(song) && !(E.hypnoOf(song) && type !== 'break' && type !== 'intro' && type !== 'outro')) notes = E.echoes(notes, BT, E.streamK(song) >= 0.8);
   }
-  if (mach && part === 'chords' && notes.length && E.dnbOn(song) && !lastBar && !bo) notes = E.dnbLock(song, si, sec, inBar, 'chords', notes, BT, type); // drum and bass: the chords hit with the kicks
+  if (mach && part === 'chords' && notes.length && E.dnbOn(song) && !lastBar && !bo) notes = E.dnbLock(song, si, sec, inBar, 'chords', notes, BT, type, res(si).ctxChords && res(si).ctxChords.bars[lb]); // drum and bass: the chords hit with the kicks
   else if (mach && part === 'chords' && notes.length && E.streamK(song) >= 0.8) notes = E.streamChords(notes, BT); // the stream: long chords, no stabs
   else if (mach && part === 'chords' && notes.length && song.arr && E.CHORD_HOLD[song.genre]) notes = E.holdChords(notes, BT, E.CHORD_HOLD[song.genre]);
   if (mach && part !== 'beat' && notes.length && (E.streamOf(song) || E.liquidK(song) >= 0.8) && !E.trainOf(song)) notes = E.trainFade(song, si, sec, inBar, part, notes);
@@ -3236,7 +3240,7 @@ E.rawNotes = function (song, part, notes, gbar, N, BT, still, boost) {
   const r = rng(hash(song.seed, 'raw', part, gbar));
   const span = 1 + 0.75 * x;
   let out = notes.map((n) => Object.assign({}, n, { v: clamp(Math.round(68 + (n.v - 68) * span + (n.v >= 100 ? 10 * x : 0)), Math.min(n.v, 22), 127) })); // soft stays audible: never below 22 unless it was softer to begin with
-  if (still) return out.sort((a, b) => a.t - b.t); // a fill or a stop stays exactly as it is, only the accents get sharper
+  if (still || E.dnbOn && E.dnbOn(song)) return out.sort((a, b) => a.t - b.t); // a fill or a stop stays exactly as it is, only the accents get sharper; drum and bass keeps its loop and its long notes
   if (part === 'beat') {
     const has = (lane, s) => out.some((n) => n.lane === lane && Math.abs(n.t - s * E.STEP) < 5);
     if (N === 16 && r.chance(0.45 * x)) { const s = r.pick([3, 7, 11, 14]); if (!has(K, s) && !has(K, s - 1) && !has(K, s + 1) && !has(SN, s)) out.push({ t: s * E.STEP, d: E.STEP, lane: K, v: 92 }); }
@@ -4047,7 +4051,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 11:20)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 11:40)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -4934,6 +4938,18 @@ function computeMix(si, level, r) {
   if (!cand.length) return null;
   const calm = ['intro', 'outro', 'break'].includes(sec.type), cap = Math.max(1, level - (calm ? 1 : 0));
   const fx = {}; let wild = false;
+  if (level === 1) { // the gentle mix, the default: variation you feel, never one that breaks the groove. It changes per phrase, the skeleton of the drums stays as it is
+    const main = !['intro', 'outro', 'break', 'build', 'prechorus'].includes(sec.type), loop = !!(D.dnbOn && D.dnbOn(sg));
+    const MILD = { 4: ['accent'], 5: ['accent'], 6: ['accent'], bass: ['accent', 'octave'], chords: ['accent', 'hold'], pad: ['hold', 'accent'], melody: ['accent', 'octave'], answer: ['accent', 'octave'] };
+    for (const k of cand) {
+      if (!MILD[k] || loop && k === 6) continue;
+      if (!r.chance(0.6)) continue;
+      fx[k] = { rnd: D.newSeed(), kind: r.pick(MILD[k]), amt: 1, every: n >= 8 ? 'cr' : 4 };
+      if (!main && r.chance(0.3)) { const pr = ((ROLES[k] && ROLES[k].progs) || []).filter((p) => p === 'swell' || p === 'fade' || p === 'open'); if (pr.length) fx[k].prog = r.pick(pr); }
+    }
+    if (sec.type === 'build' || sec.type === 'prechorus') { if (cand.includes(4)) fx[4] = Object.assign(fx[4] || {}, { prog: 'in' }); const sn = cand.includes(2) ? 2 : cand.includes(3) ? 3 : null; if (sn != null) fx[sn] = Object.assign(fx[sn] || {}, { prog: 'end16' }); }
+    return fx;
+  }
   const every = (ro) => { let e = r.pick(ro.every); if (e === 'cr' && n < 8) e = 4; if (n < 4) e = 1; return e; };
   // everything that plays gets something; kicks and pad stay the anchor, the melody stays recognizable
   for (const k of cand) {
@@ -6105,7 +6121,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 11:20. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 11:40. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6966,7 +6982,7 @@ function openHelp(lang) {
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'How it works' },
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
-    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-28 11:20 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
+    h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-28 11:40 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
     h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
@@ -7002,7 +7018,7 @@ function renderLite() {
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
       h('button', { id: 'liteSuite', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠 Suite'),
       h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
-    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-28 11:20')));
+    h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-28 11:40')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();
 }
