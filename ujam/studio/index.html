@@ -70,7 +70,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 21:45</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 22:10</span></footer>
 <script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3362,7 +3362,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 21:45';
+const VERSION = '2026-10-28 22:10';
 const APP_NAME = window.DMS_UJAM ? 'Divine Music Studio UJAM' : 'Divine Music Studio';
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
 const PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
@@ -3682,6 +3682,7 @@ function shadowView() {
 }
 // one change, in every chosen bar: the focus bar is changed, the others take it over
 function editSel(fn) {
+  st.selFresh = true;
   change(() => {
     const sg = song(), p = st.ePart, N = D.meter(sg).steps, f = st.eBar, kf = lbOf(f), fd = barData(p, f, true); fn(fd, kf, N);
     for (const b of st.sel) { if (b === f) continue; const d = barData(p, b, true), k = lbOf(b);
@@ -3718,6 +3719,7 @@ function setLoud(kind) {
     for (const k of keys) { const f = Object.assign({}, sec.laneFx[k]); if (kind === 'steady') { delete f.prog; delete f.from; delete f.to; } else Object.assign(f, { prog: kind === 'swell' ? 'swell' : 'fade', from, to }); if (Object.keys(f).length) sec.laneFx[k] = f; else delete sec.laneFx[k]; }
     if (!Object.keys(sec.laneFx).length) delete sec.laneFx; });
 }
+function barLevel(b) { const sec = secNow(), k = st.ePart === 'beat' ? 0 : st.ePart, f = sec.laneFx && sec.laneFx[k]; if (!f || !f.prog || f.from == null) return 1; if (b < f.from || b > f.to) return 1; const span = Math.max(1, f.to - f.from), x = (b - f.from) / span; return f.prog === 'swell' ? 0.45 + 0.55 * x : 1 - 0.55 * x; }
 function loudNow() { const sec = secNow(), k = st.ePart === 'beat' ? 0 : st.ePart, f = sec.laneFx && sec.laneFx[k]; return f && f.prog === 'swell' ? 'swell' : f && f.prog === 'fade' ? 'fade' : 'steady'; }
 function previewDrum(li) { if (!ensureAudio()) return; AU.ctx.resume(); drum(li, AU.ctx.currentTime + 0.01, 100); }
 function previewNote(p, pitch) { if (!ensureAudio()) return; AU.ctx.resume(); tone(p, pitch, AU.ctx.currentTime + 0.01, 0.3, 96); }
@@ -3759,12 +3761,12 @@ function renderEdit() {
     h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
       h('button', { class: 'ib', onclick: copyNext }, 'Copy to next →'), h('button', { class: 'ib', onclick: newIdeaBars }, '⚄ New idea'), h('button', { class: 'ib', onclick: backToMachine, disabled: !st.sel.some(edited) || null }, 'Back to machine')),
     h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px' }, Array.from({ length: sec.bars }, (_, b) => { const on = st.sel.includes(b), f = b === st.eBar;
-      return h('button', { style: 'height:48px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => selectBar(b) }, (b + 1) + (edited(b) ? ' •' : '')); })));
+      return h('button', { style: 'position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => selectBar(b) }, h('span', null, (b + 1) + (edited(b) ? ' •' : '')), h('span', { 'aria-hidden': 'true', style: 'position:absolute;left:6px;right:6px;bottom:5px;height:4px;border-radius:2px;background:' + (on ? 'rgba(20,21,30,.25)' : 'var(--track)') }, h('span', { style: 'display:block;height:100%;border-radius:2px;width:' + Math.round(barLevel(b) * 100) + '%;background:' + (on ? '#14151E' : 'var(--' + p + ')') }))); })));
   const main = h('main', { class: 'mid', style: 'flex:999 1 560px' }, h('div', { class: 'hint' }, p === 'beat' ? 'Tap a step. Grey shapes are the machine’s idea: tap one to keep it.' : p === 'chords' ? '' : 'Tap a step and a pitch. Dashed notes are the machine’s idea: tap to keep.'), grid(),
     h('div', { style: 'display:flex;gap:12px;align-items:center' }, h('button', { class: 'play', 'aria-label': AU.playing ? 'Stop' : 'Play this section', onclick: () => { if (AU.playing) stopAll(); else startPlay(D.sectionStart(sg, st.sec) + st.eBar); renderEdit(); } }, AU.playing ? '■' : '▶'), h('span', { style: 'color:var(--soft);font-size:14px' }, 'Loops ' + secLabel(st.sec))));
   const side = h('aside', { class: 'right' }, h('section', { class: 'card', style: 'display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab' }, 'Mix · for the chosen bars'), h('span', { style: 'font-weight:600;font-size:14px' }, 'Loudness'),
     h('div', { class: 'seg', role: 'group', 'aria-label': 'Loudness' }, [['steady', 'Steady'], ['swell', 'Swell'], ['fade', 'Fade']].map(([k, n]) => h('button', { class: loudNow() === k ? 'on' : '', 'aria-pressed': loudNow() === k ? 'true' : 'false', onclick: () => setLoud(k) }, n))),
-    h('div', { style: 'font-size:12px;color:var(--faint)' }, 'Swell and Fade run from the first to the last chosen bar.')));
+    h('div', { style: 'font-size:12px;color:var(--faint)' }, 'Swell and Fade run from the first to the last chosen bar. The line under each bar shows how loud it plays.')));
   wrap.append(head, bars, main, side);
 }
 
