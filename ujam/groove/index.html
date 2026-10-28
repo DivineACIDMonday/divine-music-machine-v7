@@ -914,7 +914,7 @@ E.CHORD_STYLES = {
 };
 // a form for the whole song, learned from records that tell a story with their arrangement
 E.FORMS = { auto: 'Machine choice', classic: 'Classic', quietloud: 'Quiet verse, loud chorus', ballad: 'Ballad: small start, drums later, a lift', twopart: 'Two parts: a bass breakdown, then all in', chant: 'Chant: call and answer' };
-const FORM_W = { punk: { classic: 3, quietloud: 3, twopart: 1 }, triphop: { classic: 4, ballad: 2, quietloud: 1 }, hiphop: { classic: 5, chant: 1, twopart: 1 }, newwave: { classic: 4, twopart: 1.5, ballad: 1, quietloud: 1 }, blues: { classic: 5, ballad: 1 }, techno: { classic: 5, chant: 1, twopart: 1.5 }, house: { classic: 4, ballad: 1, twopart: 1 }, acid: { classic: 4, chant: 1, twopart: 1.5, quietloud: 0.5 }, trance: { classic: 4, ballad: 1.5 }, eurodance: { classic: 4, ballad: 1 }, breakbeat: { classic: 4, quietloud: 1.5, twopart: 1 }, ebm: { classic: 2, chant: 4 }, free: { classic: 3, quietloud: 1, ballad: 1, twopart: 1, chant: 1 }, dnb: { classic: 4, twopart: 2, quietloud: 1 }, garage: { classic: 4, twopart: 1, chant: 1 }, dub: { classic: 4, twopart: 2.5, ballad: 0.5 }, synthwave: { classic: 4, ballad: 1.5, quietloud: 1 }, funk: { classic: 4, chant: 1.5, twopart: 1.5 }, dubtechno: { classic: 5, twopart: 1 }, minimal: { classic: 5, twopart: 1 }, ambient: { classic: 4, ballad: 2 }, chillout: { classic: 4, ballad: 2, quietloud: 1 }, club: { classic: 5, twopart: 1.5 }, divine: { classic: 5, quietloud: 1 }, songwriter: { classic: 4, ballad: 2, quietloud: 1 } };
+const FORM_W = { punk: { classic: 3, quietloud: 3, twopart: 1 }, triphop: { classic: 4, ballad: 2, quietloud: 1 }, hiphop: { classic: 5, chant: 1, twopart: 1 }, newwave: { classic: 4, twopart: 1.5, ballad: 1, quietloud: 1 }, blues: { classic: 5, ballad: 1 }, techno: { classic: 5, chant: 1, twopart: 1.5 }, house: { classic: 4, twopart: 1 }, acid: { classic: 4, chant: 1, twopart: 1.5, quietloud: 0.5 }, trance: { classic: 4, ballad: 1.5 }, eurodance: { classic: 4 }, breakbeat: { classic: 4, quietloud: 1.5, twopart: 1 }, ebm: { classic: 2, chant: 4 }, free: { classic: 3, quietloud: 1, ballad: 1, twopart: 1, chant: 1 }, dnb: { classic: 4, twopart: 2, quietloud: 1 }, garage: { classic: 4, twopart: 1, chant: 1 }, dub: { classic: 4, twopart: 2.5, ballad: 0.5 }, synthwave: { classic: 4, ballad: 1.5, quietloud: 1 }, funk: { classic: 4, chant: 1.5, twopart: 1.5 }, dubtechno: { classic: 5, twopart: 1 }, minimal: { classic: 5, twopart: 1 }, ambient: { classic: 4, ballad: 2 }, chillout: { classic: 4, ballad: 2, quietloud: 1 }, club: { classic: 5, twopart: 1.5 }, divine: { classic: 5, quietloud: 1 }, songwriter: { classic: 4, ballad: 2, quietloud: 1 } };
 E.formOf = function (song) {
   if (!song.arr) return 'classic';
   if (song.form && song.form !== 'auto') return song.form;
@@ -2329,7 +2329,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (song.touches && !machine && inBar > 0 && type !== 'break') E.touchBar(lanes, r, N, song.kickVar, inBar, type); // bar 1 stays the base as you wrote it
     if (machine && type !== 'break') {
       // small per-bar variation, keep the core recognizable
-      if (lb % 2 === 1 && r.chance(0.5)) { const s = 2 + r.int(N - 3); if (!lanes[HH][s] && s % 2 === 1) lanes[HH][s] = 34 + r.int(14); }
+      if (lb % 2 === 1) { const hx = rng(hash(song.seed, 'hatx', sec.id, Math.floor(inBar / 8))); if (hx.chance(0.5)) { const s = 2 + hx.int(N - 3); if (!lanes[HH][s] && s % 2 === 1) lanes[HH][s] = 34 + hx.int(14); } } // the extra hat is the phrase's, so the groove loops
       if (lb === song.L - 1 && r.chance(0.5)) { const cands = [6, 10, 14].filter((s) => s < N && !lanes[K][s] && !lanes[K][s - 1] && !lanes[K][s + 1] && !(lanes[SN][s] >= 90)); if (cands.length) lanes[K][r.pick(cands)] = 82; }
     }
     // a long section moves on every 8 bars, like a DJ or a drummer would: phrase 1 is the base, every next phrase plays it a little different and ends in a short fill
@@ -3934,7 +3934,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 11:40)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 11:50)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5591,7 +5591,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-28 11:40. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-28 11:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
