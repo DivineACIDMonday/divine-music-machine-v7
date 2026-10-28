@@ -89,7 +89,7 @@ select,input[type=text],input[type=number]{height:38px;border-radius:8px;border:
 footer{color:#8E897F;font-size:12px;padding:4px}footer .man{display:block;margin-top:6px}footer .man a{color:#E8A03A;margin-right:10px}
 .noai{display:inline-block;background:#E8A03A;color:#0D0E11;font-weight:600;border-radius:10px;padding:1px 8px;margin-right:6px}
 @media (max-width:640px){#app{padding:10px}.two{grid-template-columns:1fr}.logo{font-size:20px}}
-.hitrow{flex:1 1 0;display:flex;gap:1px;height:22px;min-width:0}.hitrow button{flex:1 1 0;min-width:0;min-height:0;height:22px;padding:0;border:0;border-radius:2px;background:#1A1C22;color:#E8A03A;font-size:10px;line-height:22px;cursor:pointer}.hitrow button:hover{background:#2A2C34}.hitrow button.on{background:#3A2E1C}.hitlist{gap:6px}.hrow{display:flex;gap:6px;align-items:center}
+.hitrow{flex:1 1 0;display:flex;gap:1px;height:22px;min-width:0}.hitrow button{flex:1 1 0;min-width:0;min-height:0;height:22px;padding:0;border:0;border-radius:2px;background:#1A1C22;color:#E8A03A;font-size:10px;line-height:22px;cursor:pointer}.hitrow button:hover{background:#2A2C34}.hitrow button.on{background:#3A2E1C}.hitlist{gap:6px}.hrow{display:flex;flex-wrap:wrap;gap:6px;align-items:center}.hrow select{min-width:0}
 </style></head>
 <body><div id="app"></div>
 <script>
@@ -238,7 +238,7 @@ S.newScore = function (styleKey, opts) {
   const sc = {
     v: 1, name: opts.name || 'Untitled', style: styleKey, seed, bpm: st.bpm[0] + r.int(st.bpm[1] - st.bpm[0] + 1), meter: 4,
     key: { root: r.pick(roots), mode: st.mode }, amount: 'film', fromTrack: false, filmMoment: true,
-    sections: st.form.map((f, i) => ({ id: 's' + i, type: f[0], bars: f[1] })),
+    sections: st.form.map((f, i) => ({ id: 's' + i, type: f[0], bars: f[1] >= 8 && f[0] !== 'intro' && f[0] !== 'outro' && r.chance(0.3) ? f[1] + (r.chance(0.5) ? 4 : -4) : f[1] })), // the form breathes a little differently every time
     parts: { strings: { on: true, where: 'auto' }, percs: { on: !st.quietPercs, where: st.quietPercs ? 'quiet' : 'auto' } },
     tricks: { swell: true, pedal: true, ladder: true, hits: true, metals: true },
     tension: null, swell: null, chords: null, hits: [], ending: 'resolve', bpmEnd: null
@@ -269,8 +269,8 @@ S.chordsFor = function (sc) {
   v.sections.forEach((s, si) => {
     const k = seen[s.type] || 0; seen[s.type] = k + 1;
     const ss = S.styleOf(sc, s), pool = ss.prog[s.type] || ss.prog.theme, pr = rng(hash(sc.seed, 'prog', s.type, k));
-    const prog = ss.jump ? pr.pick(pool) : pool[k % pool.length];
-    const cb = s.type === 'build' ? 1 : ss.chordBars;
+    const prog = ss.jump ? pr.pick(pool) : pool[(k + hash(sc.seed, 'progpick', s.type)) % pool.length];
+    const cb = s.type === 'build' ? 1 : ss.chordBars === 1 && s.type === 'theme' && pr.chance(0.3) ? 2 : ss.chordBars;
     for (let j = 0; j < s.bars; j++) { const d = prog[Math.floor(j / cb) % prog.length]; out.push({ root: (sc.key.root + d[0]) % 12, q: d[1] }); }
   });
   if (sc.ending === 'open' && out.length) out[out.length - 1] = { root: (sc.key.root + 7) % 12, q: 'M' }; // the cliffhanger ends on the five: the question stays open
@@ -288,6 +288,7 @@ S.autoTension = function (sc) {
       let t = a + (b - a) * f + (ss.lift || 0);
       if (s.type === 'peak' && si > 0 && v.sections.slice(0, si).some((x) => x.type === 'peak')) t += 0.06; // the second peak goes a bit further
       if (ss.jump) t += (r() - 0.5) * 0.3;
+      t += ((hash(sc.seed, 'toff', si) % 1000) / 1000 - 0.5) * 0.12; // every score its own line
       if (last && j === s.bars - 1) t = sc.ending === 'open' ? Math.max(t, 0.6) : sc.ending === 'stop' ? Math.max(t, 0.85) : Math.min(t, 0.1);
       out.push(clamp(Math.round(t * 100) / 100, 0, 1));
     }
@@ -318,107 +319,269 @@ S.plays = function (sc, part, s, si, sections) {
   return type === 'build' ? 'full' : type === 'peak' || last || type === 'film' ? 'touch' : false;
 };
 
-/* ---------- the performance: Player MIDI events per part ---------- */
-// notes: { t, d, p, v }, ccs: { t, c, v }
+/* ---------- four layers: two tracks per plugin that hand over, lift each other and tell the story ---------- */
+// A is the bed (long lines, the pulse), B is the motion (riffs, the power). Each track gets its own Style in its own plugin.
+S.LAYERS = [['strA', 'Strings A', 'STRIIIINGS', 'the bed'], ['strB', 'Strings B', 'STRIIIINGS', 'the motion'], ['perA', 'Percs A', 'PERRCS', 'the pulse'], ['perB', 'Percs B', 'PERRCS', 'the power']];
+const CAT = (a, b, c, d, ex) => ({ strA: a, strB: b, perA: c, perB: d, ex: ex || {} });
+const CALM_LIGHT = ['docu', 'romance', 'nostalgic', 'dreamy', 'serenity', 'sunrise', 'light', 'hope'], CALM_DARK = ['heartbreak', 'lonely', 'grief', 'depressed', 'noir'];
+S.isCalm = (sc, s) => { const k = (s && s.style) || sc.style; return CALM_LIGHT.includes(k) || CALM_DARK.includes(k); };
+// which kind of Style to load in each track: the categories of the plugins' own Style menus, with a Style to try where we know one
+S.catsOf = function (k) {
+  const X = {
+    comedy: CAT('Friendly', 'Riffs', 'Tickers', 'Driving Rhythm', { strB: 'Small Section Stacc' }),
+    glory: CAT('Dramatic', 'Epic', 'Tickers', 'Huge'), triumph: CAT('Friendly', 'Epic', 'Tickers', 'Huge'),
+    euphoric: CAT('Sustains', 'Arpeggios', 'Tickers', 'Driving Rhythm'), ecstasy: CAT('Sustains', 'Arpeggios', 'Tickers', 'Driving Rhythm'),
+    rage: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Huge', { strB: 'Power Chord Ostinato', perA: 'Furious Furrocos' }),
+    horror: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Huge', { strB: 'Low Spiccatos', perA: 'Roomy Sticks + Bass Roll' }),
+    danger: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action', { strB: 'Low Spiccatos', perA: 'Nervous Sticks + Low Thuds' }),
+    suspense: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action', { strB: 'Low Spiccatos', perA: 'Roto Rims, Metal + Low Accents' }),
+    dark: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Big Grooves', { strB: 'Low Hi Pattern', perA: 'Processed Sticks + Low Hits' }),
+    confused: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action', { strB: 'Stacc Chords w Inversions', perA: 'Metal Shaker + Processed Beat' }),
+    avant: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action', { strB: 'Step Chords', perA: 'Metal Shaker + Processed Beat' }),
+    thriller: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action', { strB: 'Straight Spiccatos', perA: 'Hi Rotos, Sticks + Big Hits' }),
+    plot: CAT('Dramatic', 'Riffs', 'Tickers', 'Driving Rhythm', { strB: 'Small Rhythmic Stacc' }),
+    adventure: CAT('Dramatic', 'Epic', 'Tickers', 'Driving Rhythm'),
+    showdown: CAT('Sustains', 'Riffs', 'Building Suspense', 'Huge', { strB: 'Mid Section Stacc', perA: 'Shaker + Big Bar Accents' }),
+    countdown: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action', { strB: 'Classic Riff', perA: 'Metronome Clicks + Accents' })
+  };
+  if (X[k]) return X[k];
+  if (CALM_LIGHT.includes(k)) return CAT('Sustains', 'Arpeggios', 'Tickers', 'Big Grooves');
+  if (CALM_DARK.includes(k)) return CAT('Sustains', 'Dramatic', 'Building Suspense', 'Big Grooves', { perA: 'Quiet Sticks, Low Double Hits' });
+  return CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action');
+};
+// story moments: what happens on screen, and how all four tracks answer it
+S.MOMENTS = { hit: 'Hit', explosion: 'Explosion', vesuvius: 'Mount Vesuvius', eruption: 'Eruption', sinkhole: 'Sinkhole', void: 'Void', dissolve: 'Dissolve', ether: 'Ether', contact: 'Contact', encounter: 'Encounter' };
+S.MOMENT_LINE = {
+  hit: 'A fill runs into it, the hit lands on the bar.',
+  explosion: 'A fill and a rising riff, then both hits, everything at full force, low strings, and the dust settles.',
+  vesuvius: 'Four bars of low rumble that swell and swell, then the blast: hits, the top phrases, and it keeps burning.',
+  eruption: 'Two bars that climb fast, a fill, then it bursts open and stays wide for a bar.',
+  sinkhole: 'The ground gives way: one low hit, everything else drops out, only the lowest strings remain.',
+  void: 'Emptiness: no percussion, one thin high string line, a single metal far away.',
+  dissolve: 'Over four bars the layers fade away one by one and the sound drifts up and thins out.',
+  ether: 'Weightless: high strings only, an open sus chord, metals that shimmer, no ground.',
+  contact: 'A held breath, a suspended chord that resolves, a soft hit and a metal: the touch.',
+  encounter: 'A fill, a diminished chord, then both string layers meet with both hits.'
+};
+S.events = function (sc, total) {
+  const ev = Array.from({ length: total }, () => ({}));
+  const at = (b, o) => { if (b < 0 || b >= total) return; const e = ev[b]; for (const k in o) { if (k === 'hits') e.hits = (e.hits || []).concat(o.hits); else if (o[k] && typeof o[k] === 'object') e[k] = Object.assign({}, e[k], o[k]); else e[k] = o[k]; } };
+  const FX = {
+    hit: (b) => { at(b - 1, { fill: true }); at(b, { hits: [0], strB: { add: true } }); },
+    explosion: (b) => { at(b - 1, { fill: true, strB: { lev: 0.8, ph: 4, add: true }, pb: -0.3 }); at(b, { hits: [0, 1], strA: { lev: 1, ph: 3 }, strB: { lev: 1, ph: 5, add: true }, perB: { lev: 1, idx: 8 }, swell: 1, pb: -1 }); at(b + 1, { strB: { lev: 0.5 }, perB: { lev: 0.4 }, metal: true, pb: -0.6, swell: 0.7 }); },
+    vesuvius: (b) => { for (let i = 4; i >= 1; i--) at(b - i, { strA: { lev: 1, ph: 0 }, strB: { lev: 0 }, perA: { lev: 1, idx: 0 }, perB: { lev: 0 }, bassLow: true, pb: -1, swell: 0.3 + 0.15 * (4 - i) }); at(b - 1, { fill: true }); at(b, { hits: [0, 1], strA: { lev: 1, ph: 3 }, strB: { lev: 1, ph: 5, add: true }, perA: { lev: 0.7, idx: 6 }, perB: { lev: 1, idx: 8 }, swell: 1, pb: 0 }); at(b + 1, { strB: { lev: 1, ph: 5 }, perB: { lev: 1, idx: 7 }, swell: 1 }); at(b + 2, { strB: { lev: 0.7, ph: 4 }, perB: { lev: 0.7 }, swell: 0.85 }); },
+    eruption: (b) => { at(b - 2, { strB: { lev: 0.8, ph: 3 }, perB: { lev: 0.8, idx: 5 }, swell: 0.7 }); at(b - 1, { strB: { lev: 1, ph: 4 }, perB: { lev: 1, idx: 6 }, fill: true, swell: 0.85 }); at(b, { hits: [0, 1], strA: { lev: 0.8 }, strB: { lev: 1, ph: 5, add: true }, perB: { lev: 1, idx: 8 }, swell: 1, pb: 0.2 }); at(b + 1, { strB: { lev: 1, ph: 5, add: true }, perB: { lev: 1, idx: 8 }, swell: 1 }); },
+    sinkhole: (b) => { at(b, { hits: [0], strA: { lev: 1, ph: 0 }, strB: { lev: 0 }, perA: { lev: 0 }, perB: { lev: 0 }, bassLow: true, pb: -1, swell: 0.3 }); at(b + 1, { strA: { lev: 0.8, ph: 0 }, strB: { lev: 0 }, perA: { lev: 0 }, perB: { lev: 0 }, bassLow: true, pb: -0.8, swell: 0.4 }); },
+    void: (b) => { for (let i = 0; i < 2; i++) at(b + i, { strA: { lev: 0.7, ph: 0 }, strB: { lev: 0 }, perA: { lev: 0 }, perB: { lev: 0 }, swell: 0.25, pb: 0.7 }); at(b, { metal: true }); },
+    dissolve: (b) => { for (let i = 0; i < 4; i++) at(b + i, { strA: { lev: [1, 0.8, 0.6, 0.45][i] }, strB: { lev: [0.8, 0.5, 0.2, 0][i] }, perA: { lev: [0.7, 0.45, 0.2, 0][i] }, perB: { lev: 0 }, pb: 0.25 * (i + 1), swell: [0.8, 0.6, 0.45, 0.35][i] }); },
+    ether: (b) => { for (let i = 0; i < 4; i++) at(b + i, { strA: { lev: 0.8, ph: 1 }, strB: { lev: 0 }, perA: { lev: 0 }, perB: { lev: 0 }, pb: 1, swell: 0.55, colour: 'sus2', metal: i % 2 === 0 }); },
+    contact: (b) => { at(b - 1, { colour: 'sus4', swell: 0.45 }); at(b, { hits: [1], soft: true, metal: true, strB: { add: true }, swell: 0.9, pb: 0 }); },
+    encounter: (b) => { at(b - 1, { fill: true, colour: 'dim', strB: { lev: 0.8, ph: 3 } }); at(b, { hits: [0, 1], strA: { lev: 1, ph: 2 }, strB: { lev: 1, ph: 4, add: true }, perB: { lev: 1 }, swell: 1, pb: 0 }); }
+  };
+  S.hitsOf(sc).forEach((x) => (FX[x.kind] || FX.hit)(x.bar));
+  return ev;
+};
+// how present each layer is, bar by bar (0 silent, 1 full): A carries the quiet parts, B takes over in builds and peaks, A stays under it as a bed
+S.layerLevels = function (sc, v, tension, map) {
+  const L = { strA: [], strB: [], perA: [], perB: [] };
+  map.forEach(({ s, j }, b) => {
+    const calm = S.isCalm(sc, s), t = tension[b], f = s.bars > 1 ? j / (s.bars - 1) : 1, type = s.type;
+    let a = 1, bb = 0, pa = 1, pb = 0;
+    if (type === 'intro') pa = calm ? 0.6 : 1;
+    else if (type === 'theme') { bb = !calm && t > 0.38 ? 0.55 : 0; pb = !calm && t > 0.45 ? 0.5 : 0; }
+    else if (type === 'build') { const g = calm ? Math.max(0, (f - 0.5) * 2) : f; bb = (calm ? 0 : 0.3) + (calm ? 0.75 : 0.7) * g; a = 1 - 0.35 * g; pb = calm ? 0.6 * g : 0.25 + 0.75 * g; }
+    else if (type === 'peak') { bb = calm ? 0.75 : 1; a = 0.6; pb = calm ? 0.6 : 1; pa = 0.55; }
+    else if (type === 'film') pa = 0.5;
+    else if (type === 'outro') { bb = Math.max(0, 0.6 - f * 1.5) * (calm ? 0.5 : 1); pa = 1 - f * 0.6; }
+    L.strA.push(a); L.strB.push(bb); L.perA.push(pa); L.perB.push(pb);
+  });
+  return L;
+};
+// the camera: the pitch wheel moves between the low and the high section of each plugin
+S.cameraOf = function (sc, map) {
+  const out = [], off = ((hash(sc.seed, 'camera') % 1000) / 1000 - 0.5) * 0.3;
+  map.forEach(({ s, j }) => {
+    const g = S.styleOf(sc, s).group, f = s.bars > 1 ? j / (s.bars - 1) : 1;
+    const T = g === 'dark' ? { intro: -0.6, theme: -0.4, build: -0.3 + 0.5 * f, peak: 0, film: -0.8, outro: -0.5 } : g === 'light' ? { intro: 0.2, theme: 0, build: 0.5 * f, peak: 0.4, film: 0.6, outro: 0.2 } : { intro: 0, theme: -0.2, build: -0.3 + 0.7 * f, peak: 0.2, film: -0.5, outro: 0 };
+    out.push(clamp(T[s.type] + off, -1, 1));
+  });
+  return out;
+};
+// the plan of phrases: a phrase that answers itself every two or four bars, a ladder in a build
+S.phraseIdx = function (sc, k, s, si, j, t, ss) {
+  const B = k === 'strB' || k === 'perB', top = k[0] === 's' ? 5 : B ? 8 : 6;
+  if (ss.jump) return hash(sc.seed, 'jump', k, si, Math.floor(j / 2)) % (top + 1);
+  const r = rng(hash(sc.seed, 'plan', k, si)), g = S.groupOf(sc, k, si, s), pat = r.pick([[0, 1, 0, 1], [0, 1, -1, 0], [0, 1, 1, 0], [0, -1, 0, 1], [1, 0, 1, 0], [0, 1, 2, 1]]);
+  const n = top + 1, base = k === 'strA' ? Math.round(t * 3) : k === 'strB' ? 1 + Math.floor(t * 5) : Math.floor(t * n * 0.95);
+  const lo = k === 'strB' ? 1 : 0, hi = k === 'strA' ? 3 : top;
+  if (s.type === 'build') return clamp(base + Math.floor(j / g), lo, hi); // a ladder: one up every two or four bars
+  let idx = clamp(base, lo, hi) + pat[Math.floor(j / g) % 4];
+  if (idx > hi) idx = 2 * hi - idx; if (idx < lo) idx = 2 * lo - idx; // at the top the answer comes from below
+  return clamp(idx, lo, hi);
+};
+S.groupOf = (sc, k, si, s) => (s && s.bars <= 8 || rng(hash(sc.seed, 'group', k, si)).chance(0.5) ? 2 : 4);
 S.render = function (sc) {
-  const v = S.view(sc), st = S.STYLES[sc.style] || S.STYLES.suspense, BT = S.barTicks(sc);
-  const map = S.barMap(v), total = map.length, chords = S.chordsFor(sc), tension = S.tensionOf(sc), swell = S.swellOf(sc);
-  const out = { strings: { notes: [], ccs: [] }, percs: { notes: [], ccs: [] }, markers: [] };
+  const v = S.view(sc), BT = S.barTicks(sc), Q = BT / 4;
+  const map = S.barMap(v), total = map.length, chords = S.chordsFor(sc), tension = S.tensionOf(sc), swell = S.swellOf(sc).slice();
+  const out = { strA: { notes: [], ccs: [], pbs: [] }, strB: { notes: [], ccs: [], pbs: [] }, perA: { notes: [], ccs: [], pbs: [] }, perB: { notes: [], ccs: [], pbs: [] }, markers: [] };
   let b0 = 0; v.sections.forEach((s, si) => { const k = v.sections.slice(0, si + 1).filter((x) => x.type === s.type).length; out.markers.push({ t: b0 * BT, text: S.TYPES[s.type].name + (v.sections.filter((x) => x.type === s.type).length > 1 ? ' ' + k : '') }); b0 += s.bars; });
-  const hits = S.hitsOf(sc), hitAt = new Set(hits.map((x) => x.bar)), ending = sc.ending || 'resolve';
-  hits.forEach((x) => out.markers.push({ t: x.bar * BT + 1, text: 'Hit' + (x.text ? ': ' + x.text : '') }));
+  const hits = S.hitsOf(sc), ending = sc.ending || 'resolve';
+  hits.forEach((x) => out.markers.push({ t: x.bar * BT + 1, text: S.MOMENTS[x.kind || 'hit'] + (x.text ? ': ' + x.text : '') }));
+  const ev = S.events(sc, total), L = S.layerLevels(sc, v, tension, map), cam = S.cameraOf(sc, map);
+  // where each part plays at all (Where and Amount), then the story moments on top
+  for (let b = 0; b < total; b++) {
+    const { si, s } = map[b], ms = S.plays(sc, 'strings', s, si, v.sections), mp = S.plays(sc, 'percs', s, si, v.sections);
+    if (ms !== 'full') L.strA[b] = L.strB[b] = 0;
+    if (mp !== 'full') L.perA[b] = L.perB[b] = 0;
+    map[b].touch = mp === 'touch';
+    ['strA', 'strB', 'perA', 'perB'].forEach((k) => { if (ev[b][k] && ev[b][k].lev != null) L[k][b] = ev[b][k].lev; });
+    if (ev[b].swell != null) swell[b] = ev[b].swell;
+    if (ev[b].pb != null) cam[b] = ev[b].pb;
+  }
+  if (!sc.parts.strings.on) L.strA.fill(0), L.strB.fill(0);
+  if (!sc.parts.percs.on) L.perA.fill(0), L.perB.fill(0);
+  const acc = { strA: new Array(total).fill(0), strB: new Array(total).fill(0), perA: new Array(total).fill(0), perB: new Array(total).fill(0) };
   const hold = (arr) => { let cur = null; return { set(p, t, vel) { if (cur && cur.p === p) return; this.end(t); if (p != null) cur = { p, t, v: vel }; }, end(t) { if (cur) { arr.push({ t: cur.t, d: Math.max(30, t - cur.t - 10), p: cur.p, v: cur.v }); cur = null; } } }; };
-  const one = (arr, t, p, vel, len) => arr.push({ t, d: len || 240, p, v: vel || 100 });
-  const level = (t) => (t < 0.5 ? S.PER.common[Math.min(6, Math.floor(t / 0.5 * 7))] : S.PER.style[Math.min(8, Math.floor((t - 0.5) / 0.5 * 9))]);
-  /* strings */
-  { const N = out.strings.notes, ph = hold(N), ad = hold(N), bassH = hold(N), chordH = [hold(N), hold(N), hold(N)];
+  const one = (k, b, t, p, vel, len) => { out[k].notes.push({ t, d: len || 240, p, v: vel || 100 }); acc[k][b] = 0.9; };
+  const isOn = (k, b) => L[k][b] > 0.01 || (b + 1 < total && L[k][b + 1] > 0.01); // a layer starts a bar early, the wheel fades it in
+  /* strings: chords with colour, a bass that walks to the nearest chord tone, phrases that answer, additions as punctuation */
+  const colourOf = (c, b, s, j) => {
+    if (ev[b].colour) return ev[b].colour;
+    const r = rng(hash(sc.seed, 'colour', b)), deg = ((c.root - sc.key.root) % 12 + 12) % 12;
+    if (s.type === 'build' && j === s.bars - 1 && r.chance(0.6)) return 'sus4';
+    if ((s.type === 'build' || s.type === 'peak') && c.q === 'M' && deg === 7 && r.chance(0.45)) return '7';
+    if ((s.type === 'theme' || s.type === 'intro' || s.type === 'film') && c.q !== 'd' && r.chance(0.12)) return 'sus2';
+    return null;
+  };
+  const shape = (c, col) => col === 'sus2' ? [0, 2, 7] : col === 'sus4' ? [0, 5, 7] : col === 'dim' ? [0, 3, 6] : col === '7' ? (c.q === 'm' ? [0, 3, 7, 10] : [0, 4, 7, 10]) : c.q === 'M' ? [0, 4, 7] : c.q === 'm' ? [0, 3, 7] : [0, 3, 6];
+  ['strA', 'strB'].forEach((k) => {
+    const N = out[k].notes, ph = hold(N), ad = hold(N), bassH = hold(N), chordH = [hold(N), hold(N), hold(N), hold(N)], endAll = (t) => { ph.end(t); ad.end(t); bassH.end(t); chordH.forEach((x) => x.end(t)); };
+    let prevBass = 48 + sc.key.root;
     for (let b = 0; b < total; b++) {
-      const { si, s, j } = map[b], t0 = b * BT, mode = S.plays(sc, 'strings', s, si, v.sections), t = tension[b], c = chords[b] || chords[b - 1] || { root: sc.key.root, q: 'm' };
-      const lastBar = b === total - 1, ss = S.styleOf(sc, s);
-      if (lastBar && ending === 'stop') { ph.end(t0); ad.end(t0); bassH.end(t0); chordH.forEach((x) => x.end(t0)); if (mode) one(N, t0, S.STR.stop, 100, 240); continue; } // the sudden stop: everything cut at once
-      if (mode !== 'full') { ph.end(t0); ad.end(t0); bassH.end(t0); chordH.forEach((x) => x.end(t0)); continue; }
-      let key = S.STR.phrases[clamp(Math.floor(t * 6), 0, 5)];
-      if (ss.jump) key = S.STR.phrases[hash(sc.seed, 'jump', si, Math.floor(j / 2)) % 6];
-      if (lastBar && s.type === 'outro' && ending === 'resolve') key = S.STR.ending;
-      const vel = Math.round(64 + 40 * t);
+      const { si, s, j } = map[b], t0 = b * BT, t = tension[b], c = chords[b] || chords[b - 1] || { root: sc.key.root, q: 'm' }, ss = S.styleOf(sc, s), e = ev[b][k] || {}, lastBar = b === total - 1;
+      if (lastBar && ending === 'stop') { endAll(t0); if (sc.parts.strings.on) one(k, b, t0, S.STR.stop, 100, 240); continue; } // the sudden stop
+      if (!isOn(k, b)) { endAll(t0); continue; }
+      let key = S.STR.phrases[e.ph != null ? e.ph : S.phraseIdx(sc, k, s, si, j, t, ss)];
+      if (lastBar && s.type === 'outro' && ending === 'resolve') { key = S.STR.ending; acc[k][b] = 0.8; }
       ph.set(key, t0, 100);
-      let add = (s.type === 'build' || s.type === 'peak') && t > 0.72 && sc.amount !== 'spice' ? S.STR.additions[si % 4] : null;
-      if (hitAt.has(b)) add = S.STR.additions[(b + si) % 4]; // a hit point: the strings add a layer on that bar
+      // an addition: the riff that closes a phrase, or answers a moment
+      const g = S.groupOf(sc, k, si, s), ra = rng(hash(sc.seed, 'add', k, b));
+      let add = null;
+      if (e.add) add = S.STR.additions[hash(sc.seed, 'evadd', b) % 4];
+      else if (k === 'strB' && sc.amount !== 'spice' && j % g === g - 1 && ra.chance(0.25 + 0.5 * t)) add = S.STR.additions[ra.int(4)];
       ad.set(add, t0, 100);
       const pedal = sc.tricks.pedal && (s.type === 'film' || (ss.drone && (s.type === 'intro' || s.type === 'theme')));
-      const bassPc = pedal ? (sc.key.root + (s.type === 'film' ? ss.pedal : 0)) % 12 : c.root;
-      bassH.set(S.STR.bassLo + bassPc, t0, vel);
-      const tri = triad(c.root, c.q).map((pc) => { let p = S.STR.playLo + pc; if (p < 62) p += 12; if (ss.high && p + 12 <= 83) p += 12; return p; }).sort((a, x) => a - x);
-      tri.forEach((p, i) => chordH[i].set(p, t0, vel));
+      let bassP;
+      if (ev[b].bassLow) bassP = 48 + sc.key.root % 12;
+      else if (pedal) bassP = 48 + (sc.key.root + (s.type === 'film' ? ss.pedal : 0)) % 12;
+      else { const col = shape(c, null).map((x) => 48 + (c.root + x) % 12), rb = rng(hash(sc.seed, 'bass', b)); const near = col.slice().sort((x, y) => Math.abs(x - prevBass) - Math.abs(y - prevBass))[0]; bassP = s.type === 'peak' || s.type === 'build' || rb.chance(0.55) ? 48 + c.root : near; } // the bass walks to the nearest chord tone: a slash chord
+      prevBass = bassP;
+      const vel = Math.round(64 + 40 * t);
+      bassH.set(bassP, t0, vel);
+      const notes = shape(c, colourOf(c, b, s, j)).map((x) => { let p = S.STR.playLo + (c.root + x) % 12; if (p < 62) p += 12; if (ss.high && p + 12 <= 83) p += 12; return p; }).sort((a, x) => a - x);
+      chordH.forEach((hh, i) => { if (notes[i] != null) hh.set(notes[i], t0, vel); else hh.end(t0); });
     }
-    const end = total * BT; ph.end(end); ad.end(end); bassH.end(end); chordH.forEach((x) => x.end(end));
-  }
-  /* percs */
-  { const N = out.percs.notes, ph = hold(N), seen = {}; let nf = 0, nh = 0, nm = 0;
+    endAll(total * BT);
+  });
+  /* percs: A the pulse (common phrases, metals, intros), B the power (style phrases, hits, fills, endings) */
+  ['perA', 'perB'].forEach((k) => {
+    const ph = hold(out[k].notes), A = k === 'perA', keys = A ? S.PER.common : S.PER.style; let nm = 0;
     for (let b = 0; b < total; b++) {
-      const { si, s, j } = map[b], t0 = b * BT, mode = S.plays(sc, 'percs', s, si, v.sections), t = tension[b], next = v.sections[si + 1];
-      const lastBar = b === total - 1, lastOfSec = j === s.bars - 1, k = seen[si] || 0, ss = S.styleOf(sc, s);
-      const hitHere = hitAt.has(b) && sc.parts.percs.on, hitNext = hitAt.has(b + 1) && sc.parts.percs.on;
-      if (hitHere) one(N, t0, S.PER.hits[nh++ % 2], 124, 240); // a hit point: the hit lands exactly on the bar
-      if (hitNext && !lastBar) one(N, t0, S.PER.fills[nf++ % 3], 108, BT - 20); // and a fill runs into it
-      if (!mode) { ph.end(t0); continue; }
-      if (mode === 'full') {
-        let key = level(t);
-        if ((s.type === 'build' || (ss.tick && s.type === 'theme')) && sc.tricks.ladder) { const steps = Math.floor(j / 2), base = S.PER.style.indexOf(level(Math.max(0.5, tension[b - j] || 0.5))); key = S.PER.style[clamp(base + steps, 0, 8)]; } // one key up every two bars
-        if (s.type === 'film' && sc.tricks.metals) key = null; // the film moment: only metals hanging in the air
-        if (lastBar) key = null;
+      const { si, s, j, touch } = map[b], t0 = b * BT, t = tension[b], ss = S.styleOf(sc, s), e = ev[b][k] || {}, lastBar = b === total - 1;
+      if (!isOn(k, b) || touch || lastBar) { ph.end(t0); } else {
+        let key = keys[e.idx != null ? Math.min(e.idx, keys.length - 1) : S.phraseIdx(sc, k, s, si, j, t, ss)];
+        if (A && s.type === 'film' && sc.tricks.metals) key = null; // the film moment: only metals hanging in the air
+        if ((s.type === 'build' || (ss.tick && s.type === 'theme')) && sc.tricks.ladder && e.idx == null) key = keys[clamp(S.phraseIdx(sc, k, Object.assign({}, s, { type: 'build' }), si, j, t, ss), 0, keys.length - 1)];
         ph.set(key, t0, 100);
-        if (j === 0 && s.type === 'intro') one(N, t0, S.PER.intros[si % 2], 100, 480);
-      } else ph.end(t0);
-      if (sc.tricks.hits && j === 0 && !hitHere && (s.type === 'peak' || s.type === 'film' || (s.type === 'build' && (ss.percs.hits > 0.8)))) one(N, t0, S.PER.hits[nh++ % 2], 118, 240);
-      if (sc.tricks.metals && (s.type === 'film' || ((s.type === 'intro' || s.type === 'theme') && t < 0.5 && mode === 'full')) && j % (s.type === 'film' ? 2 : 4) === 0 && !lastBar) one(N, t0 + (s.type === 'film' ? 0 : BT / 2), S.PER.metals[nm++ % 3], 96, 480);
-      if (lastOfSec && next && (next.type === 'peak' || next.type === 'build') && !lastBar && !hitNext) one(N, t0, S.PER.fills[nf++ % 3], 108, BT - 20);
-      if (lastBar) {
-        ph.end(t0);
-        if (ending === 'resolve') one(N, t0, S.PER.endings[si % 2], 110, BT - 20);
-        else if (ending === 'open') { if (!hitHere) one(N, t0, S.PER.hits[nh++ % 2], 112, 240); one(N, t0 + BT / 2, S.PER.metals[nm++ % 3], 92, BT / 2 - 20); } // the cliffhanger: a hit, then a metal that hangs
-        else one(N, t0, S.PER.stop, 110, 240); // the sudden stop
+        if (L[k][b] > 0.01 && (b === 0 || L[k][b - 1] <= 0.01) && j === 0) one(k, b, t0, S.PER.intros[A ? 0 : 1], 100, 480); // an intro where this layer comes in
       }
-      seen[si] = k + 1;
+      if (A && (ev[b].metal || (sc.tricks.metals && (s.type === 'film' || ((s.type === 'intro' || s.type === 'theme') && t < 0.5 && L.perA[b] > 0)) && j % (s.type === 'film' ? 2 : 4) === 0)) && !lastBar && sc.parts.percs.on) one(k, b, t0 + (s.type === 'film' || ev[b].metal ? 0 : BT / 2), S.PER.metals[nm++ % 3], 96, 480);
     }
     ph.end(total * BT);
+  });
+  // the accents on the power track: hits on the turns, fills into what comes next, the ending
+  if (sc.parts.percs.on) {
+    let nf = 0, nh = 0;
+    const P = 'perB', fillTo = (b, t0) => one(L.perB[b + 1] > 0.01 || L.perB[b] > 0.01 ? 'perB' : 'perA', b, t0, S.PER.fills[nf++ % 3], 108, BT - 20);
+    for (let b = 0; b < total; b++) {
+      const { si, s, j } = map[b], t0 = b * BT, next = v.sections[si + 1], lastBar = b === total - 1, lastOfSec = j === s.bars - 1, ss = S.styleOf(sc, s), mode = S.plays(sc, 'percs', s, si, v.sections);
+      (ev[b].hits || []).forEach((i) => one(P, b, t0, S.PER.hits[i % 2], ev[b].soft ? 92 : 124, 240));
+      if (ev[b].fill && !lastBar) fillTo(b, t0);
+      if (!mode) continue;
+      if (sc.tricks.hits && j === 0 && !(ev[b].hits || []).length && (s.type === 'peak' || s.type === 'film' || (s.type === 'build' && ss.percs.hits > 0.8))) one(P, b, t0, S.PER.hits[nh++ % 2], 118, 240);
+      const g = S.groupOf(sc, 'perB', si, s);
+      if (!ev[b].fill && !lastBar && !(ev[b + 1] && (ev[b + 1].hits || []).length)) {
+        if (lastOfSec && next && (next.type === 'peak' || next.type === 'build')) fillTo(b, t0);
+        else if (!lastOfSec && j % (g * 2) === g * 2 - 1 && L.perB[b] > 0.3 && rng(hash(sc.seed, 'fill', b)).chance(0.4)) fillTo(b, t0); // a fill to close a phrase now and then
+      }
+      if (lastBar) {
+        if (ending === 'resolve') one(P, b, t0, S.PER.endings[si % 2], 110, BT - 20);
+        else if (ending === 'open') { if (!(ev[b].hits || []).length) one(P, b, t0, S.PER.hits[nh++ % 2], 112, 240); one('perA', b, t0 + BT / 2, S.PER.metals[0], 92, BT / 2 - 20); } // the cliffhanger: a hit, then a metal that hangs
+        else { one('perA', b, t0, S.PER.stop, 110, 240); one(P, b, t0, S.PER.stop, 110, 240); } // the sudden stop
+      }
+    }
   }
-  /* swell: the mod wheel turns both down where the line is low (in both plugins it dials in a decrescendo) */
-  if (sc.tricks.swell) for (let b = 0; b < total; b++) for (let q = 0; q < 4; q++) {
-    const a = swell[b], n = swell[b + 1] != null ? swell[b + 1] : a, x = a + (n - a) * (q / 4), val = clamp(Math.round((1 - x) * 100), 0, 127), t = b * BT + q * (BT / 4);
-    ['strings', 'percs'].forEach((p) => { const cc = out[p].ccs; if (!cc.length || cc[cc.length - 1].v !== val) cc.push({ t, c: 1, v: val }); });
-  }
-  out.strings.notes.sort((x, y) => x.t - y.t || x.p - y.p); out.percs.notes.sort((x, y) => x.t - y.t || x.p - y.p);
+  /* the wheels: the mod wheel fades each layer in and out (both plugins dial in a decrescendo as it goes up), the pitch wheel is the camera */
+  ['strA', 'strB', 'perA', 'perB'].forEach((k) => {
+    const cc = out[k].ccs, pbs = out[k].pbs, eff = L[k].map((x, b) => Math.max(x, acc[k][b])), camK = k[0] === 'p' ? 0.5 : 1;
+    if (!out[k].notes.length) return;
+    for (let b = 0; b < total; b++) for (let q = 0; q < 4; q++) {
+      const lv = eff[b] + ((b + 1 < total ? eff[b + 1] : eff[b]) - eff[b]) * (q / 4), sw = sc.tricks.swell ? swell[b] + ((swell[b + 1] != null ? swell[b + 1] : swell[b]) - swell[b]) * (q / 4) : 1;
+      const val = clamp(Math.round((1 - sw * lv) * 100), 0, 127), t = b * BT + q * Q;
+      if (!cc.length || cc[cc.length - 1].v !== val) cc.push({ t, c: 1, v: val });
+      const cm = cam[b] + ((b + 1 < total ? cam[b + 1] : cam[b]) - cam[b]) * (q / 4), pv = clamp(Math.round(8192 + cm * camK * 7400), 0, 16383);
+      if (!pbs.length || Math.abs(pbs[pbs.length - 1].v - pv) > 40) pbs.push({ t, v: pv });
+    }
+    out[k].notes.sort((x, y) => x.t - y.t || x.p - y.p);
+  });
   return out;
 };
 
 /* ---------- what each part plays per section, in words for the lanes ---------- */
 S.summary = function (sc) {
   const v = S.view(sc), r = S.render(sc), BT = S.barTicks(sc), chords = S.chordsFor(sc); let b0 = 0;
-  return v.sections.map((s, si) => {
+  return v.sections.map((s) => {
     const a = b0 * BT, z = (b0 + s.bars) * BT; b0 += s.bars;
-    const on = (n) => n.t < z && n.t + n.d > a; const sn = r.strings.notes.filter(on), pn = r.percs.notes.filter(on);
-    const phr = sn.filter((n) => n.p >= 36 && n.p <= 46);
-    const str = [];
-    if (phr.some((n) => n.p === S.STR.ending)) str.push('Ending');
-    if (sn.some((n) => n.p === S.STR.stop)) str.push('Stop');
-    const ps = [...new Set(phr.filter((n) => S.STR.phrases.includes(n.p)).map((n) => 'Phrase ' + (S.STR.phrases.indexOf(n.p) + 1)))];
-    if (ps.length) str.push(ps.length > 2 ? ps[0] + ' to ' + ps[ps.length - 1].replace('Phrase ', '') : ps.join(', '));
-    if (phr.some((n) => S.STR.additions.includes(n.p))) str.push('+ Addition');
-    const bass = sn.filter((n) => n.p >= 48 && n.p < 60);
-    if (bass.length && new Set(bass.map((n) => n.p)).size === 1 && s.bars > 2 && new Set(chords.slice(b0 - s.bars, b0).map((c) => c.root)).size > 1) str.push('pedal ' + S.pcName(bass[0].p, sc.key));
-    const per = [];
-    const held = [...new Set(pn.filter((n) => S.PER.common.includes(n.p) || S.PER.style.includes(n.p)).map((n) => n.p))];
-    if (held.length) per.push((S.PER.common.includes(held[0]) ? 'Common ' : 'Style ') + S.KEYNAME(held[0]) + (held.length > 1 ? ' to ' + S.KEYNAME(held[held.length - 1]) : ''));
-    if (pn.some((n) => S.PER.intros.includes(n.p))) per.unshift('Intro key');
-    if (pn.some((n) => S.PER.hits.includes(n.p))) per.push('Hit');
-    if (pn.some((n) => S.PER.metals.includes(n.p))) per.push('Metals');
-    if (pn.some((n) => S.PER.fills.includes(n.p))) per.push('Fill');
-    if (pn.some((n) => S.PER.endings.includes(n.p))) per.push('Ending');
-    if (pn.some((n) => n.p === S.PER.stop)) per.push('Stop');
+    const on = (n) => n.t < z && n.t + n.d > a;
+    const strOf = (k, tag) => {
+      const sn = r[k].notes.filter(on), phr = sn.filter((n) => n.p >= 36 && n.p <= 47), str = [];
+      if (phr.some((n) => n.p === S.STR.ending)) str.push('Ending');
+      if (sn.some((n) => n.p === S.STR.stop)) str.push('Stop');
+      const ps = [...new Set(phr.filter((n) => S.STR.phrases.includes(n.p)).map((n) => S.STR.phrases.indexOf(n.p) + 1))].sort();
+      if (ps.length) str.push((ps.length > 1 ? 'Phrases ' + ps[0] + '-' + ps[ps.length - 1] : 'Phrase ' + ps[0]));
+      if (phr.some((n) => S.STR.additions.includes(n.p))) str.push('+ Addition');
+      return str.length ? tag + ': ' + str.join(' ') : '';
+    };
+    const perOf = (k, tag) => {
+      const pn = r[k].notes.filter(on), per = [];
+      const held = [...new Set(pn.filter((n) => S.PER.common.includes(n.p) || S.PER.style.includes(n.p)).map((n) => n.p))].sort((x, y) => x - y);
+      if (held.length) per.push((S.PER.common.includes(held[0]) ? 'Common ' : 'Style ') + S.KEYNAME(held[0]) + (held.length > 1 ? '-' + S.KEYNAME(held[held.length - 1]) : ''));
+      if (pn.some((n) => S.PER.intros.includes(n.p))) per.unshift('Intro');
+      if (pn.some((n) => S.PER.hits.includes(n.p))) per.push('Hit');
+      if (pn.some((n) => S.PER.metals.includes(n.p))) per.push('Metals');
+      if (pn.some((n) => S.PER.fills.includes(n.p))) per.push('Fill');
+      if (pn.some((n) => S.PER.endings.includes(n.p))) per.push('Ending');
+      if (pn.some((n) => n.p === S.PER.stop)) per.push('Stop');
+      return per.length ? tag + ': ' + per.join(' ') : '';
+    };
     const cs = []; chords.slice(b0 - s.bars, b0).forEach((c) => { const nmx = S.chordName(c, sc.key); if (cs[cs.length - 1] !== nmx) cs.push(nmx); });
-    return { strings: str.join(' · '), percs: per.join(' · '), chords: cs.slice(0, 6).join(' · ') + (cs.length > 6 ? ' …' : '') };
+    return { strings: [strOf('strA', 'A'), strOf('strB', 'B')].filter(Boolean).join(' · '), percs: [perOf('perA', 'A'), perOf('perB', 'B')].filter(Boolean).join(' · '), chords: cs.slice(0, 6).join(' · ') + (cs.length > 6 ? ' …' : '') };
   });
+};
+
+/* ---------- every New is new: a fingerprint of the phrases and chords, compared with the last scores ---------- */
+S.fingerprint = function (sc) { const r = S.render(sc), BT = S.barTicks(sc), n = S.totalBars(S.view(sc)), ch = S.chordsFor(sc); const at = (k, b) => { const x = r[k].notes.filter((q) => q.t <= b * BT && q.t + q.d > b * BT && q.p < 60).map((q) => q.p).sort().join('.'); return x; }; const out = []; for (let b = 0; b < n; b++) out.push(['strA', 'strB', 'perA', 'perB'].map((k) => at(k, b)).join('/') + '|' + (ch[b] ? ch[b].root + ch[b].q : '')); return out; };
+S.similar = function (a, b) { const n = Math.min(a.length, b.length); if (!n) return 0; let same = 0; for (let i = 0; i < n; i++) if (a[i] === b[i]) same++; return same / Math.max(a.length, b.length); };
+S.freshScore = function (styleKey, opts) {
+  let recent = []; try { recent = JSON.parse(localStorage.getItem('dms-recent') || '[]'); } catch (e) { recent = []; }
+  let best = null;
+  for (let i = 0; i < 10; i++) {
+    const sc = S.newScore(styleKey, opts), fp = S.fingerprint(sc), sim = recent.reduce((m, f) => Math.max(m, S.similar(fp, f)), 0);
+    if (!best || sim < best.sim) best = { sc, fp, sim };
+    if (sim < 0.35) break;
+  }
+  try { recent.unshift(best.fp); localStorage.setItem('dms-recent', JSON.stringify(recent.slice(0, 20))); } catch (e) { /* private mode */ }
+  return best.sc;
 };
 
 /* ---------- MIDI out: type 1, 480 PPQ, tempo and metre, named track, mod wheel ---------- */
@@ -439,6 +602,7 @@ S.writeMidi = function (tracks, meta) {
   for (const tr of tracks) {
     const ch = tr.channel || 0, evs = [{ t: 0, o: 0, b: [0xff, 0x03].concat(vlq(str(tr.name).length), str(tr.name)) }];
     for (const c of tr.ccs || []) evs.push({ t: c.t, o: 1, b: [0xb0 | ch, c.c, c.v] });
+    for (const p of tr.pbs || []) evs.push({ t: p.t, o: 1, b: [0xe0 | ch, p.v & 127, (p.v >> 7) & 127] });
     for (const n of tr.notes) { evs.push({ t: n.t, o: 3, b: [0x90 | ch, n.p, clamp(n.v, 1, 127)] }); evs.push({ t: n.t + n.d, o: 2, b: [0x80 | ch, n.p, 0] }); }
     chunks.push(chunk('MTrk', enc(evs)));
   }
@@ -454,8 +618,8 @@ S.tempoMap = function (sc) {
 S.files = function (sc) {
   const r = S.render(sc), meta = { bpm: sc.bpm, meter: sc.meter, markers: r.markers, title: sc.name, tempos: S.tempoMap(sc) };
   const out = [];
-  if (sc.parts.strings.on && r.strings.notes.length) out.push({ part: 'Strings', data: S.writeMidi([{ name: 'Strings for STRIIIINGS (Player)', notes: r.strings.notes, ccs: r.strings.ccs }], meta) });
-  if (sc.parts.percs.on && r.percs.notes.length) out.push({ part: 'Percs', data: S.writeMidi([{ name: 'Percs for PERRCS (Player)', notes: r.percs.notes, ccs: r.percs.ccs }], meta) });
+  const cats = S.catsOf(sc.style);
+  S.LAYERS.forEach(([k, title, plug]) => { const on = k[0] === 's' ? sc.parts.strings.on : sc.parts.percs.on; if (on && r[k].notes.length) out.push({ part: title.replace(' ', ''), data: S.writeMidi([{ name: title + ' for ' + plug + ', Style ' + cats[k], notes: r[k].notes, ccs: r[k].ccs, pbs: r[k].pbs }], meta) }); });
   out.push({ part: 'Structure', data: S.writeMidi([], meta) });
   return out;
 };
@@ -534,7 +698,7 @@ if (typeof module !== 'undefined') module.exports = S;
 (function () {
 'use strict';
 const S = window.SCORE;
-const VERSION = 'version 2026-10-23 02:30';
+const VERSION = 'version 2026-10-28 05:00';
 const $ = (q) => document.querySelector(q);
 const SVGNS = 'http://www.w3.org/2000/svg';
 function h(tag, attrs, ...kids) {
@@ -557,6 +721,7 @@ function save(name, data) { const url = URL.createObjectURL(new Blob([data], { t
 function deliver(which) {
   const files = S.files(sc()).filter((f) => !which || f.part === which);
   if (!files.length) { setHint('Nothing to download: switch Strings or Percs on first.'); return; }
+  try { if (!which) { const rec = JSON.parse(localStorage.getItem('dms-recent') || '[]'); rec.unshift(S.fingerprint(sc())); localStorage.setItem('dms-recent', JSON.stringify(rec.slice(0, 20))); } } catch (e) { /* private mode */ }
   files.forEach((f, i) => setTimeout(() => save(fileName(f.part), f.data), i * 350));
   setHint(files.length > 1 ? files.length + ' files on their way. Drop each on bar 1 in Studio One.' : fileName(files[0].part) + ' downloaded.');
 }
@@ -611,8 +776,8 @@ function render() {
   // header
   app.append(h('header', { class: 'card top' },
     h('div', { class: 'brand' }, h('span', { class: 'logo' }, 'Divine ', h('i', null, 'Score'), ' Machine'), h('span', { class: 'tag' }, 'for UJAM STRIIIINGS + PERRCS')),
-    h('button', { class: 'ghost', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
-    h('button', { id: 'newScore', class: 'ghost', title: 'A new score with the same feeling', onclick: () => { st.sc = S.newScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '🎲 New score'),
+    h('button', { id: 'suiteBtn', class: 'ghost', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
+    h('button', { id: 'newScore', class: 'ghost', title: 'A new score with the same feeling', onclick: () => { st.sc = S.freshScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '🎲 New score'),
     h('label', { class: 'lab' }, 'Name', h('input', { id: 'name', type: 'text', value: x.name, style: 'width:150px', onchange: (e) => change(() => { x.name = e.target.value.trim() || 'Untitled'; }, true) })),
     h('label', { class: 'lab' }, 'Tempo', h('input', { id: 'bpm', type: 'number', min: 40, max: 200, value: x.bpm, style: 'width:72px', onchange: (e) => change(() => { x.bpm = S.clamp(Math.round(+e.target.value || x.bpm), 40, 200); }, true) }),
       h('span', { class: 'small muted' }, 'to'), h('input', { id: 'bpmEnd', type: 'number', min: 40, max: 200, value: x.bpmEnd || '', placeholder: 'steady', title: 'The tempo at the end: the score speeds up or slows down bar by bar. Empty: the tempo stays the same.', style: 'width:78px', onchange: (e) => change(() => { const v2 = Math.round(+e.target.value); x.bpmEnd = v2 ? S.clamp(v2, 40, 200) : null; setHint(x.bpmEnd ? 'From ' + x.bpm + ' to ' + x.bpmEnd + ' bpm, bar by bar. The files carry the tempo changes.' : 'Steady tempo.'); }, true) })),
@@ -641,7 +806,7 @@ function render() {
   const grow = (s) => 'flex:' + s.bars + ' 1 0;min-width:0';
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Tension'), h('span', null, 'draw it')), h('div', { class: 'draw' }, lineSvg('tensionSvg', 'Tension', t, S.autoTension(x), 'tension', '#E8A03A'))));
   const hitBars = new Set(S.hitsOf(x).map((q) => q.bar));
-  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Hits'), h('span', null, 'tap a bar')), h('div', { class: 'hitrow', id: 'hitRow' }, Array.from({ length: total }, (_, b) => h('button', { id: 'hit_' + b, class: hitBars.has(b) ? 'on' : '', title: 'Bar ' + (b + 1) + (hitBars.has(b) ? ': hit point, tap to remove' : ': tap to set a hit point'), 'aria-label': 'Hit point bar ' + (b + 1), onclick: () => change(() => { const hs = (x.hits || []).slice(), at = hs.findIndex((q) => q.bar === b); if (at >= 0) hs.splice(at, 1); else hs.push({ bar: b, text: '' }); x.hits = hs; setHint(at >= 0 ? 'Hit point on bar ' + (b + 1) + ' removed.' : 'Hit point on bar ' + (b + 1) + ': a fill runs into it, the hit lands on the bar. Name it on the right.'); }) }, hitBars.has(b) ? '▼' : '')))));
+  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Hits'), h('span', null, 'tap a bar')), h('div', { class: 'hitrow', id: 'hitRow' }, Array.from({ length: total }, (_, b) => h('button', { id: 'hit_' + b, class: hitBars.has(b) ? 'on' : '', title: 'Bar ' + (b + 1) + (hitBars.has(b) ? ': hit point, tap to remove' : ': tap to set a hit point'), 'aria-label': 'Hit point bar ' + (b + 1), onclick: () => change(() => { const hs = (x.hits || []).slice(), at = hs.findIndex((q) => q.bar === b); if (at >= 0) hs.splice(at, 1); else hs.push({ bar: b, text: '' }); x.hits = hs; setHint(at >= 0 ? 'Hit point on bar ' + (b + 1) + ' removed.' : 'Hit point on bar ' + (b + 1) + ': a fill runs into it, the hit lands on the bar. On the right, turn it into a story moment like an Explosion, a Sinkhole or Ether, and name it.'); }) }, hitBars.has(b) ? '▼' : '')))));
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }), h('div', { class: 'secs' }, v.sections.map((s, i) => h('button', { id: 'sec_' + i, class: 'sec' + (i === st.sel ? ' sel' : ''), style: grow(s) + ';background:' + TYPE_COL[s.type] + ';color:' + TYPE_FG[s.type] + (s.type === 'film' ? ';border:1px dashed #B88AA8' : ''), title: S.TYPES[s.type].name + ', ' + s.bars + ' bars. Tap to edit.', onclick: () => { st.sel = i; render(); } }, S.TYPES[s.type].name, ' ', h('span', { class: 'n' }, s.bars))))));
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('span', null, 'chords')), h('div', { class: 'secs mono' }, v.sections.map((s, i) => h('div', { style: grow(s), class: 'cell' }, sum[i].chords)))));
   const laneRow = (part, title, plugin, col, bg) => h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', { style: 'color:' + col }, title), h('span', null, plugin)),
@@ -671,13 +836,19 @@ function render() {
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Ending'), seg('end', Object.entries(S.ENDINGS), x.ending || 'resolve', (k) => change(() => { x.ending = k; setHint({ resolve: 'The score comes home: an ending phrase and a closing hit.', open: 'A cliffhanger: it ends on the five, a hit and a metal that hangs in the air.', stop: 'A sudden stop: everything cut at once on the last bar.' }[k]); }), 'How it ends')));
   const hl = S.hitsOf(x);
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Hit points'),
-    hl.length ? h('div', { class: 'col hitlist' }, hl.map((q) => h('div', { class: 'hrow' }, h('span', { class: 'mono small' }, 'Bar ' + (q.bar + 1)), h('input', { type: 'text', value: q.text || '', placeholder: 'what happens', 'aria-label': 'What happens on bar ' + (q.bar + 1), style: 'flex:1;min-width:0', onchange: (e) => change(() => { q.text = e.target.value.trim(); }, true) }), h('button', { class: 'ghost small', 'aria-label': 'Remove the hit point on bar ' + (q.bar + 1), onclick: () => change(() => { x.hits = (x.hits || []).filter((z) => z !== q); }) }, '✕'))))
+    hl.length ? h('div', { class: 'col hitlist' }, hl.map((q) => h('div', { class: 'hrow' }, h('span', { class: 'mono small' }, 'Bar ' + (q.bar + 1)), h('select', { 'aria-label': 'Story moment on bar ' + (q.bar + 1), title: S.MOMENT_LINE[q.kind || 'hit'], style: 'max-width:150px', onchange: (e) => change(() => { q.kind = e.target.value; setHint(S.MOMENTS[q.kind] + ' on bar ' + (q.bar + 1) + ': ' + S.MOMENT_LINE[q.kind]); }, true) }, Object.entries(S.MOMENTS).map(([k, t]) => h('option', { value: k, selected: k === (q.kind || 'hit') }, t))), h('input', { type: 'text', value: q.text || '', placeholder: 'what happens', 'aria-label': 'What happens on bar ' + (q.bar + 1), style: 'flex:1 1 140px;min-width:0', onchange: (e) => change(() => { q.text = e.target.value.trim(); }, true) }), h('button', { class: 'ghost small', 'aria-label': 'Remove the hit point on bar ' + (q.bar + 1), onclick: () => change(() => { x.hits = (x.hits || []).filter((z) => z !== q); }) }, '✕'))))
       : h('div', { class: 'muted small' }, 'A moment in your film, like a door that slams. Tap a bar in the Hits row: a fill runs into it, the hit lands on the bar, and the name shows as a marker in your DAW.')));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Tricks'), h('div', { class: 'chips' }, Object.entries(S.TRICKS).map(([k, tt]) => h('button', { id: 'trick_' + k, class: 'chip small' + (x.tricks[k] ? ' on' : ''), 'aria-pressed': x.tricks[k] ? 'true' : 'false', onclick: () => change(() => { x.tricks[k] = !x.tricks[k]; }, true) }, tt)))));
   aside.append(h('div', { class: 'card film' }, h('b', { class: 'disp small', style: 'color:#E3C6DA' }, 'Film moment'), h('span', { class: 'muted' }, x.fromTrack ? 'With your own track the structure is yours: set a section to Film moment to hold your breath there.' : 'Bars where your track holds its breath: strings on a pedal tone, only metals in the air. Switch it on above, or set any section to Film moment.')));
+  const cats = S.catsOf(x.style), LCOL = { strA: '#F4C177', strB: '#E8A03A', perA: '#9CC7E3', perB: '#6FA8D0' };
+  aside.append(h('div', { id: 'setupCard', class: 'card' }, h('div', { class: 'cap' }, 'Four tracks, one score'),
+    h('div', { class: 'muted small' }, 'Load STRIIIINGS twice and PERRCS twice. Give each the Style below. A carries the quiet parts, B takes over in builds and peaks, and A stays under it.'),
+    h('div', { class: 'col', style: 'gap:6px' }, S.LAYERS.map(([k, title, plug, role]) => h('div', { style: 'display:flex;gap:8px;align-items:flex-start;border-left:3px solid ' + LCOL[k] + ';padding-left:8px' },
+      h('div', { style: 'flex:1;min-width:0' }, h('b', { style: 'color:' + LCOL[k] }, title), h('span', { class: 'muted small' }, ' ' + role + ' · ' + plug),
+        h('div', null, 'Style: ', h('b', null, cats[k])), cats.ex[k] ? h('div', { class: 'muted small' }, 'try ' + cats.ex[k]) : null))))));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Get the files'),
-    h('div', { class: 'col' }, ['Strings', 'Percs', 'Structure'].map((p) => h('button', { id: 'dl_' + p, class: 'ghost left', onclick: () => deliver(p) }, '⬇ ' + p, h('span', { class: 'fn' }, fileName(p))))),
-    h('div', { class: 'muted small' }, 'The files: load STRIIIINGS and PERRCS, switch Latch off, Sync on Note, and drop each file on bar 1. The swell rides the mod wheel: both plugins play softer as it goes up.')));
+    h('div', { class: 'col' }, ['StringsA', 'StringsB', 'PercsA', 'PercsB', 'Structure'].map((p) => h('button', { id: 'dl_' + p, class: 'ghost left', onclick: () => deliver(p) }, '⬇ ' + p.replace(/([AB])$/, ' $1'), h('span', { class: 'fn' }, fileName(p))))),
+    h('div', { class: 'muted small' }, 'Switch Latch off and Sync on Note in all four, and drop each file on bar 1 of its own track. The mod wheel fades the layers in and out (both plugins play softer as it goes up), the pitch wheel moves between the low and the high section like a camera.')));
   app.append(h('div', { class: 'row top-align' }, main, aside));
   app.append(h('div', { id: 'hint', class: 'hint', role: 'status' }, st.hint));
   app.append(h('footer', null, h('span', { class: 'noai' }, 'No AI inside'), ' Every note comes from music rules and a seeded dice. Fully mechanical. © ' + new Date().getFullYear() + ' Divine Monday. Divine Score Machine, ' + VERSION + '.', h('span', { class: 'man' }, 'Manual (PDF): ', ...[['English', 'EN'], ['Nederlands', 'NL'], ['Deutsch', 'DE']].map(([n, c]) => h('a', { href: '/divine-music-machine-v7/manuals/' + ({ EN: 'Divine-Score-Machine-Manual-EN', NL: 'Divine-Score-Machine-Handleiding-NL', DE: 'Divine-Score-Machine-Handbuch-DE' })[c] + '.pdf', target: '_blank', rel: 'noopener' }, n)))));
