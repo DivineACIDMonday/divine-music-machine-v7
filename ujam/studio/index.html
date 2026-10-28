@@ -68,11 +68,14 @@ canvas.rip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 foot{display:block}
 .foot{padding:4px 28px 24px;font-size:12px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
 .foot a{color:var(--faint)}
+@media (max-width:600px){.stage{min-height:300px}.prow .strip{order:9;flex:0 0 100%!important}.prow .strip button{height:28px!important}.tip{left:12px!important;right:12px!important;bottom:12px!important;width:auto!important}}
+.tip{position:fixed;right:20px;bottom:20px;width:340px;z-index:50;background:var(--card);color:var(--ink);border:1px solid var(--line, var(--track));border-radius:18px;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:14px;line-height:1.45}
+.tip b{display:block;font-size:15px;margin-bottom:6px}.tip ol{margin:0 0 12px;padding-left:20px}.tip li{margin:3px 0}
 @media (max-width:900px){.top{height:auto;padding:12px 16px;flex-wrap:wrap}.wrap{padding:16px}.left,.right{width:100%}.steps{order:3;width:100%;justify-content:flex-start}}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 21:55</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 22:30</span></footer>
 <script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3384,10 +3387,13 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 21:55';
-const APP_NAME = window.DMS_UJAM ? 'Divine Music Studio UJAM' : 'Divine Music Studio';
+const VERSION = '2026-10-28 22:30';
+const GROOVE = !!window.DMS_GROOVE;
+const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
-const PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
+const ALL_PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
+const PARTS = GROOVE ? ['beat'] : ALL_PARTS;
+function grooveOnly(sg) { if (GROOVE && sg) for (const p of ALL_PARTS) if (p !== 'beat') sg.parts[p].mode = 'off'; }
 const PART_NAMES = { beat: 'Beat', bass: 'Bass', chords: 'Chords', pad: 'Pad', melody: 'Melody', answer: 'Answer' };
 const VARIATION = { calm: 0, gentle: 0.35, wild: 0.75 };
 const $ = (s) => document.querySelector(s);
@@ -3396,9 +3402,10 @@ const NS = 'http://www.w3.org/2000/svg';
 const s = (tag, attrs) => { const el = document.createElementNS(NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; };
 const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* fine */ } } };
-const KP = window.DMS_UJAM ? 'dmsu-' : 'dms-';
+const PHONE = () => window.innerWidth < 600;
+const KP = (window.DMS_UJAM ? 'dmsu-' : 'dms-') + (GROOVE ? 'g-' : '');
 
-function count(ev) { try { if (!/\.github\.io$/.test(location.hostname)) return; const q = new URLSearchParams({ p: ev ? 'studio/' + ev : location.pathname, t: ev || document.title, s: screen.width + ',' + screen.height, rnd: Math.random().toString(36).slice(2) }); if (ev) q.set('e', 'true'); const u = 'https://divine-monday.goatcounter.com/count?' + q; if (!(navigator.sendBeacon && navigator.sendBeacon(u))) new Image().src = u; } catch (e) { /* never in the way */ } }
+function count(ev) { try { if (!/\.github\.io$/.test(location.hostname)) return; const q = new URLSearchParams({ p: ev ? (GROOVE ? 'groove-studio/' : 'studio/') + ev : location.pathname, t: ev || document.title, s: screen.width + ',' + screen.height, rnd: Math.random().toString(36).slice(2) }); if (ev) q.set('e', 'true'); const u = 'https://divine-monday.goatcounter.com/count?' + q; if (!(navigator.sendBeacon && navigator.sendBeacon(u))) new Image().src = u; } catch (e) { /* never in the way */ } }
 setTimeout(() => count(), 0);
 function feedbackHref() { const sb = 'Feedback / contact: ' + APP_NAME + ' (version ' + VERSION + ')'; const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n'; const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(sb) + '&body=' + encodeURIComponent(b); }
 
@@ -3595,7 +3602,7 @@ function mmss(sec) { const m = Math.floor(sec / 60), x = Math.round(sec % 60); r
 function renderTop() {
   const el = $('#top'); el.innerHTML = ''; const has = !!song();
   const step = (n, label, state, dis, go) => h('button', { class: 'step ' + state, disabled: dis || null, title: dis ? 'Comes with the next build' : null, onclick: go || null }, h('b', null, state === 'done' ? '✓' : n), label);
-  el.append(h('div', { class: 'logo' }, 'Divine ', h('span', null, 'Music'), ' Studio'),
+  el.append(h('div', { class: 'logo' }, 'Divine ', h('span', null, GROOVE ? 'Groove' : 'Music'), ' Studio'),
     h('nav', { class: 'steps', 'aria-label': 'Steps' }, step(1, 'Genre', has ? 'done' : 'on', false, () => openStart()), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(2, 'Structure', has ? 'done' : '', !has, () => { if (st.mode !== 'overview') { st.mode = 'overview'; stopAll(); render(); } const c = $('#structCard'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); const b = c.querySelector('.sec.on') || c.querySelector('.sec'); if (b) b.focus(); } }), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(3, 'Parts', has ? (st.mode === 'get' ? 'done' : 'on') : '', !has, () => { if (st.mode !== 'overview') { st.mode = 'overview'; stopAll(); render(); } const r = $('#right'); if (r) { r.scrollIntoView({ behavior: 'smooth', block: 'center' }); const b = r.querySelector('.mode button'); if (b) b.focus(); } }), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(4, 'Get it', st.mode === 'get' ? 'on' : '', !has, () => openGet())),
     h('button', { class: 'ib', onclick: () => openStart(), title: 'Start a new song in any genre' }, 'New song'),
     h('button', { class: 'ib', 'aria-label': 'New ideas for every Machine part', title: 'New ideas for every Machine part', onclick: newSongSame, disabled: !has || null }, '⚄'),
@@ -3607,6 +3614,8 @@ function renderMenu() {
   const old = $('.menu'); if (old) old.remove(); if (!st.menu) return;
   document.body.append(h('div', { class: 'menu', role: 'menu' },
     h('a', { href: SUITE, role: 'menuitem' }, '← Back to the suite'),
+    h('a', { href: GROOVE ? '../' : 'groove/', role: 'menuitem' }, GROOVE ? 'Switch to Music Studio (whole song)' : 'Switch to Groove Studio (drums only)'),
+    h('button', { role: 'menuitem', onclick: () => { for (const m of Object.keys(TIPS)) store.set(KP + 'tip-' + m, false); st.menu = false; renderMenu(); const o = $('#tip'); if (o) o.remove(); showTip(); } }, 'Show tips again'),
     h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); count('feedback'); location.href = feedbackHref(); } }, 'Feedback / contact'),
     h('button', { role: 'menuitem', onclick: () => { applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); st.menu = false; renderMenu(); render(); } }, document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light theme' : 'Dark theme'),
     h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', role: 'menuitem' }, 'Impressum & privacy'),
@@ -3795,7 +3804,7 @@ function renderEdit() {
   const head = h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
     h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: closeEdit }, st.from === 'get' ? '← Back to Get it' : '← Done'),
     h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'), p === 'beat' ? h('span', { style: 'display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)' }, 'Drums in', pluginSel('beat')) : null,
-    h('nav', { 'aria-label': 'Parts', class: 'seg', style: 'flex-wrap:wrap;border-radius:18px' }, PARTS.map((q) => h('button', { class: q === p ? 'on' : '', 'aria-pressed': q === p ? 'true' : 'false', onclick: () => { st.ePart = q; renderEdit(); } }, PART_NAMES[q]))));
+    PARTS.length < 2 ? null : h('nav', { 'aria-label': 'Parts', class: 'seg', style: 'flex-wrap:wrap;border-radius:18px' }, PARTS.map((q) => h('button', { class: q === p ? 'on' : '', 'aria-pressed': q === p ? 'true' : 'false', onclick: () => { st.ePart = q; renderEdit(); } }, PART_NAMES[q]))));
   const bars = h('div', { class: 'card', style: 'width:100%;display:flex;flex-direction:column;gap:12px' },
     h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
       h('button', { class: 'ib', onclick: copyNext }, 'Copy to next →'), h('button', { class: 'ib', onclick: newIdeaBars }, '⚄ New idea'), h('button', { class: 'ib', onclick: backToMachine, disabled: !st.sel.some(edited) || null }, 'Back to machine')),
@@ -3877,7 +3886,7 @@ function playAll() { const was = AU.playing && !st.solo; stopAll(); st.solo = nu
 function soloPlay(p) { if (AU.playing && st.solo === p) { stopAll(); st.solo = null; renderGet(); return; } st.solo = p; startPlay(0); renderGet(); }
 function renderGet() {
   const sg = song(), wrap = $('#wrap'), map = playsMap(), tot = D.totalBars(sg); wrap.innerHTML = '';
-  const strip = (p) => { const n = Math.min(tot, 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false, ed = false; for (let b = b0; b < b1; b++) { if (map[p][b]) on = true; const a2 = D.sectionAt(sg, b); if (a2 && D.barOwnOf(sg, a2.s, p, a2.inBar)) ed = true; } const at = D.sectionAt(sg, b0); cells.push(h('button', { 'data-cell': i, 'aria-label': 'Edit ' + PART_NAMES[p] + ', ' + (at ? secLabel(at.i) + ' bar ' + (at.inBar + 1) : 'bar ' + (b0 + 1)), title: at ? secLabel(at.i) + ', bar ' + (at.inBar + 1) : '', onclick: () => { if (!at) return; st.sec = at.i; st.from = 'get'; openEdit(p, at.inBar); }, style: 'position:relative;flex:1;height:18px;min-width:0;padding:0;border:none;border-radius:2px;cursor:pointer;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') }, ed ? h('span', { 'aria-hidden': 'true', style: 'position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--ink)' }) : null)); } return h('div', { role: 'group', 'aria-label': PART_NAMES[p] + ' bars', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
+  const strip = (p) => { const n = Math.min(tot, PHONE() ? 48 : 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false, ed = false; for (let b = b0; b < b1; b++) { if (map[p][b]) on = true; const a2 = D.sectionAt(sg, b); if (a2 && D.barOwnOf(sg, a2.s, p, a2.inBar)) ed = true; } const at = D.sectionAt(sg, b0); cells.push(h('button', { 'data-cell': i, 'aria-label': 'Edit ' + PART_NAMES[p] + ', ' + (at ? secLabel(at.i) + ' bar ' + (at.inBar + 1) : 'bar ' + (b0 + 1)), title: at ? secLabel(at.i) + ', bar ' + (at.inBar + 1) : '', onclick: () => { if (!at) return; st.sec = at.i; st.from = 'get'; openEdit(p, at.inBar); }, style: 'position:relative;flex:1;height:18px;min-width:0;padding:0;border:none;border-radius:2px;cursor:pointer;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') }, ed ? h('span', { 'aria-hidden': 'true', style: 'position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--ink)' }) : null)); } return h('div', { role: 'group', class: 'strip', 'aria-label': PART_NAMES[p] + ' bars', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
   const rows = PARTS.map((p) => { const P = sg.parts[p], w = emptyWarning(p), off = P.mode === 'off';
     return h('div', { class: 'part' + (w ? ' alert' : '') },
       h('div', { class: 'prow' }, h('span', { class: 'dot', style: 'background:var(--' + p + ')' }), h('span', { class: 'nm', style: 'flex:0 0 90px' }, PART_NAMES[p]), off ? h('span', { style: 'flex:1;color:var(--faint)' }, 'Off: no file') : strip(p),
@@ -3892,17 +3901,31 @@ function renderGet() {
       h('button', { class: 'ib', style: 'height:56px;padding:0 22px;font-weight:700', 'aria-label': AU.playing && !st.solo ? 'Stop' : 'Play all parts', onclick: playAll }, AU.playing && !st.solo ? '■ Stop' : '▶ Play all'),
       h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '⬇ All ' + n + ' files (one zip)')),
     h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ Play all hears everything, ▶ on a part listens alone'), rows),
-    h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
+    h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, GROOVE ? 'Plus a Structure file with every section as a marker. Pick your drum plugin and the hits land on the right keys of that plugin.' : 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
 }
 
-function render() { document.body.classList.toggle('getmode', st.mode === 'get'); renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } if (st.mode === 'get') { renderGet(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
+function render() { grooveOnly(song()); setTimeout(showTip, 0); document.body.classList.toggle('getmode', st.mode === 'get'); renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } if (st.mode === 'get') { renderGet(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
 
+
+/* ---------- first time tips: one card per screen, once ---------- */
+const TIPS = {
+  overview: ['Welcome', GROOVE ? ['The machine made a whole beat for you. Press ▶ to hear it.', 'Tap the spiral to switch between the structure and where the beat plays.', 'Machine plays it, DIY lets you shape it, Off keeps it silent.', 'Happy? Next: Get it.'] : ['The machine made a whole song for you. Press ▶ to hear it.', 'Tap the spiral to switch between the structure and where each part plays.', 'Per part: Machine plays it, DIY lets you shape it, Off keeps it silent.', 'Happy? Next: Get it.']],
+  edit: ['The workshop', ['Tap the bars you want to change. More than one: they change together.', GROOVE ? 'Tap a step to add or remove a hit. Drag up or down: louder or softer.' : 'Tap a step to add or remove a note. Drag up or down: louder or softer; sideways: longer or shorter.', 'Grey shapes are the machine\'s idea. Back to machine undoes your bars.']],
+  get: ['Get it', GROOVE ? ['▶ Play all hears the whole beat.', 'Tap a bar in the strip to fix it in the workshop.', 'Pick your drum plugin, then take all files in one zip.'] : ['▶ Play all hears everything; ▶ on a part listens alone.', 'Tap a bar in a strip to fix it in the workshop.', 'Pick a plugin per part, then take all files in one zip.']]
+};
+function showTip() {
+  const old = $('#tip'); if (old && old.dataset.mode === st.mode) return; if (old) old.remove();
+  const t = TIPS[st.mode]; if (!t || !song() || store.get(KP + 'tip-' + st.mode, false) || $('#start')) return;
+  const close = () => { store.set(KP + 'tip-' + st.mode, true); el.remove(); };
+  const el = h('div', { class: 'tip', id: 'tip', role: 'note', 'data-mode': st.mode }, h('b', null, t[0]), h('ol', null, t[1].map((x) => h('li', null, x))), h('button', { class: 'ib', onclick: close }, 'Got it'));
+  document.body.append(el);
+}
 /* ---------- the start: pick a genre ---------- */
 function openStart() {
   closeStart(); const last = store.get(KP + 'session', null);
   document.body.append(h('div', { class: 'start', id: 'start' }, h('div', { class: 'box', role: 'dialog', 'aria-label': 'Pick a genre' },
-    h('h1', { style: 'margin:0;font-size:28px' }, 'Divine Music Studio'),
-    h('p', { style: 'margin:6px 0 0;color:var(--soft)' }, 'Pick a genre. The machine makes a whole song; you shape it.'),
+    h('h1', { style: 'margin:0;font-size:28px' }, APP_NAME),
+    h('p', { style: 'margin:6px 0 0;color:var(--soft)' }, GROOVE ? 'Pick a genre. The machine makes a whole beat; you shape it.' : 'Pick a genre. The machine makes a whole song; you shape it.'),
     song() ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: closeStart }, '← Back to my song') : last && last.song ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: () => { st.song = last.song; D.ensureTypes && D.ensureTypes(st.song); st.sec = last.sec || 0; clampSec(); closeStart(); render(); } }, 'Continue where you left off') : null,
     h('div', { class: 'gcards' }, D.GENRE_ALL.map((g) => { const G = D.GENRES[g]; return h('button', { class: 'gc', id: 'g_' + g, onclick: () => makeSong(g) }, G.name, h('small', null, (G.bpm ? G.bpm[0] + ' to ' + G.bpm[1] + ' bpm' : ''))); })))));
 }

@@ -13,3 +13,9 @@ uj=out.replace(engine, '<script>window.DMS_UJAM=true;window.DMM_UJAM=true;</scri
 os.makedirs(V+'/ujam/studio',exist_ok=True)
 open(V+'/ujam/studio/index.html','w',encoding='utf8').write(uj)
 print('built',len(out))
+G='<script>window.DMS_GROOVE=true;</script>'
+for path,html,t in [('/studio/groove',out,'Divine Music Studio'),('/ujam/studio/groove',uj,'Divine Music Studio UJAM')]:
+    gh=html.replace('<title>'+t+'</title>','<title>'+t.replace('Music','Groove')+'</title>').replace(engine, G+engine,1) if path=='/studio/groove' else html.replace('<script>window.DMS_UJAM=true;',G+'<script>window.DMS_UJAM=true;',1).replace('<title>'+t+'</title>','<title>'+t.replace('Music','Groove')+'</title>')
+    assert 'DMS_GROOVE' in gh
+    os.makedirs(V+path,exist_ok=True); open(V+path+'/index.html','w',encoding='utf8').write(gh)
+print('groove built')
