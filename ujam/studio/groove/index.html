@@ -68,6 +68,7 @@ canvas.rip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 foot{display:block}
 .foot{padding:4px 28px 24px;font-size:12px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
 .foot a{color:var(--faint)}
+.sec .bctl{flex:none;display:inline-flex;align-items:center;gap:6px;margin-left:auto}.bctl button{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:17px;line-height:1;cursor:pointer;padding:0}.bctl button:disabled{opacity:.35;cursor:default}.bctl small{min-width:54px;text-align:center}
 @media (max-width:600px){.stage{min-height:300px}.prow .strip{order:9;flex:0 0 100%!important}.prow .strip button{height:28px!important}.tip{left:12px!important;right:12px!important;bottom:12px!important;width:auto!important}}
 .tip{position:fixed;left:20px;bottom:20px;width:340px;z-index:50;background:var(--card);color:var(--ink);border:1px solid var(--line, var(--track));border-radius:18px;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:14px;line-height:1.45}
 .tip b{display:block;font-size:15px;margin-bottom:6px}.tip ol{margin:0 0 12px;padding-left:20px}.tip li{margin:3px 0}
@@ -75,7 +76,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 23:40</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 23:55</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3387,7 +3388,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 23:40';
+const VERSION = '2026-10-28 23:55';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3622,6 +3623,12 @@ function renderMenu() {
     h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); if (song()) saveSongFile(); else toast('Make a song first.'); } }, 'Save song file'),
     h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); openSongFile(); } }, 'Open song file')));
 }
+function changeBars(dir) {
+  change(() => { const sg = song(), sec = sg.sections[st.sec], L = sg.L || 4;
+    if (sec.type === 'fill') { sec.bars = D.clamp(sec.bars + dir, 1, 2); return; }
+    let n; if (dir > 0) n = sec.bars < L ? L : (Math.floor(sec.bars / L) + 1) * L; else n = sec.bars % L ? Math.floor(sec.bars / L) * L : sec.bars - L;
+    sec.bars = D.clamp(n, Math.min(L, sec.bars), 64); if (st.eBar >= sec.bars) st.eBar = 0; });
+}
 function renderLeft() {
   const el = $('#left'); el.innerHTML = ''; const sg = song(); if (!sg) return;
   const len = D.totalBars(sg) * barSec(sg);
@@ -3632,7 +3639,7 @@ function renderLeft() {
     h('div', { style: 'font-size:13px;color:var(--soft)' }, sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + mmss(len))));
   el.append(h('section', { class: 'card', id: 'structCard', style: 'display:flex;flex-direction:column;gap:8px' },
     h('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, h('div', { class: 'lab' }, 'Structure'), h('button', { class: 'ib', style: 'height:36px;font-size:13px', onclick: newStructure }, '⚄ New structure')),
-    h('div', { class: 'secs' }, sg.sections.map((x, i) => h('button', { class: 'sec' + (i === st.sec ? ' on' : ''), 'aria-pressed': i === st.sec ? 'true' : 'false', onclick: () => { st.sec = i; if (AU.playing) startPlay(D.sectionStart(sg, i)); render(); } }, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('small', null, x.bars + ' bars'))))));
+    h('div', { class: 'secs' }, sg.sections.map((x, i) => i === st.sec ? h('div', { class: 'sec on', role: 'group', 'aria-label': secLabel(i) }, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('span', { class: 'bctl' }, h('button', { 'aria-label': 'Fewer bars', disabled: x.bars <= (x.type === 'fill' ? 1 : Math.min(sg.L || 4, x.bars)) || null, onclick: () => changeBars(-1) }, '−'), h('small', null, x.bars + ' bars'), h('button', { 'aria-label': 'More bars', disabled: x.bars >= (x.type === 'fill' ? 2 : 64) || null, onclick: () => changeBars(1) }, '+'))) : h('button', { class: 'sec' + (i === st.sec ? ' on' : ''), 'aria-pressed': i === st.sec ? 'true' : 'false', onclick: () => { st.sec = i; if (AU.playing) startPlay(D.sectionStart(sg, i)); render(); } }, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('small', null, x.bars + ' bars'))))));
 }
 function renderSpiral() { const b = $('#spiral'); if (b) { b.innerHTML = ''; b.append(spiralSvg()); } const l = $('#spLabel'); if (l) l.textContent = (st.spiral === 'structure' ? 'Structure' : 'Parts, bar by bar') + ' · tap to switch'; }
 function renderMid() {
