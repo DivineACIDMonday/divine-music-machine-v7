@@ -69,6 +69,7 @@ foot{display:block}
 .foot{padding:4px 28px 24px;font-size:12px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
 .foot a{color:var(--faint)}
 .bpm{display:inline-flex;align-items:center;gap:4px;height:44px;padding:0 6px;border:1px solid var(--line);border-radius:12px;background:var(--card)}.bpm button{width:30px;height:30px;border:none;border-radius:8px;background:var(--bg);color:var(--ink);font-size:17px;cursor:pointer;padding:0}.bpm input{width:44px;border:none;background:transparent;color:var(--ink);font:700 16px Inter,system-ui,sans-serif;text-align:center;-moz-appearance:textfield}.bpm input::-webkit-inner-spin-button,.bpm input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.bpm span{font-size:13px;color:var(--soft);margin-right:4px}
+.ksel select{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:13px;padding:2px 8px;border-radius:8px;margin:0 2px}
 .gsel{margin-top:6px;position:relative;display:inline-block}.gsel select{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid transparent;background:transparent;font-size:22px;font-weight:700;padding:2px 30px 2px 12px;border-radius:12px;text-align:center}.gsel select:hover,.gsel select:focus{border-color:var(--line);background:var(--bg)}.gsel::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--soft);pointer-events:none}.gsel option{font-size:15px;font-weight:500}
 .sec .bctl{flex:none;display:inline-flex;align-items:center;gap:6px;margin-left:auto}.bctl button{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:17px;line-height:1;cursor:pointer;padding:0}.bctl button:disabled{opacity:.35;cursor:default}.bctl small{min-width:54px;text-align:center}
 @media (max-width:600px){.stage{min-height:300px}.prow .strip{order:9;flex:0 0 100%!important}.prow .strip button{height:28px!important}.tip{left:12px!important;right:12px!important;bottom:12px!important;width:auto!important}}
@@ -78,7 +79,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 00:15</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 00:25</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3370,7 +3371,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 00:15';
+const VERSION = '2026-10-29 00:25';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3621,7 +3622,10 @@ function renderLeft() {
     h('button', { class: 'spin', id: 'spiral', 'aria-label': 'Switch the spiral between structure and parts', title: 'Tap to switch: Structure or Parts', onclick: () => { st.spiral = st.spiral === 'structure' ? 'parts' : 'structure'; renderSpiral(); } }, spiralSvg()),
     h('div', { class: 'lab', id: 'spLabel' }, (st.spiral === 'structure' ? 'Structure' : 'Parts, bar by bar') + ' · tap to switch'),
     h('label', { class: 'gsel' }, h('select', { 'aria-label': 'Genre', title: 'Switch genre: a new ' + (GROOVE ? 'beat' : 'song') + ' in that genre (undo brings this one back)', onchange: (e) => switchGenre(e.target.value) }, D.GENRE_ALL.map((g) => h('option', { value: g, selected: g === sg.genre || null }, D.GENRES[g].name)))),
-    h('div', { style: 'font-size:13px;color:var(--soft)' }, sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + mmss(len))));
+    GROOVE ? h('div', { style: 'font-size:13px;color:var(--soft)' }, sg.bpm + ' bpm · ' + mmss(len)) : h('div', { class: 'ksel', style: 'font-size:13px;color:var(--soft)' }, sg.bpm + ' bpm · ',
+      h('select', { 'aria-label': 'Key', title: 'Key', onchange: (e) => change(() => { sg.key.root = +e.target.value; sg.keyAuto = false; }) }, D.NOTE.map((n, i) => h('option', { value: i, selected: i === sg.key.root || null }, n.includes('#') ? n + '/' + D.NOTE[(i + 1) % 12] + 'b' : n))),
+      h('select', { 'aria-label': 'Scale', title: 'Scale', onchange: (e) => change(() => { sg.key.scale = e.target.value; sg.keyAuto = false; }) }, Object.keys(D.SCALES).map((k) => h('option', { value: k, selected: k === sg.key.scale || null }, (D.SCALE_NAMES && D.SCALE_NAMES[k]) || k))),
+      ' · ' + mmss(len))));
   el.append(h('section', { class: 'card', id: 'structCard', style: 'display:flex;flex-direction:column;gap:8px' },
     h('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, h('div', { class: 'lab' }, 'Structure'), h('button', { class: 'ib', style: 'height:36px;font-size:13px', onclick: newStructure }, '⚄ New structure')),
     h('div', { class: 'secs' }, sg.sections.map((x, i) => i === st.sec ? h('div', { class: 'sec on', role: 'group', 'aria-label': secLabel(i) }, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('span', { class: 'bctl' }, h('button', { 'aria-label': 'Fewer bars', disabled: x.bars <= (x.type === 'fill' ? 1 : Math.min(sg.L || 4, x.bars)) || null, onclick: () => changeBars(-1) }, '−'), h('small', null, x.bars + ' bars'), h('button', { 'aria-label': 'More bars', disabled: x.bars >= (x.type === 'fill' ? 2 : 64) || null, onclick: () => changeBars(1) }, '+'))) : h('button', { class: 'sec' + (i === st.sec ? ' on' : ''), 'aria-pressed': i === st.sec ? 'true' : 'false', onclick: () => { st.sec = i; if (AU.playing) startPlay(D.sectionStart(sg, i)); render(); } }, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('small', null, x.bars + ' bars'))))));
