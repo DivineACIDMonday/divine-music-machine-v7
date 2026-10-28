@@ -69,13 +69,13 @@ foot{display:block}
 .foot{padding:4px 28px 24px;font-size:12px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
 .foot a{color:var(--faint)}
 @media (max-width:600px){.stage{min-height:300px}.prow .strip{order:9;flex:0 0 100%!important}.prow .strip button{height:28px!important}.tip{left:12px!important;right:12px!important;bottom:12px!important;width:auto!important}}
-.tip{position:fixed;right:20px;bottom:20px;width:340px;z-index:50;background:var(--card);color:var(--ink);border:1px solid var(--line, var(--track));border-radius:18px;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:14px;line-height:1.45}
+.tip{position:fixed;left:20px;bottom:20px;width:340px;z-index:50;background:var(--card);color:var(--ink);border:1px solid var(--line, var(--track));border-radius:18px;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:14px;line-height:1.45}
 .tip b{display:block;font-size:15px;margin-bottom:6px}.tip ol{margin:0 0 12px;padding-left:20px}.tip li{margin:3px 0}
 @media (max-width:900px){.top{height:auto;padding:12px 16px;flex-wrap:wrap}.wrap{padding:16px}.left,.right{width:100%}.steps{order:3;width:100%;justify-content:flex-start}}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 23:10</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 23:20</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3367,7 +3367,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 23:10';
+const VERSION = '2026-10-28 23:20';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3476,7 +3476,7 @@ const barSec = (sg) => D.barTicks(sg) / D.PPQ * 60 / sg.bpm;
 function scheduleBar(sg, bar, t0) {
   const R = D.makeRenderer(sg), tps = sg.bpm / 60 * D.PPQ;
   for (const p of PARTS) { if (sg.parts[p].mode === 'off' || st.mode === 'get' && st.solo && st.solo !== p) continue; let notes; try { notes = R.bar(p, bar); } catch (e) { console.error(e); continue; } let lastT = -1;
-    for (const n of notes) { const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue; if (p === 'beat') drum(n.lane >= 8 ? (laneDefs()[n.lane] || { fold: 6 }).fold : n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
+    for (const n of notes) { const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue; if (p === 'beat') drumLane(n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
       if ((p !== 'beat' || (laneDefs()[n.lane] || { fold: 6 }).fold !== 6) && (p !== 'chords' && p !== 'pad' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v, n.lane); lastT = t; } }
 }
 function tick() { const sg = song(), ctx = AU.ctx, tot = D.totalBars(sg); while (AU.nextT < ctx.currentTime + 0.18) { scheduleBar(sg, AU.nextBar, AU.nextT); AU.queue.push({ bar: AU.nextBar, t: AU.nextT, len: barSec(sg) }); AU.nextT += barSec(sg); AU.nextBar = st.mode === 'edit' ? (AU.nextBar + 1 >= D.sectionStart(sg, st.sec) + sg.sections[st.sec].bars ? D.sectionStart(sg, st.sec) : AU.nextBar + 1) : (AU.nextBar + 1) % tot; } AU.queue = AU.queue.filter((q) => q.t + q.len > ctx.currentTime - 1); AU.nodes = AU.nodes.filter((n) => n.end > ctx.currentTime); }
@@ -3706,7 +3706,7 @@ function editSel(fn) {
       else { d.notes = d.notes.filter((n) => Math.floor(n.s / N) !== k).concat(fd.notes.filter((n) => Math.floor(n.s / N) === kf).map((n) => Object.assign({}, n, { s: n.s - kf * N + k * N }))).sort((x, y) => x.s - y.s); } }
   });
 }
-function tapBeat(li, step) { editSel((d) => { while (d.lanes.length <= li) d.lanes.push(new Array(D.meter(song()).steps).fill(0)); const l = d.lanes[li]; l[step] = l[step] ? 0 : li === 4 || li === 5 ? 72 : li === 6 ? 84 : 110; }); previewDrum((laneDefs()[li] || { fold: 6 }).fold); }
+function tapBeat(li, step) { editSel((d) => { while (d.lanes.length <= li) d.lanes.push(new Array(D.meter(song()).steps).fill(0)); const l = d.lanes[li]; l[step] = l[step] ? 0 : li === 4 || li === 5 ? 72 : li === 6 ? 84 : 110; }); previewDrum(li); }
 function tapNote(step, pitch) {
   const p = st.ePart; editSel((d, k, N) => { const s0 = k * N + step, hit = d.notes.findIndex((n) => n.s === s0 && n.p === pitch);
     if (hit >= 0) d.notes.splice(hit, 1); else { if (p === 'bass') d.notes = d.notes.filter((n) => n.s !== s0); d.notes.push({ s: s0, d: Math.min(DEF_LEN[p] || 2, N - step), p: pitch, v: 96 }); d.notes.sort((x, y) => x.s - y.s); } });
@@ -3747,7 +3747,52 @@ function setLoud(kind) {
 }
 function barLevel(b) { const sec = secNow(), k = st.ePart === 'beat' ? 0 : st.ePart, f = sec.laneFx && sec.laneFx[k]; if (!f || !f.prog || f.from == null) return 1; if (b < f.from || b > f.to) return 1; const span = Math.max(1, f.to - f.from), x = (b - f.from) / span; return f.prog === 'swell' ? 0.45 + 0.55 * x : 1 - 0.55 * x; }
 function loudNow() { const sec = secNow(), k = st.ePart === 'beat' ? 0 : st.ePart, f = sec.laneFx && sec.laneFx[k]; return f && f.prog === 'swell' ? 'swell' : f && f.prog === 'fade' ? 'fade' : 'steady'; }
-function previewDrum(li) { if (!ensureAudio()) return; AU.ctx.resume(); drum(li, AU.ctx.currentTime + 0.01, 100); }
+// every lane of a big kit gets its own little sound, chosen by its name
+function laneVoice(li) {
+  const d = laneDefs()[li]; if (!d) return { k: 'fold', f: 6 }; const n = String(d.name).toLowerCase();
+  const pitch = /\b(l|lo|low)\b|lo ?\d|tom l/.test(n) ? 0 : /\b(m|mid)\b|tom m/.test(n) ? 1 : 2;
+  if (/tom/.test(n)) return { k: 'tom', p: [95, 135, 185][pitch] * (/2/.test(n) ? 0.85 : 1) };
+  if (/conga/.test(n)) return { k: 'tom', p: pitch === 0 ? 210 : 300, short: true };
+  if (/cowbell/.test(n)) return { k: 'bell' };
+  if (/block/.test(n)) return { k: 'block' };
+  if (/bell/.test(n)) return { k: 'ridebell' };
+  if (/ride/.test(n)) return { k: 'ride' };
+  if (/rim|side/.test(n)) return { k: 'rim' };
+  if (/tonal/.test(n)) return { k: 'tonal' };
+  if (/fx/.test(n)) return { k: 'fx' };
+  if (/pedal/.test(n)) return { k: 'pedal' };
+  if (/half/.test(n)) return { k: 'half' };
+  if (/perc ?2/.test(n)) return { k: 'perc', p: 1250 };
+  if (/perc ?3/.test(n)) return { k: 'perc', p: 560 };
+  if (/cym ?2|crash ?2/.test(n)) return { k: 'crash2' };
+  if (li >= 8 && d.fold === 2) return { k: 'snare2' };
+  if (li >= 8 && d.fold === 4) return { k: 'hat2' };
+  return { k: 'fold', f: d.fold };
+}
+function drumLane(li, t, v) {
+  const vc = laneVoice(li); if (vc.k === 'fold') { drum(vc.f, t, v); return; }
+  const ctx = AU.ctx, g = ctx.createGain(), amp = Math.pow(v / 127, 1.4); g.connect(AU.master);
+  const osc = (type, f0, f1, dur, a, dec) => { const o = ctx.createOscillator(); o.type = type; o.frequency.setValueAtTime(f0, t); if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur * 0.6); const og = ctx.createGain(); o.connect(og); og.connect(g); env(og, t, 0.001, a, 0.005, dec); o.start(t); o.stop(t + dur); track(o, t + dur); };
+  const noise = (dur, type, f, q, a, dec) => { const n = noiseSrc(t, dur), fl = ctx.createBiquadFilter(); fl.type = type; fl.frequency.value = f; if (q) fl.Q.value = q; const ng = ctx.createGain(); n.connect(fl); fl.connect(ng); ng.connect(g); env(ng, t, 0.001, a, 0.01, dec); };
+  g.gain.value = amp;
+  switch (vc.k) {
+    case 'tom': osc('sine', vc.p * 1.6, vc.p, vc.short ? 0.25 : 0.5, 0.9, vc.short ? 0.05 : 0.12); break;
+    case 'bell': osc('square', 540, 0, 0.4, 0.12, 0.09); osc('square', 800, 0, 0.4, 0.12, 0.09); break;
+    case 'block': osc('sine', 1650, 0, 0.12, 0.6, 0.02); break;
+    case 'ridebell': osc('triangle', 2350, 0, 0.9, 0.18, 0.25); noise(0.6, 'highpass', 6000, 0, 0.12, 0.2); break;
+    case 'ride': noise(1.4, 'bandpass', 5200, 0.6, 0.28, 0.4); osc('square', 3100, 0, 1.2, 0.03, 0.4); break;
+    case 'rim': osc('triangle', 1700, 900, 0.08, 0.5, 0.012); noise(0.05, 'highpass', 3000, 0, 0.2, 0.01); break;
+    case 'tonal': osc('sine', 330, 300, 0.5, 0.6, 0.14); break;
+    case 'fx': { const n = noiseSrc(t, 0.6), fl = ctx.createBiquadFilter(); fl.type = 'bandpass'; fl.Q.value = 4; fl.frequency.setValueAtTime(600, t); fl.frequency.exponentialRampToValueAtTime(7000, t + 0.4); n.connect(fl); fl.connect(g); env(g, t, 0.01, amp * 0.5, 0.2, 0.15); break; }
+    case 'pedal': noise(0.08, 'highpass', 5200, 0, 0.3, 0.015); break;
+    case 'half': noise(0.3, 'highpass', 6800, 0, 0.3, 0.06); break;
+    case 'perc': osc('square', vc.p, vc.p * 0.8, 0.15, 0.18, 0.025); break;
+    case 'crash2': noise(1.3, 'highpass', 3200, 0, 0.3, 0.35); break;
+    case 'snare2': noise(0.2, 'bandpass', 2600, 1, 0.6, 0.04); osc('triangle', 280, 200, 0.2, 0.3, 0.04); break;
+    case 'hat2': noise(0.1, 'highpass', 9000, 0, 0.36, 0.015); break;
+  }
+}
+function previewDrum(li) { if (!ensureAudio()) return; AU.ctx.resume(); drumLane(li, AU.ctx.currentTime + 0.01, 100); }
 function previewNote(p, pitch) { if (!ensureAudio()) return; AU.ctx.resume(); tone(p, pitch, AU.ctx.currentTime + 0.01, 0.3, 96); }
 function scalePcs() { const k = song().key, sc = D.SCALES[k.scale] || D.SCALES.minor; return sc.map((x) => (x + k.root) % 12); }
 function grid() {
