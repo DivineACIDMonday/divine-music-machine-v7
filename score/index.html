@@ -563,12 +563,15 @@ S.render = function (sc) {
   /* the wheels: the mod wheel fades each layer in and out (both plugins dial in a decrescendo as it goes up), the pitch wheel is the camera */
   ['strA', 'strB', 'perA', 'perB'].forEach((k) => {
     const cc = out[k].ccs, pbs = out[k].pbs, eff = L[k].map((x, b) => Math.max(x, acc[k][b])), camK = k[0] === 'p' ? 0.5 : 1;
+    const rb = rng(hash(sc.seed, 'breath', k)), br = { p: 3 + rb() * 4, o: rb() * 6.28, d: k[0] === 's' ? 0.22 : 0.16 }, rc = rng(hash(sc.seed, 'drift')), cw = { p: 5 + rc() * 4, o: rc() * 6.28 + (k.endsWith('B') ? Math.PI : 0) }; // B drifts against A: one rises while the other falls
     if (!out[k].notes.length) return;
     for (let b = 0; b < total; b++) for (let q = 0; q < 4; q++) {
-      const lv = eff[b] + ((b + 1 < total ? eff[b + 1] : eff[b]) - eff[b]) * (q / 4), sw = sc.tricks.swell ? swell[b] + ((swell[b + 1] != null ? swell[b + 1] : swell[b]) - swell[b]) * (q / 4) : 1;
+      let lv = eff[b] + ((b + 1 < total ? eff[b + 1] : eff[b]) - eff[b]) * (q / 4); const sw = sc.tricks.swell ? swell[b] + ((swell[b + 1] != null ? swell[b + 1] : swell[b]) - swell[b]) * (q / 4) : 1;
+      const ph = (b * 4 + q) / 4, wave = Math.sin(2 * Math.PI * ph / br.p + br.o); // nothing in a film stands still: every layer breathes on its own slow wave
+      if (lv > 0.05 && !acc[k][b]) lv = clamp(lv * (1 - br.d * (0.5 + 0.5 * wave)), 0, 1);
       const val = clamp(Math.round((1 - sw * lv) * 100), 0, 127), t = b * BT + q * Q;
       if (!cc.length || cc[cc.length - 1].v !== val) cc.push({ t, c: 1, v: val });
-      const cm = cam[b] + ((b + 1 < total ? cam[b + 1] : cam[b]) - cam[b]) * (q / 4), pv = clamp(Math.round(8192 + cm * camK * 7400), 0, 16383);
+      const cm = cam[b] + ((b + 1 < total ? cam[b + 1] : cam[b]) - cam[b]) * (q / 4) + 0.18 * Math.sin(2 * Math.PI * ph / cw.p + cw.o), pv = clamp(Math.round(8192 + cm * camK * 7400), 0, 16383);
       if (!pbs.length || Math.abs(pbs[pbs.length - 1].v - pv) > 40) pbs.push({ t, v: pv });
     }
     out[k].notes.sort((x, y) => x.t - y.t || x.p - y.p);
@@ -737,7 +740,7 @@ if (typeof module !== 'undefined') module.exports = S;
 (function () {
 'use strict';
 const S = window.SCORE;
-const VERSION = 'version 2026-10-28 05:40';
+const VERSION = 'version 2026-10-28 06:00';
 const $ = (q) => document.querySelector(q);
 const SVGNS = 'http://www.w3.org/2000/svg';
 function h(tag, attrs, ...kids) {
