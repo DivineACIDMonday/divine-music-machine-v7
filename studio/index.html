@@ -71,7 +71,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 22:00</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 21:35</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3363,7 +3363,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 22:00';
+const VERSION = '2026-10-28 21:35';
 const APP_NAME = window.DMS_UJAM ? 'Divine Music Studio UJAM' : 'Divine Music Studio';
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
 const PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
@@ -3474,7 +3474,7 @@ function scheduleBar(sg, bar, t0) {
 function tick() { const sg = song(), ctx = AU.ctx, tot = D.totalBars(sg); while (AU.nextT < ctx.currentTime + 0.18) { scheduleBar(sg, AU.nextBar, AU.nextT); AU.queue.push({ bar: AU.nextBar, t: AU.nextT, len: barSec(sg) }); AU.nextT += barSec(sg); AU.nextBar = st.mode === 'edit' ? (AU.nextBar + 1 >= D.sectionStart(sg, st.sec) + sg.sections[st.sec].bars ? D.sectionStart(sg, st.sec) : AU.nextBar + 1) : (AU.nextBar + 1) % tot; } AU.queue = AU.queue.filter((q) => q.t + q.len > ctx.currentTime - 1); AU.nodes = AU.nodes.filter((n) => n.end > ctx.currentTime); }
 function frame() {
   if (!AU.playing) return; const now = AU.ctx.currentTime; let cur = null; for (const q of AU.queue) if (q.t <= now) cur = q;
-  if (cur) { const nb = cur.bar !== AU.curBar; AU.curBar = cur.bar; AU.curFrac = D.clamp((now - cur.t) / cur.len, 0, 0.9999); if (nb && st.mode === 'edit') markPlayingBar(); if (nb && st.mode === 'overview') { const at = D.sectionAt(song(), AU.curBar); if (at && at.i !== st.sec) { st.sec = at.i; renderLeft(); renderRight(); } else renderSpiral(); renderStage(); } movePlayhead(); }
+  if (cur) { const nb = cur.bar !== AU.curBar; AU.curBar = cur.bar; AU.curFrac = D.clamp((now - cur.t) / cur.len, 0, 0.9999); if (nb && st.mode === 'edit') markPlayingBar(); if (nb && st.mode === 'get') markGetCell(); if (nb && st.mode === 'overview') { const at = D.sectionAt(song(), AU.curBar); if (at && at.i !== st.sec) { st.sec = at.i; renderLeft(); renderRight(); } else renderSpiral(); renderStage(); } movePlayhead(); }
   AU.raf = requestAnimationFrame(frame);
 }
 function startPlay(fromBar) { if (!ensureAudio()) return; AU.ctx.resume(); stopAll(); AU.playing = true; AU.nextBar = fromBar; AU.nextT = AU.ctx.currentTime + 0.08; AU.queue = []; AU.curBar = fromBar; AU.curFrac = 0; AU.timer = setInterval(tick, 25); tick(); AU.raf = requestAnimationFrame(frame); count('play'); if (st.mode === 'overview') renderMid(); }
@@ -3528,6 +3528,7 @@ function spiralSvg() {
   }
   return sv;
 }
+function markGetCell() { const tot = D.totalBars(song()), n = Math.min(tot, 96), c = Math.floor(AU.curBar * n / tot); document.querySelectorAll('[data-cell]').forEach((el) => { const on = +el.dataset.cell === c; el.style.outline = on ? '2px solid var(--ink)' : ''; el.style.transform = on ? 'scaleY(1.35)' : ''; }); }
 function markPlayingBar() { const at = D.sectionAt(song(), AU.curBar), cur = at && at.i === st.sec ? at.inBar : -1; document.querySelectorAll('[data-bar]').forEach((el) => { const on = +el.dataset.bar === cur; el.style.boxShadow = on ? '0 0 0 3px var(--answer)' : ''; el.style.transform = on ? 'translateY(-2px)' : ''; }); }
 function movePlayhead() {
   const gh = $('#gridHead'); if (gh) { const x = +gh.dataset.x0 + AU.curFrac * +gh.dataset.w; gh.setAttribute('x1', x); gh.setAttribute('x2', x); const at = D.sectionAt(song(), AU.curBar); gh.setAttribute('opacity', at && at.i === st.sec && at.inBar === st.eBar ? 0.9 : 0.25); }
@@ -3841,7 +3842,7 @@ function openGet() { stopAll(); st.mode = 'get'; render(); window.scrollTo(0, 0)
 function soloPlay(p) { if (AU.playing && st.solo === p) { stopAll(); st.solo = null; renderGet(); return; } st.solo = p; startPlay(0); renderGet(); }
 function renderGet() {
   const sg = song(), wrap = $('#wrap'), map = playsMap(), tot = D.totalBars(sg); wrap.innerHTML = '';
-  const strip = (p) => { const n = Math.min(tot, 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false; for (let b = b0; b < b1; b++) if (map[p][b]) on = true; cells.push(h('span', { style: 'flex:1;height:18px;border-radius:2px;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') })); } return h('div', { 'aria-hidden': 'true', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
+  const strip = (p) => { const n = Math.min(tot, 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false; for (let b = b0; b < b1; b++) if (map[p][b]) on = true; cells.push(h('span', { 'data-cell': i, style: 'flex:1;height:18px;border-radius:2px;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') })); } return h('div', { 'aria-hidden': 'true', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
   const rows = PARTS.map((p) => { const P = sg.parts[p], w = emptyWarning(p), off = P.mode === 'off';
     return h('div', { class: 'part' + (w ? ' alert' : '') },
       h('div', { class: 'prow' }, h('span', { class: 'dot', style: 'background:var(--' + p + ')' }), h('span', { class: 'nm', style: 'flex:0 0 90px' }, PART_NAMES[p]), off ? h('span', { style: 'flex:1;color:var(--faint)' }, 'Off: no file') : strip(p),
