@@ -71,7 +71,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 21:35</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 21:40</span></footer>
 <script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3383,7 +3383,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 21:35';
+const VERSION = '2026-10-28 21:40';
 const APP_NAME = window.DMS_UJAM ? 'Divine Music Studio UJAM' : 'Divine Music Studio';
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
 const PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
@@ -3660,7 +3660,7 @@ const STEP = 120;
 function secNow() { return song().sections[st.sec]; }
 function lbOf(b) { return b % song().L; }
 function openEdit(p, bar) { stopAll(); st.mode = 'edit'; st.ePart = p; const sec = secNow(); st.eBar = D.clamp(bar || 0, 0, sec.bars - 1); st.sel = [st.eBar]; st.selFresh = true; render(); window.scrollTo(0, 0); }
-function closeEdit() { stopAll(); st.mode = 'overview'; render(); }
+function closeEdit() { stopAll(); st.mode = st.from === 'get' ? 'get' : 'overview'; st.from = null; render(); }
 function shapeSvg(kind, x, y, r, attrs) {
   const a = Object.assign({}, attrs);
   if (kind === 'circle' || kind === 'dot') return s('circle', Object.assign(a, { cx: x, cy: y, r: kind === 'dot' ? r * 0.6 : r }));
@@ -3792,7 +3792,7 @@ function renderEdit() {
   const sg = song(), sec = secNow(), p = st.ePart, wrap = $('#wrap'); wrap.innerHTML = '';
   const edited = (b) => !!D.barOwnOf(sg, sec, p, b);
   const head = h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
-    h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: closeEdit }, '← Done'),
+    h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: closeEdit }, st.from === 'get' ? '← Back to Get it' : '← Done'),
     h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'), p === 'beat' ? h('span', { style: 'display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)' }, 'Drums in', pluginSel('beat')) : null,
     h('nav', { 'aria-label': 'Parts', class: 'seg', style: 'flex-wrap:wrap;border-radius:18px' }, PARTS.map((q) => h('button', { class: q === p ? 'on' : '', 'aria-pressed': q === p ? 'true' : 'false', onclick: () => { st.ePart = q; renderEdit(); } }, PART_NAMES[q]))));
   const bars = h('div', { class: 'card', style: 'width:100%;display:flex;flex-direction:column;gap:12px' },
@@ -3862,7 +3862,7 @@ function openGet() { stopAll(); st.mode = 'get'; render(); window.scrollTo(0, 0)
 function soloPlay(p) { if (AU.playing && st.solo === p) { stopAll(); st.solo = null; renderGet(); return; } st.solo = p; startPlay(0); renderGet(); }
 function renderGet() {
   const sg = song(), wrap = $('#wrap'), map = playsMap(), tot = D.totalBars(sg); wrap.innerHTML = '';
-  const strip = (p) => { const n = Math.min(tot, 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false; for (let b = b0; b < b1; b++) if (map[p][b]) on = true; cells.push(h('span', { 'data-cell': i, style: 'flex:1;height:18px;border-radius:2px;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') })); } return h('div', { 'aria-hidden': 'true', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
+  const strip = (p) => { const n = Math.min(tot, 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false; for (let b = b0; b < b1; b++) if (map[p][b]) on = true; const at = D.sectionAt(sg, b0); cells.push(h('button', { 'data-cell': i, 'aria-label': 'Edit ' + PART_NAMES[p] + ', ' + (at ? secLabel(at.i) + ' bar ' + (at.inBar + 1) : 'bar ' + (b0 + 1)), title: at ? secLabel(at.i) + ', bar ' + (at.inBar + 1) : '', onclick: () => { if (!at) return; st.sec = at.i; st.from = 'get'; openEdit(p, at.inBar); }, style: 'flex:1;height:18px;min-width:0;padding:0;border:none;border-radius:2px;cursor:pointer;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') })); } return h('div', { 'aria-hidden': 'true', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
   const rows = PARTS.map((p) => { const P = sg.parts[p], w = emptyWarning(p), off = P.mode === 'off';
     return h('div', { class: 'part' + (w ? ' alert' : '') },
       h('div', { class: 'prow' }, h('span', { class: 'dot', style: 'background:var(--' + p + ')' }), h('span', { class: 'nm', style: 'flex:0 0 90px' }, PART_NAMES[p]), off ? h('span', { style: 'flex:1;color:var(--faint)' }, 'Off: no file') : strip(p),
@@ -3875,7 +3875,7 @@ function renderGet() {
       h('button', { class: 'ib', onclick: () => { stopAll(); st.solo = null; st.mode = 'overview'; render(); } }, '← Back'),
       h('div', { style: 'flex:1' }, h('div', { style: 'font-size:22px;font-weight:700' }, 'Get it'), h('div', { style: 'color:var(--soft);font-size:14px' }, D.GENRES[sg.genre].name + ' · ' + sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + tot + ' bars')),
       h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '⬇ All ' + n + ' files (one zip)')),
-    h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · ▶ listens to it alone'), rows),
+    h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ listens alone'), rows),
     h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
 }
 
