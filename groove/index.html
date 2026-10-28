@@ -5390,7 +5390,7 @@ function openStart() {
     !st.boot ? keepStructureBox() : null,
     h('h3', null, st.boot ? 'Pick a groove' : 'Or a new groove from scratch'), genres,
     h('div', { class: 'small' }, 'The genre sets the swing and what the shadows suggest. Change it any time.'),
-    h('div', { class: 'noai' }, h('b', null, '⚙️ No AI inside'), ' Every note comes from music rules, patterns and dice. Fully mechanical.'),
+    h('div', { class: 'noai' }, h('b', null, '⚙️ No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.'),
     h('div', { class: 'small faint copy' }, D.COPYRIGHT + '. All rights reserved.'),
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
   );
