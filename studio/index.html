@@ -7,11 +7,12 @@
 <style>
 :root{--bg:#F4F3F8;--card:#fff;--ink:#1E1D2B;--soft:#5E5A72;--faint:#6B6780;--line:#E4E2EC;--mute:#EDEBF5;--accent:#E8836B;
 --beat:#E8836B;--bass:#8E7CF0;--chords:#4FB7A3;--pad:#6FA8DC;--melody:#E07BB0;--answer:#E2B04A;
---onink:#fff;--chip:#fff;--track:#F1EFF7;--dotc:#CFCBDD;--warnbg:#FBF3E1;--warnfg:#6A4A06;--l0:#E8836B;--l1:#F0A27A;--l2:#E2B04A;--l3:#E07BB0;--l4:#4FB7A3;--l5:#6FA8DC;--l6:#8E7CF0;--l7:#B7B1D6;--intro:#B9B4CC;--verse:#8E7CF0;--prechorus:#A99BF5;--chorus:#E8836B;--drop:#E8836B;--break:#6FA8DC;--build:#E2B04A;--fill:#CFCBDD;--outro:#B9B4CC}
+--onink:#fff;--chip:#fff;--track:#F1EFF7;--dotc:#CFCBDD;--warnbg:#FBF3E1;--warnfg:#6A4A06;--l0:#E8836B;--l1:#F0A27A;--l2:#E2B04A;--l3:#E07BB0;--l4:#4FB7A3;--l5:#6FA8DC;--l6:#8E7CF0;--l7:#B7B1D6;--l8:#D96C5B;--l9:#7FD1BE;--l10:#C9A26B;--l11:#A88FE8;--l12:#E89AC4;--l13:#5FA0C9;--l14:#D4C46A;--l15:#9AA4B8;--intro:#B9B4CC;--verse:#8E7CF0;--prechorus:#A99BF5;--chorus:#E8836B;--drop:#E8836B;--break:#6FA8DC;--build:#E2B04A;--fill:#CFCBDD;--outro:#B9B4CC}
 :root[data-theme="dark"]{--bg:#101219;--card:#191B26;--ink:#ECEAF5;--soft:#ABA7BF;--faint:#9692AC;--line:#2C2F40;--mute:#262938;--onink:#14151E;--chip:#2E3144;--track:#232636;--dotc:#454960;--warnbg:#3A2F14;--warnfg:#F2D493;--intro:#6E6A85;--outro:#6E6A85;--fill:#4A4D63}
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
 button{font-family:inherit;color:inherit;cursor:pointer}
+select{font-family:inherit;color:var(--ink);background:var(--card);cursor:pointer}
 button:focus-visible,a:focus-visible{outline:3px solid #5b4bd6;outline-offset:2px}
 .top{height:72px;padding:0 28px;display:flex;align-items:center;gap:20px;background:var(--card);border-bottom:1px solid var(--line)}
 .logo{font-size:20px;font-weight:700;white-space:nowrap}.logo span{color:var(--accent)}
@@ -70,7 +71,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 21:30</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 22:00</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3362,7 +3363,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 21:30';
+const VERSION = '2026-10-28 22:00';
 const APP_NAME = window.DMS_UJAM ? 'Divine Music Studio UJAM' : 'Divine Music Studio';
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
 const PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
@@ -3399,7 +3400,7 @@ function toast(msg, act) { const old = $('.toast'); if (old) old.remove(); clear
 function makeSong(genre) {
   stopAll();
   const sg = D.freshSong(genre, { name: 'Untitled' });
-  sg.raw = VARIATION.gentle; sg.studioVar = 'gentle';
+  sg.raw = VARIATION.gentle; sg.studioVar = 'gentle'; for (const p of PARTS) { const k = store.get(KP + 'plug-' + p, null); if (k && D.pluginsFor(p).includes(k)) sg.parts[p].plugin = k; }
   st.song = sg; st.hist = []; st.fut = []; st.sec = Math.max(0, sg.sections.findIndex((x) => x.type === 'verse' || x.type === 'chorus' || x.type === 'drop'));
   count('new/' + genre); save(); closeStart(); render();
 }
@@ -3466,18 +3467,18 @@ function tone(part, p, t, dur, v) {
 const barSec = (sg) => D.barTicks(sg) / D.PPQ * 60 / sg.bpm;
 function scheduleBar(sg, bar, t0) {
   const R = D.makeRenderer(sg), tps = sg.bpm / 60 * D.PPQ;
-  for (const p of PARTS) { if (sg.parts[p].mode === 'off') continue; let notes; try { notes = R.bar(p, bar); } catch (e) { console.error(e); continue; } let lastT = -1;
-    for (const n of notes) { const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue; if (p === 'beat') drum(n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
-      if ((p !== 'beat' || n.lane <= 5 || n.lane === 7) && (p !== 'chords' && p !== 'pad' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v, n.lane); lastT = t; } }
+  for (const p of PARTS) { if (sg.parts[p].mode === 'off' || st.mode === 'get' && st.solo && st.solo !== p) continue; let notes; try { notes = R.bar(p, bar); } catch (e) { console.error(e); continue; } let lastT = -1;
+    for (const n of notes) { const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue; if (p === 'beat') drum(n.lane >= 8 ? (laneDefs()[n.lane] || { fold: 6 }).fold : n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
+      if ((p !== 'beat' || (laneDefs()[n.lane] || { fold: 6 }).fold !== 6) && (p !== 'chords' && p !== 'pad' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v, n.lane); lastT = t; } }
 }
 function tick() { const sg = song(), ctx = AU.ctx, tot = D.totalBars(sg); while (AU.nextT < ctx.currentTime + 0.18) { scheduleBar(sg, AU.nextBar, AU.nextT); AU.queue.push({ bar: AU.nextBar, t: AU.nextT, len: barSec(sg) }); AU.nextT += barSec(sg); AU.nextBar = st.mode === 'edit' ? (AU.nextBar + 1 >= D.sectionStart(sg, st.sec) + sg.sections[st.sec].bars ? D.sectionStart(sg, st.sec) : AU.nextBar + 1) : (AU.nextBar + 1) % tot; } AU.queue = AU.queue.filter((q) => q.t + q.len > ctx.currentTime - 1); AU.nodes = AU.nodes.filter((n) => n.end > ctx.currentTime); }
 function frame() {
   if (!AU.playing) return; const now = AU.ctx.currentTime; let cur = null; for (const q of AU.queue) if (q.t <= now) cur = q;
-  if (cur) { const nb = cur.bar !== AU.curBar; AU.curBar = cur.bar; AU.curFrac = D.clamp((now - cur.t) / cur.len, 0, 0.9999); if (nb && st.mode === 'edit') markPlayingBar(); if (nb && st.mode !== 'edit') { const at = D.sectionAt(song(), AU.curBar); if (at && at.i !== st.sec) { st.sec = at.i; renderLeft(); renderRight(); } else renderSpiral(); renderStage(); } movePlayhead(); }
+  if (cur) { const nb = cur.bar !== AU.curBar; AU.curBar = cur.bar; AU.curFrac = D.clamp((now - cur.t) / cur.len, 0, 0.9999); if (nb && st.mode === 'edit') markPlayingBar(); if (nb && st.mode === 'overview') { const at = D.sectionAt(song(), AU.curBar); if (at && at.i !== st.sec) { st.sec = at.i; renderLeft(); renderRight(); } else renderSpiral(); renderStage(); } movePlayhead(); }
   AU.raf = requestAnimationFrame(frame);
 }
-function startPlay(fromBar) { if (!ensureAudio()) return; AU.ctx.resume(); stopAll(); AU.playing = true; AU.nextBar = fromBar; AU.nextT = AU.ctx.currentTime + 0.08; AU.queue = []; AU.curBar = fromBar; AU.curFrac = 0; AU.timer = setInterval(tick, 25); tick(); AU.raf = requestAnimationFrame(frame); count('play'); if (st.mode !== 'edit') renderMid(); }
-function stopAll() { clearInterval(AU.timer); AU.timer = null; cancelAnimationFrame(AU.raf); if (AU.ctx) { const now = AU.ctx.currentTime; for (const n of AU.nodes) { try { n.node.stop(now + 0.01); } catch (e) { /* gone */ } } } AU.nodes = []; RIP.list = []; const was = AU.playing; AU.playing = false; AU.queue = []; if (was && st.mode !== 'edit') renderMid(); }
+function startPlay(fromBar) { if (!ensureAudio()) return; AU.ctx.resume(); stopAll(); AU.playing = true; AU.nextBar = fromBar; AU.nextT = AU.ctx.currentTime + 0.08; AU.queue = []; AU.curBar = fromBar; AU.curFrac = 0; AU.timer = setInterval(tick, 25); tick(); AU.raf = requestAnimationFrame(frame); count('play'); if (st.mode === 'overview') renderMid(); }
+function stopAll() { clearInterval(AU.timer); AU.timer = null; cancelAnimationFrame(AU.raf); if (AU.ctx) { const now = AU.ctx.currentTime; for (const n of AU.nodes) { try { n.node.stop(now + 0.01); } catch (e) { /* gone */ } } } AU.nodes = []; RIP.list = []; const was = AU.playing; AU.playing = false; AU.queue = []; if (was && st.mode === 'overview') renderMid(); }
 function togglePlay() { if (AU.playing) stopAll(); else startPlay(D.sectionStart(song(), st.sec)); }
 
 /* ---------- the drops: every note a ripple ---------- */
@@ -3505,8 +3506,8 @@ function drawRipples() {
   const live = RIP.list.filter((r) => r.t <= now).length, budget = Math.min(1, Math.sqrt(7 / Math.max(7, live)));
   for (const r of RIP.list) { const k = (now - r.t) / RIP_LIFE[r.part]; if (k < 0) continue; const e = 1 - Math.pow(1 - k, 2.2), rad = r0 + (rMax * r.reach - r0) * e, wave = r.part === 'chords' || r.part === 'pad';
     const a = budget * (wave ? 0.17 : 0.26) * (0.45 + 0.55 * r.v / 127) * Math.pow(1 - k, 1.6), lw = wave ? 3.2 : r.kind === 'kick' || r.part === 'bass' ? 2.4 : 1.6, cx = W / 2 + (st.view === 'drops' ? r.ox * M : 0), cy = (st.view === 'drops' ? H / 2 + r.oy * M : (STAGEC.y || H / 2));
-    const shp = r.part === 'beat' ? LANE_SHAPE[r.lane] || 'circle' : 'circle'; g.strokeStyle = r.part === 'beat' ? cssv('--l' + Math.min(7, r.lane || 0)) : cssv('--' + r.part); g.globalAlpha = a * 0.3; g.lineWidth = lw * 4; ripPath(g, shp, cx, cy, rad); g.stroke(); g.globalAlpha = a; g.lineWidth = lw; ripPath(g, shp, cx, cy, rad); g.stroke();
-    if (k < 0.12) { g.globalAlpha = (1 - k / 0.12) * 0.9; g.fillStyle = r.part === 'beat' ? cssv('--l' + Math.min(7, r.lane || 0)) : cssv('--' + r.part); g.beginPath(); g.arc(cx, cy, wave ? 7 : 5, 0, Math.PI * 2); g.fill(); } }
+    const shp = r.part === 'beat' ? laneShape(r.lane || 0) : 'circle'; g.strokeStyle = r.part === 'beat' ? laneColor(r.lane || 0) : cssv('--' + r.part); g.globalAlpha = a * 0.3; g.lineWidth = lw * 4; ripPath(g, shp, cx, cy, rad); g.stroke(); g.globalAlpha = a; g.lineWidth = lw; ripPath(g, shp, cx, cy, rad); g.stroke();
+    if (k < 0.12) { g.globalAlpha = (1 - k / 0.12) * 0.9; g.fillStyle = r.part === 'beat' ? laneColor(r.lane || 0) : cssv('--' + r.part); g.beginPath(); g.arc(cx, cy, wave ? 7 : 5, 0, Math.PI * 2); g.fill(); } }
   g.globalAlpha = 1; if (RIP.list.length || AU.playing) RIP.raf = requestAnimationFrame(drawRipples);
 }
 
@@ -3542,7 +3543,7 @@ function stageCircle(bar) {
   const sg = song(), N = D.meter(sg).steps, BT = D.barTicks(sg), notes = barNotes(bar), sv = s('svg', { viewBox: '0 0 400 400', width: 420, height: 420, role: 'img', 'aria-label': 'Circle: the bar as a ring, every part on its own ring' });
   PARTS.forEach((p, k) => { const r = 180 - k * 26; sv.append(s('circle', { cx: 200, cy: 200, r, fill: 'none', stroke: cssv('--track'), 'stroke-width': 18 }));
     for (let i = 0; i < N; i++) { const a = -Math.PI / 2 + i / N * Math.PI * 2; sv.append(s('circle', { cx: 200 + r * Math.cos(a), cy: 200 + r * Math.sin(a), r: 2, fill: cssv('--dotc') })); }
-    notes[p].forEach((n) => { const a = -Math.PI / 2 + Math.max(0, n.t) / BT * Math.PI * 2, x = 200 + r * Math.cos(a), y = 200 + r * Math.sin(a), rr = 4 + 6 * n.v / 127; if (p === 'beat') sv.append(shapeSvg(LANE_SHAPE[n.lane] || 'dot', x, y, rr, { fill: cssv('--l' + Math.min(7, n.lane)) })); else { const len = Math.min(Math.PI * 1.8, Math.max(0.001, n.d / BT * Math.PI * 2)); sv.append(s('path', { d: arc(200, 200, r, a, a + len), fill: 'none', stroke: cssv('--' + p), 'stroke-width': (5 + 7 * n.v / 127).toFixed(1), 'stroke-linecap': 'round' })); } }); });
+    notes[p].forEach((n) => { const a = -Math.PI / 2 + Math.max(0, n.t) / BT * Math.PI * 2, x = 200 + r * Math.cos(a), y = 200 + r * Math.sin(a), rr = 4 + 6 * n.v / 127; if (p === 'beat') sv.append(shapeSvg(laneShape(n.lane), x, y, rr, { fill: laneColor(n.lane) })); else { const len = Math.min(Math.PI * 1.8, Math.max(0.001, n.d / BT * Math.PI * 2)); sv.append(s('path', { d: arc(200, 200, r, a, a + len), fill: 'none', stroke: cssv('--' + p), 'stroke-width': (5 + 7 * n.v / 127).toFixed(1), 'stroke-linecap': 'round' })); } }); });
   sv.append(s('line', { x1: 200, y1: 200, x2: 200, y2: 10, stroke: cssv('--ink'), 'stroke-width': 2, id: 'stageHead', 'data-kind': 'circle', opacity: AU.playing ? 0.85 : 0 }));
   return sv;
 }
@@ -3573,7 +3574,7 @@ function renderTop() {
   const el = $('#top'); el.innerHTML = ''; const has = !!song();
   const step = (n, label, state, dis, go) => h('button', { class: 'step ' + state, disabled: dis || null, title: dis ? 'Comes with the next build' : null, onclick: go || null }, h('b', null, state === 'done' ? '✓' : n), label);
   el.append(h('div', { class: 'logo' }, 'Divine ', h('span', null, 'Music'), ' Studio'),
-    h('nav', { class: 'steps', 'aria-label': 'Steps' }, step(1, 'Genre', has ? 'done' : 'on', false, () => openStart()), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(2, 'Structure', has ? 'done' : '', !has, () => { const c = $('#structCard'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); const b = c.querySelector('.sec.on') || c.querySelector('.sec'); if (b) b.focus(); } }), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(3, 'Parts', has ? 'on' : '', !has, () => { const r = $('#right'); if (r) { r.scrollIntoView({ behavior: 'smooth', block: 'center' }); const b = r.querySelector('.mode button'); if (b) b.focus(); } }), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(4, 'Get it', '', true)),
+    h('nav', { class: 'steps', 'aria-label': 'Steps' }, step(1, 'Genre', has ? 'done' : 'on', false, () => openStart()), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(2, 'Structure', has ? 'done' : '', !has, () => { if (st.mode !== 'overview') { st.mode = 'overview'; stopAll(); render(); } const c = $('#structCard'); if (c) { c.scrollIntoView({ behavior: 'smooth', block: 'center' }); const b = c.querySelector('.sec.on') || c.querySelector('.sec'); if (b) b.focus(); } }), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(3, 'Parts', has ? (st.mode === 'get' ? 'done' : 'on') : '', !has, () => { if (st.mode !== 'overview') { st.mode = 'overview'; stopAll(); render(); } const r = $('#right'); if (r) { r.scrollIntoView({ behavior: 'smooth', block: 'center' }); const b = r.querySelector('.mode button'); if (b) b.focus(); } }), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(4, 'Get it', st.mode === 'get' ? 'on' : '', !has, () => openGet())),
     h('button', { class: 'ib', onclick: () => openStart(), title: 'Start a new song in any genre' }, 'New song'),
     h('button', { class: 'ib', 'aria-label': 'New ideas for every Machine part', title: 'New ideas for every Machine part', onclick: newSongSame, disabled: !has || null }, '⚄'),
     h('button', { class: 'ib', 'aria-label': 'Undo', onclick: undo, disabled: !st.hist.length || null }, '↶'),
@@ -3587,7 +3588,8 @@ function renderMenu() {
     h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); count('feedback'); location.href = feedbackHref(); } }, 'Feedback / contact'),
     h('button', { role: 'menuitem', onclick: () => { applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); st.menu = false; renderMenu(); render(); } }, document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light theme' : 'Dark theme'),
     h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', role: 'menuitem' }, 'Impressum & privacy'),
-    h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); toast('Library, save and manual come with the next build.'); } }, 'Library, save, manual')));
+    h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); if (song()) saveSongFile(); else toast('Make a song first.'); } }, 'Save song file'),
+    h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); openSongFile(); } }, 'Open song file')));
 }
 function renderLeft() {
   const el = $('#left'); el.innerHTML = ''; const sg = song(); if (!sg) return;
@@ -3626,7 +3628,7 @@ function renderRight() {
         h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: () => openEdit(p, 0) }, 'Edit')),
       w ? h('div', { class: 'warn' }, h('span', null, w), h('button', { onclick: () => setMode(p, 'machine') }, 'Back to Machine')) : null));
   }
-  el.append(h('div', { style: 'flex:1' }), h('button', { class: 'big', disabled: true, title: 'Comes with the next build' }, 'Next: Get it →'));
+  el.append(h('div', { style: 'flex:1' }), h('button', { class: 'big', onclick: openGet }, 'Next: Get it →'));
 }
 /* ---------- screen C: the edit workshop ---------- */
 const LANE_NAMES = ['Kick', 'Kick 2', 'Snare', 'Clap', 'Hihat', 'Open hat', 'Perc', 'Crash'];
@@ -3658,7 +3660,7 @@ function sectionMat(part) {
 function barData(part, b, make) {
   const sg = song(), sec = secNow(), bo = D.barOwnOf(sg, sec, part, b); if (bo) return bo; if (!make) return null;
   let d;
-  if (part === 'beat') { let r = null; try { r = D.renderBar(sg, 'beat', D.sectionStart(sg, st.sec) + b, D.makeRenderer(sg).res, { lanes: true }); } catch (e) { r = null; } d = { lanes: (r && r.lanes ? r.lanes : sectionMat('beat').lanes).slice(0, 8).map((l) => l.slice()) }; }
+  if (part === 'beat') { let r = null; try { r = D.renderBar(sg, 'beat', D.sectionStart(sg, st.sec) + b, D.makeRenderer(sg).res, { lanes: true }); } catch (e) { r = null; } const nL = laneDefs().length, N = D.meter(sg).steps; d = { lanes: (r && r.lanes ? r.lanes : sectionMat('beat').lanes).slice(0, nL).map((l) => l.slice()) }; while (d.lanes.length < nL) d.lanes.push(new Array(N).fill(0)); }
   else d = D.solidCopy(part, sectionMat(part));
   if (sg.parts[part].mode === 'off') sg.parts[part].mode = 'machine';
   sec.barOwn = Object.assign({}, sec.barOwn, { [part]: Object.assign({}, sec.barOwn && sec.barOwn[part], { [b]: d }) });
@@ -3667,7 +3669,7 @@ function barData(part, b, make) {
 // what the focus bar looks like now, as steps
 function focusView() {
   const sg = song(), p = st.ePart, b = st.eBar, N = D.meter(sg).steps, k = lbOf(b);
-  if (p === 'beat') { const bo = barData('beat', b, false); if (bo) return { lanes: bo.lanes }; let r = null; try { r = D.renderBar(sg, 'beat', D.sectionStart(sg, st.sec) + b, D.makeRenderer(sg).res, { lanes: true }); } catch (e) { r = null; } return { lanes: r && r.lanes ? r.lanes.slice(0, 8) : D.emptyMat('beat', sg).lanes }; }
+  if (p === 'beat') { const bo = barData('beat', b, false); if (bo) return { lanes: bo.lanes }; let r = null; try { r = D.renderBar(sg, 'beat', D.sectionStart(sg, st.sec) + b, D.makeRenderer(sg).res, { lanes: true }); } catch (e) { r = null; } const nL = laneDefs().length, N = D.meter(sg).steps, L = (r && r.lanes ? r.lanes : D.emptyMat('beat', sg).lanes).slice(0, nL).map((l) => l.slice()); while (L.length < nL) L.push(new Array(N).fill(0)); return { lanes: L }; }
   if (p === 'chords') { const bo = barData('chords', b, false), base = sectionMat('chords'); return { chord: (bo || base).bars ? (bo || base).bars[k] : null }; }
   const bo = barData(p, b, false); if (bo) return { notes: bo.notes.filter((n) => Math.floor(n.s / N) === k).map((n) => ({ step: n.s - k * N, d: n.d, p: n.p, v: n.v })) };
   const R = D.makeRenderer(sg); let ns = []; try { ns = R.bar(p, D.sectionStart(sg, st.sec) + b); } catch (e) { ns = []; }
@@ -3678,7 +3680,7 @@ function shadowView() {
   const sg = JSON.parse(JSON.stringify(song())), sec = sg.sections[st.sec], p = st.ePart; if (sec.barOwn && sec.barOwn[p]) delete sec.barOwn[p][st.eBar];
   if (sg.parts[p].mode === 'yours') sg.parts[p].mode = 'machine';
   const R = D.makeRenderer(sg), gb = D.sectionStart(sg, st.sec) + st.eBar;
-  if (p === 'beat') { let r = null; try { r = D.renderBar(sg, 'beat', gb, R.res, { lanes: true }); } catch (e) { r = null; } return { lanes: r && r.lanes ? r.lanes.slice(0, 8) : null }; }
+  if (p === 'beat') { let r = null; try { r = D.renderBar(sg, 'beat', gb, R.res, { lanes: true }); } catch (e) { r = null; } return { lanes: r && r.lanes ? r.lanes : null }; }
   if (p === 'chords') return null;
   let ns = []; try { ns = R.bar(p, gb); } catch (e) { ns = []; } return { notes: ns.map((n) => ({ step: Math.round(Math.max(0, n.t) / STEP), d: Math.max(1, Math.round(n.d / STEP)), p: n.p })) };
 }
@@ -3693,7 +3695,7 @@ function editSel(fn) {
       else { d.notes = d.notes.filter((n) => Math.floor(n.s / N) !== k).concat(fd.notes.filter((n) => Math.floor(n.s / N) === kf).map((n) => Object.assign({}, n, { s: n.s - kf * N + k * N }))).sort((x, y) => x.s - y.s); } }
   });
 }
-function tapBeat(li, step) { editSel((d) => { const l = d.lanes[li]; l[step] = l[step] ? 0 : li === 4 || li === 5 ? 72 : li === 6 ? 84 : 110; }); previewDrum(li); }
+function tapBeat(li, step) { editSel((d) => { while (d.lanes.length <= li) d.lanes.push(new Array(D.meter(song()).steps).fill(0)); const l = d.lanes[li]; l[step] = l[step] ? 0 : li === 4 || li === 5 ? 72 : li === 6 ? 84 : 110; }); previewDrum((laneDefs()[li] || { fold: 6 }).fold); }
 function tapNote(step, pitch) {
   const p = st.ePart; editSel((d, k, N) => { const s0 = k * N + step, hit = d.notes.findIndex((n) => n.s === s0 && n.p === pitch);
     if (hit >= 0) d.notes.splice(hit, 1); else { if (p === 'bass') d.notes = d.notes.filter((n) => n.s !== s0); d.notes.push({ s: s0, d: Math.min(DEF_LEN[p] || 2, N - step), p: pitch, v: 96 }); d.notes.sort((x, y) => x.s - y.s); } });
@@ -3745,12 +3747,12 @@ function grid() {
     return h('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:12px' }, h('div', { class: 'hint' }, 'Pick the chord for this bar. Pad and bass follow it.'), wrap);
   }
   if (p === 'beat') {
-    const H = 8 * 44 + 20, sv = s('svg', { viewBox: '0 0 ' + (X0 + N * CW + 10) + ' ' + H, width: '100%', style: 'max-width:' + (X0 + N * CW + 10) + 'px', role: 'img', 'aria-label': 'Beat grid: tap a step to add or remove a hit' });
-    for (let li = 0; li < 8; li++) { const y = 20 + li * 44 + 18, col = cssv('--l' + li); const t = s('text', { x: 0, y: y + 5, 'font-size': 13, 'font-weight': 600, fill: col, 'font-family': 'Inter, sans-serif' }); t.textContent = LANE_NAMES[li]; sv.append(t);
+    const LD = laneDefs(), NL = LD.length, H = NL * 44 + 20, sv = s('svg', { viewBox: '0 0 ' + (X0 + N * CW + 10) + ' ' + H, width: '100%', style: 'max-width:' + (X0 + N * CW + 10) + 'px', role: 'img', 'aria-label': 'Beat grid: tap a step to add or remove a hit' });
+    for (let li = 0; li < NL; li++) { const y = 20 + li * 44 + 18, col = laneColor(li); const t = s('text', { x: 0, y: y + 5, 'font-size': 13, 'font-weight': 600, fill: col, 'font-family': 'Inter, sans-serif' }); t.textContent = LD[li].name; sv.append(t);
       for (let i = 0; i < N; i++) { const x = X0 + i * CW + CW / 2, on = fv.lanes[li] && fv.lanes[li][i], shd = sh && sh.lanes && sh.lanes[li] && sh.lanes[li][i];
         const cell = s('rect', { x: X0 + i * CW + 2, y: y - 18, width: CW - 4, height: 36, rx: 8, fill: i % 4 === 0 ? cssv('--mute') : cssv('--track'), style: 'cursor:pointer' }); cell.addEventListener('pointerdown', (e) => dragStart(e, { kind: 'beat', li, i, v: on || 0 })); sv.append(cell);
-        const dv = st.drag && st.drag.kind === 'beat' && st.drag.li === li && st.drag.i === i && st.drag.moved ? st.drag.nv : on; if (dv) { const el = shapeSvg(LANE_SHAPE[li], x, y, 5 + 9 * dv / 127, { fill: col, opacity: (0.45 + 0.55 * dv / 127).toFixed(2), style: 'pointer-events:none' }); sv.append(el); }
-        else if (shd) { const el = shapeSvg(LANE_SHAPE[li], x, y, 8, { fill: cssv('--dotc'), opacity: 0.8, style: 'pointer-events:none' }); sv.append(el); } } }
+        const dv = st.drag && st.drag.kind === 'beat' && st.drag.li === li && st.drag.i === i && st.drag.moved ? st.drag.nv : on; if (dv) { const el = shapeSvg(laneShape(li), x, y, 5 + 9 * dv / 127, { fill: col, opacity: (0.45 + 0.55 * dv / 127).toFixed(2), style: 'pointer-events:none' }); sv.append(el); }
+        else if (shd) { const el = shapeSvg(laneShape(li), x, y, 8, { fill: cssv('--dotc'), opacity: 0.8, style: 'pointer-events:none' }); sv.append(el); } } }
     sv.append(s('line', { id: 'gridHead', 'data-x0': X0, 'data-w': N * CW, x1: X0, x2: X0, y1: 0, y2: H, stroke: cssv('--answer'), 'stroke-width': 3, opacity: 0, style: 'pointer-events:none' }));
     return sv;
   }
@@ -3770,7 +3772,7 @@ function renderEdit() {
   const edited = (b) => !!D.barOwnOf(sg, sec, p, b);
   const head = h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
     h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: closeEdit }, '← Done'),
-    h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'),
+    h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'), p === 'beat' ? h('span', { style: 'display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)' }, 'Drums in', pluginSel('beat')) : null,
     h('nav', { 'aria-label': 'Parts', class: 'seg', style: 'flex-wrap:wrap;border-radius:18px' }, PARTS.map((q) => h('button', { class: q === p ? 'on' : '', 'aria-pressed': q === p ? 'true' : 'false', onclick: () => { st.ePart = q; renderEdit(); } }, PART_NAMES[q]))));
   const bars = h('div', { class: 'card', style: 'width:100%;display:flex;flex-direction:column;gap:12px' },
     h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
@@ -3785,7 +3787,78 @@ function renderEdit() {
   wrap.append(head, bars, main);
 }
 
-function render() { renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
+/* ---------- plugins, kits and titles ---------- */
+const settings = Object.assign({ titles: {} }, store.get(KP + 'settings', {}));
+function titleFor(p, plugin) { const pl = D.PLUGINS[plugin]; const t = settings.titles[p] || (p === 'answer' ? settings.titles.melody : ''); return pl && pl.titles && pl.titles.includes(t) ? t : ''; }
+D.titleOf = (p, plugin) => titleFor(p, plugin);
+D.bm808 = () => settings.bm808 || 0;
+function laneDefs() { const sg = song(), plug = sg.parts.beat.plugin, lay = D.kitLayout(plug, titleFor('beat', plug)); if (!lay) return LANE_NAMES.map((n, i) => ({ name: n, fold: i })); return lay.names.map((nm, li) => ({ name: nm, fold: lay.fold[li] })); }
+const laneColor = (li) => cssv('--l' + (li % 16));
+const laneShape = (li) => { const d = laneDefs()[li]; return LANE_SHAPE[d ? d.fold : Math.min(7, li)] || 'dot'; };
+function setPlugin(p, k) { change(() => { song().parts[p].plugin = k; }); store.set(KP + 'plug-' + p, k); }
+function setTitle(p, t) { settings.titles[p] = t; store.set(KP + 'settings', settings); render(); }
+function pluginSel(p) {
+  const sg = song(), cur = sg.parts[p].plugin, list = D.pluginsFor(p).filter((k) => k !== 'beatmaker2');
+  const sel = h('select', { class: 'ib', style: 'height:40px;font-size:13px', 'aria-label': PART_NAMES[p] + ' plays in', onchange: (e) => setPlugin(p, e.target.value) }, list.map((k) => h('option', { value: k, selected: k === cur }, D.PLUGINS[k].name)));
+  const pl = D.PLUGINS[cur], t = pl && pl.titles ? h('select', { class: 'ib', style: 'height:40px;font-size:13px', 'aria-label': PART_NAMES[p] + ' title', onchange: (e) => setTitle(p, e.target.value) }, [''].concat(pl.titles).map((x) => h('option', { value: x, selected: x === titleFor(p, cur) }, x || 'Any title'))) : null;
+  return h('span', { style: 'display:inline-flex;gap:6px;flex-wrap:wrap' }, sel, t);
+}
+
+/* ---------- files out ---------- */
+const safe = (x) => String(x).replace(/[^A-Za-z0-9]+/g, '') || 'Song';
+const genreTag = (sg) => ((D.GENRES[sg.genre] || {}).name || sg.genre || '').replace(/[^A-Za-z0-9]+/g, '');
+const keyShort = (k) => D.pcName(k.root).replace('#', 's') + (k.scale === 'minor' ? 'm' : k.scale === 'major' ? '' : k.scale.slice(0, 3));
+function markers(sg) { let b = 0; const BT = D.barTicks(sg); return sg.sections.map((x, i) => { const m = { t: b * BT, text: secLabelFull(sg, i) }; b += x.bars; return m; }); }
+function secLabelFull(sg, i) { const t = sg.sections[i].type, k = sg.sections.slice(0, i + 1).filter((x) => x.type === t).length; return D.TYPES[t].name + ' ' + k; }
+function versionsOf(plugin, part) { const pl = D.PLUGINS[plugin]; if (pl && pl.loops) return ['Player', 'Instrument']; if (!(pl && pl.family && !pl.noPlayer)) return [null]; return part === 'melody' || part === 'answer' ? ['Instrument'] : ['Player', 'Instrument']; }
+function deliveryNo() { let n = store.get(KP + 'counter', 0) + 1; store.set(KP + 'counter', n); return String(n).padStart(3, '0'); }
+function fileName(sg, part, no, plugin, ver) { const pl = plugin && plugin !== 'plain' && plugin !== 'gm' ? D.PLUGINS[plugin].name.replace(/^UJAM /, '').replace(/[^A-Za-z0-9]+/g, '') : ''; const tt = plugin ? titleFor(Object.keys(PART_NAMES).find((k) => PART_NAMES[k] === part) || '', plugin).replace(/[^A-Za-z0-9]/g, '') : ''; return 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_' + part + (pl ? '_' + pl : '') + (tt ? '_' + tt : '') + (ver ? '_' + ver : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
+function buildPart(sg, part, ver) {
+  const plugin = sg.parts[part].plugin, notes = D.renderSong(sg, part, { polished: true });
+  const masked = D.applyMask(sg, part, notes, plugin, { octave: 0, roles: {}, mode: ver ? ver.toLowerCase() : undefined });
+  const tt = titleFor(part, plugin), name = PART_NAMES[part] + (plugin !== 'plain' && plugin !== 'gm' ? ' for ' + D.PLUGINS[plugin].name + (tt ? ' ' + tt : '') + (ver ? ' ' + ver : '') : '');
+  return D.writeMidi([{ name, channel: part === 'beat' ? 9 : 0, notes: masked }], { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
+}
+function deliverList(sg) { const out = []; for (const p of PARTS) { if (sg.parts[p].mode === 'off' || !playsMap()[p].some(Boolean)) continue; for (const v of versionsOf(sg.parts[p].plugin, p)) out.push({ part: p, ver: v }); } return out; }
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(d) { let c = 0xffffffff; for (let i = 0; i < d.length; i++) c = CRC[(c ^ d[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
+function makeZip(files) {
+  const enc = new TextEncoder(), parts = [], cent = []; let off = 0;
+  for (const f of files) { const data = typeof f.data === 'string' ? enc.encode(f.data) : f.data, nm = enc.encode(f.name), crc = crc32(data);
+    const lh = new DataView(new ArrayBuffer(30)); lh.setUint32(0, 0x04034b50, true); lh.setUint16(4, 20, true); lh.setUint32(14, crc, true); lh.setUint32(18, data.length, true); lh.setUint32(22, data.length, true); lh.setUint16(26, nm.length, true); parts.push(new Uint8Array(lh.buffer), nm, data);
+    const ch = new DataView(new ArrayBuffer(46)); ch.setUint32(0, 0x02014b50, true); ch.setUint16(4, 20, true); ch.setUint16(6, 20, true); ch.setUint32(16, crc, true); ch.setUint32(20, data.length, true); ch.setUint32(24, data.length, true); ch.setUint16(28, nm.length, true); ch.setUint32(42, off, true); cent.push(new Uint8Array(ch.buffer), nm); off += 30 + nm.length + data.length; }
+  const cs = cent.reduce((a, b) => a + b.length, 0), end = new DataView(new ArrayBuffer(22)); end.setUint32(0, 0x06054b50, true); end.setUint16(8, files.length, true); end.setUint16(10, files.length, true); end.setUint32(12, cs, true); end.setUint32(16, off, true);
+  const all = parts.concat(cent, [new Uint8Array(end.buffer)]), tot = all.reduce((a, b) => a + b.length, 0), out = new Uint8Array(tot); let o = 0; for (const p of all) { out.set(p, o); o += p.length; } return out;
+}
+async function saveFiles(files) { for (let i = 0; i < files.length; i++) { const f = files[i], blob = new Blob([f.data], { type: /\.zip$/.test(f.name) ? 'application/zip' : /\.json$/.test(f.name) ? 'application/json' : 'audio/midi' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = f.name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); if (i < files.length - 1) await new Promise((r) => setTimeout(r, 450)); } toast(files.length === 1 ? 'Downloaded ' + files[0].name : 'Downloaded ' + files.length + ' files'); }
+async function getAll() { const sg = song(), no = deliveryNo(), files = deliverList(sg).map((x) => ({ name: fileName(sg, PART_NAMES[x.part], no, sg.parts[x.part].plugin, x.ver), data: buildPart(sg, x.part, x.ver) })); files.push({ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_Structure_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid', data: D.writeMidi([], { bpm: sg.bpm, meter: sg.meter, title: sg.name, markers: markers(sg) }) }); count('download/zip'); await saveFiles([{ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_All_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.zip', data: makeZip(files) }]); }
+async function getOne(part, ver) { const sg = song(), no = deliveryNo(); count('download/one'); await saveFiles([{ name: fileName(sg, PART_NAMES[part], no, sg.parts[part].plugin, ver), data: buildPart(sg, part, ver) }]); }
+function saveSongFile() { const sg = song(); saveFiles([{ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '.dmsong.json', data: JSON.stringify({ app: 'Divine Music Studio', v: 1, song: sg }) }]); }
+function openSongFile() { const inp = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: async () => { const f = inp.files[0]; if (!f) return; try { const o = JSON.parse(await f.text()), sg = o.song || o; if (!sg.sections || !sg.parts) throw new Error('not a song'); D.ensureTypes && D.ensureTypes(sg); stopAll(); st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.mode = 'overview'; save(); closeStart(); render(); toast('Opened ' + f.name); } catch (e) { toast('That file is not a Divine song.'); } } }); document.body.append(inp); inp.click(); setTimeout(() => inp.remove(), 60000); }
+
+/* ---------- screen D: get it, with a preview ---------- */
+function openGet() { stopAll(); st.mode = 'get'; render(); window.scrollTo(0, 0); }
+function soloPlay(p) { if (AU.playing && st.solo === p) { stopAll(); st.solo = null; renderGet(); return; } st.solo = p; startPlay(0); renderGet(); }
+function renderGet() {
+  const sg = song(), wrap = $('#wrap'), map = playsMap(), tot = D.totalBars(sg); wrap.innerHTML = '';
+  const strip = (p) => { const n = Math.min(tot, 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false; for (let b = b0; b < b1; b++) if (map[p][b]) on = true; cells.push(h('span', { style: 'flex:1;height:18px;border-radius:2px;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') })); } return h('div', { 'aria-hidden': 'true', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
+  const rows = PARTS.map((p) => { const P = sg.parts[p], w = emptyWarning(p), off = P.mode === 'off';
+    return h('div', { class: 'part' + (w ? ' alert' : '') },
+      h('div', { class: 'prow' }, h('span', { class: 'dot', style: 'background:var(--' + p + ')' }), h('span', { class: 'nm', style: 'flex:0 0 90px' }, PART_NAMES[p]), off ? h('span', { style: 'flex:1;color:var(--faint)' }, 'Off: no file') : strip(p),
+        off ? null : pluginSel(p),
+        off ? null : h('button', { class: 'ib', 'aria-label': 'Listen to ' + PART_NAMES[p] + ' alone', onclick: () => soloPlay(p) }, AU.playing && st.solo === p ? '■' : '▶'),
+        off ? null : h('span', { style: 'display:inline-flex;gap:6px' }, versionsOf(P.plugin, p).map((v) => h('button', { class: 'ib', style: 'font-size:13px', onclick: () => getOne(p, v) }, '⬇ ' + (v || 'MIDI'))))),
+      w ? h('div', { class: 'warn' }, h('span', null, w), h('button', { onclick: () => { setMode(p, 'machine'); renderGet(); } }, 'Back to Machine')) : null); });
+  const n = deliverList(sg).length + 1;
+  wrap.append(h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
+      h('button', { class: 'ib', onclick: () => { stopAll(); st.solo = null; st.mode = 'overview'; render(); } }, '← Back'),
+      h('div', { style: 'flex:1' }, h('div', { style: 'font-size:22px;font-weight:700' }, 'Get it'), h('div', { style: 'color:var(--soft);font-size:14px' }, D.GENRES[sg.genre].name + ' · ' + sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + tot + ' bars')),
+      h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '⬇ All ' + n + ' files (one zip)')),
+    h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · ▶ listens to it alone'), rows),
+    h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
+}
+
+function render() { renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } if (st.mode === 'get') { renderGet(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
 
 /* ---------- the start: pick a genre ---------- */
 function openStart() {
