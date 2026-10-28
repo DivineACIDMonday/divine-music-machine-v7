@@ -1335,7 +1335,7 @@ E.STRUCTS = {
   punk: (r) => { const o = [['intro', 4]]; for (let k = 0; k < 2; k++) o.push(['verse', 8], ['chorus', 8]); if (r.chance(0.65)) o.push(['break', r.pick([4, 8])]); o.push(['chorus', 8]); if (r.chance(0.5)) o.push(['chorus', 8]); o.push(['outro', 4]); return o; },
   hiphop: (r) => { const o = [['intro', r.pick([4, 8])]], n = 2 + r.int(2); for (let k = 0; k < n; k++) { o.push(['verse', 16], ['chorus', 8]); if (k === n - 2 && r.chance(0.4)) o.push(['break', 8]); } o.push(['outro', 4]); return o; },
   triphop: (r) => { const o = [['intro', r.pick([8, 16])], ['verse', 16], ['chorus', 8], ['verse', 16], ['break', r.pick([8, 16])], ['chorus', 8]]; if (r.chance(0.4)) o.push(['chorus', 8]); o.push(['outro', 8]); return o; },
-  dnb: (r) => { const o = [['intro', r.pick([16, 32])], ['drop', 32], ['break', r.pick([16, 32])], ['build', 8], ['drop', 32]]; if (r.chance(0.35)) o.push(['break', 8], ['drop', 16]); o.push(['outro', r.pick([16, 32])]); return o; },
+  dnb: (r) => { const o = [['intro', r.pick([16, 32])], ['drop', 32], ['break', 16], ['build', 8], ['drop', 32]]; if (r.chance(0.35)) o.push(['break', 8], ['drop', 16]); o.push(['outro', r.pick([16, 32])]); return o; },
   garage: (r) => { const o = [['intro', 16], ['verse', 16], ['chorus', 16]]; if (r.chance(0.6)) o.push(['verse', 16], ['chorus', 16]); o.push(['break', 8], ['chorus', 16], ['outro', 8]); return o; },
   dub: (r) => { const o = [['intro', 8], ['verse', 16], ['chorus', 8], ['break', r.pick([8, 16])], ['verse', 16], ['chorus', 8]]; if (r.chance(0.5)) o.push(['break', 8], ['chorus', 8]); o.push(['outro', 8]); return o; },
   synthwave: (r) => { const o = [['intro', r.pick([8, 16])]]; for (let k = 0; k < 2; k++) o.push(['verse', 16], ['chorus', 16]); o.push(['break', 8], ['chorus', 16], ['outro', 8]); return o; },
@@ -2100,6 +2100,47 @@ E.beachChords = function (song, chord, again, BT, r) {
   const t0 = r.chance(0.35) ? Math.round(S * r()) : 0, step = Math.round(S * (0.12 + r() * 0.3)), base = (again ? 44 : 52) + r.int(10);
   return use.map((q, i) => { const t = t0 + i * step; return { t, d: BT - t - 15, p: q, v: base + i * 2 + r.int(4) }; });
 };
+// the river: sounds glide in and out of each other, the beat streams, nothing ticks for the sake of ticking
+E.LIQUID = { dnb: 1, breakbeat: 0.6, garage: 0.5 };
+E.liquidK = (song) => song.arr ? E.LIQUID[song.genre] || 0 : 0;
+// the bass of the river: repeats melt into one note, big leaps fold back, and every note runs into the next so the synth glides
+E.liquidBass = function (notes, BT, k) {
+  const S = E.STEP, out = [];
+  notes.slice().sort((a, b) => a.t - b.t).forEach((m) => { const n = Object.assign({}, m), prev = out[out.length - 1];
+    if (prev) { if (Math.abs(n.p - prev.p) > 7) { const q = n.p + (n.p > prev.p ? -12 : 12); if (q >= 26 && q <= 55) n.p = q; }
+      if (n.p === prev.p && n.t - prev.t <= S * (2 + 2 * k)) return; }
+    out.push(n); });
+  out.forEach((n, i) => { const nx = out[i + 1], end = nx ? nx.t : BT, gap = end - (n.t + n.d); if (gap > -1 && gap <= S * (1 + 4 * k)) n.d = Math.max(30, end - n.t + (nx && k >= 0.8 ? 40 : -10)); });
+  return out.map((n) => Object.assign(n, { v: clamp(Math.round(96 + (n.v - 96) * (1 - 0.5 * k)), 40, 124) }));
+};
+// the hihat is the wind, not a metronome: it keeps one shape for a phrase, the shape walks slowly, its loudness rolls like a wave, and now and then it steps out
+E.HATWIND = { dnb: 1, breakbeat: 0.7, garage: 0.5, techno: 0.35, trance: 0.3, minimal: 0.4, dubtechno: 0.4, club: 0.35 };
+E.hatWind = function (song, si, sec, inBar, lanes, N, type, fillBar) {
+  const k = E.HATWIND[song.genre] || 0; if (!k || !song.arr || N !== 16 || !lanes[HH] || !lanes[HH].some(Boolean)) return;
+  const lk = E.liquidK(song), ph = Math.floor(inBar / 8), inPh = inBar % 8, pr = (p) => rng(hash(song.seed, 'wind', si, p)), r = pr(ph);
+  const len = 3 + r.int(4), wave = 0.5 + 0.5 * Math.sin(r() * 6.28 + 2 * Math.PI * inBar / len), g = 1 - 0.32 * k * wave;
+  const lastPh = ph >= Math.floor((sec.bars - 1) / 8), out = sec.bars >= 16 && !fillBar && type !== 'build' && type !== 'intro' && type !== 'outro' && !lastPh;
+  if (lk) {
+    let sh = type === 'drop' || type === 'chorus' ? 1 : 2; for (let p = 1; p <= ph; p++) { const rp = pr(p); if (!rp.chance(0.45)) sh = clamp(sh + (rp.chance(0.5) ? 1 : -1), 0, 2); }
+    const keep = (s) => sh === 0 || (sh === 1 ? s % 2 === 0 : s % 4 === 2), base = (s) => s % 4 === 2 ? 74 : s % 2 === 0 ? 58 : 42;
+    lanes[HH] = lanes[HH].map((v, s) => keep(s) ? Math.max(16, Math.round(base(s) * g)) : 0);
+    if (out && ph > 0 && inPh >= 4 && inPh < 6 && r.chance(0.35 * lk)) lanes[HH].fill(0); // two bars without: the snare and the bass carry
+    if (lanes[SN] && !fillBar && type !== 'build') { const gs = [7, 10, 14, 15][r.int(4)], had = lanes[SN].some((v, s) => v && v < 80 && s !== 4 && s !== 12);
+      lanes[SN] = lanes[SN].map((v, s) => s === 4 || s === 12 ? (v ? Math.max(v, Math.round(96 + 14 * lk)) : v) : v >= 80 ? v : s === gs && had ? 34 : 0); }
+  } else {
+    lanes[HH] = lanes[HH].map((v) => v ? Math.max(14, Math.round(v * g)) : 0);
+    if (out && inPh >= 6 && r.chance(0.6 * k)) lanes[HH].fill(0); // the wind drops before the next phrase
+  }
+  if (lanes[OH]) lanes[OH] = lanes[OH].map((v) => v ? Math.max(16, Math.round(v * (1 - 0.2 * k * wave))) : 0);
+};
+// chords that should ring: each chord is held until the next one (up to a length per style), no ticking
+E.CHORD_HOLD = { triphop: 16, synthwave: 8, songwriter: 6, divine: 3 };
+E.holdChords = function (notes, BT, cap) {
+  const ns = notes.slice().sort((a, b) => a.t - b.t), groups = [];
+  ns.forEach((n) => { const g = groups[groups.length - 1]; if (g && n.t - g.t < 40) g.ns.push(n); else groups.push({ t: n.t, ns: [n] }); });
+  const out = []; groups.forEach((g, i) => { const end = i + 1 < groups.length ? groups[i + 1].t : BT; g.ns.forEach((n) => out.push(Object.assign({}, n, { d: Math.max(n.d, Math.min(end - n.t - 10, g.t + cap * E.STEP - n.t)) }))); });
+  return out;
+};
 // how many times this kind of section came before: a chorus or drop that comes back grows
 E.occOf = (song, si) => song.sections.slice(0, si).filter((x) => x.type === song.sections[si].type).length;
 // a lead that sings: short lines with a long note in them, a bend into it now and then, and rest between the lines for the answer
@@ -2466,6 +2507,7 @@ E.partActive = function (song, part, type, inBar, bars) {
     if (part === 'bass' && type === 'break') return true;
   }
   if (E.streamK(song) >= 0.8 && song.parts[part] && song.parts[part].mode === 'machine' && (part === 'pad' || part === 'bass' && type === 'break')) return true; // the stream never runs dry
+  if (E.liquidK(song) >= 0.8 && song.parts[part] && song.parts[part].mode === 'machine' && (part === 'pad' || part === 'bass' && type === 'break' && inBar >= bars / 2)) return true; // the river: the pad always flows, the bass comes back halfway the break
   if (type === 'break' && part === 'bass' && song.arr && E.MYST[song.genre] && E.pedalOf(song) && song.parts.bass.mode === 'machine') return true; // the breakdown keeps a low pedal tone
   if (type === 'break' && part === 'melody' && song.arr && song.genre === 'trance' && song.parts.melody.mode === 'machine') return inBar >= Math.min(4, bars / 2); // the trance breakdown: the theme comes in early
   if (type === 'break' && part === 'bass' && song.arr && E.arcOf(song) === 'plateau' && song.parts.bass.mode === 'machine') return inBar >= bars / 2; // a steady genre never empties the floor
@@ -2589,6 +2631,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (E.kitOf(song) && (machine || !lanes.slice(8).some((l) => l && l.some((v) => v > 0)))) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
     if (mach && A.beatLanes) lanes.forEach((l, li) => { if (!A.beatLanes.includes(li) && li !== CR) l.fill(0); }); // a quiet verse plays only the bones of the beat
     if (machine && E.streamOf(song)) { const k = E.streamK(song); [[HH, 0.35], [OH, 0.3], [K, 0.15], [SN, 0.2], [CP, 0.2]].forEach(([li, a]) => { if (lanes[li]) lanes[li] = lanes[li].map((v) => v ? Math.max(12, Math.round(v * (1 - a * k))) : 0); }); if (k >= 0.8 && N === 16 && lanes[HH]) for (let s = 1; s < N; s += 2) lanes[HH][s] = 0; if (E.beachOf(song) && N === 16) { const rk = rng(hash(song.seed, 'beachkick', si, inBar)), keep3 = rk.chance(0.55); if (lanes[K]) lanes[K] = lanes[K].map((v, s) => s === 0 || s === 8 && keep3 ? v : 0); if (lanes[K2]) lanes[K2].fill(0); [[HH, 0.8], [OH, 0.7], [SN, 0.75], [CP, 0.75], [PC, 0.8]].forEach(([li, a]) => { if (lanes[li]) lanes[li] = lanes[li].map((v) => v ? Math.max(10, Math.round(v * a)) : 0); }); } } // the stream: the beat carries, it does not push
+    if (machine && E.HATWIND[song.genre]) E.hatWind(song, si, sec, inBar, lanes, N, type, isLastOfSec && !!nextSec && nextSec.type !== sec.type);
     if (machine && type === 'break' && E.trainOf(song) && N === 16 && lanes[HH] && !lanes[HH].some(Boolean)) for (let s = 2; s < N; s += 4) lanes[HH][s] = 34 + ((s * 7 + inBar) % 10); // the wheels keep turning in the break, softly
     E.laneFxApply(song, sec, inBar, lanes, N);
     if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
@@ -2645,10 +2688,12 @@ E.renderBar = function (song, part, gbar, res, opts) {
     else if (type === 'build' && E.MYST[song.genre]) notes = E.buildRise(song, sec, inBar, notes);
     if (E.echoOf(song) && !(E.hypnoOf(song) && type !== 'break' && type !== 'intro' && type !== 'outro')) notes = E.echoes(notes, BT, E.streamK(song) >= 0.8);
   }
-  if (mach && part === 'chords' && notes.length && E.streamK(song) >= 0.8) notes = E.streamChords(notes, BT); // the stream: long chords, no stabs
-  if (mach && part !== 'beat' && notes.length && E.streamOf(song) && !E.trainOf(song)) notes = E.trainFade(song, si, sec, inBar, part, notes);
+  if (mach && part === 'chords' && notes.length && (E.streamK(song) >= 0.8 || E.liquidK(song) >= 0.8)) notes = E.streamChords(notes, BT); // the stream and the river: long chords, no stabs
+  else if (mach && part === 'chords' && notes.length && song.arr && E.CHORD_HOLD[song.genre]) notes = E.holdChords(notes, BT, E.CHORD_HOLD[song.genre]);
+  if (mach && part !== 'beat' && notes.length && (E.streamOf(song) || E.liquidK(song) >= 0.8) && !E.trainOf(song)) notes = E.trainFade(song, si, sec, inBar, part, notes);
   if (mach && part !== 'beat' && notes.length && E.trainOf(song)) { notes = E.trainFade(song, si, sec, inBar, part, notes); if (part === 'bass' && type === 'break') notes = notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.75) })); }
   if (part === 'bass' && !bo && !lastBar && notes.length) notes = E.bassGuard(song, si, notes, res(si).ctxChords && res(si).ctxChords.bars[lb], N, BT); // the bass stays the foundation, whatever varies on top
+  if (mach && part === 'bass' && notes.length && E.liquidK(song) && !lastBar && !bo) { notes = E.liquidBass(notes, BT, E.liquidK(song)); if (type === 'break') notes = notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.7) })); } // the river's bass glides
   if (mach && E.beachOf(song) && (part === 'bass' || part === 'chords') && notes.length && res(si).ctxChords) { // the beach: waves, not patterns
     const cb = res(si).ctxChords.bars, ch = cb[lb], rb = rng(hash(song.seed, 'beach', part, si, inBar));
     if (ch) notes = part === 'bass' ? E.beachBass(song, ch, cb[(lb + 1) % song.L], BT, rb) : E.beachChords(song, ch, inBar > 0 && cb[(lb + song.L - 1) % song.L] && cb[(lb + song.L - 1) % song.L].root === ch.root && cb[(lb + song.L - 1) % song.L].q === ch.q, BT, rb);
@@ -2663,6 +2708,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
 E.OFFBEAT_BASS = ['offbeat', 'rolling', 'euro', 'minimal', 'tech', 'organ', 'garage', 'acid'];
 E.bassMono = function (notes, style) { // one note at a time; a 303 keeps its slides, they are overlapping notes on purpose
   notes = notes.slice().sort((a, b) => a.t - b.t || b.v - a.v); if (style === 'acid') return notes;
+  if (style === 'glide') { const mono = []; for (const n of notes) { const prev = mono[mono.length - 1]; if (prev && Math.abs(prev.t - n.t) < 30) continue; if (prev) { const gap = n.t - (prev.t + prev.d); if (gap >= 0 && gap <= E.STEP || gap < -40) prev.d = Math.max(30, n.t - prev.t + 40); } mono.push(Object.assign({}, n)); } return mono; }
   const mono = []; for (const n of notes) { const prev = mono[mono.length - 1]; if (prev && Math.abs(prev.t - n.t) < 30) continue; if (prev && prev.t + prev.d > n.t - 10) prev.d = Math.max(30, n.t - prev.t - 10); mono.push(Object.assign({}, n)); }
   return mono.filter((n) => n.d >= 30);
 };
@@ -2939,6 +2985,13 @@ E.arrangeOf = function (song, si, salt) {
   if (E.trainOf(song)) { // the train: a stop is at most one bar without the kick; the thread leads everywhere and is never layered in or out
     if (plan.stop === 'gift' || plan.stop === 'hit' || plan.stop === 'stop') plan.stop = 'drop';
     if (E.hypnoOf(song)) { if (!(o.lead && o.lead !== 'auto') && plan.lead === 'chords') plan.lead = 'melody'; delete plan.enter.melody; delete plan.exit.melody; delete plan.exit.answer; }
+  }
+  if ((g === 'dubtechno' || g === 'club') && (t === 'intro' || t === 'outro') && plan.harm === 'none' && sec.bars >= 12 && !o.harm) { plan.harm = 'pad'; if (t === 'intro') plan.enter.pad = Math.min(8, Math.floor(sec.bars / 2)); else plan.exit.pad = Math.max(Math.ceil(sec.bars / 2), sec.bars - 8); } // half the DJ intro is drums, then the room fills
+  if (E.liquidK(song) >= 0.8) { // the river: harmony under everything, nothing switches on or off at once
+    if (!o.harm && (plan.harm === 'stabs' || plan.harm === 'none' || plan.harm === 'pad')) plan.harm = 'full';
+    if (plan.harm === 'full') plan.padToo = true;
+    if (plan.only) ['pad', 'chords'].forEach((p) => { if (!plan.only.includes(p)) plan.only = plan.only.concat([p]); });
+    ['pad', 'chords'].forEach((p) => { delete plan.enter[p]; delete plan.exit[p]; });
   }
   if (g === 'trance' && t === 'break') { if (!o.harm) { plan.harm = 'full'; plan.padToo = true; } if (!(o.lead && o.lead !== 'auto')) plan.lead = 'melody'; } // the breakdown is the big moment: chords, pad and the theme
   if ((t === 'chorus' || t === 'drop') && E.hookOf(song) && plan.lead === 'chords' && !(o.lead && o.lead !== 'auto')) plan.lead = 'melody'; // a song with a hook sings it in every big section
@@ -3234,7 +3287,7 @@ E.renderSong = function (song, part, opts) {
   const out = [];
   for (let b = 0; b < total; b++) for (const n of R.bar(part, b, opts)) out.push(Object.assign({}, n, { t: n.t + b * BT }));
   out.forEach((n) => { if (n.t < 0) n.t = 0; });
-  if (part === 'bass' && E.bassMono && !(song.parts.bass && song.parts.bass.mode === 'yours')) return E.bassMono(out, E.bassStyleOf ? E.bassStyleOf(s2) : ''); // across bar lines too
+  if (part === 'bass' && E.bassMono && !(song.parts.bass && song.parts.bass.mode === 'yours')) return E.bassMono(out, E.liquidK(s2) >= 0.8 ? 'glide' : E.bassStyleOf ? E.bassStyleOf(s2) : ''); // across bar lines too
   return out;
 };
 E.polishedSong = function (song) {
@@ -3872,7 +3925,7 @@ setTimeout(() => count(), 0);
 const FB_APP = APP_NAME;
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 04:00)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 10:50)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5930,7 +5983,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 04:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 10:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
