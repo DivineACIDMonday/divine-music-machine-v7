@@ -353,7 +353,7 @@ function renderRight() {
         h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: () => openEdit(p, 0) }, 'Edit')),
       w ? h('div', { class: 'warn' }, h('span', null, w), h('button', { onclick: () => setMode(p, 'machine') }, 'Back to Machine')) : null));
   }
-  el.append(h('div', { style: 'flex:1' }), h('button', { class: 'big', onclick: openGet }, 'Next: Get it →'));
+  el.append(h('div', { style: 'flex:1' }), h('button', { class: 'big', style: 'position:sticky;bottom:16px;z-index:3;box-shadow:0 8px 28px rgba(0,0,0,.35)', onclick: openGet }, 'Next: Get it →'));
 }
 /* ---------- screen C: the edit workshop ---------- */
 const LANE_NAMES = ['Kick', 'Kick 2', 'Snare', 'Clap', 'Hihat', 'Open hat', 'Perc', 'Crash'];

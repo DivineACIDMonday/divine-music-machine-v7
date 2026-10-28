@@ -75,7 +75,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 23:30</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 23:40</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3367,7 +3367,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 23:30';
+const VERSION = '2026-10-28 23:40';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3639,7 +3639,7 @@ function renderRight() {
         h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: () => openEdit(p, 0) }, 'Edit')),
       w ? h('div', { class: 'warn' }, h('span', null, w), h('button', { onclick: () => setMode(p, 'machine') }, 'Back to Machine')) : null));
   }
-  el.append(h('div', { style: 'flex:1' }), h('button', { class: 'big', onclick: openGet }, 'Next: Get it →'));
+  el.append(h('div', { style: 'flex:1' }), h('button', { class: 'big', style: 'position:sticky;bottom:16px;z-index:3;box-shadow:0 8px 28px rgba(0,0,0,.35)', onclick: openGet }, 'Next: Get it →'));
 }
 /* ---------- screen C: the edit workshop ---------- */
 const LANE_NAMES = ['Kick', 'Kick 2', 'Snare', 'Clap', 'Hihat', 'Open hat', 'Perc', 'Crash'];
