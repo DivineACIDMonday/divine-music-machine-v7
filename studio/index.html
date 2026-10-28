@@ -3390,7 +3390,7 @@ const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ==
 const PHONE = () => window.innerWidth < 600;
 const KP = (window.DMS_UJAM ? 'dmsu-' : 'dms-') + (GROOVE ? 'g-' : '');
 
-function count(ev) { try { if (!/\.github\.io$/.test(location.hostname)) return; const q = new URLSearchParams({ p: ev ? (GROOVE ? 'groove-studio/' : 'studio/') + ev : location.pathname, t: ev || document.title, s: screen.width + ',' + screen.height, rnd: Math.random().toString(36).slice(2) }); if (ev) q.set('e', 'true'); const u = 'https://divine-monday.goatcounter.com/count?' + q; if (!(navigator.sendBeacon && navigator.sendBeacon(u))) new Image().src = u; } catch (e) { /* never in the way */ } }
+function count(ev) { try { if (!/\.github\.io$/.test(location.hostname)) return; const q = new URLSearchParams({ p: ev ? (window.DMS_UJAM ? 'ujam-' : '') + (GROOVE ? 'groove-studio/' : 'studio/') + ev : location.pathname, t: ev || document.title, s: screen.width + ',' + screen.height, rnd: Math.random().toString(36).slice(2) }); if (ev) q.set('e', 'true'); const u = 'https://divine-monday.goatcounter.com/count?' + q; if (!(navigator.sendBeacon && navigator.sendBeacon(u))) new Image().src = u; } catch (e) { /* never in the way */ } }
 setTimeout(() => count(), 0);
 function feedbackHref() { const sb = 'Feedback / contact: ' + APP_NAME + ' (version ' + VERSION + ')'; const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n'; const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(sb) + '&body=' + encodeURIComponent(b); }
 
