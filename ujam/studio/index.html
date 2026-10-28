@@ -71,6 +71,7 @@ foot{display:block}
 .bpm{display:inline-flex;align-items:center;gap:4px;height:44px;padding:0 6px;border:1px solid var(--line);border-radius:12px;background:var(--card)}.bpm button{width:30px;height:30px;border:none;border-radius:8px;background:var(--bg);color:var(--ink);font-size:17px;cursor:pointer;padding:0}.bpm input{width:44px;border:none;background:transparent;color:var(--ink);font:700 16px Inter,system-ui,sans-serif;text-align:center;-moz-appearance:textfield}.bpm input::-webkit-inner-spin-button,.bpm input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}.bpm span{font-size:13px;color:var(--soft);margin-right:4px}
 .ksel select{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid var(--line);background:var(--bg);color:var(--ink);font-size:13px;padding:2px 8px;border-radius:8px;margin:0 2px}
 .gsel{margin-top:6px;position:relative;display:inline-block}.gsel select{field-sizing:content;appearance:none;-webkit-appearance:none;border:1px solid transparent;background:transparent;font-size:22px;font-weight:700;padding:2px 30px 2px 12px;border-radius:12px;text-align:center}.gsel select:hover,.gsel select:focus{border-color:var(--line);background:var(--bg)}.gsel::after{content:'▾';position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--soft);pointer-events:none}.gsel option{font-size:15px;font-weight:500}
+.secs{position:relative}.sec .grip{cursor:grab;touch-action:none;user-select:none;color:var(--faint);font-size:16px;padding:4px 2px;margin:-4px 0;flex:none}.sec.dragging{position:relative;z-index:5;opacity:.85;box-shadow:0 8px 24px rgba(0,0,0,.4)}.dropmark{position:absolute;left:0;right:0;height:3px;border-radius:2px;background:var(--accent);pointer-events:none}div.sec{cursor:pointer}.sec.on{flex-wrap:wrap;cursor:default}.sec.on .stype{flex:1;min-width:0;font:600 15px Inter,system-ui,sans-serif;border:1px solid transparent;border-radius:8px;padding:3px 6px;background:transparent;color:var(--onink)}.sec.on .stype:hover,.sec.on .stype:focus{border-color:currentColor}.sec.on .stype option{color:var(--ink);background:var(--card)}.sec.on .del{width:30px;height:30px;border:none;border-radius:8px;background:transparent;cursor:pointer;font-size:15px;padding:0}.sec.on .del:disabled{opacity:.3}.sec.on .bctl{flex:0 0 100%;justify-content:flex-end;margin-top:6px}.addsec{height:40px;font-size:14px;margin-top:4px;border-style:dashed}
 .sec .bctl{flex:none;display:inline-flex;align-items:center;gap:6px;margin-left:auto}.bctl button{width:30px;height:30px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:17px;line-height:1;cursor:pointer;padding:0}.bctl button:disabled{opacity:.35;cursor:default}.bctl small{min-width:54px;text-align:center}
 @media (max-width:600px){.stage{min-height:300px}.prow .strip{order:9;flex:0 0 100%!important}.prow .strip button{height:28px!important}.tip{left:12px!important;right:12px!important;bottom:12px!important;width:auto!important}}
 .tip{position:fixed;left:20px;bottom:20px;width:340px;z-index:50;background:var(--card);color:var(--ink);border:1px solid var(--line, var(--track));border-radius:18px;padding:16px 18px;box-shadow:0 10px 40px rgba(0,0,0,.35);font-size:14px;line-height:1.45}
@@ -79,7 +80,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 00:25</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 00:40</span></footer>
 <script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3391,7 +3392,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 00:25';
+const VERSION = '2026-10-29 00:40';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3629,6 +3630,36 @@ function renderMenu() {
 }
 function setBpm(v) { v = Math.round(D.clamp(+v || song().bpm, 50, 220)); if (v === song().bpm) { renderTop(); return; } change(() => { song().bpm = v; }); }
 function switchGenre(g) { const keep = st.hist.concat([snapshot()]); makeSong(g); st.hist = keep.slice(-60); st.fut = []; render(); toast('New ' + (GROOVE ? 'beat' : 'song') + ' in ' + D.GENRES[g].name + '. Undo brings the old one back.'); }
+/* ---------- structure: rows you can drag, retype, add and remove ---------- */
+const SEC_TYPES = () => D.TYPE_ORDER.filter((t) => D.TYPES[t]);
+function secRow(sg, x, i) {
+  const grip = h('span', { class: 'grip', 'aria-hidden': 'true', title: 'Drag to move', onpointerdown: (e) => secDragStart(e, i) }, '⠿');
+  if (i !== st.sec) return h('div', { class: 'sec', 'data-i': i, role: 'button', tabindex: 0, 'aria-label': secLabel(i) + ', ' + x.bars + ' bars', onclick: (e) => { if (SD.moved) return; st.sec = i; if (AU.playing) startPlay(D.sectionStart(sg, i)); render(); }, onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } } }, grip, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('small', null, x.bars + ' bars'));
+  return h('div', { class: 'sec on', 'data-i': i, role: 'group', 'aria-label': secLabel(i) }, grip, h('i', { style: 'background:var(--' + x.type + ')' }),
+    h('select', { class: 'stype', 'aria-label': 'Kind of section', onchange: (e) => changeType(e.target.value) }, SEC_TYPES().map((t) => h('option', { value: t, selected: t === x.type || null }, D.TYPES[t].name))),
+    h('button', { class: 'del', 'aria-label': 'Remove ' + secLabel(i), title: 'Remove this section', disabled: sg.sections.length < 2 || null, onclick: () => deleteSection(i) }, '🗑'),
+    h('span', { class: 'bctl' }, h('button', { 'aria-label': 'Fewer bars', disabled: x.bars <= (x.type === 'fill' ? 1 : Math.min(sg.L || 4, x.bars)) || null, onclick: () => changeBars(-1) }, '−'), h('small', null, x.bars + ' bars'), h('button', { 'aria-label': 'More bars', disabled: x.bars >= (x.type === 'fill' ? 2 : 64) || null, onclick: () => changeBars(1) }, '+')));
+}
+function changeType(t) { const sg = song(), sec = sg.sections[st.sec]; if (!sec || t === sec.type) return; const was = secLabel(st.sec);
+  change(() => { const old = sec.type; sec.type = t; delete sec.own; if (t === 'fill') sec.bars = 1; else if (old === 'fill') sec.bars = (sg.L || 4) * 2; }); toast(was + ' is now ' + secLabel(st.sec) + '.'); }
+function deleteSection(i) { const sg = song(); if (sg.sections.length < 2) return; const name = secLabel(i);
+  change(() => { sg.sections.splice(i, 1); if (st.sec > i || st.sec >= sg.sections.length) st.sec = Math.max(0, st.sec - 1); }); if (AU.playing) startPlay(D.sectionStart(song(), st.sec)); toast(name + ' removed. Undo brings it back.'); }
+function addSection() { const sg = song(), cur = sg.sections[st.sec], type = cur && cur.type !== 'fill' && cur.type !== 'intro' && cur.type !== 'outro' ? cur.type : 'verse', L = sg.L || 4;
+  change(() => { sg.sections.splice(st.sec + 1, 0, { id: 's' + D.newSeed(), type, bars: L === 12 ? 12 : type === 'prechorus' ? L : L * 2 }); st.sec++; }); toast(D.TYPES[type].name + ' added. Pick its kind in the list.'); }
+function moveSectionTo(from, to) { const sg = song(); if (to === from || to < 0 || to >= sg.sections.length) return;
+  change(() => { const a = sg.sections, sel = a[st.sec], m = a.splice(from, 1)[0]; a.splice(to, 0, m); st.sec = a.indexOf(sel); }); }
+const SD = { d: null, moved: false };
+function secDragStart(e, i) {
+  if (e.button > 0) return; e.preventDefault(); e.stopPropagation(); const box = $('#secs'); if (!box) return;
+  const rows = [...box.querySelectorAll('.sec')], el = rows[i]; SD.d = { i, box, rows, el, y: e.clientY, on: false, to: i }; SD.moved = false;
+  const move = (ev) => { const d = SD.d; if (!d) return; if (!d.on && Math.abs(ev.clientY - d.y) < 4) return; d.on = true; SD.moved = true; d.el.classList.add('dragging'); d.el.style.transform = 'translateY(' + (ev.clientY - d.y) + 'px)';
+    let to = 0; d.rows.forEach((r, k) => { if (k === d.i) return; const rr = r.getBoundingClientRect(); if (ev.clientY > rr.top + rr.height / 2) to = k < d.i ? k + 1 : k; }); if (ev.clientY < d.rows[0].getBoundingClientRect().top) to = 0; d.to = Math.max(0, Math.min(d.rows.length - 1, to));
+    let m = d.box.querySelector('.dropmark'); if (!m) { m = h('div', { class: 'dropmark', 'aria-hidden': 'true' }); d.box.append(m); }
+    const tr = d.rows[d.to].getBoundingClientRect(), br = d.box.getBoundingClientRect(); m.style.top = ((d.to > d.i ? tr.bottom + 2 : tr.top - 4) - br.top) + 'px'; };
+  const up = () => { window.removeEventListener('pointermove', move); window.removeEventListener('pointerup', up); window.removeEventListener('pointercancel', up); const d = SD.d; SD.d = null; if (!d) return;
+    if (d.on && d.to !== d.i) moveSectionTo(d.i, d.to); else renderLeft(); setTimeout(() => { SD.moved = false; }, 0); };
+  window.addEventListener('pointermove', move); window.addEventListener('pointerup', up); window.addEventListener('pointercancel', up);
+}
 function changeBars(dir) {
   change(() => { const sg = song(), sec = sg.sections[st.sec], L = sg.L || 4;
     if (sec.type === 'fill') { sec.bars = D.clamp(sec.bars + dir, 1, 2); return; }
@@ -3648,7 +3679,7 @@ function renderLeft() {
       ' · ' + mmss(len))));
   el.append(h('section', { class: 'card', id: 'structCard', style: 'display:flex;flex-direction:column;gap:8px' },
     h('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, h('div', { class: 'lab' }, 'Structure'), h('button', { class: 'ib', style: 'height:36px;font-size:13px', onclick: newStructure }, '⚄ New structure')),
-    h('div', { class: 'secs' }, sg.sections.map((x, i) => i === st.sec ? h('div', { class: 'sec on', role: 'group', 'aria-label': secLabel(i) }, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('span', { class: 'bctl' }, h('button', { 'aria-label': 'Fewer bars', disabled: x.bars <= (x.type === 'fill' ? 1 : Math.min(sg.L || 4, x.bars)) || null, onclick: () => changeBars(-1) }, '−'), h('small', null, x.bars + ' bars'), h('button', { 'aria-label': 'More bars', disabled: x.bars >= (x.type === 'fill' ? 2 : 64) || null, onclick: () => changeBars(1) }, '+'))) : h('button', { class: 'sec' + (i === st.sec ? ' on' : ''), 'aria-pressed': i === st.sec ? 'true' : 'false', onclick: () => { st.sec = i; if (AU.playing) startPlay(D.sectionStart(sg, i)); render(); } }, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('small', null, x.bars + ' bars'))))));
+    h('div', { class: 'secs', id: 'secs' }, sg.sections.map((x, i) => secRow(sg, x, i))), h('button', { class: 'ib addsec', onclick: addSection }, '+ Add section')));
 }
 function renderSpiral() { const b = $('#spiral'); if (b) { b.innerHTML = ''; b.append(spiralSvg()); } const l = $('#spLabel'); if (l) l.textContent = (st.spiral === 'structure' ? 'Structure' : 'Parts, bar by bar') + ' · tap to switch'; }
 function renderMid() {
