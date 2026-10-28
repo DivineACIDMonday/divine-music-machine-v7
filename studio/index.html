@@ -25,7 +25,7 @@ button:focus-visible,a:focus-visible{outline:3px solid #5b4bd6;outline-offset:2p
 .dash{width:20px;height:2px;background:#CFCBDD}
 .ib{min-width:44px;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .ib[disabled]{opacity:.4;cursor:default}
-.wrap{display:flex;gap:22px;padding:22px 28px;flex-wrap:wrap}
+.wrap{display:flex;gap:22px;padding:22px 28px;flex-wrap:wrap;position:relative;z-index:1}
 .left{width:320px;display:flex;flex-direction:column;gap:16px}
 .mid{flex:999 1 480px;min-width:0;background:var(--card);border-radius:24px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;overflow:hidden}
 .right{width:400px;display:flex;flex-direction:column;gap:10px}
@@ -49,6 +49,7 @@ button:focus-visible,a:focus-visible{outline:3px solid #5b4bd6;outline-offset:2p
 .play{width:64px;height:64px;border-radius:50%;border:none;background:var(--ink);color:var(--onink);font-size:22px}
 .big{height:60px;border-radius:18px;border:none;background:var(--accent);color:#fff;font-size:17px;font-weight:700;width:100%}
 .big[disabled]{opacity:.55;cursor:default}
+body.getmode .part,body.getmode .card{background:color-mix(in srgb,var(--card) 70%,transparent);backdrop-filter:blur(1px)}
 canvas.rip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .stage{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:420px;width:100%}
 .hint{font-size:14px;color:var(--soft);text-align:center;min-height:20px}
@@ -71,7 +72,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 21:40</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 21:45</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3363,7 +3364,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 21:40';
+const VERSION = '2026-10-28 21:45';
 const APP_NAME = window.DMS_UJAM ? 'Divine Music Studio UJAM' : 'Divine Music Studio';
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
 const PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
@@ -3486,7 +3487,7 @@ const RIP = { list: [], raf: 0, calm: window.matchMedia && window.matchMedia('(p
 const RIP_LIFE = { beat: 1.3, bass: 2.2, chords: 3.2, pad: 3.8, melody: 1.6, answer: 1.6 };
 const RIP_REACH = { kick: 1, snare: 0.82, bass: 0.92, chords: 1, pad: 1, melody: 0.74, answer: 0.5 };
 function addRipple(part, t, v, lane) {
-  if (RIP.calm) return;
+  if (RIP.calm) return; if (st.mode === 'get') { rainDrop(part, lane, t, v); return; }
   if (part === 'chords' || part === 'pad') { const last = RIP.lastWave && RIP.lastWave[part]; const bar = barSec(song()); if (last != null && t - last < bar * 0.9 && t >= last) return; RIP.lastWave = Object.assign({}, RIP.lastWave, { [part]: t }); }
   const kind = part === 'beat' ? (lane <= 1 ? 'kick' : 'snare') : part;
   // every drop lands somewhere of its own: the kick in the middle, the others around it
@@ -3838,11 +3839,24 @@ function saveSongFile() { const sg = song(); saveFiles([{ name: 'DM_' + safe(sg.
 function openSongFile() { const inp = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: async () => { const f = inp.files[0]; if (!f) return; try { const o = JSON.parse(await f.text()), sg = o.song || o; if (!sg.sections || !sg.parts) throw new Error('not a song'); D.ensureTypes && D.ensureTypes(sg); stopAll(); st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.mode = 'overview'; save(); closeStart(); render(); toast('Opened ' + f.name); } catch (e) { toast('That file is not a Divine song.'); } } }); document.body.append(inp); inp.click(); setTimeout(() => inp.remove(), 60000); }
 
 /* ---------- screen D: get it, with a preview ---------- */
+const RAIN = { list: [], raf: 0 };
+function rainDrop(part, lane, t, v) { if (RIP.calm || st.mode !== 'get') return; RAIN.list.push({ part, lane, t, v, x: 0.04 + Math.random() * 0.92, life: 2.4 + Math.random() * 1.6 }); if (RAIN.list.length > 160) RAIN.list.splice(0, RAIN.list.length - 160); if (!RAIN.raf) RAIN.raf = requestAnimationFrame(drawRain); }
+function drawRain() {
+  RAIN.raf = 0; let cv = $('canvas.rain'); if (st.mode !== 'get' || !AU.ctx) { if (cv) cv.remove(); return; }
+  if (!cv) { cv = h('canvas', { class: 'rain', 'aria-hidden': 'true', style: 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:0' }); document.body.prepend(cv); }
+  const dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight; if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); const now = AU.ctx.currentTime;
+  RAIN.list = RAIN.list.filter((d) => now - d.t < d.life);
+  for (const d of RAIN.list) { const k = (now - d.t) / d.life; if (k < 0) continue; const y = H + 20 - k * (H + 60), x = d.x * W, r = 3 + 5 * d.v / 127, col = d.part === 'beat' ? laneColor(d.lane || 0) : cssv('--' + d.part);
+    g.globalAlpha = 0.5 * (1 - k); g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + r); g.lineTo(x, y + r + 14 + 20 * d.v / 127); g.stroke();
+    g.globalAlpha = 0.75 * (1 - k * 0.8); g.fillStyle = col; ripPath(g, d.part === 'beat' ? laneShape(d.lane || 0) : 'circle', x, y, r); g.fill(); }
+  g.globalAlpha = 1; if (RAIN.list.length || AU.playing) RAIN.raf = requestAnimationFrame(drawRain); else cv.remove();
+}
 function openGet() { stopAll(); st.mode = 'get'; render(); window.scrollTo(0, 0); }
 function soloPlay(p) { if (AU.playing && st.solo === p) { stopAll(); st.solo = null; renderGet(); return; } st.solo = p; startPlay(0); renderGet(); }
 function renderGet() {
   const sg = song(), wrap = $('#wrap'), map = playsMap(), tot = D.totalBars(sg); wrap.innerHTML = '';
-  const strip = (p) => { const n = Math.min(tot, 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false; for (let b = b0; b < b1; b++) if (map[p][b]) on = true; const at = D.sectionAt(sg, b0); cells.push(h('button', { 'data-cell': i, 'aria-label': 'Edit ' + PART_NAMES[p] + ', ' + (at ? secLabel(at.i) + ' bar ' + (at.inBar + 1) : 'bar ' + (b0 + 1)), title: at ? secLabel(at.i) + ', bar ' + (at.inBar + 1) : '', onclick: () => { if (!at) return; st.sec = at.i; st.from = 'get'; openEdit(p, at.inBar); }, style: 'flex:1;height:18px;min-width:0;padding:0;border:none;border-radius:2px;cursor:pointer;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') })); } return h('div', { 'aria-hidden': 'true', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
+  const strip = (p) => { const n = Math.min(tot, 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false, ed = false; for (let b = b0; b < b1; b++) { if (map[p][b]) on = true; const a2 = D.sectionAt(sg, b); if (a2 && D.barOwnOf(sg, a2.s, p, a2.inBar)) ed = true; } const at = D.sectionAt(sg, b0); cells.push(h('button', { 'data-cell': i, 'aria-label': 'Edit ' + PART_NAMES[p] + ', ' + (at ? secLabel(at.i) + ' bar ' + (at.inBar + 1) : 'bar ' + (b0 + 1)), title: at ? secLabel(at.i) + ', bar ' + (at.inBar + 1) : '', onclick: () => { if (!at) return; st.sec = at.i; st.from = 'get'; openEdit(p, at.inBar); }, style: 'position:relative;flex:1;height:18px;min-width:0;padding:0;border:none;border-radius:2px;cursor:pointer;background:' + (on ? 'var(--' + p + ')' : 'var(--track)') }, ed ? h('span', { 'aria-hidden': 'true', style: 'position:absolute;left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:var(--ink)' }) : null)); } return h('div', { role: 'group', 'aria-label': PART_NAMES[p] + ' bars', style: 'display:flex;gap:2px;flex:1;min-width:160px' }, cells); };
   const rows = PARTS.map((p) => { const P = sg.parts[p], w = emptyWarning(p), off = P.mode === 'off';
     return h('div', { class: 'part' + (w ? ' alert' : '') },
       h('div', { class: 'prow' }, h('span', { class: 'dot', style: 'background:var(--' + p + ')' }), h('span', { class: 'nm', style: 'flex:0 0 90px' }, PART_NAMES[p]), off ? h('span', { style: 'flex:1;color:var(--faint)' }, 'Off: no file') : strip(p),
@@ -3859,7 +3873,7 @@ function renderGet() {
     h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
 }
 
-function render() { renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } if (st.mode === 'get') { renderGet(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
+function render() { document.body.classList.toggle('getmode', st.mode === 'get'); renderTop(); renderMenu(); if (!song()) return; if (st.mode === 'edit') { renderEdit(); return; } if (st.mode === 'get') { renderGet(); return; } const w = $('#wrap'); if (!$('#left')) { w.innerHTML = ''; w.append(h('aside', { class: 'left', id: 'left' }), h('main', { class: 'mid', id: 'mid' }), h('aside', { class: 'right', id: 'right' })); } renderLeft(); renderMid(); renderRight(); }
 
 /* ---------- the start: pick a genre ---------- */
 function openStart() {
