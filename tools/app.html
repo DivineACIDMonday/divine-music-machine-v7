@@ -567,6 +567,7 @@ function drawRain() {
   g.globalAlpha = 1; if (RAIN.list.length || AU.playing) RAIN.raf = requestAnimationFrame(drawRain); else cv.remove();
 }
 function openGet() { stopAll(); st.mode = 'get'; render(); window.scrollTo(0, 0); }
+function playAll() { const was = AU.playing && !st.solo; stopAll(); st.solo = null; if (!was) startPlay(0); renderGet(); }
 function soloPlay(p) { if (AU.playing && st.solo === p) { stopAll(); st.solo = null; renderGet(); return; } st.solo = p; startPlay(0); renderGet(); }
 function renderGet() {
   const sg = song(), wrap = $('#wrap'), map = playsMap(), tot = D.totalBars(sg); wrap.innerHTML = '';
@@ -582,8 +583,9 @@ function renderGet() {
   wrap.append(h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
       h('button', { class: 'ib', onclick: () => { stopAll(); st.solo = null; st.mode = 'overview'; render(); } }, '← Back'),
       h('div', { style: 'flex:1' }, h('div', { style: 'font-size:22px;font-weight:700' }, 'Get it'), h('div', { style: 'color:var(--soft);font-size:14px' }, D.GENRES[sg.genre].name + ' · ' + sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + tot + ' bars')),
+      h('button', { class: 'ib', style: 'height:56px;padding:0 22px;font-weight:700', 'aria-label': AU.playing && !st.solo ? 'Stop' : 'Play all parts', onclick: playAll }, AU.playing && !st.solo ? '■ Stop' : '▶ Play all'),
       h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '⬇ All ' + n + ' files (one zip)')),
-    h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ listens alone'), rows),
+    h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ Play all hears everything, ▶ on a part listens alone'), rows),
     h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
 }
 
