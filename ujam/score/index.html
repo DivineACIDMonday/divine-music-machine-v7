@@ -249,9 +249,54 @@ Object.assign(S.STYLES, {
     prog: { intro: [ch('i')], theme: [ch('i VI iv V'), ch('i bII VII i')], build: [ch('iv V')], peak: [ch('i VI bII V')], film: [ch('i bII')], outro: [ch('i bII i i')] },
     form: [['intro', 4], ['theme', 8], ['build', 8], ['peak', 8], ['theme', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.5, hits: 1 }, arc: [0.3, 0.45, 0.4, 0.6, 0.55, 0.85, 0.6, 0.95, 0.5], fx: [['encounter', 'peak']] }
 });
+/* ---------- fourteen more scenes ---------- */
+Object.assign(S.STYLES, {
+  newdawn: { name: 'A new dawn', like: 'a fresh start', group: 'light', line: 'Out of the dark into hope: it starts low and minor-coloured and opens up, step by step, into a wide major key.', mode: 'major', bpm: [72, 88], chordBars: 2, lift: 0, pedal: 7,
+    prog: { intro: [ch('vi IV')], theme: [ch('vi IV I V'), ch('IV V vi I')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('IV V I I')], film: [ch('IV')], outro: [ch('IV I')] },
+    form: [['intro', 8], ['theme', 8], ['build', 8], ['theme', 8], ['peak', 16], ['outro', 8]], percs: { metals: 0.6, hits: 0.5 }, arc: [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.72, 0.8, 0.8, 0.6], cam: 0.2 },
+  utopia: { name: 'Utopia', like: 'all in harmony', group: 'light', line: 'A bright world where everything fits: major chords that glow, strings up high, a calm and steady shine.', mode: 'major', bpm: [84, 100], chordBars: 2, lift: 0.05, pedal: 7, high: true,
+    prog: { intro: [ch('I IV')], theme: [ch('I IV vi V'), ch('I iii IV V')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('IV I V I')], film: [ch('IV')], outro: [ch('IV I')] },
+    form: [['intro', 8], ['theme', 8], ['peak', 8], ['theme', 8], ['peak', 8], ['outro', 8]], percs: { metals: 0.7, hits: 0.3 }, arc: [0.55, 0.6, 0.62, 0.72, 0.65, 0.75, 0.68, 0.75, 0.5], cam: 0.4 },
+  broadway: { name: 'Broadway show', like: 'the curtain call', group: 'light', line: 'Big, bold and a little cheeky: bright major chords, hits on every turn, a show that keeps topping itself.', mode: 'major', bpm: [112, 132], chordBars: 1, lift: 0.1, pedal: 7,
+    prog: { intro: [ch('I V')], theme: [ch('I vi ii V'), ch('I IV ii V')], build: [ch('ii V')], peak: [ch('I vi IV V'), ch('IV V I I')], film: [ch('IV')], outro: [ch('IV V I I')] },
+    form: [['intro', 4], ['theme', 8], ['build', 4], ['peak', 8], ['theme', 8], ['build', 4], ['peak', 8], ['outro', 4]], percs: { metals: 0.6, hits: 1 }, arc: [0.45, 0.6, 0.52, 0.72, 0.62, 0.85, 0.72, 1, 0.9], fx: [['hit', 'peak']] },
+  finale: { name: 'Finale', like: 'everything at once', group: 'light', line: 'The last scene: every theme comes back, every layer plays, and the end is as big as it gets.', mode: 'major', bpm: [96, 112], chordBars: 1, lift: 0.2, pedal: 7,
+    prog: { intro: [ch('IV V')], theme: [ch('I V vi IV')], build: [ch('IV V')], peak: [ch('I V vi IV'), ch('VI VII I I')], film: [ch('IV V')], outro: [ch('VI VII I I')] },
+    form: [['intro', 4], ['build', 8], ['peak', 8], ['build', 4], ['peak', 16], ['outro', 4]], percs: { metals: 0.6, hits: 1 }, arc: [0.55, 0.65, 0.78, 0.8, 0.88, 0.95, 1, 0.95] },
+  opening: { name: 'Opening', like: 'the curtain rises', group: 'light', line: 'The start of the story: the curtain goes up, a theme introduces itself, and the world opens.', mode: 'major', bpm: [88, 104], chordBars: 2, lift: 0, pedal: 7,
+    prog: { intro: [ch('I IV')], theme: [ch('I V vi IV'), ch('I IV V I')], build: [ch('IV V')], peak: [ch('I V IV I')], film: [ch('IV')], outro: [ch('IV V')] },
+    form: [['intro', 8], ['theme', 8], ['build', 4], ['peak', 8], ['theme', 8], ['outro', 4]], percs: { metals: 0.5, hits: 0.7 }, arc: [0.2, 0.4, 0.32, 0.5, 0.62, 0.52, 0.72, 0.6] },
+  risingup: { name: 'Rising up', like: 'getting back up', group: 'light', line: 'From the floor to the top: every section a step higher, nothing holds it back.', mode: 'minor', bpm: [84, 100], chordBars: 1, lift: 0, pedal: 7,
+    prog: { intro: [ch('i')], theme: [ch('i VI III VII')], build: [ch('iv V')], peak: [ch('VI VII I I'), ch('I IV V I')], film: [ch('VI VII')], outro: [ch('VI VII I I')] },
+    form: [['intro', 8], ['theme', 8], ['build', 8], ['theme', 8], ['build', 8], ['peak', 16], ['outro', 4]], percs: { metals: 0.4, hits: 1 }, arc: [0.08, 0.2, 0.32, 0.45, 0.58, 0.7, 0.85, 1] },
+  dystopia: { name: 'Dystopia', like: 'the cold machine', group: 'dark', line: 'A cold world that runs on its own: a mechanical pulse, grey minor chords, a pressure that never lifts.', mode: 'minor', bpm: [92, 108], chordBars: 2, lift: 0, pedal: 0, drone: true,
+    prog: { intro: [ch('i')], theme: [ch('i bII'), ch('i iv bII i')], build: [ch('bII V')], peak: [ch('i VI bII V')], film: [ch('i')], outro: [ch('i bII')] },
+    form: [['intro', 8], ['theme', 16], ['build', 8], ['peak', 8], ['theme', 8], ['outro', 8]], percs: { metals: 0.8, hits: 0.6 }, arc: [0.5, 0.52, 0.6, 0.52, 0.62, 0.52, 0.6, 0.5], cam: -0.3 },
+  goingdown: { name: 'Going down', like: 'sinking', group: 'dark', line: 'Everything slipping away: it starts high and full and sinks, section by section, into the dark.', mode: 'minor', bpm: [70, 84], chordBars: 2, lift: 0, pedal: 7,
+    prog: { intro: [ch('i VI')], theme: [ch('i VII VI V'), ch('i v iv i')], build: [ch('iv V')], peak: [ch('VI VII i i')], film: [ch('iv i')], outro: [ch('VI V i i')] },
+    form: [['intro', 4], ['peak', 8], ['theme', 8], ['theme', 8], ['film', 8], ['outro', 8]], percs: { metals: 0.5, hits: 0.4 }, arc: [0.92, 0.82, 0.7, 0.58, 0.45, 0.32, 0.2, 0.08], cam: -0.2 },
+  dusk: { name: 'Dusk', like: 'the light goes', group: 'dark', line: 'The last light of the day fading: soft minor chords, slower and slower, the shadows getting longer.', mode: 'minor', bpm: [64, 78], chordBars: 2, lift: -0.1, pedal: 7, quietPercs: true,
+    prog: { intro: [ch('i VI')], theme: [ch('i VI III VII'), ch('i iv VI V')], build: [ch('iv V')], peak: [ch('VI VII i i')], film: [ch('iv i')], outro: [ch('VI iv i i')] },
+    form: [['intro', 8], ['theme', 16], ['film', 8], ['theme', 8], ['outro', 8]], percs: { metals: 0.6, hits: 0.1 }, arc: [0.55, 0.5, 0.45, 0.42, 0.35, 0.28, 0.2, 0.08], cam: -0.1 },
+  sunset: { name: 'Sunset', like: 'warm goodbye', group: 'light', line: 'Golden and a little wistful: warm major chords that borrow a minor colour as the sun goes down.', mode: 'major', bpm: [68, 82], chordBars: 2, lift: -0.05, pedal: 7,
+    prog: { intro: [ch('I iv')], theme: [ch('I iii IV iv'), ch('I vi IV iv')], build: [ch('IV V')], peak: [ch('I V vi IV')], film: [ch('IV iv')], outro: [ch('IV iv I I')] },
+    form: [['intro', 8], ['theme', 16], ['peak', 8], ['film', 8], ['outro', 8]], percs: { metals: 0.6, hits: 0.2 }, arc: [0.4, 0.5, 0.45, 0.55, 0.38, 0.3, 0.2, 0.1] },
+  dawn: { name: 'Dawn', like: 'not yet awake', group: 'dark', line: 'Early, misty and still: a held low tone, quiet chords that wait, the light only just there.', mode: 'minor', bpm: [60, 72], chordBars: 4, lift: -0.15, pedal: 0, drone: true, quietPercs: true, sus: 0.35,
+    prog: { intro: [ch('i')], theme: [ch('i VI'), ch('i iv')], build: [ch('iv')], peak: [ch('VI VII')], film: [ch('i')], outro: [ch('VI i')] },
+    form: [['intro', 8], ['film', 8], ['theme', 16], ['outro', 8]], percs: { metals: 0.7, hits: 0 }, arc: [0.06, 0.1, 0.14, 0.2, 0.24, 0.3, 0.34, 0.38] },
+  commuting: { name: 'Commuting', like: 'the daily ride', group: 'story', line: 'The same ride every day: a steady ticking pulse, chords that go round and round, the city passing by.', mode: 'minor', bpm: [96, 112], chordBars: 1, lift: 0, pedal: 7, tick: true,
+    prog: { intro: [ch('i VI')], theme: [ch('i VI III VII'), ch('i iv VI V')], build: [ch('iv V')], peak: [ch('i VI III VII')], film: [ch('i')], outro: [ch('i VI')] },
+    form: [['intro', 4], ['theme', 16], ['theme', 8], ['film', 4], ['theme', 16], ['outro', 4]], percs: { metals: 0.5, hits: 0.2 }, arc: [0.38, 0.42, 0.38, 0.44, 0.38, 0.42, 0.38, 0.3] },
+  trafficjam: { name: 'Traffic jam', like: 'stuck and restless', group: 'story', line: 'Stop and go: impatience that builds, starts that go nowhere, and a horn now and then.', mode: 'minor', bpm: [100, 116], chordBars: 1, lift: 0.05, pedal: 0, jump: true,
+    prog: { intro: [ch('i bII')], theme: [ch('i bII i VII'), ch('i iv bII i')], build: [ch('bII V')], peak: [ch('i VI bII V')], film: [ch('i')], outro: [ch('bII i')] },
+    form: [['intro', 4], ['theme', 8], ['build', 4], ['theme', 8], ['build', 4], ['peak', 8], ['outro', 4]], percs: { metals: 0.6, hits: 0.9 }, arc: [0.45, 0.55, 0.42, 0.6, 0.48, 0.65, 0.55, 0.7, 0.4], fx: [['hit', 'build']] },
+  insult: { name: 'Insult', like: 'that hurt', group: 'story', line: 'A normal moment, then the sting: one sharp hit, and the anger that keeps echoing after.', mode: 'minor', bpm: [84, 100], chordBars: 1, lift: 0, pedal: 7,
+    prog: { intro: [ch('i')], theme: [ch('i VI iv V')], build: [ch('bII V')], peak: [ch('i bII i V')], film: [ch('i bII')], outro: [ch('i bII i i')] },
+    form: [['intro', 4], ['theme', 8], ['peak', 8], ['film', 8], ['outro', 8]], percs: { metals: 0.6, hits: 1 }, arc: [0.3, 0.32, 0.34, 0.95, 0.7, 0.55, 0.48, 0.4, 0.25], fx: [['explosion', 'peak']] }
+});
 S.GROUPS = [['light', 'Light'], ['dark', 'Dark'], ['story', 'Story'], ['moment', 'Moments']];
-S.STYLE_ORDER = ['comedy', 'light', 'docu', 'romance', 'euphoric', 'ecstasy', 'glory', 'nostalgic', 'hope', 'triumph', 'dreamy', 'serenity', 'sunrise',
-  'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'heartbreak', 'lonely', 'grief', 'rage', 'danger', 'thriller', 'plot', 'adventure', 'showdown', 'countdown', 'explosion', 'vesuvius', 'eruption', 'sinkhole', 'void', 'dissolve', 'ether', 'contact', 'encounter'];
+S.STYLE_ORDER = ['comedy', 'light', 'docu', 'romance', 'euphoric', 'ecstasy', 'glory', 'nostalgic', 'hope', 'triumph', 'dreamy', 'serenity', 'sunrise', 'newdawn', 'sunset', 'utopia', 'opening', 'broadway', 'finale', 'risingup',
+  'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'heartbreak', 'lonely', 'grief', 'rage', 'danger', 'dawn', 'dusk', 'goingdown', 'dystopia', 'thriller', 'plot', 'adventure', 'showdown', 'countdown', 'commuting', 'trafficjam', 'insult', 'explosion', 'vesuvius', 'eruption', 'sinkhole', 'void', 'dissolve', 'ether', 'contact', 'encounter'];
 S.ENDINGS = { resolve: 'Resolve', open: 'Cliffhanger', stop: 'Sudden stop' };
 // the feeling of one section: its own, or the feeling of the score
 S.styleOf = (sc, s) => S.STYLES[(s && s.style) || sc.style] || S.STYLES.suspense;
@@ -356,7 +401,7 @@ S.plays = function (sc, part, s, si, sections) {
 // A is the bed (long lines, the pulse), B is the motion (riffs, the power). Each track gets its own Style in its own plugin.
 S.LAYERS = [['strA', 'Strings A', 'STRIIIINGS', 'the bed'], ['strB', 'Strings B', 'STRIIIINGS', 'the motion'], ['perA', 'Percs A', 'PERRCS', 'the pulse'], ['perB', 'Percs B', 'PERRCS', 'the power']];
 const CAT = (a, b, c, d, ex) => ({ strA: a, strB: b, perA: c, perB: d, ex: ex || {} });
-const CALM_LIGHT = ['docu', 'romance', 'nostalgic', 'dreamy', 'serenity', 'sunrise', 'light', 'hope', 'void', 'ether', 'dissolve', 'contact'], CALM_DARK = ['heartbreak', 'lonely', 'grief', 'depressed', 'noir'];
+const CALM_LIGHT = ['docu', 'romance', 'nostalgic', 'dreamy', 'serenity', 'sunrise', 'light', 'hope', 'void', 'ether', 'dissolve', 'contact', 'sunset', 'dawn', 'utopia', 'newdawn'], CALM_DARK = ['heartbreak', 'lonely', 'grief', 'depressed', 'noir', 'dusk', 'goingdown'];
 S.isCalm = (sc, s) => { const k = (s && s.style) || sc.style; return CALM_LIGHT.includes(k) || CALM_DARK.includes(k); };
 // which kind of Style to load in each track: the categories of the plugins' own Style menus, with a Style to try where we know one
 S.catsOf = function (k) {
@@ -379,6 +424,10 @@ S.catsOf = function (k) {
   };
   if (X[k]) return X[k];
   if (k === 'explosion' || k === 'vesuvius' || k === 'eruption') return CAT('Dramatic', 'Epic', 'Building Suspense', 'Huge');
+  if (k === 'broadway' || k === 'finale') return CAT('Friendly', 'Epic', 'Tickers', 'Driving Rhythm');
+  if (k === 'opening' || k === 'risingup' || k === 'utopia' || k === 'newdawn') return CAT('Sustains', k === 'risingup' ? 'Epic' : 'Arpeggios', 'Tickers', k === 'risingup' ? 'Huge' : 'Big Grooves');
+  if (k === 'dystopia' || k === 'trafficjam' || k === 'insult') return CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action');
+  if (k === 'commuting') return CAT('Sustains', 'Riffs', 'Tickers', 'Driving Rhythm');
   if (k === 'void' || k === 'ether') return CAT('Sustains', 'Arpeggios', 'Tickers', 'Big Grooves');
   if (k === 'dissolve') return CAT('Sustains', 'Dramatic', 'Tickers', 'Big Grooves');
   if (k === 'contact') return CAT('Sustains', 'Arpeggios', 'Tickers', 'Driving Rhythm');
@@ -740,7 +789,7 @@ if (typeof module !== 'undefined') module.exports = S;
 (function () {
 'use strict';
 const S = window.SCORE;
-const VERSION = 'version 2026-10-28 06:00';
+const VERSION = 'version 2026-10-28 06:20';
 const $ = (q) => document.querySelector(q);
 const SVGNS = 'http://www.w3.org/2000/svg';
 function h(tag, attrs, ...kids) {
