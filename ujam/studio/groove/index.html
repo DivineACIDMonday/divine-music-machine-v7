@@ -10,7 +10,7 @@
 --onink:#fff;--chip:#fff;--track:#F1EFF7;--dotc:#CFCBDD;--warnbg:#FBF3E1;--warnfg:#6A4A06;--l0:#E8836B;--l1:#F0A27A;--l2:#E2B04A;--l3:#E07BB0;--l4:#4FB7A3;--l5:#6FA8DC;--l6:#8E7CF0;--l7:#B7B1D6;--l8:#D96C5B;--l9:#7FD1BE;--l10:#C9A26B;--l11:#A88FE8;--l12:#E89AC4;--l13:#5FA0C9;--l14:#D4C46A;--l15:#9AA4B8;--intro:#B9B4CC;--verse:#8E7CF0;--prechorus:#A99BF5;--chorus:#E8836B;--drop:#E8836B;--break:#6FA8DC;--build:#E2B04A;--fill:#CFCBDD;--outro:#B9B4CC}
 :root[data-theme="dark"]{--bg:#101219;--card:#191B26;--ink:#ECEAF5;--soft:#ABA7BF;--faint:#9692AC;--line:#2C2F40;--mute:#262938;--onink:#14151E;--chip:#2E3144;--track:#232636;--dotc:#454960;--warnbg:#3A2F14;--warnfg:#F2D493;--intro:#6E6A85;--outro:#6E6A85;--fill:#4A4D63}
 *{box-sizing:border-box}
-html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+html{overflow-x:clip}html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
 button{font-family:inherit;color:inherit;cursor:pointer}
 select{font-family:inherit;color:var(--ink);background:var(--card);cursor:pointer}
 button:focus-visible,a:focus-visible{outline:3px solid #5b4bd6;outline-offset:2px}
@@ -49,7 +49,7 @@ button:focus-visible,a:focus-visible{outline:3px solid #5b4bd6;outline-offset:2p
 .play{width:64px;height:64px;border-radius:50%;border:none;background:var(--ink);color:var(--onink);font-size:22px}
 .big{height:60px;border-radius:18px;border:none;background:var(--accent);color:#fff;font-size:17px;font-weight:700;width:100%}
 .big[disabled]{opacity:.55;cursor:default}
-body.getmode .part,body.getmode .card{background:color-mix(in srgb,var(--card) 70%,transparent);backdrop-filter:blur(1px)}
+body.getmode .part,body.getmode .card,body.getmode .mid{background:color-mix(in srgb,var(--card) 18%,transparent);box-shadow:inset 0 0 0 1px var(--line)}
 canvas.rip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .stage{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:420px;width:100%}
 .hint{font-size:14px;color:var(--soft);text-align:center;min-height:20px}
@@ -75,7 +75,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 22:45</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-28 23:00</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3387,7 +3387,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-28 22:45';
+const VERSION = '2026-10-28 23:00';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3872,13 +3872,13 @@ const RAIN = { list: [], raf: 0 };
 function rainDrop(part, lane, t, v) { if (RIP.calm || !(st.mode === 'get' || st.mode === 'edit')) return; RAIN.list.push({ part, lane, t, v, x: 0.04 + Math.random() * 0.92, life: 2.4 + Math.random() * 1.6 }); if (RAIN.list.length > 160) RAIN.list.splice(0, RAIN.list.length - 160); if (!RAIN.raf) RAIN.raf = requestAnimationFrame(drawRain); }
 function drawRain() {
   RAIN.raf = 0; let cv = $('canvas.rain'); if (!(st.mode === 'get' || st.mode === 'edit') || !AU.ctx) { if (cv) cv.remove(); return; }
-  if (!cv) { cv = h('canvas', { class: 'rain', 'aria-hidden': 'true', style: 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;z-index:0' }); document.body.prepend(cv); }
+  if (!cv) { cv = h('canvas', { class: 'rain', 'aria-hidden': 'true', style: 'position:fixed;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:0' }); document.body.prepend(cv); }
   const dpr = window.devicePixelRatio || 1, W = innerWidth, H = innerHeight; if (cv.width !== Math.round(W * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
   const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H); const now = AU.ctx.currentTime;
   RAIN.list = RAIN.list.filter((d) => now - d.t < d.life);
-  for (const d of RAIN.list) { const k = (now - d.t) / d.life; if (k < 0) continue; const y = H + 20 - k * (H + 60), x = d.x * W, r = 3 + 5 * d.v / 127, col = d.part === 'beat' ? laneColor(d.lane || 0) : cssv('--' + d.part);
-    g.globalAlpha = 0.5 * (1 - k); g.strokeStyle = col; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + r); g.lineTo(x, y + r + 14 + 20 * d.v / 127); g.stroke();
-    g.globalAlpha = 0.75 * (1 - k * 0.8); g.fillStyle = col; ripPath(g, d.part === 'beat' ? laneShape(d.lane || 0) : 'circle', x, y, r); g.fill(); }
+  for (const d of RAIN.list) { const k = (now - d.t) / d.life; if (k < 0) continue; const y = H + 20 - k * (H + 60), x = d.x * W, r = 4 + 7 * d.v / 127, col = d.part === 'beat' ? laneColor(d.lane || 0) : cssv('--' + d.part);
+    g.globalAlpha = 0.7 * (1 - k); g.strokeStyle = col; g.lineWidth = 2.5; g.beginPath(); g.moveTo(x, y + r); g.lineTo(x, y + r + 14 + 20 * d.v / 127); g.stroke();
+    g.globalAlpha = 0.95 * (1 - k * 0.7); g.fillStyle = col; ripPath(g, d.part === 'beat' ? laneShape(d.lane || 0) : 'circle', x, y, r); g.fill(); }
   g.globalAlpha = 1; if (RAIN.list.length || AU.playing) RAIN.raf = requestAnimationFrame(drawRain); else cv.remove();
 }
 function openGet() { stopAll(); st.mode = 'get'; render(); window.scrollTo(0, 0); }
@@ -3916,7 +3916,7 @@ const TIPS = {
 function showTip() {
   const old = $('#tip'); if (old && old.dataset.mode === st.mode) return; if (old) old.remove();
   const t = TIPS[st.mode]; if (!t || !song() || store.get(KP + 'tip-' + st.mode, false) || $('#start')) return;
-  const close = () => { store.set(KP + 'tip-' + st.mode, true); el.remove(); };
+  store.set(KP + 'tip-' + st.mode, true); const close = () => el.remove();
   const el = h('div', { class: 'tip', id: 'tip', role: 'note', 'data-mode': st.mode }, h('b', null, t[0]), h('ol', null, t[1].map((x) => h('li', null, x))), h('button', { class: 'ib', onclick: close }, 'Got it'));
   document.body.append(el);
 }
