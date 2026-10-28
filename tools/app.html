@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Divine Music Studio</title>
+<meta name="description" content="Pick a genre, shape your song, get it as MIDI. Free, mechanical, right in your browser. By Divine Monday.">
+<meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F4F3F8;--card:#fff;--ink:#1E1D2B;--soft:#5E5A72;--faint:#6B6780;--line:#E4E2EC;--mute:#EDEBF5;--accent:#E8836B;
+--beat:#E8836B;--bass:#8E7CF0;--chords:#4FB7A3;--pad:#6FA8DC;--melody:#E07BB0;--answer:#E2B04A;
+--intro:#B9B4CC;--verse:#8E7CF0;--prechorus:#A99BF5;--chorus:#E8836B;--drop:#E8836B;--break:#6FA8DC;--build:#E2B04A;--fill:#CFCBDD;--outro:#B9B4CC}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,system-ui,sans-serif}
+button{font-family:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid #5b4bd6;outline-offset:2px}
+.top{height:72px;padding:0 28px;display:flex;align-items:center;gap:20px;background:var(--card);border-bottom:1px solid var(--line)}
+.logo{font-size:20px;font-weight:700;white-space:nowrap}.logo span{color:var(--accent)}
+.steps{display:flex;align-items:center;gap:6px;flex:1;justify-content:center;flex-wrap:wrap}
+.step{display:flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;border:none;background:transparent;font-size:14px;font-weight:600;color:var(--soft)}
+.step b{width:22px;height:22px;border-radius:50%;border:2px solid #CFCBDD;font-size:12px;display:flex;align-items:center;justify-content:center}
+.step.done{background:var(--mute);color:var(--ink)}.step.done b{background:var(--ink);border-color:var(--ink);color:#fff}
+.step.on{background:var(--ink);color:#fff}.step.on b{background:#fff;border-color:#fff;color:var(--ink)}
+.step[disabled]{opacity:.5;cursor:default}
+.dash{width:20px;height:2px;background:#CFCBDD}
+.ib{min-width:44px;height:44px;padding:0 12px;border-radius:12px;border:1px solid var(--line);background:var(--card);font-size:15px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.ib[disabled]{opacity:.4;cursor:default}
+.wrap{display:flex;gap:22px;padding:22px 28px;flex-wrap:wrap}
+.left{width:320px;display:flex;flex-direction:column;gap:16px}
+.mid{flex:999 1 480px;min-width:0;background:var(--card);border-radius:24px;padding:22px;display:flex;flex-direction:column;align-items:center;gap:16px;position:relative;overflow:hidden}
+.right{width:400px;display:flex;flex-direction:column;gap:10px}
+.card{background:var(--card);border-radius:20px;padding:18px}
+.lab{font-size:12px;font-weight:600;color:var(--faint);text-transform:uppercase;letter-spacing:.06em}
+.seg{display:flex;gap:4px;padding:4px;background:var(--bg);border-radius:999px}
+.seg button{height:38px;padding:0 16px;border-radius:999px;border:none;background:transparent;color:var(--soft);font-size:13px;font-weight:600}
+.seg button.on{background:var(--ink);color:#fff}
+.secs{display:flex;flex-direction:column;gap:6px}
+.sec{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--bg);border:none;text-align:left;width:100%}
+.sec i{width:8px;height:26px;border-radius:4px;flex:none}.sec span{flex:1;font-size:15px;font-weight:600}.sec small{font-size:13px;color:var(--faint)}
+.sec.on{background:var(--ink);color:#fff}.sec.on small{color:#CFCBDD}
+.part{background:var(--card);border-radius:16px;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.prow{display:flex;align-items:center;gap:10px}.prow .dot{width:12px;height:12px;border-radius:50%;flex:none}.prow .nm{flex:1;font-weight:600}
+.mode{display:flex;background:var(--bg);border-radius:10px;padding:3px}
+.mode button{height:34px;padding:0 10px;border:none;border-radius:8px;background:transparent;font-size:13px;color:var(--soft)}
+.mode button.on{background:#fff;font-weight:700;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.warn{display:flex;align-items:center;gap:10px;background:#FBF3E1;border-radius:10px;padding:10px 12px;font-size:13px;color:#6A4A06}
+.warn span{flex:1}.warn button{height:32px;padding:0 10px;border-radius:8px;border:none;background:#6A4A06;color:#fff;font-size:12px;font-weight:600}
+.part.alert{outline:2px solid var(--answer)}
+.play{width:64px;height:64px;border-radius:50%;border:none;background:var(--ink);color:#fff;font-size:22px}
+.big{height:60px;border-radius:18px;border:none;background:var(--accent);color:#fff;font-size:17px;font-weight:700;width:100%}
+.big[disabled]{opacity:.55;cursor:default}
+canvas.rip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.stage{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;min-height:420px;width:100%}
+.hint{font-size:14px;color:var(--soft);text-align:center;min-height:20px}
+.menu{position:absolute;right:28px;top:66px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:8px;display:flex;flex-direction:column;min-width:240px;z-index:20;box-shadow:0 12px 32px rgba(30,29,43,.14)}
+.menu a,.menu button{display:block;text-align:left;padding:12px 14px;border-radius:10px;border:none;background:transparent;font-size:15px;color:var(--ink);text-decoration:none}
+.menu a:hover,.menu button:hover{background:var(--bg)}
+.start{position:fixed;inset:0;background:rgba(30,29,43,.35);display:flex;align-items:flex-start;justify-content:center;padding:40px 16px;overflow:auto;z-index:30}
+.start .box{background:#fff;border-radius:24px;padding:28px;max-width:980px;width:100%}
+.gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:14px}
+.gc{text-align:left;padding:16px;border-radius:16px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:700}
+.gc small{display:block;font-weight:500;font-size:13px;color:var(--soft);margin-top:4px}
+.gc:hover{border-color:var(--ink)}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;border-radius:14px;padding:12px 16px;display:flex;gap:12px;align-items:center;font-size:14px;z-index:40;max-width:92vw}
+.toast button{border:none;background:#fff;color:var(--ink);border-radius:8px;height:32px;padding:0 10px;font-weight:700}
+.spin{cursor:pointer;border:none;background:transparent;padding:0}
+foot{display:block}
+.foot{padding:4px 28px 24px;font-size:12px;color:var(--faint);display:flex;gap:14px;flex-wrap:wrap}
+.foot a{color:var(--faint)}
+@media (max-width:900px){.top{height:auto;padding:12px 16px;flex-wrap:wrap}.wrap{padding:16px}.left,.right{width:100%}.steps{order:3;width:100%;justify-content:flex-start}}
+</style></head><body>
+<header class="top" id="top"></header>
+<div class="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version __VERSION__</span></footer>
+<!--ENGINE-->
+<script>
+/* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
+(function () {
+const D = window.DMM;
+const VERSION = '__VERSION__';
+const APP_NAME = window.DMS_UJAM ? 'Divine Music Studio UJAM' : 'Divine Music Studio';
+const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
+const PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
+const PART_NAMES = { beat: 'Beat', bass: 'Bass', chords: 'Chords', pad: 'Pad', melody: 'Melody', answer: 'Answer' };
+const VARIATION = { calm: 0, gentle: 0.35, wild: 0.75 };
+const $ = (s) => document.querySelector(s);
+const h = (tag, attrs, ...kids) => { const el = document.createElement(tag); if (attrs) for (const k in attrs) { const v = attrs[k]; if (v == null || v === false) continue; if (k === 'class') el.className = v; else if (k === 'style') el.style.cssText = v; else if (k.startsWith('on')) el.addEventListener(k.slice(2), v); else if (v === true) el.setAttribute(k, ''); else el.setAttribute(k, v); } for (const c of kids.flat()) if (c != null && c !== false) el.append(c.nodeType ? c : document.createTextNode(c)); return el; };
+const NS = 'http://www.w3.org/2000/svg';
+const s = (tag, attrs) => { const el = document.createElementNS(NS, tag); for (const k in attrs) el.setAttribute(k, attrs[k]); return el; };
+const cssv = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* fine */ } } };
+const KP = window.DMS_UJAM ? 'dmsu-' : 'dms-';
+
+function count(ev) { try { if (!/\.github\.io$/.test(location.hostname)) return; const q = new URLSearchParams({ p: ev ? 'studio/' + ev : location.pathname, t: ev || document.title, s: screen.width + ',' + screen.height, rnd: Math.random().toString(36).slice(2) }); if (ev) q.set('e', 'true'); const u = 'https://divine-monday.goatcounter.com/count?' + q; if (!(navigator.sendBeacon && navigator.sendBeacon(u))) new Image().src = u; } catch (e) { /* never in the way */ } }
+setTimeout(() => count(), 0);
+function feedbackHref() { const sb = 'Feedback / contact: ' + APP_NAME + ' (version ' + VERSION + ')'; const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n'; const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(sb) + '&body=' + encodeURIComponent(b); }
+
+const st = { song: null, sec: 0, view: store.get(KP + 'view', 'drops'), spiral: 'structure', hist: [], fut: [], menu: false, plays: null, playsKey: '' };
+const song = () => st.song;
+
+/* ---------- history: every change can be undone ---------- */
+function snapshot() { return JSON.stringify(st.song); }
+function change(fn) { st.hist.push(snapshot()); if (st.hist.length > 60) st.hist.shift(); st.fut = []; fn(); save(); render(); }
+function undo() { if (!st.hist.length) return; st.fut.push(snapshot()); st.song = JSON.parse(st.hist.pop()); D.ensureTypes && D.ensureTypes(st.song); clampSec(); save(); render(); }
+function redo() { if (!st.fut.length) return; st.hist.push(snapshot()); st.song = JSON.parse(st.fut.pop()); D.ensureTypes && D.ensureTypes(st.song); clampSec(); save(); render(); }
+function save() { store.set(KP + 'session', { song: st.song, sec: st.sec }); }
+function clampSec() { st.sec = D.clamp(st.sec, 0, Math.max(0, song().sections.length - 1)); }
+let toastT = 0;
+function toast(msg, act) { const old = $('.toast'); if (old) old.remove(); clearTimeout(toastT); const t = h('div', { class: 'toast', role: 'status' }, h('span', null, msg), act ? h('button', { onclick: () => { t.remove(); act.fn(); } }, act.label) : null); document.body.append(t); toastT = setTimeout(() => t.remove(), 5000); }
+
+/* ---------- making a song ---------- */
+function makeSong(genre) {
+  stopAll();
+  const sg = D.freshSong(genre, { name: 'Untitled' });
+  sg.raw = VARIATION.gentle; sg.studioVar = 'gentle';
+  st.song = sg; st.hist = []; st.fut = []; st.sec = Math.max(0, sg.sections.findIndex((x) => x.type === 'verse' || x.type === 'chorus' || x.type === 'drop'));
+  count('new/' + genre); save(); closeStart(); render();
+}
+function newSongSame() { const sg = song(); const parts = PARTS.filter((p) => sg.parts[p].mode === 'machine'); if (!parts.length) { toast('Every part is DIY or off, so the dice leave them as they are.'); return; } change(() => { for (const p of parts) sg.parts[p].seed = D.newSeed(); }); toast('New ideas for every Machine part. DIY parts stayed.', { label: 'Undo', fn: undo }); }
+function newStructure() { change(() => { song().sections = D.randomStructure(song(), D.newSeed()); st.sec = 0; }); toast('New structure: ' + song().sections.length + ' sections, ' + D.totalBars(song()) + ' bars.', { label: 'Undo', fn: undo }); }
+function newPart(p) { if (song().parts[p].mode !== 'machine') { toast(PART_NAMES[p] + ' is ' + (song().parts[p].mode === 'off' ? 'off' : 'DIY') + '; the dice only change Machine parts.'); return; } change(() => { song().parts[p].seed = D.newSeed(); }); toast('A new ' + PART_NAMES[p].toLowerCase() + ' idea.', { label: 'Undo', fn: undo }); }
+function setMode(p, m) {
+  const sg = song(), P = sg.parts[p]; if (P.mode === m) return;
+  change(() => {
+    if (m === 'yours') { // DIY starts from what the machine played, so nothing goes silent
+      const wasOff = P.mode === 'off', types = [...new Set(sg.sections.map((x) => x.type))], keep = {};
+      for (const ty of types) { const r = D.resolveType(sg, ty)[p]; keep[ty] = r ? D.clone(r) : D.emptyMat(p, sg); }
+      P.mode = 'yours';
+      for (const ty of types) if (!(sg.mat[ty] && sg.mat[ty][p] && sg.mat[ty][p].src === 'user')) { D.setUser(sg, p, ty, wasOff ? D.emptyMat(p, sg) : keep[ty]); if (!wasOff) sg.mat[ty][p].auto = true; }
+    } else P.mode = m;
+  });
+  if (m === 'yours') toast(PART_NAMES[p] + ' is DIY now and sounds the same. Edit it in the Edit screen.');
+}
+function setVariation(v) { change(() => { song().raw = VARIATION[v]; song().studioVar = v; }); }
+
+/* ---------- what plays where: one look per bar ---------- */
+function playsMap() {
+  const sg = song(), key = JSON.stringify([sg.sections, sg.parts, sg.mat, sg.raw, sg.seed]);
+  if (st.playsKey === key && st.plays) return st.plays;
+  const BT = D.barTicks(sg), tot = D.totalBars(sg), map = {};
+  for (const p of PARTS) { const on = new Array(tot).fill(false); if (sg.parts[p].mode !== 'off') { try { D.renderSong(sg, p).forEach((n) => { const b = Math.floor(Math.max(0, n.t) / BT); if (b < tot) on[b] = true; }); } catch (e) { console.error(e); } } map[p] = on; }
+  st.plays = map; st.playsKey = key; return map;
+}
+function emptyWarning(p) {
+  const sg = song(); if (sg.parts[p].mode === 'off') return null;
+  const on = playsMap()[p]; let b0 = 0, silent = 0; const n = sg.sections.length;
+  sg.sections.forEach((x) => { let any = false; for (let b = b0; b < b0 + x.bars; b++) if (on[b]) any = true; if (!any && x.type !== 'fill') silent++; b0 += x.bars; });
+  if (sg.parts[p].mode === 'yours' && silent >= Math.max(2, Math.ceil(n / 2))) return 'DIY, and silent in ' + silent + ' of ' + n + ' sections.';
+  if (on.every((x) => !x)) return 'Plays nowhere in this song.';
+  return null;
+}
+
+/* ---------- audio: the suite's sketch sounds ---------- */
+const AU = { ctx: null, playing: false, timer: null, queue: [], nextBar: 0, nextT: 0, curBar: 0, curFrac: 0, nodes: [], raf: 0 };
+function ensureAudio() { if (AU.ctx) return AU.ctx; const C = window.AudioContext || window.webkitAudioContext; if (!C) { toast('This browser has no audio playback.'); return null; } const ctx = new C(); AU.ctx = ctx; const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -14; comp.ratio.value = 3; comp.connect(ctx.destination); const master = ctx.createGain(); master.gain.value = 0.8; master.connect(comp); AU.master = master; const len = ctx.sampleRate * 1.5, nb = ctx.createBuffer(1, len, ctx.sampleRate), d = nb.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; AU.noise = nb; return ctx; }
+const mtof = (p) => 440 * Math.pow(2, (p - 69) / 12);
+function env(g, t, a, peak, dur, rel) { g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(peak, t + a); g.gain.setTargetAtTime(0.0001, t + Math.max(a, dur), rel); }
+function track(node, end) { AU.nodes.push({ node, end }); }
+function noiseSrc(t, dur) { const src = AU.ctx.createBufferSource(); src.buffer = AU.noise; src.start(t, Math.random() * 0.5); src.stop(t + dur); track(src, t + dur); return src; }
+function drum(li, t, v) {
+  if (li >= 8) li = 6;
+  const ctx = AU.ctx, g = ctx.createGain(), amp = Math.pow(v / 127, 1.4); g.connect(AU.master);
+  if (li === 0 || li === 1) { const o = ctx.createOscillator(); o.type = 'sine'; const f = li === 0 ? 1 : 0.8; o.frequency.setValueAtTime(150 * f, t); o.frequency.exponentialRampToValueAtTime(44 * f, t + 0.13); env(g, t, 0.002, amp * (li ? 0.6 : 1), 0.05, 0.09); o.connect(g); o.start(t); o.stop(t + 0.5); track(o, t + 0.5); }
+  else if (li === 2) { const n = noiseSrc(t, 0.25), bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1900; bp.Q.value = 0.8; n.connect(bp); bp.connect(g); env(g, t, 0.001, amp * 0.7, 0.02, 0.06); const o = ctx.createOscillator(), og = ctx.createGain(); o.type = 'triangle'; o.frequency.setValueAtTime(220, t); o.frequency.exponentialRampToValueAtTime(160, t + 0.08); o.connect(og); og.connect(AU.master); env(og, t, 0.001, amp * 0.35, 0.02, 0.05); o.start(t); o.stop(t + 0.3); track(o, t + 0.3); }
+  else if (li === 3) { const n = noiseSrc(t, 0.3), bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1200; bp.Q.value = 1.2; n.connect(bp); bp.connect(g); g.gain.setValueAtTime(0, t); [0, 0.012, 0.024].forEach((o) => { g.gain.setValueAtTime(amp * 0.6, t + o); g.gain.setTargetAtTime(0.0001, t + o + 0.002, 0.006); }); g.gain.setValueAtTime(amp * 0.6, t + 0.036); g.gain.setTargetAtTime(0.0001, t + 0.04, 0.05); }
+  else if (li === 4 || li === 5) { const n = noiseSrc(t, li === 4 ? 0.12 : 0.5), hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = li === 4 ? 7200 : 6200; n.connect(hp); hp.connect(g); env(g, t, 0.001, amp * 0.32, li === 4 ? 0.01 : 0.05, li === 4 ? 0.02 : 0.12); }
+  else if (li === 6) { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.setValueAtTime(820, t); const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; o.connect(bp); bp.connect(g); env(g, t, 0.001, amp * 0.2, 0.01, 0.03); o.start(t); o.stop(t + 0.2); track(o, t + 0.2); }
+  else { const n = noiseSrc(t, 1.6), hp = ctx.createBiquadFilter(); hp.type = 'highpass'; hp.frequency.value = 4500; n.connect(hp); hp.connect(g); env(g, t, 0.002, amp * 0.3, 0.05, 0.45); }
+}
+function tone(part, p, t, dur, v) {
+  const ctx = AU.ctx, g = ctx.createGain(), amp = Math.pow(v / 127, 1.3), lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.connect(g); g.connect(AU.master); const end = t + dur + 0.4;
+  const go = (o, e) => { o.start(t); o.stop(e || end); track(o, e || end); };
+  if (part === 'bass') { const o = ctx.createOscillator(), o2 = ctx.createOscillator(); o.type = 'sawtooth'; o2.type = 'sine'; o.frequency.value = mtof(p); o2.frequency.value = mtof(p); lp.frequency.setValueAtTime(900, t); lp.frequency.setTargetAtTime(320, t, 0.12); o.connect(lp); o2.connect(lp); env(g, t, 0.005, amp * 0.3, dur, 0.06); go(o); go(o2); }
+  else if (part === 'chords') { const o = ctx.createOscillator(), o2 = ctx.createOscillator(); o.type = 'triangle'; o2.type = 'sawtooth'; o.frequency.value = mtof(p); o2.frequency.value = mtof(p) * 1.004; lp.frequency.value = 1500; const g2 = ctx.createGain(); g2.gain.value = 0.25; o2.connect(g2); g2.connect(lp); o.connect(lp); env(g, t, 0.01, amp * 0.09, dur, 0.15); go(o); go(o2); }
+  else if (part === 'pad') { const o = ctx.createOscillator(), o2 = ctx.createOscillator(); o.type = 'sawtooth'; o2.type = 'sawtooth'; o.frequency.value = mtof(p) * 0.997; o2.frequency.value = mtof(p) * 1.003; lp.frequency.value = 1100; lp.Q.value = 0.4; o.connect(lp); o2.connect(lp); const pend = t + dur + 0.9; g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(amp * 0.07, t + Math.min(0.35, dur * 0.5)); g.gain.setTargetAtTime(0.0001, t + dur, 0.28); go(o, pend); go(o2, pend); }
+  else if (part === 'answer') { const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.value = mtof(p); lp.frequency.value = 2600; o.connect(lp); env(g, t, 0.01, amp * 0.2, dur, 0.12); go(o); }
+  else { const o = ctx.createOscillator(); o.type = 'square'; o.frequency.value = mtof(p); lp.frequency.setValueAtTime(3200, t); lp.frequency.setTargetAtTime(1400, t, 0.15); o.connect(lp); env(g, t, 0.004, amp * 0.13, dur, 0.07); go(o); }
+}
+const barSec = (sg) => D.barTicks(sg) / D.PPQ * 60 / sg.bpm;
+function scheduleBar(sg, bar, t0) {
+  const R = D.makeRenderer(sg), tps = sg.bpm / 60 * D.PPQ;
+  for (const p of PARTS) { if (sg.parts[p].mode === 'off') continue; let notes; try { notes = R.bar(p, bar); } catch (e) { console.error(e); continue; } let lastT = -1;
+    for (const n of notes) { const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue; if (p === 'beat') drum(n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
+      if ((p !== 'beat' || n.lane <= 3) && (p !== 'chords' && p !== 'pad' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v, n.lane); lastT = t; } }
+}
+function tick() { const sg = song(), ctx = AU.ctx, tot = D.totalBars(sg); while (AU.nextT < ctx.currentTime + 0.18) { scheduleBar(sg, AU.nextBar, AU.nextT); AU.queue.push({ bar: AU.nextBar, t: AU.nextT, len: barSec(sg) }); AU.nextT += barSec(sg); AU.nextBar = (AU.nextBar + 1) % tot; } AU.queue = AU.queue.filter((q) => q.t + q.len > ctx.currentTime - 1); AU.nodes = AU.nodes.filter((n) => n.end > ctx.currentTime); }
+function frame() {
+  if (!AU.playing) return; const now = AU.ctx.currentTime; let cur = null; for (const q of AU.queue) if (q.t <= now) cur = q;
+  if (cur) { const nb = cur.bar !== AU.curBar; AU.curBar = cur.bar; AU.curFrac = D.clamp((now - cur.t) / cur.len, 0, 0.9999); if (nb) { const at = D.sectionAt(song(), AU.curBar); if (at && at.i !== st.sec) { st.sec = at.i; renderLeft(); renderRight(); } else renderSpiral(); renderStage(); } movePlayhead(); }
+  AU.raf = requestAnimationFrame(frame);
+}
+function startPlay(fromBar) { if (!ensureAudio()) return; AU.ctx.resume(); stopAll(); AU.playing = true; AU.nextBar = fromBar; AU.nextT = AU.ctx.currentTime + 0.08; AU.queue = []; AU.curBar = fromBar; AU.curFrac = 0; AU.timer = setInterval(tick, 25); tick(); AU.raf = requestAnimationFrame(frame); count('play'); renderMid(); }
+function stopAll() { clearInterval(AU.timer); AU.timer = null; cancelAnimationFrame(AU.raf); if (AU.ctx) { const now = AU.ctx.currentTime; for (const n of AU.nodes) { try { n.node.stop(now + 0.01); } catch (e) { /* gone */ } } } AU.nodes = []; RIP.list = []; const was = AU.playing; AU.playing = false; AU.queue = []; if (was) renderMid(); }
+function togglePlay() { if (AU.playing) stopAll(); else startPlay(D.sectionStart(song(), st.sec)); }
+
+/* ---------- the drops: every note a ripple ---------- */
+const RIP = { list: [], raf: 0, calm: window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches };
+const RIP_LIFE = { beat: 1.3, bass: 2.2, chords: 3.2, pad: 3.8, melody: 1.6, answer: 1.6 };
+const RIP_REACH = { kick: 1, snare: 0.82, bass: 0.92, chords: 1, pad: 1, melody: 0.74, answer: 0.5 };
+function addRipple(part, t, v, lane) {
+  if (RIP.calm || st.view !== 'drops') return;
+  if (part === 'chords' || part === 'pad') { const last = RIP.lastWave && RIP.lastWave[part]; const bar = barSec(song()); if (last != null && t - last < bar * 0.9 && t >= last) return; RIP.lastWave = Object.assign({}, RIP.lastWave, { [part]: t }); }
+  const kind = part === 'beat' ? (lane <= 1 ? 'kick' : 'snare') : part;
+  // every drop lands somewhere of its own: the kick in the middle, the others around it
+  const ang = Math.random() * Math.PI * 2, off = kind === 'kick' ? 0 : part === 'pad' || part === 'chords' ? 0.08 : 0.12 + Math.random() * 0.22;
+  RIP.list.push({ part, kind, t, v, reach: Math.min(1.05, RIP_REACH[kind] * (0.82 + Math.random() * 0.3)), ox: Math.cos(ang) * off, oy: Math.sin(ang) * off });
+  if (RIP.list.length > 90) RIP.list.splice(0, RIP.list.length - 90); if (!RIP.raf) RIP.raf = requestAnimationFrame(drawRipples);
+}
+function drawRipples() {
+  RIP.raf = 0; const cv = $('canvas.rip'); if (!cv || !AU.ctx) return;
+  const dpr = window.devicePixelRatio || 1, W = cv.clientWidth, H = cv.clientHeight; if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
+  const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
+  const now = AU.ctx.currentTime, M = Math.min(W, H), rMax = Math.hypot(W, H) * 0.5, r0 = M * 0.03;
+  RIP.list = RIP.list.filter((r) => now - r.t < RIP_LIFE[r.part]);
+  const live = RIP.list.filter((r) => r.t <= now).length, budget = Math.min(1, Math.sqrt(7 / Math.max(7, live)));
+  for (const r of RIP.list) { const k = (now - r.t) / RIP_LIFE[r.part]; if (k < 0) continue; const e = 1 - Math.pow(1 - k, 2.2), rad = r0 + (rMax * r.reach - r0) * e, wave = r.part === 'chords' || r.part === 'pad';
+    const a = budget * (wave ? 0.17 : 0.26) * (0.45 + 0.55 * r.v / 127) * Math.pow(1 - k, 1.6), lw = wave ? 3.2 : r.kind === 'kick' || r.part === 'bass' ? 2.4 : 1.6, cx = W / 2 + r.ox * M, cy = H / 2 + r.oy * M;
+    g.strokeStyle = cssv('--' + r.part); g.globalAlpha = a * 0.3; g.lineWidth = lw * 4; g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.stroke(); g.globalAlpha = a; g.lineWidth = lw; g.beginPath(); g.arc(cx, cy, rad, 0, Math.PI * 2); g.stroke();
+    if (k < 0.12) { g.globalAlpha = (1 - k / 0.12) * 0.9; g.fillStyle = cssv('--' + r.part); g.beginPath(); g.arc(cx, cy, wave ? 7 : 5, 0, Math.PI * 2); g.fill(); } }
+  g.globalAlpha = 1; if (RIP.list.length || AU.playing) RIP.raf = requestAnimationFrame(drawRipples);
+}
+
+/* ---------- the spiral: the compass of the song ---------- */
+const arc = (cx, cy, r, a0, a1) => { const x0 = cx + r * Math.cos(a0), y0 = cy + r * Math.sin(a0), x1 = cx + r * Math.cos(a1), y1 = cy + r * Math.sin(a1); return 'M' + x0.toFixed(1) + ' ' + y0.toFixed(1) + ' A' + r + ' ' + r + ' 0 ' + (a1 - a0 > Math.PI ? 1 : 0) + ' 1 ' + x1.toFixed(1) + ' ' + y1.toFixed(1); };
+function spiralSvg() {
+  const sg = song(), tot = D.totalBars(sg), C = 130, sv = s('svg', { viewBox: '0 0 260 260', width: 236, height: 236, role: 'img', 'aria-label': st.spiral === 'structure' ? 'The song as a spiral of sections' : 'One ring per part, a block per bar' });
+  const secOf = []; let b0 = 0; sg.sections.forEach((x, i) => { for (let b = 0; b < x.bars; b++) secOf[b0 + b] = i; b0 += x.bars; });
+  const ang = (b) => -Math.PI / 2 + b / tot * Math.PI * 2, gap = Math.min(0.012, Math.PI / tot * 0.35);
+  if (st.spiral === 'structure') {
+    const turns = 2.2, rIn = 34, rOut = 118, pt = (b) => { const k = b / tot, a = -Math.PI / 2 + k * turns * Math.PI * 2, r = rIn + (rOut - rIn) * k; return [C + r * Math.cos(a), C + r * Math.sin(a)]; };
+    sg.sections.forEach((x, i) => { const start = D.sectionStart(sg, i); let d = ''; for (let k = 0; k <= 8; k++) { const [px, py] = pt(start + (x.bars - 0.25) * k / 8); d += (k ? ' L' : 'M') + px.toFixed(1) + ' ' + py.toFixed(1); } const on = i === st.sec; const p = s('path', { d, fill: 'none', stroke: cssv('--' + x.type) || '#B9B4CC', 'stroke-width': on ? 14 : 9, 'stroke-linecap': 'round', opacity: on ? 1 : 0.75 }); sv.append(p); });
+    const at = AU.playing ? AU.curBar + AU.curFrac : D.sectionStart(sg, st.sec); const [dx, dy] = pt(at); sv.append(s('circle', { cx: dx, cy: dy, r: 7, fill: '#fff', stroke: '#1E1D2B', 'stroke-width': 3, id: 'spDot' }));
+  } else {
+    const map = playsMap(); PARTS.forEach((p, k) => { const r = 118 - k * 17, on = map[p]; sv.append(s('circle', { cx: C, cy: C, r, fill: 'none', stroke: '#F4F3F8', 'stroke-width': 11 }));
+      for (let b = 0; b < tot; b++) { if (!on[b]) continue; let e = b + 1; while (e < tot && on[e] && secOf[e] === secOf[b]) e++; sv.append(s('path', { d: arc(C, C, r, ang(b) + gap, ang(e) - gap), fill: 'none', stroke: cssv('--' + p), 'stroke-width': 11, opacity: secOf[b] === st.sec ? 1 : 0.55 })); b = e - 1; } });
+    const a = ang(AU.playing ? AU.curBar + AU.curFrac : D.sectionStart(sg, st.sec)); sv.append(s('line', { x1: C, y1: C, x2: C + 126 * Math.cos(a), y2: C + 126 * Math.sin(a), stroke: '#1E1D2B', 'stroke-width': 2, id: 'spLine' }));
+  }
+  return sv;
+}
+function movePlayhead() {
+  const sg = song(), tot = D.totalBars(sg), b = AU.curBar + AU.curFrac;
+  const dot = $('#spDot'); if (dot) { const k = b / tot, a = -Math.PI / 2 + k * 2.2 * Math.PI * 2, r = 34 + 84 * k; dot.setAttribute('cx', (130 + r * Math.cos(a)).toFixed(1)); dot.setAttribute('cy', (130 + r * Math.sin(a)).toFixed(1)); }
+  const ln = $('#spLine'); if (ln) { const a = -Math.PI / 2 + b / tot * Math.PI * 2; ln.setAttribute('x2', (130 + 126 * Math.cos(a)).toFixed(1)); ln.setAttribute('y2', (130 + 126 * Math.sin(a)).toFixed(1)); }
+  const ph = $('#stageHead'); if (ph) { if (ph.dataset.kind === 'circle') { const a = -Math.PI / 2 + AU.curFrac * Math.PI * 2; ph.setAttribute('x2', (200 + 190 * Math.cos(a)).toFixed(1)); ph.setAttribute('y2', (200 + 190 * Math.sin(a)).toFixed(1)); } else { const x = 70 + AU.curFrac * 600; ph.setAttribute('x1', x); ph.setAttribute('x2', x); } }
+}
+
+/* ---------- the stage: drops, circle or lines ---------- */
+function barNotes(bar) { const sg = song(), R = D.makeRenderer(sg), o = {}; for (const p of PARTS) { o[p] = []; if (sg.parts[p].mode === 'off') continue; try { o[p] = R.bar(p, bar); } catch (e) { /* skip */ } } return o; }
+function stageCircle(bar) {
+  const sg = song(), N = D.meter(sg).steps, BT = D.barTicks(sg), notes = barNotes(bar), sv = s('svg', { viewBox: '0 0 400 400', width: 420, height: 420, role: 'img', 'aria-label': 'Circle: the bar as a ring, every part on its own ring' });
+  PARTS.forEach((p, k) => { const r = 180 - k * 26; sv.append(s('circle', { cx: 200, cy: 200, r, fill: 'none', stroke: '#F1EFF7', 'stroke-width': 18 }));
+    for (let i = 0; i < N; i++) { const a = -Math.PI / 2 + i / N * Math.PI * 2; sv.append(s('circle', { cx: 200 + r * Math.cos(a), cy: 200 + r * Math.sin(a), r: 2, fill: '#CFCBDD' })); }
+    notes[p].forEach((n) => { const a = -Math.PI / 2 + Math.max(0, n.t) / BT * Math.PI * 2; sv.append(s('circle', { cx: (200 + r * Math.cos(a)).toFixed(1), cy: (200 + r * Math.sin(a)).toFixed(1), r: (4 + 6 * n.v / 127).toFixed(1), fill: cssv('--' + p) })); }); });
+  sv.append(s('line', { x1: 200, y1: 200, x2: 200, y2: 10, stroke: '#1E1D2B', 'stroke-width': 2, id: 'stageHead', 'data-kind': 'circle', opacity: AU.playing ? 0.85 : 0 }));
+  return sv;
+}
+function stageLines(bar) {
+  const sg = song(), BT = D.barTicks(sg), notes = barNotes(bar), sv = s('svg', { viewBox: '0 0 700 400', width: '100%', height: 400, role: 'img', 'aria-label': 'Lines: every part a line through the bar' });
+  PARTS.forEach((p, k) => { const y = 40 + k * 64; sv.append(s('line', { x1: 70, y1: y, x2: 670, y2: y, stroke: '#EDEBF5', 'stroke-width': 2 })); const t = s('text', { x: 0, y: y + 5, 'font-size': 13, 'font-weight': 600, fill: '#5E5A72', 'font-family': 'Inter, sans-serif' }); t.textContent = PART_NAMES[p]; sv.append(t);
+    const ps = notes[p].map((n) => n.p).filter((x) => x != null), lo = Math.min(...ps, 60), hi = Math.max(...ps, 61);
+    notes[p].forEach((n) => { const x0 = 70 + Math.max(0, n.t) / BT * 600, x1 = Math.min(670, 70 + (Math.max(0, n.t) + (p === 'beat' ? 60 : n.d)) / BT * 600), dy = p === 'beat' ? (n.lane <= 1 ? 10 : n.lane <= 3 ? 0 : -10) : 12 - 24 * (n.p - lo) / Math.max(1, hi - lo); sv.append(s('line', { x1: x0.toFixed(1), y1: (y + dy).toFixed(1), x2: Math.max(x0 + 4, x1).toFixed(1), y2: (y + dy).toFixed(1), stroke: cssv('--' + p), 'stroke-width': p === 'pad' ? 10 : 7, 'stroke-linecap': 'round', opacity: (0.45 + 0.55 * n.v / 127).toFixed(2) })); }); });
+  sv.append(s('line', { x1: 70, y1: 10, x2: 70, y2: 390, stroke: '#1E1D2B', 'stroke-width': 2, id: 'stageHead', 'data-kind': 'lines', opacity: AU.playing ? 0.8 : 0 }));
+  return sv;
+}
+function renderStage() {
+  const el = $('#stage'); if (!el) return; el.innerHTML = '';
+  const bar = AU.playing ? AU.curBar : D.sectionStart(song(), st.sec);
+  if (st.view === 'circle') el.append(stageCircle(bar));
+  else if (st.view === 'lines') el.append(stageLines(bar));
+  else el.append(h('div', { class: 'hint' }, AU.playing ? '' : 'Press play: every note falls like a drop.'));
+  const pos = $('#pos'); if (pos) { const at = D.sectionAt(song(), bar); pos.textContent = at ? secLabel(at.i) + ' · bar ' + (at.inBar + 1) + ' of ' + at.s.bars : ''; }
+}
+
+/* ---------- labels ---------- */
+function secLabel(i) { const sg = song(), t = sg.sections[i].type, k = sg.sections.slice(0, i + 1).filter((x) => x.type === t).length, n = sg.sections.filter((x) => x.type === t).length; return D.TYPES[t].name + (n > 1 ? ' ' + k : ''); }
+function keyName(k) { return D.pcName(k.root) + ' ' + k.scale; }
+function mmss(sec) { const m = Math.floor(sec / 60), x = Math.round(sec % 60); return m + ':' + String(x).padStart(2, '0'); }
+
+/* ---------- screen A: the overview ---------- */
+function renderTop() {
+  const el = $('#top'); el.innerHTML = ''; const has = !!song();
+  const step = (n, label, state, dis) => h('button', { class: 'step ' + state, disabled: dis || null, title: dis ? 'Comes with the next build' : null }, h('b', null, state === 'done' ? '✓' : n), label);
+  el.append(h('div', { class: 'logo' }, 'Divine ', h('span', null, 'Music'), ' Studio'),
+    h('nav', { class: 'steps', 'aria-label': 'Steps' }, step(1, 'Genre', has ? 'done' : 'on'), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(2, 'Structure', has ? 'done' : ''), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(3, 'Parts', has ? 'on' : ''), h('span', { class: 'dash', 'aria-hidden': 'true' }), step(4, 'Get it', '', true)),
+    h('button', { class: 'ib', onclick: () => openStart(), title: 'Start a new song in any genre' }, 'New song'),
+    h('button', { class: 'ib', 'aria-label': 'New ideas for every Machine part', title: 'New ideas for every Machine part', onclick: newSongSame, disabled: !has || null }, '⚄'),
+    h('button', { class: 'ib', 'aria-label': 'Undo', onclick: undo, disabled: !st.hist.length || null }, '↶'),
+    h('button', { class: 'ib', 'aria-label': 'Redo', onclick: redo, disabled: !st.fut.length || null }, '↷'),
+    h('button', { class: 'ib', 'aria-label': 'Menu', 'aria-expanded': st.menu ? 'true' : 'false', onclick: () => { st.menu = !st.menu; renderMenu(); } }, '☰'));
+}
+function renderMenu() {
+  const old = $('.menu'); if (old) old.remove(); if (!st.menu) return;
+  document.body.append(h('div', { class: 'menu', role: 'menu' },
+    h('a', { href: SUITE, role: 'menuitem' }, '← Back to the suite'),
+    h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); count('feedback'); location.href = feedbackHref(); } }, 'Feedback / contact'),
+    h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', role: 'menuitem' }, 'Impressum & privacy'),
+    h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); toast('Library, save and manual come with the next build.'); } }, 'Library, save, manual')));
+}
+function renderLeft() {
+  const el = $('#left'); el.innerHTML = ''; const sg = song(); if (!sg) return;
+  const len = D.totalBars(sg) * barSec(sg);
+  el.append(h('section', { class: 'card', style: 'display:flex;flex-direction:column;align-items:center;gap:4px' },
+    h('button', { class: 'spin', id: 'spiral', 'aria-label': 'Switch the spiral between structure and parts', title: 'Tap to switch: Structure or Parts', onclick: () => { st.spiral = st.spiral === 'structure' ? 'parts' : 'structure'; renderSpiral(); } }, spiralSvg()),
+    h('div', { class: 'lab', id: 'spLabel' }, (st.spiral === 'structure' ? 'Structure' : 'Parts, bar by bar') + ' · tap to switch'),
+    h('div', { style: 'font-size:22px;font-weight:700;margin-top:6px' }, D.GENRES[sg.genre].name),
+    h('div', { style: 'font-size:13px;color:var(--soft)' }, sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + mmss(len))));
+  el.append(h('section', { class: 'card', style: 'display:flex;flex-direction:column;gap:8px' },
+    h('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, h('div', { class: 'lab' }, 'Structure'), h('button', { class: 'ib', style: 'height:36px;font-size:13px', onclick: newStructure }, '⚄ New structure')),
+    h('div', { class: 'secs' }, sg.sections.map((x, i) => h('button', { class: 'sec' + (i === st.sec ? ' on' : ''), 'aria-pressed': i === st.sec ? 'true' : 'false', onclick: () => { st.sec = i; if (AU.playing) startPlay(D.sectionStart(sg, i)); render(); } }, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('small', null, x.bars + ' bars'))))));
+}
+function renderSpiral() { const b = $('#spiral'); if (b) { b.innerHTML = ''; b.append(spiralSvg()); } const l = $('#spLabel'); if (l) l.textContent = (st.spiral === 'structure' ? 'Structure' : 'Parts, bar by bar') + ' · tap to switch'; }
+function renderMid() {
+  const el = $('#mid'); el.innerHTML = ''; if (!song()) return;
+  const views = [['drops', 'Drops'], ['circle', 'Circle'], ['lines', 'Lines']];
+  el.append(h('canvas', { class: 'rip', 'aria-hidden': 'true', style: st.view === 'drops' ? '' : 'display:none' }),
+    h('div', { class: 'seg', role: 'group', 'aria-label': 'View', style: 'position:relative;z-index:1' }, views.map(([k, n]) => h('button', { class: st.view === k ? 'on' : '', 'aria-pressed': st.view === k ? 'true' : 'false', onclick: () => { st.view = k; store.set(KP + 'view', k); renderMid(); } }, n))),
+    h('div', { class: 'stage', id: 'stage' }),
+    h('div', { style: 'display:flex;align-items:center;gap:16px;position:relative;z-index:1' }, h('button', { class: 'play', 'aria-label': AU.playing ? 'Stop' : 'Play', onclick: togglePlay }, AU.playing ? '■' : '▶'), h('div', { id: 'pos', style: 'font-size:14px;color:var(--soft);min-width:180px' })),
+    h('div', { style: 'display:flex;align-items:center;gap:12px;position:relative;z-index:1' }, h('span', { style: 'font-size:14px;font-weight:600' }, 'Variation'),
+      h('div', { class: 'seg', role: 'group', 'aria-label': 'Variation' }, [['calm', 'Calm'], ['gentle', 'Gentle'], ['wild', 'Wild']].map(([k, n]) => h('button', { class: (song().studioVar || 'gentle') === k ? 'on' : '', 'aria-pressed': (song().studioVar || 'gentle') === k ? 'true' : 'false', onclick: () => setVariation(k) }, n)))));
+  renderStage(); if (AU.playing && st.view === 'drops' && !RIP.raf) RIP.raf = requestAnimationFrame(drawRipples);
+}
+function renderRight() {
+  const el = $('#right'); el.innerHTML = ''; const sg = song(); if (!sg) return;
+  el.append(h('div', { class: 'lab', style: 'padding:0 4px' }, 'Parts'));
+  for (const p of PARTS) {
+    const P = sg.parts[p], w = emptyWarning(p);
+    const modes = [['machine', 'Machine'], ['yours', 'DIY'], ['off', 'Off']];
+    el.append(h('div', { class: 'part' + (w ? ' alert' : '') },
+      h('div', { class: 'prow' }, h('span', { class: 'dot', style: 'background:var(--' + p + ')' }), h('span', { class: 'nm' }, PART_NAMES[p]),
+        h('div', { class: 'mode', role: 'group', 'aria-label': PART_NAMES[p] }, modes.map(([m, n]) => h('button', { class: P.mode === m ? 'on' : '', 'aria-pressed': P.mode === m ? 'true' : 'false', onclick: () => setMode(p, m) }, n))),
+        h('button', { class: 'ib', 'aria-label': 'New idea for ' + PART_NAMES[p], title: 'New idea for ' + PART_NAMES[p], onclick: () => newPart(p), disabled: P.mode !== 'machine' || null }, '⚄')),
+      w ? h('div', { class: 'warn' }, h('span', null, w), h('button', { onclick: () => setMode(p, 'machine') }, 'Back to Machine')) : null));
+  }
+  el.append(h('div', { style: 'flex:1' }), h('button', { class: 'big', disabled: true, title: 'Comes with the next build' }, 'Next: Get it →'));
+}
+function render() { renderTop(); renderMenu(); if (!song()) return; renderLeft(); renderMid(); renderRight(); }
+
+/* ---------- the start: pick a genre ---------- */
+function openStart() {
+  closeStart(); const last = store.get(KP + 'session', null);
+  document.body.append(h('div', { class: 'start', id: 'start' }, h('div', { class: 'box', role: 'dialog', 'aria-label': 'Pick a genre' },
+    h('h1', { style: 'margin:0;font-size:28px' }, 'Divine Music Studio'),
+    h('p', { style: 'margin:6px 0 0;color:var(--soft)' }, 'Pick a genre. The machine makes a whole song; you shape it.'),
+    song() ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: closeStart }, '← Back to my song') : last && last.song ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: () => { st.song = last.song; D.ensureTypes && D.ensureTypes(st.song); st.sec = last.sec || 0; clampSec(); closeStart(); render(); } }, 'Continue where you left off') : null,
+    h('div', { class: 'gcards' }, D.GENRE_ALL.map((g) => { const G = D.GENRES[g]; return h('button', { class: 'gc', id: 'g_' + g, onclick: () => makeSong(g) }, G.name, h('small', null, (G.bpm ? G.bpm[0] + ' to ' + G.bpm[1] + ' bpm' : ''))); })))));
+}
+function closeStart() { const el = $('#start'); if (el) el.remove(); }
+
+document.addEventListener('keydown', (e) => { if (e.target.closest && e.target.closest('input,textarea')) return; if (e.code === 'Space' && song() && !$('#start')) { e.preventDefault(); togglePlay(); } if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); } if (e.key === 'Escape' && st.menu) { st.menu = false; renderMenu(); } });
+document.addEventListener('click', (e) => { if (st.menu && !e.target.closest('.menu') && !e.target.closest('[aria-label="Menu"]')) { st.menu = false; renderMenu(); } });
+window.DMS = { st, song, makeSong, setMode, playsMap, emptyWarning, startPlay, stopAll, render };
+render(); openStart();
+})();
+</script>
+</body></html>
