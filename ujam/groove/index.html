@@ -501,7 +501,7 @@ Object.assign(E.GENRES, {
    the shuffled two step of garage, the one drop and the deep melodic bass of dub, the gated snare and the 80s arpeggio
    of synthwave, the syncopated sixteenths, the guitar chops and the octave bass of funk and disco. */
 Object.assign(E.GENRES, {
-  dnb: { name: 'Drum and bass', bpm: [168, 178], def: 174, swing: 50, mode: 'minor', L: 4, sevenths: 0.65, melScale: 'scale', mel: { density: 0.34, len: 2.6, range: [62, 84] }, chordRhythm: 'pad', bass: 'reese',
+  dnb: { name: 'Drum and bass', bpm: [168, 178], def: 174, swing: 50, mode: 'minor', L: 4, sevenths: 0.65, melScale: 'scale', mel: { density: 0.34, len: 2.6, range: [57, 77] }, chordRhythm: 'pad', bass: 'reese',
     sections: [['intro', 16], ['drop', 32], ['break', 16], ['build', 8], ['drop', 32], ['outro', 16]],
     progs: { verse: [[0, 0, 5, 5], [0, 6, 5, 6], [0, 3, 0, 3], [0, 0, 6, 6]], chorus: [[0, 5, 6, 4], [5, 6, 0, 0], [0, 6, 5, 4], [0, 0, 5, 6]] } },
   garage: { name: 'UK garage', bpm: [128, 136], def: 132, swing: 62, mode: 'minor', L: 4, sevenths: 0.8, melScale: 'scale', mel: { density: 0.45, len: 1.4, range: [62, 81] }, chordRhythm: 'housestab', bass: 'garage',
@@ -1790,7 +1790,7 @@ E.beachChords = function (song, chord, again, BT, r) {
   return use.map((q, i) => { const t = t0 + i * step; return { t, d: BT - t - 15, p: q, v: base + i * 2 + r.int(4) }; });
 };
 // the river: sounds glide in and out of each other, the beat streams, nothing ticks for the sake of ticking
-E.LIQUID = { dnb: 1, breakbeat: 0.6, garage: 0.5 };
+E.LIQUID = { dnb: 1 };
 E.liquidK = (song) => song.arr ? E.LIQUID[song.genre] || 0 : 0;
 // the bass of the river: repeats melt into one note, big leaps fold back, and every note runs into the next so the synth glides
 E.liquidBass = function (notes, BT, k) {
@@ -1801,6 +1801,42 @@ E.liquidBass = function (notes, BT, k) {
     out.push(n); });
   out.forEach((n, i) => { const nx = out[i + 1], end = nx ? nx.t : BT, gap = end - (n.t + n.d); if (gap > -1 && gap <= S * (1 + 4 * k)) n.d = Math.max(30, end - n.t + (nx && k >= 0.8 ? 40 : -10)); });
   return out.map((n) => Object.assign(n, { v: clamp(Math.round(96 + (n.v - 96) * (1 - 0.5 * k)), 40, 124) }));
+};
+// drum and bass is a loop: one flavour per track, a loop of 2 or 4 bars that keeps coming back; a phrase may change one thing, the fills stay where they are
+E.DNB_LOOPS = {
+  roller: { A: { k: [0, 10], s: [4, 12], g: [7] }, B: { k: [0, 10], s: [4, 12], g: [14] }, C: { k: [0, 10, 13], s: [4, 12], g: [7] } },
+  amen: { A: { k: [0, 2, 10, 11], s: [4, 12], g: [7, 9, 15] }, B: { k: [0, 2, 10], s: [4, 12], g: [7, 9, 14] }, C: { k: [0, 2, 10, 11], s: [4, 12, 15], g: [7, 9] } },
+  halftime: { A: { k: [0, 3], s: [8], g: [14] }, B: { k: [0, 10], s: [8], g: [6, 15] }, C: { k: [0, 3, 13], s: [8], g: [11] } },
+  steppers: { A: { k: [0, 6, 10], s: [4, 12], g: [] }, B: { k: [0, 6, 10, 14], s: [4, 12], g: [] }, C: { k: [0, 10, 14], s: [4, 12], g: [7] } }
+};
+E.dnbOn = (song) => E.liquidK(song) >= 0.8 && E.meter(song).steps === 16;
+E.dnbFlavour = (song) => { const r = rng(hash(song.seed, 'dnbflavour')); return pickW(r, { roller: 4, amen: 2.5, steppers: 2, halftime: 1.5 }); };
+E.dnbBar = function (song, si, inBar) {
+  const r = rng(hash(song.seed, 'dnbloop')), L = E.DNB_LOOPS[E.dnbFlavour(song)], len = r.chance(0.5) ? 2 : 4;
+  const ph = Math.floor(inBar / 8), pr = rng(hash(song.seed, 'dnbphrase', si, ph)), mode = ph === 0 ? 0 : pr.int(3);
+  const order = len === 2 ? ['A', mode === 2 ? 'C' : 'B'] : ['A', 'B', 'A', mode === 2 ? 'B' : 'C'];
+  const b = L[order[inBar % len]], g = b.g.slice(); if (mode === 1) { const x = [5, 11, 15][pr.int(3)]; if (!g.includes(x) && !b.k.includes(x) && !b.s.includes(x)) g.push(x); }
+  return { k: b.k, s: b.s, g };
+};
+E.dnbLoop = function (song, si, sec, inBar, lanes, N, type) {
+  if (!lanes[K] || !lanes[SN] || !lanes[K].some(Boolean) && !lanes[SN].some(Boolean)) return;
+  const b = E.dnbBar(song, si, inBar), soft = type === 'break' || type === 'intro' || type === 'outro' ? 0.82 : 1;
+  lanes[K] = lanes[K].map((v, s) => b.k.includes(s) ? Math.round((s === 0 ? 118 : 106) * soft) : 0);
+  if (lanes[K2]) lanes[K2].fill(0); if (lanes[CP]) lanes[CP].fill(0); if (lanes[PC]) lanes[PC].fill(0);
+  lanes[SN] = lanes[SN].map((v, s) => b.s.includes(s) ? Math.round(112 * soft) : b.g.includes(s) && type !== 'break' ? 36 : 0);
+};
+// the bass and the chords of drum and bass start on the kicks of the loop; the bass glides on to the next kick, the chords are short and soft
+E.dnbLock = function (song, si, sec, inBar, part, notes, BT, type) {
+  const b = E.dnbBar(song, si, inBar), S = E.STEP, ons = b.k.slice().sort((x, y) => x - y).map((s) => s * S);
+  const src = notes.slice().sort((x, y) => x.t - y.t); if (!src.length) return notes;
+  if (part === 'bass') {
+    const at = (t) => { let n = src[0]; for (const x of src) if (x.t <= t + 30) n = x; return n; };
+    return ons.map((t, i) => { const nx = ons[i + 1], n = at(t); return { t, d: nx != null ? nx - t + 40 : BT - t - 10, p: n.p, v: clamp(i === 0 ? Math.max(n.v, 100) : n.v, 60, 120) }; });
+  }
+  const groups = []; src.forEach((n) => { const g = groups[groups.length - 1]; if (g && n.t - g.t < 40) g.ns.push(n); else groups.push({ t: n.t, ns: [n] }); });
+  const at = (t) => { let g = groups[0]; for (const x of groups) if (x.t <= t + 30) g = x; return g; }, long = type === 'break' || type === 'intro' || type === 'outro', out = [];
+  ons.forEach((t, i) => { const nx = ons[i + 1] != null ? ons[i + 1] : BT, d = long ? nx - t - 10 : Math.min(S * 3, nx - t - 10); at(t).ns.forEach((n) => out.push({ t, d, p: n.p, v: clamp(i === 0 ? 74 : 66, 40, 100) })); });
+  return out;
 };
 // the hihat is the wind, not a metronome: it keeps one shape for a phrase, the shape walks slowly, its loudness rolls like a wave, and now and then it steps out
 E.HATWIND = { dnb: 1, breakbeat: 0.7, garage: 0.5, techno: 0.35, trance: 0.3, minimal: 0.4, dubtechno: 0.4, club: 0.35 };
@@ -1814,7 +1850,7 @@ E.hatWind = function (song, si, sec, inBar, lanes, N, type, fillBar) {
     const keep = (s) => sh === 0 || (sh === 1 ? s % 2 === 0 : s % 4 === 2), base = (s) => s % 4 === 2 ? 74 : s % 2 === 0 ? 58 : 42;
     lanes[HH] = lanes[HH].map((v, s) => keep(s) ? Math.max(16, Math.round(base(s) * g)) : 0);
     if (out && ph > 0 && inPh >= 4 && inPh < 6 && r.chance(0.35 * lk)) lanes[HH].fill(0); // two bars without: the snare and the bass carry
-    if (lanes[SN] && !fillBar && type !== 'build') { const gs = [7, 10, 14, 15][r.int(4)], had = lanes[SN].some((v, s) => v && v < 80 && s !== 4 && s !== 12);
+    if (lanes[SN] && !fillBar && type !== 'build' && !E.dnbOn(song)) { const gs = [7, 10, 14, 15][r.int(4)], had = lanes[SN].some((v, s) => v && v < 80 && s !== 4 && s !== 12);
       lanes[SN] = lanes[SN].map((v, s) => s === 4 || s === 12 ? (v ? Math.max(v, Math.round(96 + 14 * lk)) : v) : v >= 80 ? v : s === gs && had ? 34 : 0); }
   } else {
     lanes[HH] = lanes[HH].map((v) => v ? Math.max(14, Math.round(v * g)) : 0);
@@ -2322,6 +2358,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (E.kitOf(song) && (machine || !lanes.slice(8).some((l) => l && l.some((v) => v > 0)))) E.bmRoles(song, sec, inBar, lanes, N, type, fk === 'auto' ? (type === 'fill' || isLastOfSec && !!nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && type !== 'break' : fk !== 'none' && !E.STOPS.includes(fk) && isLastOfSec && !!nextSec);
     if (mach && A.beatLanes) lanes.forEach((l, li) => { if (!A.beatLanes.includes(li) && li !== CR) l.fill(0); }); // a quiet verse plays only the bones of the beat
     if (machine && E.streamOf(song)) { const k = E.streamK(song); [[HH, 0.35], [OH, 0.3], [K, 0.15], [SN, 0.2], [CP, 0.2]].forEach(([li, a]) => { if (lanes[li]) lanes[li] = lanes[li].map((v) => v ? Math.max(12, Math.round(v * (1 - a * k))) : 0); }); if (k >= 0.8 && N === 16 && lanes[HH]) for (let s = 1; s < N; s += 2) lanes[HH][s] = 0; if (E.beachOf(song) && N === 16) { const rk = rng(hash(song.seed, 'beachkick', si, inBar)), keep3 = rk.chance(0.55); if (lanes[K]) lanes[K] = lanes[K].map((v, s) => s === 0 || s === 8 && keep3 ? v : 0); if (lanes[K2]) lanes[K2].fill(0); [[HH, 0.8], [OH, 0.7], [SN, 0.75], [CP, 0.75], [PC, 0.8]].forEach(([li, a]) => { if (lanes[li]) lanes[li] = lanes[li].map((v) => v ? Math.max(10, Math.round(v * a)) : 0); }); } } // the stream: the beat carries, it does not push
+    if (machine && E.dnbOn(song) && !(mach && A && A.beatLanes) && !(isLastOfSec && nextSec) && !(sec.bars >= 12 && inBar % 8 === 7 && inBar < sec.bars - 2) && !(type === 'build' && sec.bars - inBar <= 2)) E.dnbLoop(song, si, sec, inBar, lanes, N, type);
     if (machine && E.HATWIND[song.genre]) E.hatWind(song, si, sec, inBar, lanes, N, type, isLastOfSec && !!nextSec && nextSec.type !== sec.type);
     if (machine && type === 'break' && E.trainOf(song) && N === 16 && lanes[HH] && !lanes[HH].some(Boolean)) for (let s = 2; s < N; s += 4) lanes[HH][s] = 34 + ((s * 7 + inBar) % 10); // the wheels keep turning in the break, softly
     E.laneFxApply(song, sec, inBar, lanes, N);
@@ -2367,12 +2404,13 @@ E.renderBar = function (song, part, gbar, res, opts) {
     else if (type === 'build' && E.MYST[song.genre]) notes = E.buildRise(song, sec, inBar, notes);
     if (E.echoOf(song) && !(E.hypnoOf(song) && type !== 'break' && type !== 'intro' && type !== 'outro')) notes = E.echoes(notes, BT, E.streamK(song) >= 0.8);
   }
-  if (mach && part === 'chords' && notes.length && (E.streamK(song) >= 0.8 || E.liquidK(song) >= 0.8)) notes = E.streamChords(notes, BT); // the stream and the river: long chords, no stabs
+  if (mach && part === 'chords' && notes.length && E.dnbOn(song) && !lastBar && !bo) notes = E.dnbLock(song, si, sec, inBar, 'chords', notes, BT, type); // drum and bass: the chords hit with the kicks
+  else if (mach && part === 'chords' && notes.length && E.streamK(song) >= 0.8) notes = E.streamChords(notes, BT); // the stream: long chords, no stabs
   else if (mach && part === 'chords' && notes.length && song.arr && E.CHORD_HOLD[song.genre]) notes = E.holdChords(notes, BT, E.CHORD_HOLD[song.genre]);
   if (mach && part !== 'beat' && notes.length && (E.streamOf(song) || E.liquidK(song) >= 0.8) && !E.trainOf(song)) notes = E.trainFade(song, si, sec, inBar, part, notes);
   if (mach && part !== 'beat' && notes.length && E.trainOf(song)) { notes = E.trainFade(song, si, sec, inBar, part, notes); if (part === 'bass' && type === 'break') notes = notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.75) })); }
   if (part === 'bass' && !bo && !lastBar && notes.length) notes = E.bassGuard(song, si, notes, res(si).ctxChords && res(si).ctxChords.bars[lb], N, BT); // the bass stays the foundation, whatever varies on top
-  if (mach && part === 'bass' && notes.length && E.liquidK(song) && !lastBar && !bo) { notes = E.liquidBass(notes, BT, E.liquidK(song)); if (type === 'break') notes = notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.7) })); } // the river's bass glides
+  if (mach && part === 'bass' && notes.length && E.liquidK(song) && !lastBar && !bo) { notes = E.dnbOn(song) ? E.dnbLock(song, si, sec, inBar, 'bass', notes, BT, type) : E.liquidBass(notes, BT, E.liquidK(song)); if (type === 'break') notes = notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.7) })); } // the river's bass glides
   if (mach && E.beachOf(song) && (part === 'bass' || part === 'chords') && notes.length && res(si).ctxChords) { // the beach: waves, not patterns
     const cb = res(si).ctxChords.bars, ch = cb[lb], rb = rng(hash(song.seed, 'beach', part, si, inBar));
     if (ch) notes = part === 'bass' ? E.beachBass(song, ch, cb[(lb + 1) % song.L], BT, rb) : E.beachChords(song, ch, inBar > 0 && cb[(lb + song.L - 1) % song.L] && cb[(lb + song.L - 1) % song.L].root === ch.root && cb[(lb + song.L - 1) % song.L].q === ch.q, BT, rb);
@@ -3892,7 +3930,7 @@ setTimeout(() => count(), 0);
 const FB_APP = 'Divine Groove Machine';
 /* ---------- feedback: opens a mail to Divine Monday with the app and version filled in ---------- */
 function feedbackHref() {
-  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 10:50)';
+  const s = 'Feedback / contact: ' + FB_APP + ' (version 2026-10-28 11:20)';
   const b = 'Hi Divine Monday,\n\nWhat I made:\n\nWhat I liked:\n\nWhat could be better:\n\nMy device and browser: ' + navigator.userAgent.replace(/\s+/g, ' ').slice(0, 160) + '\n';
   const to = ['divinemonday', 'feedback'].join('+') + String.fromCharCode(64) + ['gmail', 'com'].join('.'); // built on click, so bots reading the page find no address
   return 'mail' + 'to:' + to + '?subject=' + encodeURIComponent(s) + '&body=' + encodeURIComponent(b);
@@ -5537,7 +5575,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-28 10:50. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-28 11:20. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
