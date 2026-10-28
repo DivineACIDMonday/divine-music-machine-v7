@@ -56,7 +56,7 @@ select,input[type=text],input[type=number]{height:38px;border-radius:8px;border:
 .grp{display:flex;flex-direction:column;gap:6px}
 .chip.feel{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;border-radius:12px;padding:6px 14px;min-height:52px;line-height:1.2}
 .chip.feel span{font-size:11px;color:#A39E94}
-.chip.feel.light{background:#221F19}.chip.feel.dark{background:#171B22}.chip.feel.story{background:#1F1A20}
+.chip.feel.light{background:#221F19}.chip.feel.dark{background:#171B22}.chip.feel.story{background:#1F1A20}.chip.feel.moment{background:#1A2020}
 .chip.feel.on{background:#2B2216;border-color:#E8A03A}.chip.feel.on b{color:#F4C177}.chip.feel.on span{color:#C9B48D}
 .two{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .big{position:relative;min-height:64px;border-radius:10px;border:1px solid #3A3D46;background:#1E2026;text-align:left;padding:10px 12px;display:flex;flex-direction:column;justify-content:center;cursor:pointer}
@@ -218,9 +218,40 @@ Object.assign(S.STYLES, {
     prog: { intro: [ch('i')], theme: [ch('i VI iv V'), ch('i iv i V')], build: [ch('iv V')], peak: [ch('i VI III VII')], film: [ch('i iv')], outro: [ch('i')] },
     form: [['intro', 4], ['theme', 8], ['build', 8], ['build', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.3, hits: 1 } }
 });
-S.GROUPS = [['light', 'Light'], ['dark', 'Dark'], ['story', 'Story']];
+/* ---------- moments: a scene that is one event, from the first bar to the last ---------- */
+// arc: the tension line across the whole score; fx: the event that lands on the first section of a type; cam: where the camera leans
+Object.assign(S.STYLES, {
+  explosion: { name: 'Explosion', like: 'a sudden blast', group: 'moment', line: 'Quiet, a short run up, then the blast: everything at full force at once, and the dust that settles.', mode: 'minor', bpm: [84, 100], chordBars: 1, lift: 0, pedal: 7,
+    prog: { intro: [ch('i')], theme: [ch('i VI iv V')], build: [ch('iv V')], peak: [ch('i VI bII V')], film: [ch('i')], outro: [ch('iv i')] },
+    form: [['intro', 8], ['theme', 8], ['build', 4], ['peak', 8], ['film', 4], ['outro', 8]], percs: { metals: 0.6, hits: 1 }, arc: [0.15, 0.2, 0.3, 0.35, 0.5, 0.75, 1, 0.85, 0.4, 0.25, 0.12], fx: [['explosion', 'peak']] },
+  vesuvius: { name: 'Mount Vesuvius', like: 'the mountain wakes', group: 'moment', line: 'A low rumble that will not stop, rising slowly for a long time, then the eruption, and ash that keeps falling.', mode: 'minor', bpm: [70, 84], chordBars: 2, lift: 0, pedal: 0, drone: true,
+    prog: { intro: [ch('i')], theme: [ch('i bII')], build: [ch('bII V')], peak: [ch('i VI bII V')], film: [ch('i')], outro: [ch('i bII')] },
+    form: [['intro', 8], ['theme', 8], ['build', 8], ['build', 8], ['peak', 8], ['peak', 8], ['outro', 8]], percs: { metals: 0.7, hits: 1 }, arc: [0.08, 0.12, 0.2, 0.28, 0.38, 0.48, 0.6, 0.72, 0.96, 0.92, 0.85, 0.55, 0.25], fx: [['vesuvius', 'peak']], cam: -0.3 },
+  eruption: { name: 'Eruption', like: 'it all comes out', group: 'moment', line: 'Up fast, then it bursts open and keeps flowing: a peak that does not want to end.', mode: 'minor', bpm: [120, 136], chordBars: 1, lift: 0.1, pedal: 7,
+    prog: { intro: [ch('i VI')], theme: [ch('i VI VII i')], build: [ch('iv V')], peak: [ch('i VI III VII'), ch('i VI bII V')], film: [ch('i')], outro: [ch('VI VII i i')] },
+    form: [['intro', 4], ['build', 8], ['peak', 16], ['peak', 8], ['outro', 4]], percs: { metals: 0.4, hits: 1 }, arc: [0.3, 0.5, 0.7, 0.95, 1, 1, 0.95, 0.9, 0.7, 0.4], fx: [['eruption', 'peak']] },
+  sinkhole: { name: 'Sinkhole', like: 'the ground gives way', group: 'moment', line: 'Steady ground, and then it is gone: one low hit, the floor drops away, only the deepest strings remain.', mode: 'minor', bpm: [80, 96], chordBars: 1, lift: 0, pedal: 0,
+    prog: { intro: [ch('i')], theme: [ch('i VI iv V'), ch('i iv VI V')], build: [ch('iv V')], peak: [ch('i VI III VII')], film: [ch('i bII')], outro: [ch('i bII i i')] },
+    form: [['intro', 4], ['theme', 16], ['film', 8], ['theme', 8], ['outro', 8]], percs: { metals: 0.6, hits: 0.8 }, arc: [0.3, 0.4, 0.42, 0.45, 0.46, 0.05, 0.05, 0.1, 0.2, 0.25, 0.12], fx: [['sinkhole', 'film']], cam: -0.3 },
+  void: { name: 'Void', like: 'nothing out there', group: 'moment', line: 'Almost nothing: one thin high line, a metal far away, no ground and no pulse.', mode: 'minor', bpm: [56, 66], chordBars: 4, lift: -0.2, pedal: 0, drone: true, high: true, quietPercs: true,
+    prog: { intro: [ch('i')], theme: [ch('i VI')], build: [ch('iv')], peak: [ch('VI i')], film: [ch('i')], outro: [ch('i')] },
+    form: [['intro', 8], ['film', 16], ['theme', 8], ['film', 8], ['outro', 8]], percs: { metals: 0.8, hits: 0 }, arc: [0.12, 0.1, 0.08, 0.1, 0.14, 0.12, 0.1, 0.06], fx: [['void', 'film']], cam: 0.6 },
+  dissolve: { name: 'Dissolve', like: 'fading away', group: 'moment', line: 'It starts full, and then the layers let go one by one, until only air is left.', mode: 'minor', bpm: [70, 84], chordBars: 2, lift: 0, pedal: 7,
+    prog: { intro: [ch('i VI')], theme: [ch('i VI III VII')], build: [ch('iv V')], peak: [ch('i VI III VII')], film: [ch('VI i')], outro: [ch('VI iv i i')] },
+    form: [['intro', 4], ['peak', 8], ['theme', 8], ['film', 8], ['outro', 16]], percs: { metals: 0.6, hits: 0.4 }, arc: [0.8, 0.85, 0.75, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1, 0.05], fx: [['dissolve', 'film']], cam: 0.3 },
+  ether: { name: 'Ether', like: 'weightless', group: 'moment', line: 'Floating without ground: high strings, open sus chords that never land, metals that shimmer.', mode: 'major', bpm: [60, 72], chordBars: 4, lift: -0.15, pedal: 7, high: true, quietPercs: true, sus: 0.5,
+    prog: { intro: [ch('I IV')], theme: [ch('I IV'), ch('IV I vi IV')], build: [ch('IV')], peak: [ch('IV I')], film: [ch('IV')], outro: [ch('IV I')] },
+    form: [['intro', 8], ['film', 8], ['theme', 16], ['film', 8], ['outro', 8]], percs: { metals: 0.8, hits: 0 }, arc: [0.2, 0.3, 0.25, 0.3, 0.35, 0.25, 0.3, 0.2], fx: [['ether', 'film']], cam: 0.8 },
+  contact: { name: 'Contact', like: 'we are not alone', group: 'moment', line: 'Searching, holding the breath on a suspended chord, then the warm touch when it resolves.', mode: 'major', bpm: [70, 86], chordBars: 2, lift: 0, pedal: 7, sus: 0.3,
+    prog: { intro: [ch('vi IV')], theme: [ch('vi IV I V')], build: [ch('IV V')], peak: [ch('I V vi IV')], film: [ch('IV')], outro: [ch('IV I')] },
+    form: [['intro', 8], ['theme', 8], ['build', 8], ['peak', 8], ['film', 4], ['outro', 8]], percs: { metals: 0.7, hits: 0.4 }, arc: [0.2, 0.3, 0.4, 0.5, 0.55, 0.65, 0.8, 0.72, 0.6, 0.45], fx: [['contact', 'peak']], cam: 0.3 },
+  encounter: { name: 'Encounter', like: 'two forces meet', group: 'moment', line: 'Two worlds that come closer and closer, collide, pull back, and collide again harder.', mode: 'minor', bpm: [88, 104], chordBars: 1, lift: 0.05, pedal: 7,
+    prog: { intro: [ch('i')], theme: [ch('i VI iv V'), ch('i bII VII i')], build: [ch('iv V')], peak: [ch('i VI bII V')], film: [ch('i bII')], outro: [ch('i bII i i')] },
+    form: [['intro', 4], ['theme', 8], ['build', 8], ['peak', 8], ['theme', 8], ['peak', 8], ['outro', 4]], percs: { metals: 0.5, hits: 1 }, arc: [0.3, 0.45, 0.4, 0.6, 0.55, 0.85, 0.6, 0.95, 0.5], fx: [['encounter', 'peak']] }
+});
+S.GROUPS = [['light', 'Light'], ['dark', 'Dark'], ['story', 'Story'], ['moment', 'Moments']];
 S.STYLE_ORDER = ['comedy', 'light', 'docu', 'romance', 'euphoric', 'ecstasy', 'glory', 'nostalgic', 'hope', 'triumph', 'dreamy', 'serenity', 'sunrise',
-  'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'heartbreak', 'lonely', 'grief', 'rage', 'danger', 'thriller', 'plot', 'adventure', 'showdown', 'countdown'];
+  'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'heartbreak', 'lonely', 'grief', 'rage', 'danger', 'thriller', 'plot', 'adventure', 'showdown', 'countdown', 'explosion', 'vesuvius', 'eruption', 'sinkhole', 'void', 'dissolve', 'ether', 'contact', 'encounter'];
 S.ENDINGS = { resolve: 'Resolve', open: 'Cliffhanger', stop: 'Sudden stop' };
 // the feeling of one section: its own, or the feeling of the score
 S.styleOf = (sc, s) => S.STYLES[(s && s.style) || sc.style] || S.STYLES.suspense;
@@ -280,18 +311,20 @@ S.chordsFor = function (sc) {
 /* ---------- tension and swell per bar: the machine's line, your drawing on top ---------- */
 S.autoTension = function (sc) {
   const v = S.view(sc), st = S.STYLES[sc.style] || S.STYLES.suspense, out = [];
-  const r = rng(hash(sc.seed, 'tension'));
+  const r = rng(hash(sc.seed, 'tension')), arc = st.arc, nb = S.totalBars(v); let gb = 0;
   v.sections.forEach((s, si) => {
     const [a, b] = S.TYPES[s.type].t, last = si === v.sections.length - 1, ss = S.styleOf(sc, s);
     for (let j = 0; j < s.bars; j++) {
       const f = s.bars > 1 ? j / (s.bars - 1) : 0;
       let t = a + (b - a) * f + (ss.lift || 0);
+      if (arc) { const x = (gb + j) / Math.max(1, nb - 1) * (arc.length - 1), i0 = Math.floor(x), i1 = Math.min(arc.length - 1, i0 + 1); t = arc[i0] + (arc[i1] - arc[i0]) * (x - i0); } // a moment follows its own line
       if (s.type === 'peak' && si > 0 && v.sections.slice(0, si).some((x) => x.type === 'peak')) t += 0.06; // the second peak goes a bit further
       if (ss.jump) t += (r() - 0.5) * 0.3;
       t += ((hash(sc.seed, 'toff', si) % 1000) / 1000 - 0.5) * 0.12; // every score its own line
       if (last && j === s.bars - 1) t = sc.ending === 'open' ? Math.max(t, 0.6) : sc.ending === 'stop' ? Math.max(t, 0.85) : Math.min(t, 0.1);
       out.push(clamp(Math.round(t * 100) / 100, 0, 1));
     }
+    gb += s.bars;
   });
   // a hit point pulls the line up in the bars before it
   S.hitsOf(sc).forEach((x) => { const h = x.bar; [[h - 2, 0.62], [h - 1, 0.78], [h, 0.92]].forEach(([b, m]) => { if (b >= 0 && b < out.length) out[b] = Math.max(out[b], m); }); });
@@ -323,7 +356,7 @@ S.plays = function (sc, part, s, si, sections) {
 // A is the bed (long lines, the pulse), B is the motion (riffs, the power). Each track gets its own Style in its own plugin.
 S.LAYERS = [['strA', 'Strings A', 'STRIIIINGS', 'the bed'], ['strB', 'Strings B', 'STRIIIINGS', 'the motion'], ['perA', 'Percs A', 'PERRCS', 'the pulse'], ['perB', 'Percs B', 'PERRCS', 'the power']];
 const CAT = (a, b, c, d, ex) => ({ strA: a, strB: b, perA: c, perB: d, ex: ex || {} });
-const CALM_LIGHT = ['docu', 'romance', 'nostalgic', 'dreamy', 'serenity', 'sunrise', 'light', 'hope'], CALM_DARK = ['heartbreak', 'lonely', 'grief', 'depressed', 'noir'];
+const CALM_LIGHT = ['docu', 'romance', 'nostalgic', 'dreamy', 'serenity', 'sunrise', 'light', 'hope', 'void', 'ether', 'dissolve', 'contact'], CALM_DARK = ['heartbreak', 'lonely', 'grief', 'depressed', 'noir'];
 S.isCalm = (sc, s) => { const k = (s && s.style) || sc.style; return CALM_LIGHT.includes(k) || CALM_DARK.includes(k); };
 // which kind of Style to load in each track: the categories of the plugins' own Style menus, with a Style to try where we know one
 S.catsOf = function (k) {
@@ -345,6 +378,11 @@ S.catsOf = function (k) {
     countdown: CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action', { strB: 'Classic Riff', perA: 'Metronome Clicks + Accents' })
   };
   if (X[k]) return X[k];
+  if (k === 'explosion' || k === 'vesuvius' || k === 'eruption') return CAT('Dramatic', 'Epic', 'Building Suspense', 'Huge');
+  if (k === 'void' || k === 'ether') return CAT('Sustains', 'Arpeggios', 'Tickers', 'Big Grooves');
+  if (k === 'dissolve') return CAT('Sustains', 'Dramatic', 'Tickers', 'Big Grooves');
+  if (k === 'contact') return CAT('Sustains', 'Arpeggios', 'Tickers', 'Driving Rhythm');
+  if (k === 'sinkhole' || k === 'encounter') return CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action');
   if (CALM_LIGHT.includes(k)) return CAT('Sustains', 'Arpeggios', 'Tickers', 'Big Grooves');
   if (CALM_DARK.includes(k)) return CAT('Sustains', 'Dramatic', 'Building Suspense', 'Big Grooves', { perA: 'Quiet Sticks, Low Double Hits' });
   return CAT('Dramatic', 'Riffs', 'Building Suspense', 'Action');
@@ -379,6 +417,7 @@ S.events = function (sc, total) {
     encounter: (b) => { at(b - 1, { fill: true, colour: 'dim', strB: { lev: 0.8, ph: 3 } }); at(b, { hits: [0, 1], strA: { lev: 1, ph: 2 }, strB: { lev: 1, ph: 4, add: true }, perB: { lev: 1 }, swell: 1, pb: 0 }); }
   };
   S.hitsOf(sc).forEach((x) => (FX[x.kind] || FX.hit)(x.bar));
+  const st = S.STYLES[sc.style]; if (st && st.fx && !sc.fromTrack) { const v = S.view(sc); st.fx.forEach(([kind, type]) => { let b = 0; for (const s of v.sections) { if (s.type === type) { FX[kind](b); break; } b += s.bars; } }); }
   return ev;
 };
 // how present each layer is, bar by bar (0 silent, 1 full): A carries the quiet parts, B takes over in builds and peaks, A stays under it as a bed
@@ -403,7 +442,7 @@ S.cameraOf = function (sc, map) {
   map.forEach(({ s, j }) => {
     const g = S.styleOf(sc, s).group, f = s.bars > 1 ? j / (s.bars - 1) : 1;
     const T = g === 'dark' ? { intro: -0.6, theme: -0.4, build: -0.3 + 0.5 * f, peak: 0, film: -0.8, outro: -0.5 } : g === 'light' ? { intro: 0.2, theme: 0, build: 0.5 * f, peak: 0.4, film: 0.6, outro: 0.2 } : { intro: 0, theme: -0.2, build: -0.3 + 0.7 * f, peak: 0.2, film: -0.5, outro: 0 };
-    out.push(clamp(T[s.type] + off, -1, 1));
+    out.push(clamp(T[s.type] + off + (S.styleOf(sc, s).cam || 0), -1, 1));
   });
   return out;
 };
@@ -450,7 +489,7 @@ S.render = function (sc) {
     const r = rng(hash(sc.seed, 'colour', b)), deg = ((c.root - sc.key.root) % 12 + 12) % 12;
     if (s.type === 'build' && j === s.bars - 1 && r.chance(0.6)) return 'sus4';
     if ((s.type === 'build' || s.type === 'peak') && c.q === 'M' && deg === 7 && r.chance(0.45)) return '7';
-    if ((s.type === 'theme' || s.type === 'intro' || s.type === 'film') && c.q !== 'd' && r.chance(0.12)) return 'sus2';
+    if ((s.type === 'theme' || s.type === 'intro' || s.type === 'film') && c.q !== 'd' && r.chance(S.styleOf(sc, s).sus || 0.12)) return 'sus2';
     return null;
   };
   const shape = (c, col) => col === 'sus2' ? [0, 2, 7] : col === 'sus4' ? [0, 5, 7] : col === 'dim' ? [0, 3, 6] : col === '7' ? (c.q === 'm' ? [0, 3, 7, 10] : [0, 4, 7, 10]) : c.q === 'M' ? [0, 4, 7] : c.q === 'm' ? [0, 3, 7] : [0, 3, 6];
@@ -698,7 +737,7 @@ if (typeof module !== 'undefined') module.exports = S;
 (function () {
 'use strict';
 const S = window.SCORE;
-const VERSION = 'version 2026-10-28 05:00';
+const VERSION = 'version 2026-10-28 05:40';
 const $ = (q) => document.querySelector(q);
 const SVGNS = 'http://www.w3.org/2000/svg';
 function h(tag, attrs, ...kids) {
@@ -792,11 +831,11 @@ function render() {
       S.GROUPS.map(([g, gname]) => h('div', { class: 'grp' }, h('div', { class: 'cap' }, gname),
         h('div', { class: 'chips' }, S.STYLE_ORDER.filter((k) => S.STYLES[k].group === g).map((k) => h('button', { id: 'style_' + k, class: 'chip feel ' + g + (k === x.style ? ' on' : ''), 'aria-pressed': k === x.style ? 'true' : 'false', title: S.STYLES[k].line, onclick: () => { if (x.fromTrack) { change(() => { x.style = k; }, true); setHint(S.STYLES[k].name + ' colours your track now.'); } else { st.sc = S.newScore(k, { seed: x.seed, name: x.name }); render(); setHint(S.STYLES[k].line); } } }, h('b', null, S.STYLES[k].name), h('span', null, S.STYLES[k].like)))))),
       h('div', { class: 'muted' }, (x.fromTrack ? 'Your track, feeling ' + style.name.toLowerCase() + '. ' : style.name + ': ') + style.line)),
-    h('div', { class: 'card', style: 'flex:1 1 300px' }, h('div', { class: 'cap' }, 'Start from'),
+    h('div', { style: 'flex:1 1 300px;display:flex;flex-direction:column;gap:12px;min-width:0' }, h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Start from'),
       h('div', { class: 'two' },
         h('button', { id: 'startFilm', class: 'big' + (!x.fromTrack ? ' on' : ''), onclick: () => { if (x.fromTrack) { st.sc = S.newScore(x.style, { name: x.name }); render(); setHint('A film score from scratch.'); } } }, h('b', null, 'Film score'), h('span', null, 'The machine writes it all')),
         h('label', { id: 'startTrack', class: 'big drop' + (x.fromTrack ? ' on' : ''), title: 'Drop the chords of your track as a .mid file' }, h('b', null, 'With my track'), h('span', null, x.fromTrack ? 'Drop another .mid' : 'Drop your chord MIDI here'),
-          h('input', { id: 'trackFile', type: 'file', accept: '.mid,.midi,audio/midi', style: 'position:absolute;opacity:0;width:1px;height:1px', onchange: (e) => loadTrack(e.target.files[0]) }))))));
+          h('input', { id: 'trackFile', type: 'file', accept: '.mid,.midi,audio/midi', style: 'position:absolute;opacity:0;width:1px;height:1px', onchange: (e) => loadTrack(e.target.files[0]) })))), tracksCard())));
   // main
   const main = h('main', { class: 'card', style: 'flex:999 1 700px;min-width:0' });
   main.append(h('div', { class: 'bar' }, h('span', { class: 'disp' }, 'The tension arc'), h('div', { class: 'grow' }),
@@ -806,7 +845,7 @@ function render() {
   const grow = (s) => 'flex:' + s.bars + ' 1 0;min-width:0';
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Tension'), h('span', null, 'draw it')), h('div', { class: 'draw' }, lineSvg('tensionSvg', 'Tension', t, S.autoTension(x), 'tension', '#E8A03A'))));
   const hitBars = new Set(S.hitsOf(x).map((q) => q.bar));
-  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Hits'), h('span', null, 'tap a bar')), h('div', { class: 'hitrow', id: 'hitRow' }, Array.from({ length: total }, (_, b) => h('button', { id: 'hit_' + b, class: hitBars.has(b) ? 'on' : '', title: 'Bar ' + (b + 1) + (hitBars.has(b) ? ': hit point, tap to remove' : ': tap to set a hit point'), 'aria-label': 'Hit point bar ' + (b + 1), onclick: () => change(() => { const hs = (x.hits || []).slice(), at = hs.findIndex((q) => q.bar === b); if (at >= 0) hs.splice(at, 1); else hs.push({ bar: b, text: '' }); x.hits = hs; setHint(at >= 0 ? 'Hit point on bar ' + (b + 1) + ' removed.' : 'Hit point on bar ' + (b + 1) + ': a fill runs into it, the hit lands on the bar. On the right, turn it into a story moment like an Explosion, a Sinkhole or Ether, and name it.'); }) }, hitBars.has(b) ? '▼' : '')))));
+  lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', null, 'Hits'), h('span', null, 'tap a bar')), h('div', { class: 'hitrow', id: 'hitRow' }, Array.from({ length: total }, (_, b) => h('button', { id: 'hit_' + b, class: hitBars.has(b) ? 'on' : '', title: 'Bar ' + (b + 1) + (hitBars.has(b) ? ': hit point, tap to remove' : ': tap to set a hit point'), 'aria-label': 'Hit point bar ' + (b + 1), onclick: () => change(() => { const hs = (x.hits || []).slice(), at = hs.findIndex((q) => q.bar === b); if (at >= 0) hs.splice(at, 1); else hs.push({ bar: b, text: '' }); x.hits = hs; setHint(at >= 0 ? 'Hit point on bar ' + (b + 1) + ' removed.' : 'Hit point on bar ' + (b + 1) + ': a fill runs into it, the hit lands on the bar. Name it on the right.'); }) }, hitBars.has(b) ? '▼' : '')))));
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }), h('div', { class: 'secs' }, v.sections.map((s, i) => h('button', { id: 'sec_' + i, class: 'sec' + (i === st.sel ? ' sel' : ''), style: grow(s) + ';background:' + TYPE_COL[s.type] + ';color:' + TYPE_FG[s.type] + (s.type === 'film' ? ';border:1px dashed #B88AA8' : ''), title: S.TYPES[s.type].name + ', ' + s.bars + ' bars. Tap to edit.', onclick: () => { st.sel = i; render(); } }, S.TYPES[s.type].name, ' ', h('span', { class: 'n' }, s.bars))))));
   lanes.append(h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('span', null, 'chords')), h('div', { class: 'secs mono' }, v.sections.map((s, i) => h('div', { style: grow(s), class: 'cell' }, sum[i].chords)))));
   const laneRow = (part, title, plugin, col, bg) => h('div', { class: 'lrow' }, h('div', { class: 'lname' }, h('b', { style: 'color:' + col }, title), h('span', null, plugin)),
@@ -832,23 +871,20 @@ function render() {
     h('div', { class: 'bar' }, h('b', { style: 'color:' + col + ';font-size:16px' }, title), h('span', { class: 'muted small' }, plugin), h('div', { class: 'grow' }),
       h('label', { class: 'switch' }, h('input', { id: 'on_' + part, type: 'checkbox', checked: P.on, onchange: (e) => change(() => { P.on = e.target.checked; }, true) }), h('span', null, P.on ? 'on' : 'off'))),
     h('label', { class: 'lab col' }, 'Where', h('select', { id: 'where_' + part, disabled: !P.on, onchange: (e) => change(() => { P.where = e.target.value; }, true) }, Object.entries(S.WHERE).map(([k, t]) => h('option', { value: k, selected: k === P.where }, t))))); };
+  function tracksCard() { const cats = S.catsOf(x.style), LCOL = { strA: '#F4C177', strB: '#E8A03A', perA: '#9CC7E3', perB: '#6FA8D0' };
+  return h('div', { id: 'setupCard', class: 'card', title: 'Load STRIIIINGS twice and PERRCS twice, give each track this Style, switch Latch off and Sync on Note, and drop each file on bar 1 of its own track.' }, h('div', { class: 'cap' }, 'Your four tracks'),
+    h('div', { class: 'col', style: 'gap:4px' }, S.LAYERS.map(([k, title]) => { const p = title.replace(' ', ''); return h('div', { style: 'display:flex;gap:8px;align-items:center;border-left:3px solid ' + LCOL[k] + ';padding-left:8px' },
+      h('b', { style: 'color:' + LCOL[k] + ';flex:0 0 74px' }, title), h('span', { style: 'flex:1;min-width:0' }, cats[k]),
+      h('button', { id: 'dl_' + p, class: 'ghost small', title: fileName(p), 'aria-label': 'Download ' + title, onclick: () => deliver(p) }, '⬇')); }),
+      h('div', { style: 'display:flex;gap:8px;align-items:center;padding-left:11px' }, h('b', { style: 'flex:0 0 74px' }, 'Structure'), h('span', { class: 'muted small', style: 'flex:1' }, 'markers'), h('button', { id: 'dl_Structure', class: 'ghost small', title: fileName('Structure'), 'aria-label': 'Download Structure', onclick: () => deliver('Structure') }, '⬇'))),
+    h('button', { id: 'dlAll', class: 'primary', style: 'margin-top:8px', onclick: () => deliver() }, '⬇ All')); }
   aside.append(partCard('strings', 'Strings', 'STRIIIINGS', '#F4C177'), partCard('percs', 'Percs', 'PERRCS', '#9CC7E3'));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Ending'), seg('end', Object.entries(S.ENDINGS), x.ending || 'resolve', (k) => change(() => { x.ending = k; setHint({ resolve: 'The score comes home: an ending phrase and a closing hit.', open: 'A cliffhanger: it ends on the five, a hit and a metal that hangs in the air.', stop: 'A sudden stop: everything cut at once on the last bar.' }[k]); }), 'How it ends')));
   const hl = S.hitsOf(x);
-  aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Hit points'),
-    hl.length ? h('div', { class: 'col hitlist' }, hl.map((q) => h('div', { class: 'hrow' }, h('span', { class: 'mono small' }, 'Bar ' + (q.bar + 1)), h('select', { 'aria-label': 'Story moment on bar ' + (q.bar + 1), title: S.MOMENT_LINE[q.kind || 'hit'], style: 'max-width:150px', onchange: (e) => change(() => { q.kind = e.target.value; setHint(S.MOMENTS[q.kind] + ' on bar ' + (q.bar + 1) + ': ' + S.MOMENT_LINE[q.kind]); }, true) }, Object.entries(S.MOMENTS).map(([k, t]) => h('option', { value: k, selected: k === (q.kind || 'hit') }, t))), h('input', { type: 'text', value: q.text || '', placeholder: 'what happens', 'aria-label': 'What happens on bar ' + (q.bar + 1), style: 'flex:1 1 140px;min-width:0', onchange: (e) => change(() => { q.text = e.target.value.trim(); }, true) }), h('button', { class: 'ghost small', 'aria-label': 'Remove the hit point on bar ' + (q.bar + 1), onclick: () => change(() => { x.hits = (x.hits || []).filter((z) => z !== q); }) }, '✕'))))
-      : h('div', { class: 'muted small' }, 'A moment in your film, like a door that slams. Tap a bar in the Hits row: a fill runs into it, the hit lands on the bar, and the name shows as a marker in your DAW.')));
+  aside.append(h('div', { class: 'card', title: 'A moment in your film, like a door that slams. Tap a bar in the Hits row: a fill runs into it, the hit lands on the bar, and the name shows as a marker in your DAW.' }, h('div', { class: 'cap' }, 'Hit points'),
+    hl.length ? h('div', { class: 'col hitlist' }, hl.map((q) => h('div', { class: 'hrow' }, h('span', { class: 'mono small' }, 'Bar ' + (q.bar + 1)), h('input', { type: 'text', value: q.text || '', placeholder: 'what happens', 'aria-label': 'What happens on bar ' + (q.bar + 1), style: 'flex:1 1 140px;min-width:0', onchange: (e) => change(() => { q.text = e.target.value.trim(); }, true) }), h('button', { class: 'ghost small', 'aria-label': 'Remove the hit point on bar ' + (q.bar + 1), onclick: () => change(() => { x.hits = (x.hits || []).filter((z) => z !== q); }) }, '✕'))))
+      : h('div', { class: 'muted small' }, 'Tap a bar in the Hits row.')));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Tricks'), h('div', { class: 'chips' }, Object.entries(S.TRICKS).map(([k, tt]) => h('button', { id: 'trick_' + k, class: 'chip small' + (x.tricks[k] ? ' on' : ''), 'aria-pressed': x.tricks[k] ? 'true' : 'false', onclick: () => change(() => { x.tricks[k] = !x.tricks[k]; }, true) }, tt)))));
-  aside.append(h('div', { class: 'card film' }, h('b', { class: 'disp small', style: 'color:#E3C6DA' }, 'Film moment'), h('span', { class: 'muted' }, x.fromTrack ? 'With your own track the structure is yours: set a section to Film moment to hold your breath there.' : 'Bars where your track holds its breath: strings on a pedal tone, only metals in the air. Switch it on above, or set any section to Film moment.')));
-  const cats = S.catsOf(x.style), LCOL = { strA: '#F4C177', strB: '#E8A03A', perA: '#9CC7E3', perB: '#6FA8D0' };
-  aside.append(h('div', { id: 'setupCard', class: 'card' }, h('div', { class: 'cap' }, 'Four tracks, one score'),
-    h('div', { class: 'muted small' }, 'Load STRIIIINGS twice and PERRCS twice. Give each the Style below. A carries the quiet parts, B takes over in builds and peaks, and A stays under it.'),
-    h('div', { class: 'col', style: 'gap:6px' }, S.LAYERS.map(([k, title, plug, role]) => h('div', { style: 'display:flex;gap:8px;align-items:flex-start;border-left:3px solid ' + LCOL[k] + ';padding-left:8px' },
-      h('div', { style: 'flex:1;min-width:0' }, h('b', { style: 'color:' + LCOL[k] }, title), h('span', { class: 'muted small' }, ' ' + role + ' · ' + plug),
-        h('div', null, 'Style: ', h('b', null, cats[k])), cats.ex[k] ? h('div', { class: 'muted small' }, 'try ' + cats.ex[k]) : null))))));
-  aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Get the files'),
-    h('div', { class: 'col' }, ['StringsA', 'StringsB', 'PercsA', 'PercsB', 'Structure'].map((p) => h('button', { id: 'dl_' + p, class: 'ghost left', onclick: () => deliver(p) }, '⬇ ' + p.replace(/([AB])$/, ' $1'), h('span', { class: 'fn' }, fileName(p))))),
-    h('div', { class: 'muted small' }, 'Switch Latch off and Sync on Note in all four, and drop each file on bar 1 of its own track. The mod wheel fades the layers in and out (both plugins play softer as it goes up), the pitch wheel moves between the low and the high section like a camera.')));
   app.append(h('div', { class: 'row top-align' }, main, aside));
   app.append(h('div', { id: 'hint', class: 'hint', role: 'status' }, st.hint));
   app.append(h('footer', null, h('span', { class: 'noai' }, 'No AI inside'), ' Every note comes from music rules and a seeded dice. Fully mechanical. © ' + new Date().getFullYear() + ' Divine Monday. Divine Score Machine, ' + VERSION + '.', h('span', { class: 'man' }, 'Manual (PDF): ', ...[['English', 'EN'], ['Nederlands', 'NL'], ['Deutsch', 'DE']].map(([n, c]) => h('a', { href: '/divine-music-machine-v7/manuals/' + ({ EN: 'Divine-Score-Machine-Manual-EN', NL: 'Divine-Score-Machine-Handleiding-NL', DE: 'Divine-Score-Machine-Handbuch-DE' })[c] + '.pdf', target: '_blank', rel: 'noopener' }, n)))));
