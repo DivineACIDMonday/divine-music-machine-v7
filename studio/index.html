@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 18:40</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 18:45</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3375,7 +3375,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 18:40';
+const VERSION = '2026-10-29 18:45';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3834,6 +3834,7 @@ function copyPick() { st.copyFrom = st.eBar; st.copyTo = []; renderEdit(); }
 function copyPaste() { const f = st.copyFrom, to = st.copyTo.slice().sort((a, b) => a - b); st.copyFrom = null; st.copyTo = []; if (!to.length) { renderEdit(); return; }
   change(() => { for (const t of to) copyBar(f, t); }); toast('Bar ' + (f + 1) + ' copied to bar ' + to.map((b) => b + 1).join(', ') + '.'); }
 function copyCancel() { st.copyFrom = null; st.copyTo = []; renderEdit(); }
+function prevSection() { if (st.sec < 1) return; st.sec--; st.copyFrom = null; openEdit(st.ePart, 0); }
 function nextSection() { const sg = song(); if (st.sec + 1 >= sg.sections.length) return; st.sec++; st.copyFrom = null; openEdit(st.ePart, 0); }
 function backToMachine() { change(() => { const sec = secNow(), p = st.ePart; if (sec.barOwn && sec.barOwn[p]) { for (const b of st.sel) delete sec.barOwn[p][b]; if (!Object.keys(sec.barOwn[p]).length) delete sec.barOwn[p]; } }); toast('The chosen bars play the machine again.', { label: 'Undo', fn: undo }); }
 function newIdeaBars() {
@@ -3934,7 +3935,7 @@ function renderEdit() {
     h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: closeEdit }, st.from === 'get' ? '← Back to Get it' : '← Done'),
     h('button', { class: 'play', style: 'width:48px;height:48px;font-size:18px;flex:0 0 auto', 'aria-label': AU.playing ? 'Stop' : 'Play this section', title: 'Loops ' + secLabel(st.sec), onclick: () => { if (AU.playing) stopAll(); else { AU.loopBar = null; AU.wholeSong = false; startPlay(D.sectionStart(sg, st.sec) + st.eBar); } renderEdit(); } }, AU.playing && !AU.wholeSong ? '■' : '▶'),
     h('button', { class: 'ib', style: 'height:48px;font-weight:700', title: 'Play the whole song from this section on, through every section', onclick: () => { if (AU.playing && AU.wholeSong) { stopAll(); AU.wholeSong = false; } else { AU.loopBar = null; AU.wholeSong = true; startPlay(D.sectionStart(sg, st.sec)); } renderEdit(); } }, AU.playing && AU.wholeSong ? '■ Stop song' : '▶ Whole song'),
-    h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'), st.sec + 1 < song().sections.length ? h('button', { class: 'ib', onclick: nextSection, title: 'Done here: on to the next section' }, 'Next section: ' + secLabel(st.sec + 1) + ' →') : null, p === 'beat' ? h('span', { style: 'display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)' }, 'Drums in', pluginSel('beat')) : null,
+    h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'), st.sec > 0 ? h('button', { class: 'ib', onclick: prevSection, title: 'Back to the section before' }, '← ' + secLabel(st.sec - 1)) : null, st.sec + 1 < song().sections.length ? h('button', { class: 'ib', onclick: nextSection, title: 'Done here: on to the next section' }, 'Next section: ' + secLabel(st.sec + 1) + ' →') : null, p === 'beat' ? h('span', { style: 'display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)' }, 'Drums in', pluginSel('beat')) : null,
     PARTS.length < 2 ? null : h('nav', { 'aria-label': 'Parts', class: 'seg', style: 'flex-wrap:wrap;border-radius:18px' }, PARTS.map((q) => h('button', { class: q === p ? 'on' : '', 'aria-pressed': q === p ? 'true' : 'false', onclick: () => { st.ePart = q; renderEdit(); } }, PART_NAMES[q]))));
   const bars = h('div', { class: 'card', style: 'width:100%;display:flex;flex-direction:column;gap:12px' },
     h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.copyFrom != null ? 'Tap the bars that should become bar ' + (st.copyFrom + 1) + ', then Paste.' : st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
