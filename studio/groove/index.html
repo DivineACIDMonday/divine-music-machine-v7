@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 18:45</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 19:00</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3375,7 +3375,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 18:45';
+const VERSION = '2026-10-29 19:00';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3819,6 +3819,14 @@ function selectBar(b) { if (st.selFresh) { st.selFresh = false; if (!st.sel.incl
 function copyBar(f, t, src) { const p = st.ePart, sg = song(), N = D.meter(sg).steps, fd = src || barData(p, f, true), d = barData(p, t, true), kf = lbOf(f), k = lbOf(t);
   if (p === 'beat') d.lanes = fd.lanes.map((l) => l.slice()); else if (p === 'chords') d.bars[k] = fd.bars[kf] ? D.clone(fd.bars[kf]) : null; else d.notes = d.notes.filter((n) => Math.floor(n.s / N) !== k).concat(fd.notes.filter((n) => Math.floor(n.s / N) === kf).map((n) => Object.assign({}, n, { s: n.s - kf * N + k * N }))).sort((x, y) => x.s - y.s);
 }
+function addBar() { const sg = song(), sec = secNow(), max = sec.type === 'fill' ? 2 : 64; if (sec.bars >= max) { toast(secLabel(st.sec) + ' is at its longest.'); return; }
+  const last = sec.bars - 1; change(() => { sec.bars++; const cur = st.ePart; for (const p of PARTS) if (D.barOwnOf(sg, sec, p, last)) { st.ePart = p; copyBar(last, last + 1); } st.ePart = cur; st.eBar = last + 1; st.sel = [last + 1]; st.selFresh = true; });
+  toast('Bar ' + (last + 2) + ' added, a copy of bar ' + (last + 1) + '.'); }
+function removeBar() { const sec = secNow(); if (sec.bars <= 1) return; const lb = sec.bars - 1;
+  change(() => { if (sec.barOwn) { const o = {}; for (const p in sec.barOwn) { o[p] = Object.assign({}, sec.barOwn[p]); delete o[p][lb]; } sec.barOwn = o; } sec.bars--; if (st.eBar >= sec.bars) st.eBar = sec.bars - 1; st.sel = st.sel.filter((b) => b < sec.bars); if (!st.sel.length) st.sel = [st.eBar]; st.selFresh = true; });
+  toast('Bar ' + (lb + 1) + ' removed.'); }
+function barTiles() { const sec = secNow(), t = 'height:52px;border-radius:12px;font-size:14px;font-weight:700;border:1px dashed var(--line);background:transparent;color:var(--soft)';
+  return [h('button', { style: t, title: 'Add one bar at the end, a copy of the last bar', onclick: addBar }, '+ bar'), sec.bars > 1 ? h('button', { style: t, title: 'Remove the last bar', onclick: removeBar }, '− bar') : null].filter(Boolean); }
 function copyNext() { const sec = secNow(), f = st.eBar; if (f + 1 >= sec.bars) { toast('This is the last bar of ' + secLabel(st.sec) + '.'); return; }
   change(() => { copyBar(f, f + 1); st.eBar = f + 1; st.sel = [f + 1]; st.selFresh = true; }); toast('Bar ' + (f + 2) + ' starts as bar ' + (f + 1) + '. Add or take away.'); }
 function copyPrev() { const f = st.eBar; if (f <= 0) { toast('This is the first bar of ' + secLabel(st.sec) + '.'); return; }
@@ -3945,7 +3953,7 @@ function renderEdit() {
       const loopOn = AU.playing && AU.loopBar === b;
       return h('div', { style: 'position:relative' }, h('button', { 'data-bar': b, style: 'width:100%;position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => { if (st.copyFrom != null) { if (b === st.copyFrom) return; const i = st.copyTo.indexOf(b); if (i >= 0) st.copyTo.splice(i, 1); else st.copyTo.push(b); renderEdit(); return; } selectBar(b); } }, h('span', null, (b + 1) + (edited(b) ? ' •' : ''))),
         st.copyFrom != null && st.copyTo.includes(b) ? h('span', { 'aria-hidden': 'true', style: 'position:absolute;inset:-4px;border:2px dashed var(--accent);border-radius:14px;pointer-events:none' }) : null,
-        on ? h('button', { class: 'barplay', 'aria-label': loopOn ? 'Stop bar ' + (b + 1) : 'Play only bar ' + (b + 1), title: loopOn ? 'Stop' : 'Play only this bar, on repeat', onclick: (e) => { e.stopPropagation(); playBar(b); } }, loopOn ? '■' : '▶') : null);  })));
+        on ? h('button', { class: 'barplay', 'aria-label': loopOn ? 'Stop bar ' + (b + 1) : 'Play only bar ' + (b + 1), title: loopOn ? 'Stop' : 'Play only this bar, on repeat', onclick: (e) => { e.stopPropagation(); playBar(b); } }, loopOn ? '■' : '▶') : null);  }).concat(barTiles())));
   const main = h('main', { class: 'mid', style: 'flex:999 1 560px' }, h('div', { class: 'hint' }, p === 'beat' ? 'Tap a step to add or remove a hit. Press and drag up or down: louder or softer. Grey shapes are the machine’s idea.' : p === 'chords' ? '' : 'Tap a step and a pitch. Press a note and drag: up or down for loudness, left or right for length. Dashed notes are the machine’s idea.'), h('div', { id: 'gridWrap', style: 'width:100%;display:flex;justify-content:center;touch-action:none' }, grid()));
   const side = h('aside', { class: 'right' }, h('section', { class: 'card', style: 'display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab' }, 'Mix · for the chosen bars'), h('span', { style: 'font-weight:600;font-size:14px' }, 'Loudness'),
     h('div', { class: 'seg', role: 'group', 'aria-label': 'Loudness' }, [['steady', 'Steady'], ['swell', 'Swell'], ['fade', 'Fade']].map(([k, n]) => h('button', { class: loudNow() === k ? 'on' : '', 'aria-pressed': loudNow() === k ? 'true' : 'false', onclick: () => setLoud(k) }, n))),
