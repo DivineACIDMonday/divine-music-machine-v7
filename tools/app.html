@@ -264,7 +264,7 @@ function spiralSvg() {
   return sv;
 }
 function markGetCell() { const tot = D.totalBars(song()), n = Math.min(tot, 96), c = Math.floor(AU.curBar * n / tot); document.querySelectorAll('[data-cell]').forEach((el) => { const on = +el.dataset.cell === c; el.style.outline = on ? '2px solid var(--ink)' : ''; el.style.transform = on ? 'scaleY(1.35)' : ''; }); }
-function markPlayingBar() { const at = D.sectionAt(song(), AU.curBar), cur = at && at.i === st.sec ? at.inBar : -1; document.querySelectorAll('[data-bar]').forEach((el) => { const on = +el.dataset.bar === cur; el.style.boxShadow = on ? '0 0 0 3px var(--answer)' : ''; el.style.transform = on ? 'translateY(-2px)' : ''; }); }
+function markPlayingBar() { const at = D.sectionAt(song(), AU.curBar), cur = at && at.i === st.sec ? at.inBar : -1; if (AU.playing && AU.loopBar == null && cur >= 0 && cur !== st.eBar && !st.drag && st.copyFrom == null) { st.eBar = cur; st.sel = [cur]; st.selFresh = true; renderEdit(); } /* the field follows the bar that plays */ document.querySelectorAll('[data-bar]').forEach((el) => { const on = +el.dataset.bar === cur; el.style.boxShadow = on ? '0 0 0 3px var(--answer)' : ''; el.style.transform = on ? 'translateY(-2px)' : ''; }); }
 function movePlayhead() {
   const gh = $('#gridHead'); if (gh) { const x = +gh.dataset.x0 + AU.curFrac * +gh.dataset.w; gh.setAttribute('x1', x); gh.setAttribute('x2', x); const at = D.sectionAt(song(), AU.curBar); gh.setAttribute('opacity', at && at.i === st.sec && at.inBar === st.eBar ? 0.9 : 0.25); }
   const sg = song(), tot = D.totalBars(sg), b = AU.curBar + AU.curFrac;
