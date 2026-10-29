@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 17:45</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 17:55</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3375,7 +3375,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 17:45';
+const VERSION = '2026-10-29 17:55';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3776,9 +3776,13 @@ function shadowView() {
   const sg = JSON.parse(JSON.stringify(song())), sec = sg.sections[st.sec], p = st.ePart; if (sec.barOwn && sec.barOwn[p]) delete sec.barOwn[p][st.eBar];
   if (sg.parts[p].mode === 'yours') { sg.parts[p].mode = 'machine'; for (const ty in sg.mat) if (sg.mat[ty]) delete sg.mat[ty][p]; for (const x of sg.sections) if (x.barOwn) delete x.barOwn[p]; } // the shadow is what the machine would play on a clean page
   const R = D.makeRenderer(sg), gb = D.sectionStart(sg, st.sec) + st.eBar;
-  if (p === 'beat') { let r = null; try { r = D.renderBar(sg, 'beat', gb, R.res, { lanes: true }); } catch (e) { r = null; } return { lanes: r && r.lanes ? r.lanes : null }; }
+  // DIY: always something to lean on; where the machine stays quiet (an intro start, a break), show the groove of the main part instead
+  const core = () => { const ci = sg.sections.findIndex((x) => x.type === 'chorus' || x.type === 'drop'), vi = ci >= 0 ? ci : sg.sections.findIndex((x) => x.type === 'verse'); return vi >= 0 && vi !== st.sec ? D.sectionStart(sg, vi) + (st.eBar % sg.sections[vi].bars) : null; };
+  if (p === 'beat') { const at = (g) => { try { const r = D.renderBar(sg, 'beat', g, R.res, { lanes: true }); return r && r.lanes ? r.lanes : null; } catch (e) { return null; } };
+    let l = at(gb); if (song().diy && (!l || !l.flat().some(Boolean))) { const c = core(); if (c != null) l = at(c); } return { lanes: l }; }
   if (p === 'chords') return null;
-  let ns = []; try { ns = R.bar(p, gb); } catch (e) { ns = []; } return { notes: ns.map((n) => ({ step: Math.round(Math.max(0, n.t) / STEP), d: Math.max(1, Math.round(n.d / STEP)), p: n.p })) };
+  let ns = []; try { ns = R.bar(p, gb); } catch (e) { ns = []; }
+  if (song().diy && !ns.length) { const c = core(); if (c != null) { try { ns = R.bar(p, c); } catch (e) { ns = []; } } } return { notes: ns.map((n) => ({ step: Math.round(Math.max(0, n.t) / STEP), d: Math.max(1, Math.round(n.d / STEP)), p: n.p })) };
 }
 // one change, in every chosen bar: the focus bar is changed, the others take it over
 function editSel(fn) {
