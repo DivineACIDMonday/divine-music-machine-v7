@@ -61,7 +61,7 @@ canvas.rip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:14px}
 .gc{text-align:left;padding:16px;border-radius:16px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:700}
 .gc small{display:block;font-weight:500;font-size:13px;color:var(--soft);margin-top:4px}
-.gc:hover{border-color:var(--ink)}
+.gc:hover{border-color:var(--ink)}.gc.diy{border:1.5px dashed var(--accent);color:var(--accent)}.gc.diy small{color:var(--soft)}.shl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin-right:6px;vertical-align:middle}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--onink);border-radius:14px;padding:12px 16px;display:flex;gap:12px;align-items:center;font-size:14px;z-index:40;max-width:92vw}
 .toast button{border:none;background:var(--onink);color:var(--ink);border-radius:8px;height:32px;padding:0 10px;font-weight:700}
 .spin{cursor:pointer;border:none;background:transparent;padding:0}
@@ -82,7 +82,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 05:45</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 17:20</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3374,7 +3374,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 05:45';
+const VERSION = '2026-10-29 17:20';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3412,12 +3412,17 @@ let toastT = 0;
 function toast(msg, act) { const old = $('.toast'); if (old) old.remove(); clearTimeout(toastT); const t = h('div', { class: 'toast', role: 'status' }, h('span', null, msg), act ? h('button', { onclick: () => { t.remove(); act.fn(); } }, act.label) : null); document.body.append(t); toastT = setTimeout(() => t.remove(), 5000); }
 
 /* ---------- making a song ---------- */
-function makeSong(genre) {
-  stopAll();
+function makeSong(genre, opts) {
+  stopAll(); opts = opts || {};
   const sg = D.freshSong(genre, { name: 'Untitled' });
+  if (opts.diy) { // DIY: every part starts empty; the genre only decides the shadows
+    sg.diy = true; sg.noShadows = !!opts.noShadows; if (opts.noShadows) sg.bpm = 120;
+    const types = [...new Set(sg.sections.map((x) => x.type))];
+    for (const p of PARTS) { sg.parts[p].mode = 'yours'; for (const ty of types) D.setUser(sg, p, ty, D.emptyMat(p, sg)); }
+  }
   sg.raw = VARIATION.gentle; sg.studioVar = 'gentle'; for (const p of PARTS) { const k = store.get(KP + 'plug-' + p, null); if (k && D.pluginsFor(p).includes(k)) sg.parts[p].plugin = k; }
   st.song = sg; st.hist = []; st.fut = []; st.sec = 0;
-  count('new/' + genre); save(); closeStart(); render();
+  count((opts.diy ? 'diy/' : 'new/') + (opts.noShadows ? 'none' : genre)); save(); closeStart(); render();
 }
 function newSongSame() { const sg = song(); const parts = PARTS.filter((p) => sg.parts[p].mode === 'machine'); if (!parts.length) { toast('Every part is DIY or off, so the dice leave them as they are.'); return; } change(() => { for (const p of parts) sg.parts[p].seed = D.newSeed(); }); toast('New ideas for every Machine part. DIY parts stayed.', { label: 'Undo', fn: undo }); }
 function newStructure() { change(() => { song().sections = D.randomStructure(song(), D.newSeed()); st.sec = 0; }); toast('New structure: ' + song().sections.length + ' sections, ' + D.totalBars(song()) + ' bars.', { label: 'Undo', fn: undo }); }
@@ -3638,6 +3643,7 @@ function randomName() {
 }
 function setName(v) { v = String(v || '').replace(/[^\w ']/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 60) || 'Untitled'; if (v === song().name) { renderTop(); return; } change(() => { song().name = v; }); }
 function setBpm(v) { v = Math.round(D.clamp(+v || song().bpm, 50, 220)); if (v === song().bpm) { renderTop(); return; } change(() => { song().bpm = v; }); }
+function setShadows(v) { const sg = song(); change(() => { if (v === '__none') sg.noShadows = true; else { sg.noShadows = false; sg.genre = v; } }); toast(v === '__none' ? 'No shadows. Your own notes stay.' : 'Shadows from ' + D.GENRES[v].name + ' now. Your own notes stay.'); }
 function switchGenre(g) { const keep = st.hist.concat([snapshot()]); makeSong(g); st.hist = keep.slice(-60); st.fut = []; render(); toast('New ' + (GROOVE ? 'beat' : 'song') + ' in ' + D.GENRES[g].name + '. Undo brings the old one back.'); }
 /* ---------- structure: rows you can drag, retype, add and remove ---------- */
 const SEC_TYPES = () => D.TYPE_ORDER.filter((t) => D.TYPES[t]);
@@ -3681,6 +3687,7 @@ function renderLeft() {
   el.append(h('section', { class: 'card', style: 'display:flex;flex-direction:column;align-items:center;gap:4px' },
     h('button', { class: 'spin', id: 'spiral', 'aria-label': 'Switch the spiral between structure and parts', title: 'Tap to switch: Structure or Parts', onclick: () => { st.spiral = st.spiral === 'structure' ? 'parts' : 'structure'; renderSpiral(); } }, spiralSvg()),
     h('div', { class: 'lab', id: 'spLabel' }, (st.spiral === 'structure' ? 'Structure' : 'Parts, bar by bar') + ' · tap to switch'),
+    sg.diy ? h('label', { class: 'gsel' }, h('span', { class: 'shl' }, 'Shadows'), h('select', { 'aria-label': 'Shadows from genre', title: 'DIY: pick which genre the grey shadows come from; what you made stays', onchange: (e) => setShadows(e.target.value) }, [h('option', { value: '__none', selected: sg.noShadows || null }, 'No shadows')].concat(D.GENRE_ALL.map((g) => h('option', { value: g, selected: (!sg.noShadows && g === sg.genre) || null }, D.GENRES[g].name))))) :
     h('label', { class: 'gsel' }, h('select', { 'aria-label': 'Genre', title: 'Switch genre: a new ' + (GROOVE ? 'beat' : 'song') + ' in that genre (undo brings this one back)', onchange: (e) => switchGenre(e.target.value) }, D.GENRE_ALL.map((g) => h('option', { value: g, selected: g === sg.genre || null }, D.GENRES[g].name)))),
     GROOVE ? h('div', { style: 'font-size:13px;color:var(--soft)' }, sg.bpm + ' bpm · ' + mmss(len)) : h('div', { class: 'ksel', style: 'font-size:13px;color:var(--soft)' }, sg.bpm + ' bpm · ',
       h('select', { 'aria-label': 'Key', title: 'Key', onchange: (e) => change(() => { sg.key.root = +e.target.value; sg.keyAuto = false; }) }, D.NOTE.map((n, i) => h('option', { value: i, selected: i === sg.key.root || null }, n.includes('#') ? n + '/' + D.NOTE[(i + 1) % 12] + 'b' : n))),
@@ -3764,6 +3771,7 @@ function focusView() {
 }
 // the machine's idea for the focus bar: the shadows
 function shadowView() {
+  if (song().noShadows) return st.ePart === 'beat' ? { lanes: null } : st.ePart === 'chords' ? null : { notes: [] };
   const sg = JSON.parse(JSON.stringify(song())), sec = sg.sections[st.sec], p = st.ePart; if (sec.barOwn && sec.barOwn[p]) delete sec.barOwn[p][st.eBar];
   if (sg.parts[p].mode === 'yours') sg.parts[p].mode = 'machine';
   const R = D.makeRenderer(sg), gb = D.sectionStart(sg, st.sec) + st.eBar;
@@ -4028,7 +4036,16 @@ function openStart() {
     h('h1', { style: 'margin:0;font-size:28px' }, APP_NAME),
     h('p', { style: 'margin:6px 0 0;color:var(--soft)' }, GROOVE ? 'Pick a genre. The machine makes a whole beat; you shape it.' : 'Pick a genre. The machine makes a whole song; you shape it.'),
     song() ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: closeStart }, '← Back to my song') : last && last.song ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: () => { st.song = last.song; D.ensureTypes && D.ensureTypes(st.song); st.sec = last.sec || 0; clampSec(); closeStart(); render(); } }, 'Continue where you left off') : null,
-    h('div', { class: 'gcards' }, D.GENRE_ALL.map((g) => { const G = D.GENRES[g]; return h('button', { class: 'gc', id: 'g_' + g, onclick: () => makeSong(g) }, G.name, h('small', null, (G.bpm ? G.bpm[0] + ' to ' + G.bpm[1] + ' bpm' : ''))); })))));
+    h('div', { class: 'gcards' }, [h('button', { class: 'gc diy', id: 'g_diy', onclick: openShadowPick }, 'DIY: start empty', h('small', null, GROOVE ? 'An empty beat; you tap it in' : 'Every part empty; you make it'))].concat(D.GENRE_ALL.map((g) => { const G = D.GENRES[g]; return h('button', { class: 'gc', id: 'g_' + g, onclick: () => makeSong(g) }, G.name, h('small', null, (G.bpm ? G.bpm[0] + ' to ' + G.bpm[1] + ' bpm' : ''))); }))))));
+}
+// DIY, step two: which genre shows its ideas as grey shadows, or none at all
+function openShadowPick() {
+  closeStart();
+  document.body.append(h('div', { class: 'start', id: 'start' }, h('div', { class: 'box', role: 'dialog', 'aria-label': 'Pick the shadows' },
+    h('h1', { style: 'margin:0;font-size:28px' }, 'Which shadows would you like to see?'),
+    h('p', { style: 'margin:6px 0 0;color:var(--soft)' }, 'Everything starts empty. Shadows are grey hints of what a genre would play; you can change them later under the spiral.'),
+    h('button', { class: 'ib', style: 'margin-top:12px', onclick: openStart }, '← Back'),
+    h('div', { class: 'gcards' }, [h('button', { class: 'gc diy', id: 'sh_none', onclick: () => makeSong('free', { diy: true, noShadows: true }) }, 'No shadows', h('small', null, 'A blank grid at 120 bpm'))].concat(D.GENRE_ALL.map((g) => { const G = D.GENRES[g]; return h('button', { class: 'gc', id: 'sh_' + g, onclick: () => makeSong(g, { diy: true }) }, G.name, h('small', null, 'Shadows from ' + G.name.toLowerCase())); }))))));
 }
 function closeStart() { const el = $('#start'); if (el) el.remove(); }
 
