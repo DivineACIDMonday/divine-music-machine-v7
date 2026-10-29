@@ -61,6 +61,7 @@ canvas.rip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .gcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px;margin-top:14px}
 .gc{text-align:left;padding:16px;border-radius:16px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:700}
 .gc small{display:block;font-weight:500;font-size:13px;color:var(--soft);margin-top:4px}
+.barplay{position:absolute;right:-6px;top:-8px;width:26px;height:26px;border-radius:50%;border:2px solid var(--card);background:var(--ink);color:var(--onink);font-size:10px;line-height:1;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}.barplay:hover{transform:scale(1.1)}
 .gc:hover{border-color:var(--ink)}.gc.diy{border:1.5px dashed var(--accent);color:var(--accent)}.gc.diy small{color:var(--soft)}.shl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin-right:6px;vertical-align:middle}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--onink);border-radius:14px;padding:12px 16px;display:flex;gap:12px;align-items:center;font-size:14px;z-index:40;max-width:92vw}
 .toast button{border:none;background:var(--onink);color:var(--ink);border-radius:8px;height:32px;padding:0 10px;font-weight:700}
@@ -82,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 17:20</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 17:35</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3374,7 +3375,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 17:20';
+const VERSION = '2026-10-29 17:35';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3491,7 +3492,7 @@ function scheduleBar(sg, bar, t0) {
     for (const n of notes) { const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue; if (p === 'beat') drumLane(n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
       if ((p !== 'beat' || (laneDefs()[n.lane] || { fold: 6 }).fold !== 6) && (p !== 'chords' && p !== 'pad' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v, n.lane); lastT = t; } }
 }
-function tick() { const sg = song(), ctx = AU.ctx, tot = D.totalBars(sg); while (AU.nextT < ctx.currentTime + 0.18) { scheduleBar(sg, AU.nextBar, AU.nextT); AU.queue.push({ bar: AU.nextBar, t: AU.nextT, len: barSec(sg) }); AU.nextT += barSec(sg); AU.nextBar = st.mode === 'edit' ? (AU.nextBar + 1 >= D.sectionStart(sg, st.sec) + sg.sections[st.sec].bars ? D.sectionStart(sg, st.sec) : AU.nextBar + 1) : (AU.nextBar + 1) % tot; } AU.queue = AU.queue.filter((q) => q.t + q.len > ctx.currentTime - 1); AU.nodes = AU.nodes.filter((n) => n.end > ctx.currentTime); }
+function tick() { const sg = song(), ctx = AU.ctx, tot = D.totalBars(sg); while (AU.nextT < ctx.currentTime + 0.18) { scheduleBar(sg, AU.nextBar, AU.nextT); AU.queue.push({ bar: AU.nextBar, t: AU.nextT, len: barSec(sg) }); AU.nextT += barSec(sg); AU.nextBar = st.mode === 'edit' && AU.loopBar != null ? D.sectionStart(sg, st.sec) + AU.loopBar : st.mode === 'edit' ? (AU.nextBar + 1 >= D.sectionStart(sg, st.sec) + sg.sections[st.sec].bars ? D.sectionStart(sg, st.sec) : AU.nextBar + 1) : (AU.nextBar + 1) % tot; } AU.queue = AU.queue.filter((q) => q.t + q.len > ctx.currentTime - 1); AU.nodes = AU.nodes.filter((n) => n.end > ctx.currentTime); }
 function frame() {
   if (!AU.playing) return; const now = AU.ctx.currentTime; let cur = null; for (const q of AU.queue) if (q.t <= now) cur = q;
   if (cur) { const nb = cur.bar !== AU.curBar; AU.curBar = cur.bar; AU.curFrac = D.clamp((now - cur.t) / cur.len, 0, 0.9999); if (nb && st.mode === 'edit') markPlayingBar(); if (nb && st.mode === 'get') markGetCell(); if (nb && st.mode === 'overview') { const at = D.sectionAt(song(), AU.curBar); if (at && at.i !== st.sec) { st.sec = at.i; renderLeft(); renderRight(); } else renderSpiral(); renderStage(); } movePlayhead(); }
@@ -3808,6 +3809,7 @@ function dragStart(e, t) {
 }
 function redrawGrid() { const old = document.querySelector('#gridWrap'); if (old) { old.innerHTML = ''; old.append(grid()); } }
 function setChord(deg) { const sg = song(); editSel((d, k) => { d.bars[k] = D.diatonic(sg.key, deg, false); }); }
+function playBar(b) { if (AU.playing && AU.loopBar === b) { stopAll(); AU.loopBar = null; renderEdit(); return; } AU.loopBar = b; startPlay(D.sectionStart(song(), st.sec) + b); renderEdit(); }
 function selectBar(b) { if (st.selFresh) { st.selFresh = false; if (!st.sel.includes(b)) { st.sel = [b]; st.eBar = b; renderEdit(); return; } } const i = st.sel.indexOf(b); if (i >= 0 && st.sel.length > 1) { st.sel.splice(i, 1); if (st.eBar === b) st.eBar = st.sel[st.sel.length - 1]; } else if (i < 0) { st.sel.push(b); st.eBar = b; } else st.eBar = b; renderEdit(); }
 function copyNext() { const sec = secNow(), f = st.eBar; if (f + 1 >= sec.bars) { toast('This is the last bar of ' + secLabel(st.sec) + '.'); return; } const p = st.ePart;
   change(() => { const sg = song(), N = D.meter(sg).steps, fd = barData(p, f, true), d = barData(p, f + 1, true), kf = lbOf(f), k = lbOf(f + 1);
@@ -3912,14 +3914,16 @@ function renderEdit() {
   const edited = (b) => !!D.barOwnOf(sg, sec, p, b);
   const head = h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
     h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: closeEdit }, st.from === 'get' ? '← Back to Get it' : '← Done'),
-    h('button', { class: 'play', style: 'width:48px;height:48px;font-size:18px;flex:0 0 auto', 'aria-label': AU.playing ? 'Stop' : 'Play this section', title: 'Loops ' + secLabel(st.sec), onclick: () => { if (AU.playing) stopAll(); else startPlay(D.sectionStart(sg, st.sec) + st.eBar); renderEdit(); } }, AU.playing ? '■' : '▶'),
+    h('button', { class: 'play', style: 'width:48px;height:48px;font-size:18px;flex:0 0 auto', 'aria-label': AU.playing ? 'Stop' : 'Play this section', title: 'Loops ' + secLabel(st.sec), onclick: () => { if (AU.playing) stopAll(); else { AU.loopBar = null; startPlay(D.sectionStart(sg, st.sec) + st.eBar); } renderEdit(); } }, AU.playing ? '■' : '▶'),
     h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'), p === 'beat' ? h('span', { style: 'display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)' }, 'Drums in', pluginSel('beat')) : null,
     PARTS.length < 2 ? null : h('nav', { 'aria-label': 'Parts', class: 'seg', style: 'flex-wrap:wrap;border-radius:18px' }, PARTS.map((q) => h('button', { class: q === p ? 'on' : '', 'aria-pressed': q === p ? 'true' : 'false', onclick: () => { st.ePart = q; renderEdit(); } }, PART_NAMES[q]))));
   const bars = h('div', { class: 'card', style: 'width:100%;display:flex;flex-direction:column;gap:12px' },
     h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
       h('button', { class: 'ib', onclick: copyNext }, 'Copy to next →'), h('button', { class: 'ib', onclick: newIdeaBars }, '⚄ New idea'), h('button', { class: 'ib', onclick: backToMachine, disabled: !st.sel.some(edited) || null }, 'Back to machine')),
     h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px' }, Array.from({ length: sec.bars }, (_, b) => { const on = st.sel.includes(b), f = b === st.eBar;
-      return h('button', { 'data-bar': b, style: 'position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => selectBar(b) }, h('span', null, (b + 1) + (edited(b) ? ' •' : '')));  })));
+      const loopOn = AU.playing && AU.loopBar === b;
+      return h('div', { style: 'position:relative' }, h('button', { 'data-bar': b, style: 'width:100%;position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => selectBar(b) }, h('span', null, (b + 1) + (edited(b) ? ' •' : ''))),
+        on ? h('button', { class: 'barplay', 'aria-label': loopOn ? 'Stop bar ' + (b + 1) : 'Play only bar ' + (b + 1), title: loopOn ? 'Stop' : 'Play only this bar, on repeat', onclick: (e) => { e.stopPropagation(); playBar(b); } }, loopOn ? '■' : '▶') : null);  })));
   const main = h('main', { class: 'mid', style: 'flex:999 1 560px' }, h('div', { class: 'hint' }, p === 'beat' ? 'Tap a step to add or remove a hit. Press and drag up or down: louder or softer. Grey shapes are the machine’s idea.' : p === 'chords' ? '' : 'Tap a step and a pitch. Press a note and drag: up or down for loudness, left or right for length. Dashed notes are the machine’s idea.'), h('div', { id: 'gridWrap', style: 'width:100%;display:flex;justify-content:center;touch-action:none' }, grid()));
   const side = h('aside', { class: 'right' }, h('section', { class: 'card', style: 'display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab' }, 'Mix · for the chosen bars'), h('span', { style: 'font-weight:600;font-size:14px' }, 'Loudness'),
     h('div', { class: 'seg', role: 'group', 'aria-label': 'Loudness' }, [['steady', 'Steady'], ['swell', 'Swell'], ['fade', 'Fade']].map(([k, n]) => h('button', { class: loudNow() === k ? 'on' : '', 'aria-pressed': loudNow() === k ? 'true' : 'false', onclick: () => setLoud(k) }, n))),
