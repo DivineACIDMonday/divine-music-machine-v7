@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 17:35</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 17:45</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3375,7 +3375,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 17:35';
+const VERSION = '2026-10-29 17:45';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3774,7 +3774,7 @@ function focusView() {
 function shadowView() {
   if (song().noShadows) return st.ePart === 'beat' ? { lanes: null } : st.ePart === 'chords' ? null : { notes: [] };
   const sg = JSON.parse(JSON.stringify(song())), sec = sg.sections[st.sec], p = st.ePart; if (sec.barOwn && sec.barOwn[p]) delete sec.barOwn[p][st.eBar];
-  if (sg.parts[p].mode === 'yours') sg.parts[p].mode = 'machine';
+  if (sg.parts[p].mode === 'yours') { sg.parts[p].mode = 'machine'; for (const ty in sg.mat) if (sg.mat[ty]) delete sg.mat[ty][p]; for (const x of sg.sections) if (x.barOwn) delete x.barOwn[p]; } // the shadow is what the machine would play on a clean page
   const R = D.makeRenderer(sg), gb = D.sectionStart(sg, st.sec) + st.eBar;
   if (p === 'beat') { let r = null; try { r = D.renderBar(sg, 'beat', gb, R.res, { lanes: true }); } catch (e) { r = null; } return { lanes: r && r.lanes ? r.lanes : null }; }
   if (p === 'chords') return null;

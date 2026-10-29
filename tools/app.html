@@ -488,7 +488,7 @@ function focusView() {
 function shadowView() {
   if (song().noShadows) return st.ePart === 'beat' ? { lanes: null } : st.ePart === 'chords' ? null : { notes: [] };
   const sg = JSON.parse(JSON.stringify(song())), sec = sg.sections[st.sec], p = st.ePart; if (sec.barOwn && sec.barOwn[p]) delete sec.barOwn[p][st.eBar];
-  if (sg.parts[p].mode === 'yours') sg.parts[p].mode = 'machine';
+  if (sg.parts[p].mode === 'yours') { sg.parts[p].mode = 'machine'; for (const ty in sg.mat) if (sg.mat[ty]) delete sg.mat[ty][p]; for (const x of sg.sections) if (x.barOwn) delete x.barOwn[p]; } // the shadow is what the machine would play on a clean page
   const R = D.makeRenderer(sg), gb = D.sectionStart(sg, st.sec) + st.eBar;
   if (p === 'beat') { let r = null; try { r = D.renderBar(sg, 'beat', gb, R.res, { lanes: true }); } catch (e) { r = null; } return { lanes: r && r.lanes ? r.lanes : null }; }
   if (p === 'chords') return null;
