@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 17:55</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 18:05</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3395,7 +3395,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 17:55';
+const VERSION = '2026-10-29 18:05';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3835,12 +3835,19 @@ function redrawGrid() { const old = document.querySelector('#gridWrap'); if (old
 function setChord(deg) { const sg = song(); editSel((d, k) => { d.bars[k] = D.diatonic(sg.key, deg, false); }); }
 function playBar(b) { if (AU.playing && AU.loopBar === b) { stopAll(); AU.loopBar = null; renderEdit(); return; } AU.loopBar = b; startPlay(D.sectionStart(song(), st.sec) + b); renderEdit(); }
 function selectBar(b) { if (st.selFresh) { st.selFresh = false; if (!st.sel.includes(b)) { st.sel = [b]; st.eBar = b; renderEdit(); return; } } const i = st.sel.indexOf(b); if (i >= 0 && st.sel.length > 1) { st.sel.splice(i, 1); if (st.eBar === b) st.eBar = st.sel[st.sel.length - 1]; } else if (i < 0) { st.sel.push(b); st.eBar = b; } else st.eBar = b; renderEdit(); }
-function copyNext() { const sec = secNow(), f = st.eBar; if (f + 1 >= sec.bars) { toast('This is the last bar of ' + secLabel(st.sec) + '.'); return; } const p = st.ePart;
-  change(() => { const sg = song(), N = D.meter(sg).steps, fd = barData(p, f, true), d = barData(p, f + 1, true), kf = lbOf(f), k = lbOf(f + 1);
-    if (p === 'beat') d.lanes = fd.lanes.map((l) => l.slice()); else if (p === 'chords') d.bars[k] = fd.bars[kf] ? D.clone(fd.bars[kf]) : null; else d.notes = d.notes.filter((n) => Math.floor(n.s / N) !== k).concat(fd.notes.filter((n) => Math.floor(n.s / N) === kf).map((n) => Object.assign({}, n, { s: n.s - kf * N + k * N }))).sort((x, y) => x.s - y.s);
-    st.eBar = f + 1; st.sel = [f + 1]; st.selFresh = true; });
-  toast('Bar ' + (f + 2) + ' starts as bar ' + (f + 1) + '. Add or take away.');
+function copyBar(f, t) { const p = st.ePart, sg = song(), N = D.meter(sg).steps, fd = barData(p, f, true), d = barData(p, t, true), kf = lbOf(f), k = lbOf(t);
+  if (p === 'beat') d.lanes = fd.lanes.map((l) => l.slice()); else if (p === 'chords') d.bars[k] = fd.bars[kf] ? D.clone(fd.bars[kf]) : null; else d.notes = d.notes.filter((n) => Math.floor(n.s / N) !== k).concat(fd.notes.filter((n) => Math.floor(n.s / N) === kf).map((n) => Object.assign({}, n, { s: n.s - kf * N + k * N }))).sort((x, y) => x.s - y.s);
 }
+function copyNext() { const sec = secNow(), f = st.eBar; if (f + 1 >= sec.bars) { toast('This is the last bar of ' + secLabel(st.sec) + '.'); return; }
+  change(() => { copyBar(f, f + 1); st.eBar = f + 1; st.sel = [f + 1]; st.selFresh = true; }); toast('Bar ' + (f + 2) + ' starts as bar ' + (f + 1) + '. Add or take away.'); }
+function copyPrev() { const f = st.eBar; if (f <= 0) { toast('This is the first bar of ' + secLabel(st.sec) + '.'); return; }
+  change(() => { copyBar(f, f - 1); st.eBar = f - 1; st.sel = [f - 1]; st.selFresh = true; }); toast('Bar ' + f + ' is now the same as bar ' + (f + 1) + '.'); }
+// copy one bar onto any bars you tap
+function copyPick() { st.copyFrom = st.eBar; st.copyTo = []; renderEdit(); }
+function copyPaste() { const f = st.copyFrom, to = st.copyTo.slice().sort((a, b) => a - b); st.copyFrom = null; st.copyTo = []; if (!to.length) { renderEdit(); return; }
+  change(() => { for (const t of to) copyBar(f, t); }); toast('Bar ' + (f + 1) + ' copied to bar ' + to.map((b) => b + 1).join(', ') + '.'); }
+function copyCancel() { st.copyFrom = null; st.copyTo = []; renderEdit(); }
+function nextSection() { const sg = song(); if (st.sec + 1 >= sg.sections.length) return; st.sec++; st.copyFrom = null; openEdit(st.ePart, 0); }
 function backToMachine() { change(() => { const sec = secNow(), p = st.ePart; if (sec.barOwn && sec.barOwn[p]) { for (const b of st.sel) delete sec.barOwn[p][b]; if (!Object.keys(sec.barOwn[p]).length) delete sec.barOwn[p]; } }); toast('The chosen bars play the machine again.', { label: 'Undo', fn: undo }); }
 function newIdeaBars() {
   const p = st.ePart, sg = song(); let base;
@@ -3939,14 +3946,16 @@ function renderEdit() {
   const head = h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
     h('button', { class: 'ib', style: 'background:var(--ink);color:var(--onink);border-color:var(--ink)', onclick: closeEdit }, st.from === 'get' ? '← Back to Get it' : '← Done'),
     h('button', { class: 'play', style: 'width:48px;height:48px;font-size:18px;flex:0 0 auto', 'aria-label': AU.playing ? 'Stop' : 'Play this section', title: 'Loops ' + secLabel(st.sec), onclick: () => { if (AU.playing) stopAll(); else { AU.loopBar = null; startPlay(D.sectionStart(sg, st.sec) + st.eBar); } renderEdit(); } }, AU.playing ? '■' : '▶'),
-    h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'), p === 'beat' ? h('span', { style: 'display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)' }, 'Drums in', pluginSel('beat')) : null,
+    h('span', { class: 'dot', style: 'width:14px;height:14px;border-radius:50%;background:var(--' + p + ')' }), h('span', { style: 'font-size:20px;font-weight:700' }, PART_NAMES[p]), h('span', { style: 'color:var(--soft);flex:1' }, 'in ' + secLabel(st.sec) + ' · ' + sec.bars + ' bars'), st.sec + 1 < song().sections.length ? h('button', { class: 'ib', onclick: nextSection, title: 'Done here: on to the next section' }, 'Next section: ' + secLabel(st.sec + 1) + ' →') : null, p === 'beat' ? h('span', { style: 'display:inline-flex;align-items:center;gap:8px;font-size:13px;color:var(--soft)' }, 'Drums in', pluginSel('beat')) : null,
     PARTS.length < 2 ? null : h('nav', { 'aria-label': 'Parts', class: 'seg', style: 'flex-wrap:wrap;border-radius:18px' }, PARTS.map((q) => h('button', { class: q === p ? 'on' : '', 'aria-pressed': q === p ? 'true' : 'false', onclick: () => { st.ePart = q; renderEdit(); } }, PART_NAMES[q]))));
   const bars = h('div', { class: 'card', style: 'width:100%;display:flex;flex-direction:column;gap:12px' },
-    h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
-      h('button', { class: 'ib', onclick: copyNext }, 'Copy to next →'), h('button', { class: 'ib', onclick: newIdeaBars }, '⚄ New idea'), h('button', { class: 'ib', onclick: backToMachine, disabled: !st.sel.some(edited) || null }, 'Back to machine')),
+    h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.copyFrom != null ? 'Tap the bars that should become bar ' + (st.copyFrom + 1) + ', then Paste.' : st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
+      st.copyFrom != null ? h('span', { style: 'display:inline-flex;gap:8px' }, h('button', { class: 'ib', style: 'background:var(--accent);color:#fff;border-color:var(--accent)', onclick: copyPaste, disabled: !st.copyTo.length || null }, 'Paste to ' + st.copyTo.length + ' bar' + (st.copyTo.length === 1 ? '' : 's')), h('button', { class: 'ib', onclick: copyCancel }, 'Cancel')) :
+      h('span', { style: 'display:inline-flex;gap:8px;flex-wrap:wrap' }, h('button', { class: 'ib', onclick: copyPrev, disabled: st.eBar <= 0 || null }, '← Copy to previous'), h('button', { class: 'ib', onclick: copyNext }, 'Copy to next →'), h('button', { class: 'ib', onclick: copyPick, title: 'Copy this bar to bars you tap' }, 'Copy to…')), h('button', { class: 'ib', onclick: newIdeaBars }, '⚄ New idea'), h('button', { class: 'ib', onclick: backToMachine, disabled: !st.sel.some(edited) || null }, 'Back to machine')),
     h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px' }, Array.from({ length: sec.bars }, (_, b) => { const on = st.sel.includes(b), f = b === st.eBar;
       const loopOn = AU.playing && AU.loopBar === b;
-      return h('div', { style: 'position:relative' }, h('button', { 'data-bar': b, style: 'width:100%;position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => selectBar(b) }, h('span', null, (b + 1) + (edited(b) ? ' •' : ''))),
+      return h('div', { style: 'position:relative' }, h('button', { 'data-bar': b, style: 'width:100%;position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => { if (st.copyFrom != null) { if (b === st.copyFrom) return; const i = st.copyTo.indexOf(b); if (i >= 0) st.copyTo.splice(i, 1); else st.copyTo.push(b); renderEdit(); return; } selectBar(b); } }, h('span', null, (b + 1) + (edited(b) ? ' •' : ''))),
+        st.copyFrom != null && st.copyTo.includes(b) ? h('span', { 'aria-hidden': 'true', style: 'position:absolute;inset:-4px;border:2px dashed var(--accent);border-radius:14px;pointer-events:none' }) : null,
         on ? h('button', { class: 'barplay', 'aria-label': loopOn ? 'Stop bar ' + (b + 1) : 'Play only bar ' + (b + 1), title: loopOn ? 'Stop' : 'Play only this bar, on repeat', onclick: (e) => { e.stopPropagation(); playBar(b); } }, loopOn ? '■' : '▶') : null);  })));
   const main = h('main', { class: 'mid', style: 'flex:999 1 560px' }, h('div', { class: 'hint' }, p === 'beat' ? 'Tap a step to add or remove a hit. Press and drag up or down: louder or softer. Grey shapes are the machine’s idea.' : p === 'chords' ? '' : 'Tap a step and a pitch. Press a note and drag: up or down for loudness, left or right for length. Dashed notes are the machine’s idea.'), h('div', { id: 'gridWrap', style: 'width:100%;display:flex;justify-content:center;touch-action:none' }, grid()));
   const side = h('aside', { class: 'right' }, h('section', { class: 'card', style: 'display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab' }, 'Mix · for the chosen bars'), h('span', { style: 'font-weight:600;font-size:14px' }, 'Loudness'),
