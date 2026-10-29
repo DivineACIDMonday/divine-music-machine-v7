@@ -494,7 +494,7 @@ function shadowNotes(p, bar) { const sg = shadowSong(p), R = D.makeRenderer(sg);
   if (song().diy && !ns.length) { const ci = sg.sections.findIndex((x) => x.type === 'chorus' || x.type === 'drop'), vi = ci >= 0 ? ci : sg.sections.findIndex((x) => x.type === 'verse'), at = D.sectionAt(sg, bar);
     if (vi >= 0 && at && vi !== at.i) { try { ns = R.bar(p, D.sectionStart(sg, vi) + at.inBar % sg.sections[vi].bars); } catch (e) { ns = []; } } }
   return ns; }
-function hearShadow() { AU.hearShadow = !AU.hearShadow; if (AU.hearShadow && !AU.playing) { AU.loopBar = null; AU.wholeSong = false; startPlay(D.sectionStart(song(), st.sec)); } renderEdit(); toast(AU.hearShadow ? 'You hear the grey shadow for ' + PART_NAMES[st.ePart].toLowerCase() + ' now. Tap 🎲 for another one.' : 'You hear your own notes again.'); }
+function hearShadow() { AU.hearShadow = !AU.hearShadow; if (AU.hearShadow) { AU.wholeSong = false; AU.loopBar = st.eBar; if (!AU.playing) startPlay(D.sectionStart(song(), st.sec) + st.eBar); } else if (AU.playing && AU.loopBar === st.eBar) { stopAll(); AU.loopBar = null; } renderEdit(); toast(AU.hearShadow ? 'You hear the grey shadow for ' + PART_NAMES[st.ePart].toLowerCase() + ' now. Tap 🎲 for another one.' : 'You hear your own notes again.'); }
 function shadowView() {
   if (song().noShadows) return st.ePart === 'beat' ? { lanes: null } : st.ePart === 'chords' ? null : { notes: [] };
   const sg = JSON.parse(JSON.stringify(song())), sec = sg.sections[st.sec], p = st.ePart; if (sec.barOwn && sec.barOwn[p]) delete sec.barOwn[p][st.eBar];

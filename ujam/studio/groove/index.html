@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 19:25</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 19:30</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3395,7 +3395,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 19:25';
+const VERSION = '2026-10-29 19:30';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3800,7 +3800,7 @@ function shadowNotes(p, bar) { const sg = shadowSong(p), R = D.makeRenderer(sg);
   if (song().diy && !ns.length) { const ci = sg.sections.findIndex((x) => x.type === 'chorus' || x.type === 'drop'), vi = ci >= 0 ? ci : sg.sections.findIndex((x) => x.type === 'verse'), at = D.sectionAt(sg, bar);
     if (vi >= 0 && at && vi !== at.i) { try { ns = R.bar(p, D.sectionStart(sg, vi) + at.inBar % sg.sections[vi].bars); } catch (e) { ns = []; } } }
   return ns; }
-function hearShadow() { AU.hearShadow = !AU.hearShadow; if (AU.hearShadow && !AU.playing) { AU.loopBar = null; AU.wholeSong = false; startPlay(D.sectionStart(song(), st.sec)); } renderEdit(); toast(AU.hearShadow ? 'You hear the grey shadow for ' + PART_NAMES[st.ePart].toLowerCase() + ' now. Tap 🎲 for another one.' : 'You hear your own notes again.'); }
+function hearShadow() { AU.hearShadow = !AU.hearShadow; if (AU.hearShadow) { AU.wholeSong = false; AU.loopBar = st.eBar; if (!AU.playing) startPlay(D.sectionStart(song(), st.sec) + st.eBar); } else if (AU.playing && AU.loopBar === st.eBar) { stopAll(); AU.loopBar = null; } renderEdit(); toast(AU.hearShadow ? 'You hear the grey shadow for ' + PART_NAMES[st.ePart].toLowerCase() + ' now. Tap 🎲 for another one.' : 'You hear your own notes again.'); }
 function shadowView() {
   if (song().noShadows) return st.ePart === 'beat' ? { lanes: null } : st.ePart === 'chords' ? null : { notes: [] };
   const sg = JSON.parse(JSON.stringify(song())), sec = sg.sections[st.sec], p = st.ePart; if (sec.barOwn && sec.barOwn[p]) delete sec.barOwn[p][st.eBar];
