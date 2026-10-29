@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 19:30</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 19:40</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -3375,7 +3375,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 19:30';
+const VERSION = '2026-10-29 19:40';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3776,13 +3776,18 @@ function focusView() {
 // the shadow as sound: what the machine would play for this part on a clean page
 function shadowSong(p) { const sg = JSON.parse(JSON.stringify(song())); sg.parts[p].mode = 'machine'; for (const ty in sg.mat) if (sg.mat[ty]) delete sg.mat[ty][p]; for (const x of sg.sections) if (x.barOwn) delete x.barOwn[p];
   if (song().shadowSeed && song().shadowSeed[p] != null) sg.parts[p].seed = song().shadowSeed[p]; return sg; }
-function shadowNotes(p, bar) { const sg = shadowSong(p), R = D.makeRenderer(sg); let ns = []; try { ns = R.bar(p, bar); } catch (e) { ns = []; }
-  if (song().diy && !ns.length) { const ci = sg.sections.findIndex((x) => x.type === 'chorus' || x.type === 'drop'), vi = ci >= 0 ? ci : sg.sections.findIndex((x) => x.type === 'verse'), at = D.sectionAt(sg, bar);
-    if (vi >= 0 && at && vi !== at.i) { try { ns = R.bar(p, D.sectionStart(sg, vi) + at.inBar % sg.sections[vi].bars); } catch (e) { ns = []; } } }
-  return ns; }
+// DIY shadow for one bar: the machine's idea on a clean page; after a dice roll it may come from another section type of the song
+function shadowRaw(p, bar, asLanes) { const sg = shadowSong(p), R = D.makeRenderer(sg), at = D.sectionAt(sg, bar), pick = song().shadowPick && song().shadowPick[p];
+  const from = (ty) => { const i = sg.sections.findIndex((x) => x.type === ty); return i >= 0 && at ? D.sectionStart(sg, i) + at.inBar % sg.sections[i].bars : null; };
+  const get = (g) => { if (g == null) return null; try { if (asLanes) { const r = D.renderBar(sg, 'beat', g, R.res, { lanes: true }); return r && r.lanes && r.lanes.flat().some(Boolean) ? r.lanes : null; } const ns = R.bar(p, g); return ns.length ? ns : null; } catch (e) { return null; } };
+  let r = pick ? get(from(pick)) : null; if (!r) r = get(bar);
+  if (!r) { const ci = sg.sections.findIndex((x) => x.type === 'chorus' || x.type === 'drop'), vi = ci >= 0 ? ci : sg.sections.findIndex((x) => x.type === 'verse'); if (vi >= 0) r = get(from(sg.sections[vi].type)); }
+  return r; }
+function shadowNotes(p, bar) { return shadowRaw(p, bar, false) || []; }
 function hearShadow() { AU.hearShadow = !AU.hearShadow; if (AU.hearShadow) { AU.wholeSong = false; AU.loopBar = st.eBar; if (!AU.playing) startPlay(D.sectionStart(song(), st.sec) + st.eBar); } else if (AU.playing && AU.loopBar === st.eBar) { stopAll(); AU.loopBar = null; } renderEdit(); toast(AU.hearShadow ? 'You hear the grey shadow for ' + PART_NAMES[st.ePart].toLowerCase() + ' now. Tap 🎲 for another one.' : 'You hear your own notes again.'); }
 function shadowView() {
   if (song().noShadows) return st.ePart === 'beat' ? { lanes: null } : st.ePart === 'chords' ? null : { notes: [] };
+  if (song().diy && st.ePart !== 'chords') { const gb0 = D.sectionStart(song(), st.sec) + st.eBar; if (st.ePart === 'beat') return { lanes: shadowRaw('beat', gb0, true) }; return { notes: shadowNotes(st.ePart, gb0).map((n) => ({ step: Math.round(Math.max(0, n.t) / STEP), d: Math.max(1, Math.round(n.d / STEP)), p: n.p })) }; }
   const sg = JSON.parse(JSON.stringify(song())), sec = sg.sections[st.sec], p = st.ePart; if (sec.barOwn && sec.barOwn[p]) delete sec.barOwn[p][st.eBar];
   if (sg.parts[p].mode === 'yours') { sg.parts[p].mode = 'machine'; for (const ty in sg.mat) if (sg.mat[ty]) delete sg.mat[ty][p]; for (const x of sg.sections) if (x.barOwn) delete x.barOwn[p]; } // the shadow is what the machine would play on a clean page
   if (song().shadowSeed && song().shadowSeed[p] != null) sg.parts[p].seed = song().shadowSeed[p];
@@ -3797,7 +3802,13 @@ function shadowView() {
 }
 // one change, in every chosen bar: the focus bar is changed, the others take it over
 const clearFn = (d, k, N) => { if (st.ePart === 'beat') d.lanes = d.lanes.map((l) => l.map(() => 0)); else if (st.ePart === 'chords') d.bars[k] = null; else d.notes = d.notes.filter((n) => Math.floor(n.s / N) !== k); };
-function shuffleShadow() { const sg = song(), p = st.ePart; change(() => { sg.shadowSeed = Object.assign({}, sg.shadowSeed, { [p]: D.newSeed() }); }); toast('Another ' + PART_NAMES[p].toLowerCase() + ' example in grey. Tap again for more.'); }
+function shuffleShadow() { const sg = song(), p = st.ePart, gb = D.sectionStart(sg, st.sec) + st.eBar, key = () => JSON.stringify(shadowRaw(p, gb, p === 'beat'));
+  const was = key(), keepS = sg.shadowSeed, keepP = sg.shadowPick, types = [...new Set(sg.sections.map((x) => x.type))].filter((t) => t !== 'fill'); let seed = null, pick = null;
+  for (let i = 0; i < 16; i++) { seed = D.newSeed(); pick = Math.random() < 0.35 ? null : types[Math.floor(Math.random() * types.length)];
+    sg.shadowSeed = Object.assign({}, keepS, { [p]: seed }); sg.shadowPick = Object.assign({}, keepP, { [p]: pick }); const k = key(); if (k !== was && k !== 'null') break; }
+  sg.shadowSeed = keepS; sg.shadowPick = keepP;
+  change(() => { sg.shadowSeed = Object.assign({}, keepS, { [p]: seed }); sg.shadowPick = Object.assign({}, keepP, { [p]: pick }); });
+  toast('Another ' + PART_NAMES[p].toLowerCase() + ' example' + (pick && pick !== sg.sections[st.sec].type ? ', in the style of the ' + pick : '') + '. Tap again for more.'); }
 function clearBars() { const n = st.sel.length; editSel(clearFn); toast(n > 1 ? n + ' bars cleared.' : 'Bar ' + (st.eBar + 1) + ' cleared.'); }
 function clearSection() { const sec = secNow(); st.sel = Array.from({ length: sec.bars }, (_, b) => b); editSel(clearFn); st.sel = [st.eBar]; renderEdit(); toast(secLabel(st.sec) + ' cleared for this part. Undo brings it back.'); }
 function editSel(fn) {
