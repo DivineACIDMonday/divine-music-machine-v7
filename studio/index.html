@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-10-29 19:40</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-05 04:50</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
 (function (root) {
@@ -351,7 +351,37 @@ const ELEC = {
   eurodance: { hats: { soft16: 2, h8: 2, h16gap: 1.5, none: 1.5 }, oh: { off: 8, late: 0.5 }, clap: { two4: 4, pick: 2, double: 1 }, perc: { none: 2, rim: 2, tri: 1, shaker: 2 }, rumble: { none: 6, pre: 1 }, snare: 1 },
   ebm: { hats: { off: 3, h8: 2, h16: 1.5, gallop: 1, three: 1 }, oh: { none: 3, one: 1.5, ten: 1 }, clap: { two4: 5, drag: 1.5, double: 1 }, perc: { e5: 2, quad: 2, rim: 1.5, e3: 1.5, shaker: 1 }, rumble: { none: 4, three: 1.5, pre: 1 }, snare: 1 }
 };
+// a kick pattern of k hits spread evenly over n steps, turned by rot: the same law that makes many folk rhythms
+const euclidR = (k, n, rot) => { const o = []; for (let i = 0; i < n; i++) if (((i + rot) * k) % n < k) o.push(i); return o; };
+
+// beats from songs made since beat generation 2 get much more room inside the genre: kick figures, generated hats and perc, rides
+const KICK_W = { acid: { floor: 2.5, push: 2.5, skip: 1.5, broken: 1.8, half: 0.8 }, house: { floor: 6, push: 1.5, skip: 1 }, trance: { floor: 7, push: 1.2 }, eurodance: { floor: 7, push: 1 }, ebm: { floor: 5, push: 1.5, broken: 1 } };
+E.elecBeat2 = function (song, g, p, r) {
+  const W = ELEC[g], N = p[0].length, kv = g === 'ebm' ? 122 : 118, kick = pickW(r, KICK_W[g] || { floor: 1 });
+  const ks = kick === 'half' ? [0, 8] : kick === 'broken' ? r.pick([[0, 4, 7, 12], [0, 6, 8, 12], [0, 4, 10, 12], [0, 3, 8, 11]]) : [0, 4, 8, 12];
+  ks.forEach((s) => setL(p, K, s, kv));
+  if (kick === 'push') r.pick([[11], [14], [7], [15], [10], [3, 11], [6]]).forEach((s) => setL(p, K, s, 84 + r.int(20)));
+  if (kick === 'skip') setL(p, K, r.pick([2, 6, 10, 14]), 96);
+  // hats: half the time from the genre's table, half the time a fresh figure with its own accents
+  if (r.chance(0.35)) { const hats = HAT_P[pickW(r, W.hats)]; for (let s = 0; s < N; s++) { const v = hats(s); if (v) setL(p, HH, s, Math.max(30, v + r.int(8) - 4)); } }
+  else { const k = r.pick([5, 6, 7, 9, 10, 11, 12, 13]), rot = r.int(16), acc = r.pick([2, 3, 4]), hs = euclidR(k, 16, rot);
+    hs.forEach((s, i) => setL(p, HH, s, (i % acc === 0 ? 78 : 46) + r.int(12))); }
+  const oh = r.chance(0.7) ? OH_P[pickW(r, W.oh)] : euclidR(r.pick([2, 3]), 16, r.int(16)).filter((s) => !ks.includes(s));
+  oh.forEach((s) => { setL(p, OH, s, 80 + r.int(14)); setL(p, HH, s, 0); });
+  // clap: mostly the backbeat; acid and ebm may leave it out or move it
+  const cw = Object.assign({}, W.clap); if (g === 'acid' || g === 'ebm') { cw.none = 1.5; cw.four = (cw.four || 0) + 1; }
+  const ck = pickW(r, cw), clap = ck === 'none' ? [[]] : CLAP_P[ck], useSnare = r.chance(W.snare);
+  clap[0].forEach((s) => { setL(p, CP, s, 98 + r.int(8)); if (useSnare) setL(p, SN, s, g === 'ebm' ? 120 : 108); });
+  (clap[1] || []).forEach((s) => setL(p, CP, s, 44 + r.int(16)));
+  if (ck === 'none' && r.chance(0.6)) euclidR(r.pick([2, 3, 5]), 16, r.int(16)).forEach((s) => setL(p, SN, s, 58 + r.int(30)));
+  // perc: from the table, or a generated figure
+  if (r.chance(0.45)) { const perc = PERC_P[pickW(r, W.perc)]; if (perc === 'shaker') { for (let s = 0; s < N; s++) setL(p, PC, s, s % 2 ? 36 + r.int(10) : 50 + r.int(10)); } else perc.forEach((s) => setL(p, PC, s, 62 + r.int(24))); }
+  else euclidR(r.pick([3, 4, 5, 7]), 16, r.int(16)).forEach((s) => setL(p, PC, s, 56 + r.int(30)));
+  const rumble = RUMBLE_P[pickW(r, kick === 'half' ? Object.assign({}, W.rumble, { roll: 3, off: 2 }) : W.rumble)];
+  rumble.forEach((s) => { if (!p[K][s]) setL(p, K2, s, 46 + r.int(16)); });
+};
 E.elecBeat = function (song, g, p, r) {
+  if ((song.beatGen || 1) >= 2) return E.elecBeat2(song, g, p, r);
   const W = ELEC[g], N = p[0].length;
   [0, 4, 8, 12].forEach((s) => setL(p, K, s, g === 'ebm' ? 122 : 118));
   const hats = HAT_P[pickW(r, W.hats)], oh = OH_P[pickW(r, W.oh)], clap = CLAP_P[pickW(r, W.clap)], perc = PERC_P[pickW(r, W.perc)], rumble = RUMBLE_P[pickW(r, W.rumble)];
@@ -750,6 +780,7 @@ E.newSong = function (genre, opts) {
     if (song.key.scale === 'minor' && ['techno', 'house', 'hiphop', 'triphop', 'newwave', 'breakbeat', 'acid', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'dorian';
     else if (song.key.scale === 'major' && ['punk', 'newwave', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'mixolydian'; }
   E.oddLengths(song, rng(hash(song.seed, 'odd')));
+  song.beatGen = 2;
   return song;
 };
 // now and then one section is two bars longer or shorter: an odd length keeps you listening
@@ -3375,7 +3406,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-10-29 19:40';
+const VERSION = '2026-11-05 04:50';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3425,9 +3456,15 @@ function makeSong(genre, opts) {
   st.song = sg; st.hist = []; st.fut = []; st.sec = 0;
   count((opts.diy ? 'diy/' : 'new/') + (opts.noShadows ? 'none' : genre)); save(); closeStart(); render();
 }
-function newSongSame() { const sg = song(); const parts = PARTS.filter((p) => sg.parts[p].mode === 'machine'); if (!parts.length) { toast('Every part is DIY or off, so the dice leave them as they are.'); return; } change(() => { for (const p of parts) sg.parts[p].seed = D.newSeed(); }); toast('New ideas for every Machine part. DIY parts stayed.', { label: 'Undo', fn: undo }); }
+function newSongSame() { const sg = song(); const parts = PARTS.filter((p) => sg.parts[p].mode === 'machine'); if (!parts.length) { toast('Every part is DIY or off, so the dice leave them as they are.'); return; } change(() => { sg.beatGen = 2; sg.curVersion = null; for (const p of parts) sg.parts[p].seed = D.newSeed(); }); toast('New ideas for every Machine part. DIY parts stayed.', { label: 'Undo', fn: undo }); }
 function newStructure() { change(() => { song().sections = D.randomStructure(song(), D.newSeed()); st.sec = 0; }); toast('New structure: ' + song().sections.length + ' sections, ' + D.totalBars(song()) + ' bars.', { label: 'Undo', fn: undo }); }
-function newPart(p) { if (song().parts[p].mode !== 'machine') { toast(PART_NAMES[p] + ' is ' + (song().parts[p].mode === 'off' ? 'off' : 'DIY') + '; the dice only change Machine parts.'); return; } change(() => { song().parts[p].seed = D.newSeed(); }); toast('A new ' + PART_NAMES[p].toLowerCase() + ' idea.', { label: 'Undo', fn: undo }); }
+function verData(sg) { const d = JSON.parse(JSON.stringify(sg)); delete d.versions; delete d.curVersion; return d; }
+function saveVersion() { const sg = song(), vs = sg.versions || []; if (vs.length >= 8) return; const n = 'ABCDEFGH'[vs.length];
+  change(() => { sg.versions = vs.concat([{ n, d: verData(sg) }]); sg.curVersion = vs.length; }); toast('Kept as version ' + n + '. Roll ⚄ for the next idea.'); }
+function loadVersion(i) { const sg = song(), vs = sg.versions || [], v = vs[i]; if (!v) return; const playing = AU.playing;
+  change(() => { const d = JSON.parse(JSON.stringify(v.d)); d.versions = vs; d.curVersion = i; st.song = d; if (st.sec >= d.sections.length) st.sec = 0; });
+  toast('Version ' + v.n + '.'); }
+function newPart(p) { if (song().parts[p].mode !== 'machine') { toast(PART_NAMES[p] + ' is ' + (song().parts[p].mode === 'off' ? 'off' : 'DIY') + '; the dice only change Machine parts.'); return; } change(() => { song().beatGen = 2; song().parts[p].seed = D.newSeed(); }); toast('A new ' + PART_NAMES[p].toLowerCase() + ' idea.', { label: 'Undo', fn: undo }); }
 function setMode(p, m) {
   const sg = song(), P = sg.parts[p]; if (P.mode === m) return;
   change(() => {
@@ -3696,6 +3733,13 @@ function renderLeft() {
       h('select', { 'aria-label': 'Key', title: 'Key', onchange: (e) => change(() => { sg.key.root = +e.target.value; sg.keyAuto = false; }) }, D.NOTE.map((n, i) => h('option', { value: i, selected: i === sg.key.root || null }, n.includes('#') ? n + '/' + D.NOTE[(i + 1) % 12] + 'b' : n))),
       h('select', { 'aria-label': 'Scale', title: 'Scale', onchange: (e) => change(() => { sg.key.scale = e.target.value; sg.keyAuto = false; }) }, Object.keys(D.SCALES).map((k) => h('option', { value: k, selected: k === sg.key.scale || null }, (D.SCALE_NAMES && D.SCALE_NAMES[k]) || k))),
       ' · ' + mmss(len))));
+  const vs = sg.versions || [];
+  el.append(h('section', { class: 'card', id: 'verCard', style: 'display:flex;flex-direction:column;gap:8px' },
+    h('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, h('div', { class: 'lab' }, 'Versions'), h('small', { style: 'color:var(--soft)' }, 'same structure, other ideas')),
+    h('div', { style: 'display:flex;gap:6px;flex-wrap:wrap' },
+      vs.map((v, i) => h('button', { class: 'ib', 'aria-pressed': sg.curVersion === i ? 'true' : 'false', style: 'min-width:44px;height:40px;font-weight:800' + (sg.curVersion === i ? ';background:var(--accent);color:#14151E' : ''), title: 'Listen to version ' + v.n, onclick: () => loadVersion(i) }, v.n)),
+      vs.length < 8 ? h('button', { class: 'ib', style: 'height:40px', title: 'Keep what you hear now as a version', onclick: saveVersion }, '+ Keep as ' + 'ABCDEFGH'[vs.length]) : null,
+      h('button', { class: 'ib', style: 'height:40px', title: 'New ideas for every Machine part, same structure', onclick: newSongSame }, '⚄ Next idea'))));
   el.append(h('section', { class: 'card', id: 'structCard', style: 'display:flex;flex-direction:column;gap:8px' },
     h('div', { style: 'display:flex;justify-content:space-between;align-items:center' }, h('div', { class: 'lab' }, 'Structure'), h('button', { class: 'ib', style: 'height:36px;font-size:13px', onclick: newStructure }, '⚄ New structure')),
     h('div', { class: 'secs', id: 'secs' }, sg.sections.map((x, i) => secRow(sg, x, i))), h('button', { class: 'ib addsec', onclick: addSection }, '+ Add section')));
