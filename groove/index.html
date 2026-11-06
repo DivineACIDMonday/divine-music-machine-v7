@@ -3310,6 +3310,24 @@ E.writeMidi = function (tracks, meta) {
   const out = new Uint8Array(len); out.set(hdr, 0); let o = hdr.length; chunks.forEach((c) => { out.set(c, o); o += c.length; });
   return out;
 };
+// Beat file, only the beat: one track (MIDI type 0) with tempo, meter and the drum notes, no song markers. Chosen once, kept in the browser.
+E.beatOnly = () => { try { return localStorage.getItem('dm_beat_only') === '1'; } catch (e) { return false; } };
+(function () { const full = E.writeMidi;
+  E.writeMidi = function (tracks, meta) {
+    if (!(tracks.length === 1 && ((tracks[0].channel || 0) & 15) === 9 && E.beatOnly())) return full(tracks, meta);
+    const PPQ = E.PPQ, tempo = Math.round(60000000 / meta.bpm), m = E.METERS[meta.meter] || E.METERS['4/4'], den = { 4: 2, 8: 3 }[m.den], tr = tracks[0], nm = str(tr.name || 'Beat');
+    const ev = [{ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) }, { t: 0, b: [0xff, 0x51, 3, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] }, { t: 0, b: [0xff, 0x58, 4, m.num, den, m.den === 8 ? 12 : 24, 8] }];
+    for (const n of tr.notes) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
+    const c = trackBytes(ev), hdr = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (PPQ >> 8) & 255, PPQ & 255], out = new Uint8Array(hdr.length + c.length); out.set(hdr, 0); out.set(c, hdr.length); return out; }; })();
+// the choice sits next to the beat's plugin picker, in every app that has one
+(function () { if (typeof document === 'undefined') return;
+  const add = () => { for (const s of document.querySelectorAll('select[aria-label^="Beat "]')) { if (s.dataset.bo) continue; s.dataset.bo = '1';
+    const l = document.createElement('label'); l.style.cssText = 'display:inline-flex;align-items:center;gap:6px;margin:6px 0 0 8px;font-size:12px;white-space:nowrap;cursor:pointer'; l.title = 'One MIDI track with only the drum notes, no song markers';
+    const c = document.createElement('input'); c.type = 'checkbox'; c.dataset.bo = '1'; c.checked = E.beatOnly();
+    c.onchange = () => { try { localStorage.setItem('dm_beat_only', c.checked ? '1' : '0'); } catch (e) {} document.querySelectorAll('input[data-bo]').forEach((o) => { o.checked = c.checked; }); };
+    l.append(c, document.createTextNode('Beat file: only the beat')); s.insertAdjacentElement('afterend', l); } };
+  const go = () => { add(); new MutationObserver(add).observe(document.body, { childList: true, subtree: true }); };
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); })();
 function trackBytes(ev) {
   ev.sort((a, b) => a.t - b.t || ((a.o == null ? -1 : a.o) - (b.o == null ? -1 : b.o)));
   const body = []; let last = 0;
