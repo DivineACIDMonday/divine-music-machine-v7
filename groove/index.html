@@ -3056,6 +3056,7 @@ E.PLUGINS = {
   xo: { name: 'XLN XO', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
   impact: { name: 'Impact XT', parts: ['beat'], drums: [36, 37, 38, 39, 40, 41, 42, 43] },
   tekno: { name: 'BABY Audio Tekno', parts: ['beat'], drums: [36, 37, 38, 45, 40, 42, 46, 53] },
+  tr909: { name: 'Roland TR-909', parts: ['beat'], drums: [36, 35, 38, 39, 42, 46, 37, 49] }, /* TR-909 Software Rhythm Composer manual: BD 35/36, RS 37, SD 38, CP 39, CH 42, OH 46, LT 41, MT 45, HT 48, CC 49, RC 51. Notes 24 to 33 switch variations and start or stop its sequencer: never sent */
   beatmaker: { name: 'UJAM Beatmaker 3', parts: ['beat'], drums: [36, 38, 40, 43, 45, 48, 52, 59], titles: E.BM_TITLES, loops: E.BM_LOOPS }, /* v3 white keys: Kick 1, Kick 2, Snare 1, Snare 3/Clap, HH 1, HH 3, Perc, Cymbal 1. black keys are loops, never used */
   vdrummer: { name: 'UJAM Virtual Drummer', parts: ['beat'], drums: [36, 41, 38, 40, 42, 46, 37, 49] }, /* Legend, Brute and the rest: Kick, Tom Lo 1 for kick 2, Snare, Snare Rim for the clap (no clap except HOT), HH Close, HH Open, Sidestick for perc, Crash 1 */
   ezdrummer: { name: 'Toontrack EZdrummer 3', parts: ['beat'], drums: [36, 36, 38, 40, 42, 46, 37, 49] }, /* Toontrack default map, GM based: Kick, Kick, Snare, Snare Rimshot for the clap (acoustic kits have no clap), HH Closed, HH Open, Sidestick for perc, Crash */
@@ -3170,6 +3171,8 @@ E.bmHits = function (song, notes, title) {
 E.KITS = {
   vdrummer: { base: ['Kick', 'Kick 2 (Tom Lo 1)', 'Snare', 'Snare Rim', 'HH Close', 'HH Open', 'Sidestick', 'Crash 1'],
     extra: [['HH Pedal', 44, 'HH 2', HH], ['HH Half', 54, 'Perc 3', OH], ['Tom Hi', 45, 'Tom H', PC], ['Tom Lo 2', 43, 'Tom M', PC], ['Tom Lo 1', 41, 'Tom L', PC], ['Ride', 51, 'Cym 2', CR], ['Ride Bell', 53, 'Perc 2', PC], ['Crash 2', 57, 'FX', CR]] },
+  tr909: { base: ['Bass Drum', 'Bass Drum 2', 'Snare Drum', 'Hand Clap', 'Closed HiHat', 'Open HiHat', 'Rim Shot', 'Crash'],
+    extra: [['Low Tom', 41, 'Tom L', PC], ['Mid Tom', 45, 'Tom M', PC], ['High Tom', 48, 'Tom H', PC], ['Ride', 51, 'Cym 2', CR]] },
   tekno: { base: ['kick a', 'kick b', 'snare a', 'clap', 'hat a', 'hat op', 'rimshot', 'crash'],
     extra: [['snare b', 39, 'Sn 2', SN], ['hat b', 41, 'HH 2', HH], ['tom l', 43, 'Tom L', PC], ['tom h', 44, 'Tom H', PC], ['conga l', 47, 'Perc 2', PC], ['conga h', 48, 'Perc 3', PC], ['ride', 49, 'Cym 2', CR], ['tonal', 50, '', PC], ['cowbell', 51, '', PC], ['block', 52, '', PC]] }
 };
@@ -5365,7 +5368,7 @@ function deliveryNo(bump) {
   if (bump) { const hh = songHash(); if (st.lastDeliveredHash !== hh || !st.sessionNo) { n++; store.set('dgm-counter-v1', n); st.sessionNo = n; st.lastDeliveredHash = hh; } return String(st.sessionNo).padStart(3, '0'); }
   return String(st.lastDeliveredHash === songHash() && st.sessionNo ? st.sessionNo : n + 1).padStart(3, '0');
 }
-const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', ezdrummer: 'EZdrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', playbeat: 'Playbeat', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', subcraft: 'Subcraft', score: 'Score', usynth: 'Usynth' };
+const PLUG_SHORT = { plain: '', gm: '', xo: 'XO', impact: 'Impact', tekno: 'Tekno', tr909: 'TR909', beatmaker: 'Beatmaker', vdrummer: 'VDrummer', ezdrummer: 'EZdrummer', beatmaker2: 'Beatmaker2', playbeat: 'Playbeat4', playbeat: 'Playbeat', silk2: 'Silk2', iron2: 'Iron2', cinedream: 'Cinedream', carbon: 'Carbon', royal: 'Royal', slap: 'Slap', subcraft: 'Subcraft', score: 'Score', usynth: 'Usynth' };
 // the genre in every file name, so you see at a glance what it is: DM_Untitled_Acid_Beat_...
 const genreTag = (sg) => ((D.GENRES[sg.genre] || {}).name || sg.genre || '').replace(/[^A-Za-z0-9]+/g, '');
 // the Beatmaker or Usynth title per part, kept with your settings
