@@ -1825,6 +1825,8 @@ E.dnbLoop = function (song, si, sec, inBar, lanes, N, type) {
   lanes[K] = lanes[K].map((v, s) => b.k.includes(s) ? Math.round((s === 0 ? 118 : 106) * soft) : 0);
   if (lanes[K2]) lanes[K2].fill(0); if (lanes[CP]) lanes[CP].fill(0); if (lanes[PC]) lanes[PC].fill(0);
   lanes[SN] = lanes[SN].map((v, s) => b.s.includes(s) ? Math.round(112 * soft) : b.g.includes(s) && type !== 'break' ? 36 : 0);
+  // the drive: in the heavy parts the hats run in eighths, with soft sixteenths in between and an open hat into the next bar; the break and the intro stay liquid
+  if (soft === 1 && lanes[HH]) { const r = rng(hash(song.seed, 'dnbhat', si, inBar)), six = type === 'drop' || type === 'chorus' ? 0.6 : 0.35; lanes[HH] = lanes[HH].map((v, s) => s % 2 === 0 ? Math.max(v, s % 4 === 2 ? 94 : 72) : r.chance(six) ? Math.max(v, 36 + r.int(16)) : v); if (lanes[OH] && r.chance(0.45)) { lanes[OH][14] = Math.max(lanes[OH][14] || 0, 82); lanes[HH][14] = 0; } if (r.chance(0.5)) [3, 7, 11].forEach((s) => { if (!lanes[SN][s] && !lanes[K][s] && r.chance(0.5)) lanes[SN][s] = 30 + r.int(10); }); }
 };
 // the bass and the chords of drum and bass start on the kicks of the loop; the bass glides on to the next kick, the chords are short and soft
 E.dnbLock = function (song, si, sec, inBar, part, notes, BT, type, chord) {
@@ -1833,7 +1835,7 @@ E.dnbLock = function (song, si, sec, inBar, part, notes, BT, type, chord) {
   if (part === 'bass') { // one long sub on the one; a second note on the kick of the three-and only when the harmony moves there
     const at = (t) => { let n = src[0]; for (const x of src) if (x.t <= t + 30) n = x; return n; }, a = at(0), t2 = ons.find((t) => t >= 8 * S && t <= 11 * S), b2 = t2 != null ? at(t2) : null;
     const first = { t: 0, d: BT - 10, p: a.p, v: clamp(Math.max(a.v, 100), 60, 120) };
-    if (b2 && b2.p % 12 !== a.p % 12) { first.d = t2 + 40; return [first, { t: t2, d: BT - t2 - 10, p: b2.p, v: clamp(b2.v, 70, 115) }]; }
+    if (b2 && (b2.p % 12 !== a.p % 12 || type === 'drop' || type === 'chorus')) { first.d = t2 + 40; /* in the drops the sub speaks again on the second kick: it rolls */ return [first, { t: t2, d: BT - t2 - 10, p: b2.p, v: clamp(b2.v, 70, 115) }]; }
     return [first];
   }
   if (inBar % 2 === 1) return []; // the chords: one soft touch every two bars that rings out, the pad carries the rest
@@ -1851,7 +1853,7 @@ E.hatWind = function (song, si, sec, inBar, lanes, N, type, fillBar) {
   const len = 3 + r.int(4), wave = 0.5 + 0.5 * Math.sin(r() * 6.28 + 2 * Math.PI * inBar / len), g = 1 - 0.32 * k * wave;
   const lastPh = ph >= Math.floor((sec.bars - 1) / 8), out = sec.bars >= 16 && !fillBar && type !== 'build' && type !== 'intro' && type !== 'outro' && !lastPh;
   if (lk) {
-    let sh = type === 'drop' || type === 'chorus' ? 1 : 2; if (E.dnbOn(song)) sh = 2; else for (let p = 1; p <= ph; p++) { const rp = pr(p); if (!rp.chance(0.45)) sh = clamp(sh + (rp.chance(0.5) ? 1 : -1), 0, 2); }
+    let sh = type === 'drop' || type === 'chorus' ? 1 : 2; if (E.dnbOn(song)) sh = type === 'drop' || type === 'chorus' ? 0 : type === 'build' || type === 'verse' ? 1 : 2; // drum and bass: running sixteenths in the drops, eighths on the way up, liquid in the calm else for (let p = 1; p <= ph; p++) { const rp = pr(p); if (!rp.chance(0.45)) sh = clamp(sh + (rp.chance(0.5) ? 1 : -1), 0, 2); }
     const keep = (s) => sh === 0 || (sh === 1 ? s % 2 === 0 : s % 4 === 2), base = (s) => s % 4 === 2 ? 74 : s % 2 === 0 ? 58 : 42;
     lanes[HH] = lanes[HH].map((v, s) => keep(s) ? Math.max(16, Math.round(base(s) * g)) : 0);
     if (out && ph > 0 && inPh >= 4 && inPh < 6 && r.chance(0.35 * lk)) lanes[HH].fill(0); // two bars without: the snare and the bass carry
@@ -2311,7 +2313,7 @@ E.band = function (song, si, sec, inBar, part, notes, res, gbar, N, BT, type, ne
   const ST = E.STEP, lanes = E.beatLanesAt(song, gbar, res), kicks = [], acc = new Set(), r = rng(hash(song.seed, 'band', part, gbar));
   if (lanes) for (let s = 0; s < N; s++) { if ((lanes[K][s] || 0) >= 70) { kicks.push(s); acc.add(s); } if ((lanes[SN][s] || 0) >= 80 || (lanes[CP] && lanes[CP][s] >= 80)) acc.add(s); }
   notes = notes.map((n) => Object.assign({}, n));
-  const wind = E.WIND[song.genre] != null ? E.WIND[song.genre] : 0.4, pos = inBar % 4;
+  const wind = song.genre === 'dnb' && !E.CALM_TYPES.includes(type) ? 0.35 : E.WIND[song.genre] != null ? E.WIND[song.genre] : 0.4, pos = inBar % 4; // drum and bass: wind in the calm parts, a tighter line over the drops
   const chR = res(si).ctxChords && res(si).ctxChords.bars[inBar % song.L], lft = song.arr && E.liftOf(song), lsh = lft && si >= lft.from ? lft.by : 0, chH = chR ? Object.assign({}, chR, { root: (((chR.root + lsh) % 12) + 12) % 12 }) : null; // the chord of this bar, as it sounds (the last chorus may sit a step higher)
   // the melody is the wind: notes that flow on, a phrase of four bars that rises, peaks and lands, a breath at its end
   if (part === 'melody' && wind > 0) {
