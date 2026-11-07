@@ -2299,12 +2299,39 @@ E.BASSGROOVE = { triphop: [0.6, 0.35, 0.6], hiphop: [0.7, 0.3, 0.5], dnb: [0.5, 
   blues: [0.3, 0.15, 0.5], chillout: [0.4, 0.15, 0.5], newwave: [0.3, 0.1, 0.4], synthwave: [0.2, 0.05, 0.3], house: [0.2, 0.15, 0.3], techno: [0.15, 0.1, 0.25], club: [0.2, 0.15, 0.3], punk: [0.1, 0, 0.3], trance: [0.1, 0, 0.25], eurodance: [0.1, 0, 0.25],
   minimal: [0.2, 0.15, 0.3], acid: [0, 0, 0], ebm: [0.1, 0, 0.2], dubtechno: [0.2, 0.1, 0.3], ambient: [0, 0, 0.2] };
 E.PUSH = ['funk', 'house', 'newwave', 'eurodance', 'synthwave', 'songwriter', 'garage', 'divine', 'free', 'blues', 'club', 'chillout', 'hiphop', 'triphop', 'dnb', 'breakbeat'];
-E._blc = new WeakMap();
+E._blc = new WeakMap(); E._mlc = new WeakMap();
+// how much each genre lets the melody flow like wind: trip hop and ambient most, punk and acid hardly
+E.WIND = { triphop: 1, chillout: 1, ambient: 1, dub: 0.9, dubtechno: 0.9, songwriter: 0.9, dnb: 0.8, divine: 0.8, blues: 0.7, synthwave: 0.7, trance: 0.6, house: 0.5, newwave: 0.5, hiphop: 0.5, free: 0.5, garage: 0.4, club: 0.4, eurodance: 0.4, breakbeat: 0.4, techno: 0.3, minimal: 0.3, funk: 0.2, ebm: 0.2, punk: 0.1, acid: 0 };
+E.melodyAt = function (song, gbar, res) { if (gbar < 0) return null; let m = E._mlc.get(res); if (!m) { m = {}; E._mlc.set(res, m); } if (!(gbar in m)) { let x = null; try { x = E.renderBar(song, 'melody', gbar, res, {}); } catch (e) { x = null; } m[gbar] = Array.isArray(x) ? x : null; } return m[gbar]; };
+E.padPlays = (A) => !!A && (A.harm === 'pad' || A.harm === 'drone' || A.harm === 'full' && !!A.padToo);
+E.handover = (song, si, inBar) => !!song.arr && inBar < 2 && si > 0 && (E.arrangeOf(song, si) || {}).harm === 'pad' && ['full', 'stabs'].includes((E.arrangeOf(song, si - 1) || {}).harm);
 E.beatLanesAt = function (song, gbar, res) { let m = E._blc.get(res); if (!m) { m = {}; E._blc.set(res, m); } if (!(gbar in m)) { let x = null; try { const o = E.renderBar(song, 'beat', gbar, res, { lanes: true }); x = o && o.lanes ? o.lanes : null; } catch (e) { x = null; } m[gbar] = x; } return m[gbar]; };
 E.band = function (song, si, sec, inBar, part, notes, res, gbar, N, BT, type, nextSec, isLastOfSec) {
   const ST = E.STEP, lanes = E.beatLanesAt(song, gbar, res), kicks = [], acc = new Set(), r = rng(hash(song.seed, 'band', part, gbar));
   if (lanes) for (let s = 0; s < N; s++) { if ((lanes[K][s] || 0) >= 70) { kicks.push(s); acc.add(s); } if ((lanes[SN][s] || 0) >= 80 || (lanes[CP] && lanes[CP][s] >= 80)) acc.add(s); }
   notes = notes.map((n) => Object.assign({}, n));
+  const wind = E.WIND[song.genre] != null ? E.WIND[song.genre] : 0.4, pos = inBar % 4;
+  // the melody is the wind: notes that flow on, a phrase of four bars that rises, peaks and lands, a breath at its end
+  if (part === 'melody' && wind > 0) {
+    notes.sort((a, b) => a.t - b.t);
+    if (pos === 0 && notes.length && notes[0].t >= ST && notes[0].t <= 3 * ST && r.chance(0.5 * wind)) { const f = notes[0]; f.d += f.t; f.t = 0; } // the phrase starts on the one
+    if (pos === 2 && notes.length >= 3 && r.chance(0.45 * wind)) { const k = 1 + r.int(notes.length - 2), a = notes[k - 1], b = notes[k]; if (b.t - a.t <= 4 * ST) { a.d = Math.max(a.d, b.t + b.d - a.t); notes.splice(k, 1); } } // two short notes become one long one: the line changes, the gust holds
+    notes.forEach((n, k) => { const nx = notes[k + 1], to = nx ? nx.t - 10 : BT - 10, gap = to - (n.t + n.d); if (gap > 0 && (nx ? gap <= 4 * ST : pos !== 3)) n.d += Math.round(gap * wind); }); // legato: it rings into the next note
+    if (pos === 3 && wind >= 0.5) { notes = notes.filter((n) => n.t < 12 * ST); notes.forEach((n) => { if (n.t + n.d > 12 * ST) n.d = Math.max(30, 12 * ST - n.t); }); } // the breath at the end of the phrase
+    const arc = [0, 4, 7, -5][pos]; notes.forEach((n) => { n.v = clamp(n.v + arc, 20, 127); });
+  }
+  // the answer is the scent on the path: it speaks where the melody breathes, with a piece of her own line
+  if (part === 'answer' && !(E.streamK(song) >= 0.8 || E.hypnoOf(song))) { // the long voices over a stream or a pulse keep floating as they are
+    const mel = E.melodyAt(song, gbar, res) || [], busy = (t, d) => mel.some((m) => t < m.t + m.d - 20 && t + d > m.t + 20);
+    notes = notes.filter((n) => !busy(n.t, n.d));
+    const pcs = melodyScale(song).slice().sort((a, b) => a - b), down = (p, k) => { let q = p; for (let i = 0; i < k; i++) { q--; while (!pcs.includes(((q % 12) + 12) % 12)) q--; } return q; };
+    const src = mel.length ? mel : (E.melodyAt(song, gbar - 1, res) || []);
+    if (notes.length >= 3 && new Set(notes.map((n) => n.p)).size === 1 && src.length) notes.forEach((n, k) => { n.p = down(src[k % src.length].p, 2); }); // no single tone over and over: her notes, a third lower
+    if (!notes.length && mel.length && wind > 0) { const last = mel.reduce((a, m) => Math.max(a, m.t + m.d), 0); if (BT - last >= 6 * ST && r.chance(0.35 + 0.4 * wind)) { const tail = mel.slice(-2); let t = last + ST; tail.forEach((m) => { if (t + 2 * ST <= BT) { notes.push({ t, d: 2 * ST - 10, p: down(m.p, 2), v: Math.round(m.v * 0.7) }); t += 2 * ST; } }); } } // an echo in her breath
+  }
+  // chords and pad hand over: the chords fade out over two bars while the pad swells in
+  if (part === 'chords' && E.handover(song, si, inBar)) notes.forEach((n) => { n.v = Math.round(n.v * (inBar === 0 ? 0.6 : 0.35)); });
+  if (part === 'pad' && inBar < 2 && si > 0 && !E.padPlays(E.arrangeOf(song, si - 1))) notes.forEach((n) => { n.v = Math.round(n.v * (inBar === 0 ? 0.7 : 0.85)); });
   const turn = nextSec && isLastOfSec && nextSec.type !== sec.type, cc = res(si).ctxChords, lb = inBar % song.L, ch = cc && cc.bars[lb];
   const nres = turn && song.sections[si + 1] ? res(si + 1) : null, nch = nres && nres.ctxChords ? nres.ctxChords.bars[0] : cc && cc.bars[(lb + 1) % song.L];
   if (part === 'bass' && N === 16) {
@@ -2365,7 +2392,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (mach && part === 'beat' && A.beatDrop && A.beatDrop.includes(inBar)) return opts.lanes ? { lanes: mat.lanes.map((l) => l.map(() => 0)) } : []; // the beat drops out, the bass carries on
   const stopTime = mach && A.stoptime && inBar < A.stoptime; // the form: drums later in a ballad, the bass alone in a breakdown
   const padOn = song.parts.pad.mode !== 'off';
-  if (mach && part === 'chords' && (A.harm === 'none' || (A.harm === 'pad' || A.harm === 'drone') && padOn)) return [];
+  if (mach && part === 'chords' && (A.harm === 'none' || (A.harm === 'pad' || A.harm === 'drone') && padOn) && !E.handover(song, si, inBar)) return []; // the chords hand over to the pad over two bars, not in one go
   if (mach && part === 'pad' && (A.harm === 'none' || A.harm === 'stabs' || A.harm === 'full' && !A.padToo && song.parts.chords.mode !== 'off')) return [];
   if (mach && (part === 'melody' || part === 'answer') && A.lead === 'chords') return [];
   if (mach && part === 'answer' && A.lead === 'riff') return [];
@@ -2485,7 +2512,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (mach && E.beachOf(song) && part !== 'beat' && notes.length) { const br = rng(hash(song.seed, 'breath', si)), len = 2 + br.int(3), ph = br() * Math.PI, g = 0.9 + 0.1 * Math.sin(ph + Math.PI * 2 * inBar / len); notes = notes.map((n) => Object.assign({}, n, { v: clamp(Math.round(n.v * g), 16, 127) })); } // everything breathes together, a slow uneven breath
   if (song.genre === 'divine' && part !== 'beat' && part !== 'pad' && !bo) notes = notes.map((n) => Object.assign({}, n, { v: Math.min(127, Math.round(n.v * 1.12 + 4)) })); // Divine Monday plays with a bit more bite
   if (part === 'pad' && song.genre === 'divine' && !bo && !lastBar && song.parts.pad.mode !== 'off' && !(E.partIsOff && E.partIsOff(sec, inBar, part))) notes = notes.concat(E.lightC(song, inBar, res(si).ctxChords && res(si).ctxChords.bars[lb], si));
-  if (part !== 'beat' && notes.length && song.arr && !bo && !lastBar && E.machineish(song, sec, part) && !stopTime) notes = E.band(song, si, sec, inBar, part, notes, res, gbar, N, BT, type, nextSec, isLastOfSec);
+  if (part !== 'beat' && (notes.length || part === 'answer') && song.arr && !bo && !lastBar && E.machineish(song, sec, part) && !stopTime) notes = E.band(song, si, sec, inBar, part, notes, res, gbar, N, BT, type, nextSec, isLastOfSec);
   const felt = E.applyFeel(song, part, notes, gbar, opts);
   return mach && part !== 'beat' && E.streamOf(song) ? E.streamCalm(song, part, felt) : felt;
 };
