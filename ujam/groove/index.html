@@ -2329,13 +2329,13 @@ E.band = function (song, si, sec, inBar, part, notes, res, gbar, N, BT, type, ne
   }
   // the answer is the scent on the path: it speaks where the melody breathes, with a piece of her own line
   if (part === 'answer' && !(E.streamK(song) >= 0.8 || E.hypnoOf(song))) { // the long voices over a stream or a pulse keep floating as they are
-    const mel = E.melodyAt(song, gbar, res) || [], busy = (t, d) => mel.some((m) => t < m.t + m.d - 20 && t + d > m.t + 20);
+    const mel = E.melodyAt(song, gbar, res) || [], busy = (t, d) => mel.some((m) => m.t < t + Math.min(d, 2 * ST) && m.t > t - 2 * ST); // only her words count, not the note she holds: he may answer while she holds a long tone
     notes = notes.filter((n) => !busy(n.t, n.d));
     const pcs = melodyScale(song).slice().sort((a, b) => a - b), down = (p, k) => { let q = p; for (let i = 0; i < k; i++) { q--; while (!pcs.includes(((q % 12) + 12) % 12)) q--; } return q; };
     const src = mel.length ? mel : (E.melodyAt(song, gbar - 1, res) || []);
     if (notes.length && src.length) { const tail = src.slice().sort((a, b) => a.t - b.t).slice(-Math.max(2, Math.min(4, notes.length))); notes.forEach((n, k) => { let p = down(tail[k % tail.length].p, 2); while (p - n.p > 6) p -= 12; while (n.p - p > 6) p += 12; n.p = p; }); } // locked to her: the answer sings her last notes back, a third lower, in its own register
     const acp = chH ? E.chordPcs(chH) : null; if (acp) notes.forEach((n) => { if (Math.round(n.t / ST) % 4 === 0) n.p = E.snapTo(n.p, acp, 2); });
-    if (!notes.length && mel.length && wind > 0) { const last = mel.reduce((a, m) => Math.max(a, m.t + m.d), 0); if (BT - last >= 6 * ST && r.chance(0.35 + 0.4 * wind)) { const tail = mel.slice(-2); let t = last + ST; tail.forEach((m) => { if (t + 2 * ST <= BT) { notes.push({ t, d: 2 * ST - 10, p: down(m.p, 2), v: Math.round(m.v * 0.7) }); t += 2 * ST; } }); } } // an echo in her breath
+    if (!notes.length && mel.length && wind > 0) { const last = mel.reduce((a, m) => Math.max(a, m.t), 0) + 2 * ST; if (BT - last >= 4 * ST && r.chance(0.35 + 0.4 * wind)) { const tail = mel.slice(-2); let t = last; tail.forEach((m) => { if (t + 2 * ST <= BT) { notes.push({ t, d: 2 * ST - 10, p: down(m.p, 2), v: Math.round(m.v * 0.7) }); t += 2 * ST; } }); } } // an echo in her breath
   }
   // chords and pad hand over: the chords fade out over two bars while the pad swells in
   if (part === 'chords' && E.handover(song, si, inBar)) notes.forEach((n) => { n.v = Math.round(n.v * (inBar === 0 ? 0.6 : 0.35)); });
