@@ -2366,6 +2366,8 @@ E.band = function (song, si, sec, inBar, part, notes, res, gbar, N, BT, type, ne
   }
   // the melody takes a breath before a new section
   if (part === 'melody' && turn && r.chance(0.5)) { notes = notes.filter((n) => n.t < BT / 2); notes.forEach((n) => { if (n.t + n.d > BT / 2) n.d = Math.max(30, BT / 2 - n.t - 10); }); }
+  // the melody owns the top: chords and pad stay under her, so the ear follows her line and not the top of a chord
+  if ((part === 'chords' || part === 'pad') && notes.length && !E.hypnoOf(song)) { const mel = E.melodyAt(song, gbar, res); if (mel && mel.length) { const ceil = Math.min(...mel.map((m) => m.p)) - 2, floor = part === 'pad' ? 45 : 48; notes.forEach((n) => { while (n.p > ceil && n.p - 12 >= floor) n.p -= 12; }); const seen = new Set(); notes = notes.filter((n) => { const k = n.t + ':' + n.p; if (seen.has(k)) return false; seen.add(k); return true; }); } }
   // one accent map: everyone leans a little on the kick and the snare, and plays a touch softer in between
   if (acc.size && part !== 'pad') notes.forEach((n) => { const s = Math.round(n.t / ST); if (acc.has(s)) n.v = Math.min(127, n.v + 6); else if (s % 2 === 1) n.v = Math.max(20, n.v - 4); });
   return notes;
