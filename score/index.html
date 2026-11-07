@@ -299,7 +299,12 @@ S.STYLE_ORDER = ['comedy', 'light', 'docu', 'romance', 'euphoric', 'ecstasy', 'g
   'dark', 'depressed', 'suspense', 'horror', 'noir', 'confused', 'avant', 'heartbreak', 'lonely', 'grief', 'rage', 'danger', 'dawn', 'dusk', 'goingdown', 'dystopia', 'thriller', 'plot', 'adventure', 'showdown', 'countdown', 'commuting', 'trafficjam', 'insult', 'explosion', 'vesuvius', 'eruption', 'sinkhole', 'void', 'dissolve', 'ether', 'contact', 'encounter'];
 S.ENDINGS = { resolve: 'Resolve', open: 'Cliffhanger', stop: 'Sudden stop' };
 // the feeling of one section: its own, or the feeling of the score
-S.styleOf = (sc, s) => S.STYLES[(s && s.style) || sc.style] || S.STYLES.suspense;
+// two feelings: 'blend' takes the harmony from the first and the motion (rhythm, percussion, camera) from the second; 'journey' travels from the first to the second halfway
+S.MIXES = { blend: 'Together', journey: 'Journey' };
+S.startBar = (sc, s) => { let b = 0; for (const x of sc.sections) { if (x === s) return b; b += x.bars; } return 0; };
+S.styleKeyOf = (sc, s) => { if (s && s.style) return s.style; if (sc.mix && S.STYLES[sc.mix] && sc.mixMode === 'journey' && s && S.startBar(sc, s) >= S.totalBars(sc) / 2) return sc.mix; return sc.style; };
+S.mixed = (A, B) => Object.assign({}, A, { name: A.name + ' + ' + B.name, percs: B.percs, jump: B.jump, tick: B.tick, quietPercs: B.quietPercs, high: B.high || A.high, cam: B.cam, lift: ((A.lift || 0) + (B.lift || 0)) / 2, group: B.group === 'story' ? 'story' : A.group });
+S.styleOf = (sc, s) => { const A = S.STYLES[S.styleKeyOf(sc, s)] || S.STYLES.suspense; return sc.mix && sc.mixMode !== 'journey' && !(s && s.style) && S.STYLES[sc.mix] ? S.mixed(A, S.STYLES[sc.mix]) : A; };
 // hit points: bars of the score (counted as shown) where something happens on screen
 S.hitsOf = (sc) => { const n = S.totalBars(S.view(sc)); return (sc.hits || []).filter((x) => x.bar >= 0 && x.bar < n).sort((a, b) => a.bar - b.bar); };
 S.AMOUNTS = { spice: 'Spice', colour: 'Colour', film: 'Film' };
@@ -349,6 +354,14 @@ S.chordsFor = function (sc) {
     const cb = s.type === 'build' ? 1 : ss.chordBars === 1 && s.type === 'theme' && pr.chance(0.3) ? 2 : ss.chordBars;
     for (let j = 0; j < s.bars; j++) { const d = prog[Math.floor(j / cb) % prog.length]; out.push({ root: (sc.key.root + d[0]) % 12, q: d[1] }); }
   });
+  // the miracle chords of film music: a major chord a third away. The hero walks in on bVI and bVII to the top (minor turns major there);
+  // wonder opens a door with the chromatic mediant, a major chord a major third up or down
+  const HERO = ['glory', 'triumph', 'adventure', 'finale', 'opening', 'risingup', 'broadway', 'euphoric', 'hope', 'newdawn', 'ecstasy'], WONDER = ['docu', 'contact', 'ether', 'utopia', 'dreamy', 'sunrise', 'serenity'];
+  let mb = 0; const K = sc.key.root, M = (iv) => ({ root: (K + iv) % 12, q: 'M', mir: true });
+  v.sections.forEach((s, si) => { const k = S.styleKeyOf(sc, s), mr = rng(hash(sc.seed, 'miracle', si)), prev = v.sections[si - 1];
+    if (HERO.includes(k) && s.type === 'peak' && prev && prev.bars >= 4 && mr.chance(0.7)) { out[mb - 2] = M(8); out[mb - 1] = M(10); out[mb] = M(0); }
+    else if (WONDER.includes(k) && (s.type === 'film' || s.type === 'peak') && mr.chance(0.6)) { out[mb] = sc.key.mode === 'minor' ? M(0) : M(mr.chance(0.5) ? 4 : 8); }
+    mb += s.bars; });
   if (sc.ending === 'open' && out.length) out[out.length - 1] = { root: (sc.key.root + 7) % 12, q: 'M' }; // the cliffhanger ends on the five: the question stays open
   return out;
 };
@@ -402,7 +415,7 @@ S.plays = function (sc, part, s, si, sections) {
 S.LAYERS = [['strA', 'Strings A', 'STRIIIINGS', 'the bed'], ['strB', 'Strings B', 'STRIIIINGS', 'the motion'], ['perA', 'Percs A', 'PERRCS', 'the pulse'], ['perB', 'Percs B', 'PERRCS', 'the power']];
 const CAT = (a, b, c, d, ex) => ({ strA: a, strB: b, perA: c, perB: d, ex: ex || {} });
 const CALM_LIGHT = ['docu', 'romance', 'nostalgic', 'dreamy', 'serenity', 'sunrise', 'light', 'hope', 'void', 'ether', 'dissolve', 'contact', 'sunset', 'dawn', 'utopia', 'newdawn'], CALM_DARK = ['heartbreak', 'lonely', 'grief', 'depressed', 'noir', 'dusk', 'goingdown'];
-S.isCalm = (sc, s) => { const k = (s && s.style) || sc.style; return CALM_LIGHT.includes(k) || CALM_DARK.includes(k); };
+S.isCalm = (sc, s) => { const k = sc.mix && sc.mixMode !== 'journey' && !(s && s.style) && S.STYLES[sc.mix] ? sc.mix : S.styleKeyOf(sc, s); return CALM_LIGHT.includes(k) || CALM_DARK.includes(k); };
 // which kind of Style to load in each track: the categories of the plugins' own Style menus, with a Style to try where we know one
 S.catsOf = function (k) {
   const X = {
@@ -483,6 +496,12 @@ S.layerLevels = function (sc, v, tension, map) {
     else if (type === 'outro') { bb = Math.max(0, 0.6 - f * 1.5) * (calm ? 0.5 : 1); pa = 1 - f * 0.6; }
     L.strA.push(a); L.strB.push(bb); L.perA.push(pa); L.perB.push(pb);
   });
+  // breath: in a long theme or peak, now and then a drop (two bars almost nothing) or a storm (two bars of everything)
+  let b0 = 0; v.sections.forEach((s, si) => { const r = rng(hash(sc.seed, 'breathe', si));
+    if ((s.type === 'theme' || s.type === 'peak') && s.bars >= 8 && r.chance(0.45)) {
+      const storm = s.type === 'peak' && !S.isCalm(sc, s), at = b0 + (storm ? s.bars - 2 : Math.floor(s.bars / 2) - 2);
+      for (let b = at; b < at + 2; b++) { if (storm) { L.strA[b] = 1; L.strB[b] = 1; L.perA[b] = 1; L.perB[b] = 1; } else { L.strA[b] *= 0.7; L.strB[b] = 0; L.perA[b] *= 0.35; L.perB[b] = 0; } } }
+    b0 += s.bars; });
   return L;
 };
 // the camera: the pitch wheel moves between the low and the high section of each plugin
@@ -491,7 +510,9 @@ S.cameraOf = function (sc, map) {
   map.forEach(({ s, j }) => {
     const g = S.styleOf(sc, s).group, f = s.bars > 1 ? j / (s.bars - 1) : 1;
     const T = g === 'dark' ? { intro: -0.6, theme: -0.4, build: -0.3 + 0.5 * f, peak: 0, film: -0.8, outro: -0.5 } : g === 'light' ? { intro: 0.2, theme: 0, build: 0.5 * f, peak: 0.4, film: 0.6, outro: 0.2 } : { intro: 0, theme: -0.2, build: -0.3 + 0.7 * f, peak: 0.2, film: -0.5, outro: 0 };
-    out.push(clamp(T[s.type] + off + (S.styleOf(sc, s).cam || 0), -1, 1));
+    // call and answer: in some themes and peaks the low section calls and the high section answers, two bars each
+    const si = sc.sections.indexOf(s), ca = (s.type === 'theme' || s.type === 'peak') && s.bars >= 4 && rng(hash(sc.seed, 'call', si)).chance(0.4) ? (Math.floor(j / 2) % 2 ? 0.45 : -0.45) : 0;
+    out.push(clamp(T[s.type] + off + ca + (S.styleOf(sc, s).cam || 0), -1, 1));
   });
   return out;
 };
@@ -580,6 +601,8 @@ S.render = function (sc) {
         let key = keys[e.idx != null ? Math.min(e.idx, keys.length - 1) : S.phraseIdx(sc, k, s, si, j, t, ss)];
         if (A && s.type === 'film' && sc.tricks.metals) key = null; // the film moment: only metals hanging in the air
         if ((s.type === 'build' || (ss.tick && s.type === 'theme')) && sc.tricks.ladder && e.idx == null) key = keys[clamp(S.phraseIdx(sc, k, Object.assign({}, s, { type: 'build' }), si, j, t, ss), 0, keys.length - 1)];
+        // the turn: on the fourth bar of a phrase the pulse steps up once, then comes home
+        if (key != null && j % 4 === 3 && s.type !== 'build' && rng(hash(sc.seed, 'turn', k, b)).chance(0.45)) { const i = keys.indexOf(key); if (i >= 0) key = keys[Math.min(keys.length - 1, i + 1)]; }
         ph.set(key, t0, 100);
         if (L[k][b] > 0.01 && (b === 0 || L[k][b - 1] <= 0.01) && j === 0) one(k, b, t0, S.PER.intros[A ? 0 : 1], 100, 480); // an intro where this layer comes in
       }
@@ -625,9 +648,13 @@ S.render = function (sc) {
     }
     out[k].notes.sort((x, y) => x.t - y.t || x.p - y.p);
   });
+  // strings take time to speak, and a chord or phrase choice must arrive before the phrase starts: every note goes 30 ms early (UJAM's own advice)
+  const E = Math.round(0.03 / (60 / sc.bpm) * S.PPQ); ['strA', 'strB', 'perA', 'perB'].forEach((k) => out[k].notes.forEach((n) => { if (n.t >= E) n.t -= E; }));
   return out;
 };
 
+// the advice per track follows the mix: in a blend the percussion takes the second feeling's kind of Style
+S.catsFor = (sc) => { const a = S.catsOf(sc.style); if (!(sc.mix && S.STYLES[sc.mix] && sc.mixMode !== 'journey')) return a; const b = S.catsOf(sc.mix); return { strA: a.strA, strB: a.strB, perA: b.perA, perB: b.perB, ex: Object.assign({}, a.ex, { perA: b.ex.perA, perB: b.ex.perB }) }; };
 /* ---------- what each part plays per section, in words for the lanes ---------- */
 S.summary = function (sc) {
   const v = S.view(sc), r = S.render(sc), BT = S.barTicks(sc), chords = S.chordsFor(sc); let b0 = 0;
@@ -709,7 +736,7 @@ S.tempoMap = function (sc) {
 S.files = function (sc) {
   const r = S.render(sc), meta = { bpm: sc.bpm, meter: sc.meter, markers: r.markers, title: sc.name, tempos: S.tempoMap(sc) };
   const out = [];
-  const cats = S.catsOf(sc.style);
+  const cats = S.catsFor(sc);
   S.LAYERS.forEach(([k, title, plug]) => { const on = k[0] === 's' ? sc.parts.strings.on : sc.parts.percs.on; if (on && r[k].notes.length) out.push({ part: title.replace(' ', ''), data: S.writeMidi([{ name: title + ' for ' + plug + ', Style ' + cats[k], notes: r[k].notes, ccs: r[k].ccs, pbs: r[k].pbs }], meta) }); });
   out.push({ part: 'Structure', data: S.writeMidi([], meta) });
   return out;
@@ -881,8 +908,13 @@ function render() {
   app.append(h('section', { class: 'row' },
     h('div', { class: 'card', style: 'flex:999 1 620px' }, h('div', { class: 'disp' }, 'What should your scene feel like?'),
       S.GROUPS.map(([g, gname]) => h('div', { class: 'grp' }, h('div', { class: 'cap' }, gname),
-        h('div', { class: 'chips' }, S.STYLE_ORDER.filter((k) => S.STYLES[k].group === g).map((k) => h('button', { id: 'style_' + k, class: 'chip feel ' + g + (k === x.style ? ' on' : ''), 'aria-pressed': k === x.style ? 'true' : 'false', title: S.STYLES[k].line, onclick: () => { if (x.fromTrack) { change(() => { x.style = k; }, true); setHint(S.STYLES[k].name + ' colours your track now.'); } else { st.sc = S.newScore(k, { seed: x.seed, name: x.name }); render(); setHint(S.STYLES[k].line); } } }, h('b', null, S.STYLES[k].name), h('span', null, S.STYLES[k].like)))))),
-      h('div', { class: 'muted' }, (x.fromTrack ? 'Your track, feeling ' + style.name.toLowerCase() + '. ' : style.name + ': ') + style.line)),
+        h('div', { class: 'chips' }, S.STYLE_ORDER.filter((k) => S.STYLES[k].group === g).map((k) => h('button', { id: 'style_' + k, class: 'chip feel ' + g + (k === x.style ? ' on' : ''), 'aria-pressed': k === x.style ? 'true' : 'false', title: S.STYLES[k].line, onclick: () => { if (x.fromTrack) { change(() => { x.style = k; }, true); setHint(S.STYLES[k].name + ' colours your track now.'); } else { st.sc = S.newScore(k, { seed: x.seed, name: x.name }); if (x.mix && x.mix !== k) { st.sc.mix = x.mix; st.sc.mixMode = x.mixMode; } render(); setHint(S.STYLES[k].line); } } }, h('b', null, S.STYLES[k].name), h('span', null, S.STYLES[k].like)))))),
+      h('div', { class: 'muted' }, (x.fromTrack ? 'Your track, feeling ' + style.name.toLowerCase() + '. ' : style.name + ': ') + style.line),
+      h('div', { class: 'bar', style: 'margin-top:10px;gap:10px;flex-wrap:wrap;align-items:center' },
+        h('label', { class: 'lab' }, 'Mix with', h('select', { id: 'mixWith', title: 'A second feeling', onchange: (e) => change(() => { const k = e.target.value; if (k) { x.mix = k; x.mixMode = x.mixMode || 'blend'; } else { delete x.mix; } }, true) },
+          [h('option', { value: '' }, 'nothing')].concat(S.STYLE_ORDER.filter((k) => k !== x.style).map((k) => h('option', { value: k, selected: k === x.mix }, S.STYLES[k].name))))),
+        x.mix ? seg('mixMode', Object.entries(S.MIXES), x.mixMode || 'blend', (m) => change(() => { x.mixMode = m; const B = S.STYLES[x.mix]; if (m === 'journey' && B) { const to = Math.round((B.bpm[0] + B.bpm[1]) / 2); x.bpmEnd = Math.abs(to - x.bpm) > 6 ? to : null; } else x.bpmEnd = null; setHint(m === 'journey' ? 'A journey: it starts ' + style.name.toLowerCase() + ' and ends ' + B.name.toLowerCase() + '.' : 'Together: the chords of ' + style.name.toLowerCase() + ', the motion of ' + B.name.toLowerCase() + '.'); }, true), 'How') : null,
+        x.mix ? h('span', { class: 'small muted' }, (x.mixMode === 'journey' ? 'From ' + style.name + ' to ' + S.STYLES[x.mix].name + ', halfway.' : 'The chords of ' + style.name + ', the motion of ' + S.STYLES[x.mix].name + '.')) : null)),
     h('div', { style: 'flex:1 1 300px;display:flex;flex-direction:column;gap:12px;min-width:0' }, h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Start from'),
       h('div', { class: 'two' },
         h('button', { id: 'startFilm', class: 'big' + (!x.fromTrack ? ' on' : ''), onclick: () => { if (x.fromTrack) { st.sc = S.newScore(x.style, { name: x.name }); render(); setHint('A film score from scratch.'); } } }, h('b', null, 'Film score'), h('span', null, 'The machine writes it all')),
@@ -923,7 +955,7 @@ function render() {
     h('div', { class: 'bar' }, h('b', { style: 'color:' + col + ';font-size:16px' }, title), h('span', { class: 'muted small' }, plugin), h('div', { class: 'grow' }),
       h('label', { class: 'switch' }, h('input', { id: 'on_' + part, type: 'checkbox', checked: P.on, onchange: (e) => change(() => { P.on = e.target.checked; }, true) }), h('span', null, P.on ? 'on' : 'off'))),
     h('label', { class: 'lab col' }, 'Where', h('select', { id: 'where_' + part, disabled: !P.on, onchange: (e) => change(() => { P.where = e.target.value; }, true) }, Object.entries(S.WHERE).map(([k, t]) => h('option', { value: k, selected: k === P.where }, t))))); };
-  function tracksCard() { const cats = S.catsOf(x.style), LCOL = { strA: '#F4C177', strB: '#E8A03A', perA: '#9CC7E3', perB: '#6FA8D0' };
+  function tracksCard() { const cats = S.catsFor(x), LCOL = { strA: '#F4C177', strB: '#E8A03A', perA: '#9CC7E3', perB: '#6FA8D0' };
   return h('div', { id: 'setupCard', class: 'card', title: 'Load STRIIIINGS twice and PERRCS twice, give each track this Style, switch Latch off and Sync on Note, and drop each file on bar 1 of its own track.' }, h('div', { class: 'cap' }, 'Your four tracks'),
     h('div', { class: 'col', style: 'gap:4px' }, S.LAYERS.map(([k, title]) => { const p = title.replace(' ', ''); return h('div', { style: 'display:flex;gap:8px;align-items:center;border-left:3px solid ' + LCOL[k] + ';padding-left:8px' },
       h('b', { style: 'color:' + LCOL[k] + ';flex:0 0 74px' }, title), h('span', { style: 'flex:1;min-width:0' }, cats[k]),
