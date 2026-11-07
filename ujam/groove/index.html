@@ -1827,6 +1827,18 @@ E.dnbLoop = function (song, si, sec, inBar, lanes, N, type) {
   lanes[SN] = lanes[SN].map((v, s) => b.s.includes(s) ? Math.round(112 * soft) : b.g.includes(s) && type !== 'break' ? 36 : 0);
   // the drive: in the heavy parts the hats run in eighths, with soft sixteenths in between and an open hat into the next bar; the break and the intro stay liquid
   if (soft === 1 && lanes[HH]) { const r = rng(hash(song.seed, 'dnbhat', si, inBar)), six = type === 'drop' || type === 'chorus' ? 0.6 : 0.35; lanes[HH] = lanes[HH].map((v, s) => s % 2 === 0 ? Math.max(v, s % 4 === 2 ? 94 : 72) : r.chance(six) ? Math.max(v, 36 + r.int(16)) : v); if (lanes[OH] && r.chance(0.45)) { lanes[OH][14] = Math.max(lanes[OH][14] || 0, 82); lanes[HH][14] = 0; } if (r.chance(0.5)) [3, 7, 11].forEach((s) => { if (!lanes[SN][s] && !lanes[K][s] && r.chance(0.5)) lanes[SN][s] = 30 + r.int(10); }); }
+  if (soft === 1) E.dnbBreak(song, si, inBar, lanes, type);
+};
+// the break: drum and bass is a chopped breakbeat, not a hip hop skeleton played fast. Kicks that jump, the backbeat on 2 and 4, ghost snares all around it, a two-bar phrase that keeps changing
+E.dnbBreak = function (song, si, inBar, lanes, type) {
+  const r = rng(hash(song.seed, 'dnbbreak', si, Math.floor(inBar / 2))), rb = rng(hash(song.seed, 'dnbbar', si, inBar)), B = inBar % 2 === 1;
+  const KA = [[0, 10, 13], [0, 6, 10], [0, 2, 10], [0, 7, 10], [0, 10, 11]], KB = [[0, 10, 15], [2, 10], [0, 6, 9], [0, 3, 10, 14], [0, 9, 10]];
+  const ks = (B ? KB : KA)[r.int(5)], ghostPool = [1, 3, 5, 7, 9, 11, 13, 14, 15];
+  lanes[K] = lanes[K].map((v, s) => ks.includes(s) ? (s === 0 ? 118 : s === 10 ? 108 : 96) : 0);
+  lanes[SN] = lanes[SN].map((v, s) => s === 4 || s === 12 ? 114 : 0);
+  const n = 3 + r.int(3); let placed = 0; const order = ghostPool.slice().sort(() => r() - 0.5);
+  for (const s of order) { if (placed >= n) break; if (ks.includes(s) || lanes[SN][s]) continue; lanes[SN][s] = 34 + rb.int(20); placed++; }
+  if (B && (type === 'drop' || type === 'chorus') && rb.chance(0.4)) [13, 14, 15].forEach((s, i) => { if (!ks.includes(s)) lanes[SN][s] = Math.max(lanes[SN][s], 50 + i * 14); }); // a little roll into the next phrase
 };
 // the bass and the chords of drum and bass start on the kicks of the loop; the bass glides on to the next kick, the chords are short and soft
 E.dnbLock = function (song, si, sec, inBar, part, notes, BT, type, chord) {
@@ -1835,6 +1847,7 @@ E.dnbLock = function (song, si, sec, inBar, part, notes, BT, type, chord) {
   if (part === 'bass') { // one long sub on the one; a second note on the kick of the three-and only when the harmony moves there
     const at = (t) => { let n = src[0]; for (const x of src) if (x.t <= t + 30) n = x; return n; }, a = at(0), t2 = ons.find((t) => t >= 8 * S && t <= 11 * S), b2 = t2 != null ? at(t2) : null;
     const first = { t: 0, d: BT - 10, p: a.p, v: clamp(Math.max(a.v, 100), 60, 120) };
+    if (type === 'drop' || type === 'chorus') { const pat = inBar % 2 ? [0, 12, 0, 7, 0, 5, 7, 10] : [0, 0, 12, 0, 7, 0, 10, 7], base = a.p > 45 ? a.p - 12 : a.p; return pat.map((iv, i) => ({ t: i * 2 * S, d: 2 * S - 20, p: base + iv, v: i === 0 ? 112 : i % 2 ? 84 : 98 })); } // the drops: a bass that walks in eighths under the break
     if (b2 && (b2.p % 12 !== a.p % 12 || type === 'drop' || type === 'chorus')) { first.d = t2 + 40; /* in the drops the sub speaks again on the second kick: it rolls */ return [first, { t: t2, d: BT - t2 - 10, p: b2.p, v: clamp(b2.v, 70, 115) }]; }
     return [first];
   }
@@ -2475,6 +2488,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (opts.lanes) return { lanes }; // the grid asks what this bar really plays
     lanes.forEach((l, li) => l.forEach((v, s) => { if (v > 0) notes.push({ t: s * E.STEP, d: E.STEP, lane: li, v }); }));
     if (machine && song.arr && song.genre === 'triphop') notes.forEach((n) => { if (n.lane === SN && n.v >= 80) n.t += 14; }); // laid back: the trip hop snare comes a little late
+    if (machine && song.arr && E.dnbOn(song) && !E.CALM_TYPES.includes(type)) notes.forEach((n) => { if (Math.round(n.t / E.STEP) % 2 === 1) n.t += 12; }); // the break swings a little, like a sampled break
   } else if (lastBar && !bo) { // ending: everyone lands together on the one
     let home = res(si).ctxChords && res(si).ctxChords.bars[0] || { root: song.key.root, q: song.key.scale === 'major' ? 'M' : 'm' };
     if (song.genre === 'divine') home = { root: song.key.root, q: 'M' }; // home, and in light: even a dark track ends on a major chord
