@@ -83,9 +83,10 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-07 07:45</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-07 08:10</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
-/* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
+/* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
+   ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
 (function (root) {
 'use strict';
 const E = {};
@@ -1426,7 +1427,7 @@ E.fpSimilar = function (a, b) {
   const o = same / n; return o >= 0.6 || a.ch === b.ch && o >= 0.35;
 };
 E.freshSong = function (genre, opts) {
-  let recent = []; try { recent = JSON.parse(localStorage.getItem('dmm-recent-songs') || '[]') || []; } catch (e) { recent = []; }
+  let recent = []; try { recent = JSON.parse(localStorage.getItem(E.recentKey()) || '[]') || []; } catch (e) { recent = []; }
   let pick = null;
   for (let k = 0; k < 12; k++) {
     const sg = E.newSong(genre, opts); let fp = null;
@@ -1435,10 +1436,19 @@ E.freshSong = function (genre, opts) {
     if (!recent.some((r) => E.fpSimilar(r, fp))) { pick = { sg, fp }; break; }
   }
   recent.push(pick.fp); recent = recent.slice(-30);
-  try { localStorage.setItem('dmm-recent-songs', JSON.stringify(recent)); } catch (e) {}
+  try { localStorage.setItem(E.recentKey(), JSON.stringify(recent)); } catch (e) {}
   return pick.sg;
 };
 // mystery and hypnosis, for the genres that live on it (trance most, the others milder)
+E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-recent-songs' : 'dmm-recent-songs'); // each app family remembers its own recent songs
+// the groove machine: only the beat, always yours; keep = an existing groove keeps its hits
+E.makeGroove = function (song, keep) {
+  song.dgm = true; if (!song.laneFeel) song.laneFeel = E.LANE_FEEL0();
+  for (const p of E.PARTS) if (p !== 'beat') song.parts[p].mode = 'off';
+  song.parts.beat.mode = 'yours';
+  for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; const m = song.mat[t].beat; if (!keep || !m || m.src !== 'user') song.mat[t].beat = { src: 'user', data: E.emptyMat('beat', song) }; }
+  return song;
+};
 E.MYST = { trance: 1, techno: 0.6, acid: 0.4, dubtechno: 0.5, minimal: 0.6, chillout: 0.4, divine: 0.4 };
 E.hypnoOf = (song) => !!song.arr && E.meter(song).steps === 16 && song.L === 4 && rng(hash(song.seed, 'hypno', song.genre))() < ({ trance: 1, techno: 0.5, acid: 0.3, dubtechno: 0.4, minimal: 0.5, chillout: 0.25, divine: 0.25 }[song.genre] || 0);
 E.pedalOf = (song) => !!song.arr && rng(hash(song.seed, 'pedal', song.genre))() < (E.MYST[song.genre] || 0) * 0.8;
@@ -1792,7 +1802,7 @@ E.resolveType = function (song, type) {
   const basF = rep('bass', bas), melF = rep('melody', mel);
   ctx.bassUser = quiet.bass ? null : basF; ctx.melodyUser = quiet.melody ? null : melF;
   // beat
-  if (P.beat.mode === 'yours' && bea) out.beat = bea;
+  if (P.beat.mode === 'yours' && (bea || song.dgm)) out.beat = bea || E.emptyMat('beat', song); // the groove machine: a section you never touched is empty, the machine only suggests
   else if (P.beat.mode !== 'off') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !quiet.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
   else out.beat = null;
   ctx.beat = out.beat;
@@ -3543,7 +3553,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-11-07 07:45';
+const VERSION = '2026-11-07 08:10';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';

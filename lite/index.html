@@ -718,7 +718,8 @@ a.length>D&&(D=a.length,p=0|1.25*D+7200,r=new Int8Array(p));a=u.lame_encode_buff
 </script>
 <script>window.DMM_LITE = true;</script>
 <script>
-/* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
+/* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
+   ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
 (function (root) {
 'use strict';
 const E = {};
@@ -984,7 +985,37 @@ const ELEC = {
   eurodance: { hats: { soft16: 2, h8: 2, h16gap: 1.5, none: 1.5 }, oh: { off: 8, late: 0.5 }, clap: { two4: 4, pick: 2, double: 1 }, perc: { none: 2, rim: 2, tri: 1, shaker: 2 }, rumble: { none: 6, pre: 1 }, snare: 1 },
   ebm: { hats: { off: 3, h8: 2, h16: 1.5, gallop: 1, three: 1 }, oh: { none: 3, one: 1.5, ten: 1 }, clap: { two4: 5, drag: 1.5, double: 1 }, perc: { e5: 2, quad: 2, rim: 1.5, e3: 1.5, shaker: 1 }, rumble: { none: 4, three: 1.5, pre: 1 }, snare: 1 }
 };
+// a kick pattern of k hits spread evenly over n steps, turned by rot: the same law that makes many folk rhythms
+const euclidR = (k, n, rot) => { const o = []; for (let i = 0; i < n; i++) if (((i + rot) * k) % n < k) o.push(i); return o; };
+
+// beats from songs made since beat generation 2 get much more room inside the genre: kick figures, generated hats and perc, rides
+const KICK_W = { acid: { floor: 2.5, push: 2.5, skip: 1.5, broken: 1.8, half: 0.8 }, house: { floor: 6, push: 1.5, skip: 1 }, trance: { floor: 7, push: 1.2 }, eurodance: { floor: 7, push: 1 }, ebm: { floor: 5, push: 1.5, broken: 1 } };
+E.elecBeat2 = function (song, g, p, r) {
+  const W = ELEC[g], N = p[0].length, kv = g === 'ebm' ? 122 : 118, kick = pickW(r, KICK_W[g] || { floor: 1 });
+  const ks = kick === 'half' ? [0, 8] : kick === 'broken' ? r.pick([[0, 4, 7, 12], [0, 6, 8, 12], [0, 4, 10, 12], [0, 3, 8, 11]]) : [0, 4, 8, 12];
+  ks.forEach((s) => setL(p, K, s, kv));
+  if (kick === 'push') r.pick([[11], [14], [7], [15], [10], [3, 11], [6]]).forEach((s) => setL(p, K, s, 84 + r.int(20)));
+  if (kick === 'skip') setL(p, K, r.pick([2, 6, 10, 14]), 96);
+  // hats: half the time from the genre's table, half the time a fresh figure with its own accents
+  if (r.chance(0.35)) { const hats = HAT_P[pickW(r, W.hats)]; for (let s = 0; s < N; s++) { const v = hats(s); if (v) setL(p, HH, s, Math.max(30, v + r.int(8) - 4)); } }
+  else { const k = r.pick([5, 6, 7, 9, 10, 11, 12, 13]), rot = r.int(16), acc = r.pick([2, 3, 4]), hs = euclidR(k, 16, rot);
+    hs.forEach((s, i) => setL(p, HH, s, (i % acc === 0 ? 78 : 46) + r.int(12))); }
+  const oh = r.chance(0.7) ? OH_P[pickW(r, W.oh)] : euclidR(r.pick([2, 3]), 16, r.int(16)).filter((s) => !ks.includes(s));
+  oh.forEach((s) => { setL(p, OH, s, 80 + r.int(14)); setL(p, HH, s, 0); });
+  // clap: mostly the backbeat; acid and ebm may leave it out or move it
+  const cw = Object.assign({}, W.clap); if (g === 'acid' || g === 'ebm') { cw.none = 1.5; cw.four = (cw.four || 0) + 1; }
+  const ck = pickW(r, cw), clap = ck === 'none' ? [[]] : CLAP_P[ck], useSnare = r.chance(W.snare);
+  clap[0].forEach((s) => { setL(p, CP, s, 98 + r.int(8)); if (useSnare) setL(p, SN, s, g === 'ebm' ? 120 : 108); });
+  (clap[1] || []).forEach((s) => setL(p, CP, s, 44 + r.int(16)));
+  if (ck === 'none' && r.chance(0.6)) euclidR(r.pick([2, 3, 5]), 16, r.int(16)).forEach((s) => setL(p, SN, s, 58 + r.int(30)));
+  // perc: from the table, or a generated figure
+  if (r.chance(0.45)) { const perc = PERC_P[pickW(r, W.perc)]; if (perc === 'shaker') { for (let s = 0; s < N; s++) setL(p, PC, s, s % 2 ? 36 + r.int(10) : 50 + r.int(10)); } else perc.forEach((s) => setL(p, PC, s, 62 + r.int(24))); }
+  else euclidR(r.pick([3, 4, 5, 7]), 16, r.int(16)).forEach((s) => setL(p, PC, s, 56 + r.int(30)));
+  const rumble = RUMBLE_P[pickW(r, kick === 'half' ? Object.assign({}, W.rumble, { roll: 3, off: 2 }) : W.rumble)];
+  rumble.forEach((s) => { if (!p[K][s]) setL(p, K2, s, 46 + r.int(16)); });
+};
 E.elecBeat = function (song, g, p, r) {
+  if ((song.beatGen || 1) >= 2) return E.elecBeat2(song, g, p, r);
   const W = ELEC[g], N = p[0].length;
   [0, 4, 8, 12].forEach((s) => setL(p, K, s, g === 'ebm' ? 122 : 118));
   const hats = HAT_P[pickW(r, W.hats)], oh = OH_P[pickW(r, W.oh)], clap = CLAP_P[pickW(r, W.clap)], perc = PERC_P[pickW(r, W.perc)], rumble = RUMBLE_P[pickW(r, W.rumble)];
@@ -1383,6 +1414,7 @@ E.newSong = function (genre, opts) {
     if (song.key.scale === 'minor' && ['techno', 'house', 'hiphop', 'triphop', 'newwave', 'breakbeat', 'acid', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'dorian';
     else if (song.key.scale === 'major' && ['punk', 'newwave', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'mixolydian'; }
   E.oddLengths(song, rng(hash(song.seed, 'odd')));
+  song.beatGen = 2;
   return song;
 };
 // now and then one section is two bars longer or shorter: an odd length keeps you listening
@@ -2028,7 +2060,7 @@ E.fpSimilar = function (a, b) {
   const o = same / n; return o >= 0.6 || a.ch === b.ch && o >= 0.35;
 };
 E.freshSong = function (genre, opts) {
-  let recent = []; try { recent = JSON.parse(localStorage.getItem('dmm-recent-songs') || '[]') || []; } catch (e) { recent = []; }
+  let recent = []; try { recent = JSON.parse(localStorage.getItem(E.recentKey()) || '[]') || []; } catch (e) { recent = []; }
   let pick = null;
   for (let k = 0; k < 12; k++) {
     const sg = E.newSong(genre, opts); let fp = null;
@@ -2037,10 +2069,19 @@ E.freshSong = function (genre, opts) {
     if (!recent.some((r) => E.fpSimilar(r, fp))) { pick = { sg, fp }; break; }
   }
   recent.push(pick.fp); recent = recent.slice(-30);
-  try { localStorage.setItem('dmm-recent-songs', JSON.stringify(recent)); } catch (e) {}
+  try { localStorage.setItem(E.recentKey(), JSON.stringify(recent)); } catch (e) {}
   return pick.sg;
 };
 // mystery and hypnosis, for the genres that live on it (trance most, the others milder)
+E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-recent-songs' : 'dmm-recent-songs'); // each app family remembers its own recent songs
+// the groove machine: only the beat, always yours; keep = an existing groove keeps its hits
+E.makeGroove = function (song, keep) {
+  song.dgm = true; if (!song.laneFeel) song.laneFeel = E.LANE_FEEL0();
+  for (const p of E.PARTS) if (p !== 'beat') song.parts[p].mode = 'off';
+  song.parts.beat.mode = 'yours';
+  for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; const m = song.mat[t].beat; if (!keep || !m || m.src !== 'user') song.mat[t].beat = { src: 'user', data: E.emptyMat('beat', song) }; }
+  return song;
+};
 E.MYST = { trance: 1, techno: 0.6, acid: 0.4, dubtechno: 0.5, minimal: 0.6, chillout: 0.4, divine: 0.4 };
 E.hypnoOf = (song) => !!song.arr && E.meter(song).steps === 16 && song.L === 4 && rng(hash(song.seed, 'hypno', song.genre))() < ({ trance: 1, techno: 0.5, acid: 0.3, dubtechno: 0.4, minimal: 0.5, chillout: 0.25, divine: 0.25 }[song.genre] || 0);
 E.pedalOf = (song) => !!song.arr && rng(hash(song.seed, 'pedal', song.genre))() < (E.MYST[song.genre] || 0) * 0.8;
@@ -2394,7 +2435,7 @@ E.resolveType = function (song, type) {
   const basF = rep('bass', bas), melF = rep('melody', mel);
   ctx.bassUser = quiet.bass ? null : basF; ctx.melodyUser = quiet.melody ? null : melF;
   // beat
-  if (P.beat.mode === 'yours' && bea) out.beat = bea;
+  if (P.beat.mode === 'yours' && (bea || song.dgm)) out.beat = bea || E.emptyMat('beat', song); // the groove machine: a section you never touched is empty, the machine only suggests
   else if (P.beat.mode !== 'off') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !quiet.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
   else out.beat = null;
   ctx.beat = out.beat;

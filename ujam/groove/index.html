@@ -323,7 +323,8 @@ input[type=range]::-moz-range-thumb{width:15px;height:15px;border-radius:50%;bac
 <input type="file" id="libIn" accept=".json,application/json" class="sr">
 <input type="file" id="scanIn" accept=".mid,.midi,audio/midi" class="sr">
 <script>
-/* Divine Groove Machine engine (from the Divine Music Machine): theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM. */
+/* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
+   ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
 (function (root) {
 'use strict';
 const E = {};
@@ -589,7 +590,37 @@ const ELEC = {
   eurodance: { hats: { soft16: 2, h8: 2, h16gap: 1.5, none: 1.5 }, oh: { off: 8, late: 0.5 }, clap: { two4: 4, pick: 2, double: 1 }, perc: { none: 2, rim: 2, tri: 1, shaker: 2 }, rumble: { none: 6, pre: 1 }, snare: 1 },
   ebm: { hats: { off: 3, h8: 2, h16: 1.5, gallop: 1, three: 1 }, oh: { none: 3, one: 1.5, ten: 1 }, clap: { two4: 5, drag: 1.5, double: 1 }, perc: { e5: 2, quad: 2, rim: 1.5, e3: 1.5, shaker: 1 }, rumble: { none: 4, three: 1.5, pre: 1 }, snare: 1 }
 };
+// a kick pattern of k hits spread evenly over n steps, turned by rot: the same law that makes many folk rhythms
+const euclidR = (k, n, rot) => { const o = []; for (let i = 0; i < n; i++) if (((i + rot) * k) % n < k) o.push(i); return o; };
+
+// beats from songs made since beat generation 2 get much more room inside the genre: kick figures, generated hats and perc, rides
+const KICK_W = { acid: { floor: 2.5, push: 2.5, skip: 1.5, broken: 1.8, half: 0.8 }, house: { floor: 6, push: 1.5, skip: 1 }, trance: { floor: 7, push: 1.2 }, eurodance: { floor: 7, push: 1 }, ebm: { floor: 5, push: 1.5, broken: 1 } };
+E.elecBeat2 = function (song, g, p, r) {
+  const W = ELEC[g], N = p[0].length, kv = g === 'ebm' ? 122 : 118, kick = pickW(r, KICK_W[g] || { floor: 1 });
+  const ks = kick === 'half' ? [0, 8] : kick === 'broken' ? r.pick([[0, 4, 7, 12], [0, 6, 8, 12], [0, 4, 10, 12], [0, 3, 8, 11]]) : [0, 4, 8, 12];
+  ks.forEach((s) => setL(p, K, s, kv));
+  if (kick === 'push') r.pick([[11], [14], [7], [15], [10], [3, 11], [6]]).forEach((s) => setL(p, K, s, 84 + r.int(20)));
+  if (kick === 'skip') setL(p, K, r.pick([2, 6, 10, 14]), 96);
+  // hats: half the time from the genre's table, half the time a fresh figure with its own accents
+  if (r.chance(0.35)) { const hats = HAT_P[pickW(r, W.hats)]; for (let s = 0; s < N; s++) { const v = hats(s); if (v) setL(p, HH, s, Math.max(30, v + r.int(8) - 4)); } }
+  else { const k = r.pick([5, 6, 7, 9, 10, 11, 12, 13]), rot = r.int(16), acc = r.pick([2, 3, 4]), hs = euclidR(k, 16, rot);
+    hs.forEach((s, i) => setL(p, HH, s, (i % acc === 0 ? 78 : 46) + r.int(12))); }
+  const oh = r.chance(0.7) ? OH_P[pickW(r, W.oh)] : euclidR(r.pick([2, 3]), 16, r.int(16)).filter((s) => !ks.includes(s));
+  oh.forEach((s) => { setL(p, OH, s, 80 + r.int(14)); setL(p, HH, s, 0); });
+  // clap: mostly the backbeat; acid and ebm may leave it out or move it
+  const cw = Object.assign({}, W.clap); if (g === 'acid' || g === 'ebm') { cw.none = 1.5; cw.four = (cw.four || 0) + 1; }
+  const ck = pickW(r, cw), clap = ck === 'none' ? [[]] : CLAP_P[ck], useSnare = r.chance(W.snare);
+  clap[0].forEach((s) => { setL(p, CP, s, 98 + r.int(8)); if (useSnare) setL(p, SN, s, g === 'ebm' ? 120 : 108); });
+  (clap[1] || []).forEach((s) => setL(p, CP, s, 44 + r.int(16)));
+  if (ck === 'none' && r.chance(0.6)) euclidR(r.pick([2, 3, 5]), 16, r.int(16)).forEach((s) => setL(p, SN, s, 58 + r.int(30)));
+  // perc: from the table, or a generated figure
+  if (r.chance(0.45)) { const perc = PERC_P[pickW(r, W.perc)]; if (perc === 'shaker') { for (let s = 0; s < N; s++) setL(p, PC, s, s % 2 ? 36 + r.int(10) : 50 + r.int(10)); } else perc.forEach((s) => setL(p, PC, s, 62 + r.int(24))); }
+  else euclidR(r.pick([3, 4, 5, 7]), 16, r.int(16)).forEach((s) => setL(p, PC, s, 56 + r.int(30)));
+  const rumble = RUMBLE_P[pickW(r, kick === 'half' ? Object.assign({}, W.rumble, { roll: 3, off: 2 }) : W.rumble)];
+  rumble.forEach((s) => { if (!p[K][s]) setL(p, K2, s, 46 + r.int(16)); });
+};
 E.elecBeat = function (song, g, p, r) {
+  if ((song.beatGen || 1) >= 2) return E.elecBeat2(song, g, p, r);
   const W = ELEC[g], N = p[0].length;
   [0, 4, 8, 12].forEach((s) => setL(p, K, s, g === 'ebm' ? 122 : 118));
   const hats = HAT_P[pickW(r, W.hats)], oh = OH_P[pickW(r, W.oh)], clap = CLAP_P[pickW(r, W.clap)], perc = PERC_P[pickW(r, W.perc)], rumble = RUMBLE_P[pickW(r, W.rumble)];
@@ -988,6 +1019,7 @@ E.newSong = function (genre, opts) {
     if (song.key.scale === 'minor' && ['techno', 'house', 'hiphop', 'triphop', 'newwave', 'breakbeat', 'acid', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'dorian';
     else if (song.key.scale === 'major' && ['punk', 'newwave', 'free'].includes(genre) && mr.chance(0.2)) song.key.scale = 'mixolydian'; }
   E.oddLengths(song, rng(hash(song.seed, 'odd')));
+  song.beatGen = 2;
   return song;
 };
 // now and then one section is two bars longer or shorter: an odd length keeps you listening
@@ -1633,7 +1665,7 @@ E.fpSimilar = function (a, b) {
   const o = same / n; return o >= 0.6 || a.ch === b.ch && o >= 0.35;
 };
 E.freshSong = function (genre, opts) {
-  let recent = []; try { recent = JSON.parse(localStorage.getItem('dmmu-recent-songs') || '[]') || []; } catch (e) { recent = []; }
+  let recent = []; try { recent = JSON.parse(localStorage.getItem(E.recentKey()) || '[]') || []; } catch (e) { recent = []; }
   let pick = null;
   for (let k = 0; k < 12; k++) {
     const sg = E.newSong(genre, opts); let fp = null;
@@ -1642,10 +1674,19 @@ E.freshSong = function (genre, opts) {
     if (!recent.some((r) => E.fpSimilar(r, fp))) { pick = { sg, fp }; break; }
   }
   recent.push(pick.fp); recent = recent.slice(-30);
-  try { localStorage.setItem('dmmu-recent-songs', JSON.stringify(recent)); } catch (e) {}
+  try { localStorage.setItem(E.recentKey(), JSON.stringify(recent)); } catch (e) {}
   return pick.sg;
 };
 // mystery and hypnosis, for the genres that live on it (trance most, the others milder)
+E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-recent-songs' : 'dmm-recent-songs'); // each app family remembers its own recent songs
+// the groove machine: only the beat, always yours; keep = an existing groove keeps its hits
+E.makeGroove = function (song, keep) {
+  song.dgm = true; if (!song.laneFeel) song.laneFeel = E.LANE_FEEL0();
+  for (const p of E.PARTS) if (p !== 'beat') song.parts[p].mode = 'off';
+  song.parts.beat.mode = 'yours';
+  for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; const m = song.mat[t].beat; if (!keep || !m || m.src !== 'user') song.mat[t].beat = { src: 'user', data: E.emptyMat('beat', song) }; }
+  return song;
+};
 E.MYST = { trance: 1, techno: 0.6, acid: 0.4, dubtechno: 0.5, minimal: 0.6, chillout: 0.4, divine: 0.4 };
 E.hypnoOf = (song) => !!song.arr && E.meter(song).steps === 16 && song.L === 4 && rng(hash(song.seed, 'hypno', song.genre))() < ({ trance: 1, techno: 0.5, acid: 0.3, dubtechno: 0.4, minimal: 0.5, chillout: 0.25, divine: 0.25 }[song.genre] || 0);
 E.pedalOf = (song) => !!song.arr && rng(hash(song.seed, 'pedal', song.genre))() < (E.MYST[song.genre] || 0) * 0.8;
@@ -2036,14 +2077,6 @@ E.barOwnOf = (song, sec, part, b) => (sec && sec.barOwn && sec.barOwn[part] && s
 E.hasBarOwn = (song, sec, part) => !!(sec && sec.barOwn && sec.barOwn[part] && Object.keys(sec.barOwn[part]).some((b) => +b < sec.bars && sec.barOwn[part][b]) && song.parts[part].mode !== 'off');
 // is this part the machine's in this section (machine mode, an untouched copy, or a type you never touched)?
 E.machineish = (song, sec, part) => { if (E.ownOf(song, sec, part)) return false; const P = song.parts[part]; if (P.mode === 'machine') return true; const m = song.mat[sec.type] && song.mat[sec.type][part]; return P.mode === 'yours' && (!m || m.src !== 'user' || !!m.auto); };
-// the groove machine: only the beat, always yours; keep = an existing groove keeps its hits
-E.makeGroove = function (song, keep) {
-  song.dgm = true; if (!song.laneFeel) song.laneFeel = E.LANE_FEEL0();
-  for (const p of E.PARTS) if (p !== 'beat') song.parts[p].mode = 'off';
-  song.parts.beat.mode = 'yours';
-  for (const t of E.TYPE_ORDER) { if (!song.mat[t]) song.mat[t] = {}; const m = song.mat[t].beat; if (!keep || !m || m.src !== 'user') song.mat[t].beat = { src: 'user', data: E.emptyMat('beat', song) }; }
-  return song;
-};
 E.hasOwn = (song, sec) => E.PARTS.some((p) => E.ownOf(song, sec, p));
 // what one section plays: the standard of its type, with its own parts swapped in
 E.resolveSection = function (song, i, base) {
@@ -2433,6 +2466,12 @@ E.renderBar = function (song, part, gbar, res, opts) {
       return E.applyFeel(song, part, notes, gbar, opts);
     }
     const machine = E.machineish(song, sec, 'beat'); // the machine's own material (or an untouched copy) keeps its touches
+    let shaped = false;
+    if (mach && type === 'intro' && A.recipe && A.recipe !== 'hats') { const core = res('chorus').beat; const nl = core && E.introLanes(song, core.lanes, A.recipe, inBar, sec.bars, N, rng(hash(song.seed, 'intro', sec.id))); if (nl) { lanes = nl; E.muteLanes(sec, inBar, lanes); shaped = true; } }
+    if (machine && !shaped) { // the machine follows the energy of the song: calm sections thinner, a break keeps a soft pulse and the kick comes back at its end
+      E.shapeDensity(song, { lanes }, type);
+      if (type === 'break') { E.breakPulse(song, { lanes }, { lanes: mat.lanes }); if (nextSec && sec.bars >= 4 && inBar >= sec.bars - 2) { const last = inBar === sec.bars - 1; (last ? [0, N / 4, N / 2, 3 * N / 4] : [0, N / 2]).forEach((x) => { lanes[K][x] = Math.max(lanes[K][x], last ? 96 : 78); }); } }
+    }
     if (lastBar) { // ending: one clean hit on the one
       const out = [{ t: 0, d: E.STEP, lane: K, v: 118 }];
       out.push({ t: 0, d: E.STEP * 2, lane: CR, v: 100 });
@@ -2446,7 +2485,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
       if (lb === song.L - 1 && r.chance(0.5)) { const cands = [6, 10, 14].filter((s) => s < N && !lanes[K][s] && !lanes[K][s - 1] && !lanes[K][s + 1] && !(lanes[SN][s] >= 90)); if (cands.length) lanes[K][r.pick(cands)] = 82; }
     }
     // a long section moves on every 8 bars, like a DJ or a drummer would: phrase 1 is the base, every next phrase plays it a little different and ends in a short fill
-    if (machine && sec.bars >= 12 && song.genre !== 'ambient' && type !== 'break' && type !== 'fill' && N === 16) {
+    if (machine && !shaped && sec.bars >= 12 && song.genre !== 'ambient' && type !== 'break' && type !== 'fill' && N === 16) {
       const ph = Math.floor(inBar / 8), pr = rng(hash(song.seed, 'phrase', sec.id, ph));
       if (ph > 0) E.phraseVary(lanes, pr, N, ph);
       if (inBar % 8 === 7 && inBar < sec.bars - 2) E.phraseFill(lanes, rng(hash(song.seed, 'pfill', sec.id, ph)), N, song.genre);
@@ -2517,8 +2556,20 @@ E.renderBar = function (song, part, gbar, res, opts) {
       }
     }
   }
+  if (mach && part !== 'beat') {
+    if (part === 'chords' && A.harm === 'stabs') notes = E.stabNotes(song, notes, si, lb, N);
+    else if (part === 'chords' && A.harm === 'drone') notes = E.droneBar(song, lb, BT, A.line, 48);
+    else if (part === 'pad' && A.harm === 'drone') notes = E.droneBar(song, lb, BT, A.line, 50);
+    else if (part === 'bass' && A.lead === 'riff' && notes.length) notes = E.riffBar(song, type, res(si).ctxChords && res(si).ctxChords.bars[lb], lb, BT, N, A.harm === 'drone' || A.harm === 'none');
+    else if (part === 'melody' && A.lead === 'riff') notes = notes.filter((n, k) => k % 2 === 0 || n.t % (E.STEP * 4) === 0 || n.d >= E.STEP * 4); // the riff talks, the melody leaves room
+  }
+  if (part !== 'beat' && !lastBar && !bo && E.machineish(song, sec, part)) notes = E.partEnergy(part, notes, type, N);
+  if (part !== 'beat' && !lastBar && !bo && E.machineish(song, sec, part) && !(sec.laneFx && sec.laneFx[part])) notes = E.repeatVary(song, si, part, notes, inBar, N);
+  if (part !== 'beat') { if (E.partIsOff(sec, inBar, part)) return []; if (!lastBar && !bo) notes = E.partFxApply(song, sec, inBar, part, notes, N); }
+  if (part !== 'beat' && endK && E.STOPS.includes(endK) && song.arr && E.machineish(song, sec, part)) notes = E.stopNotes(part, notes, endK, BT); // the band stops with the drums
+  if (part !== 'beat' && song.arr) { const lift = E.liftOf(song); if (lift && si >= lift.from) notes = notes.map((n) => Object.assign({}, n, { p: n.p + lift.by })); } // the last chorus a step higher
   if (part !== 'beat' && stopTime) notes = E.stopNotes(part, notes, 'hit', BT); // stop time: the band hits the one with the drums
-  if (song.arr && song.raw && !bo && !lastBar) notes = E.rawNotes(song, part, notes, type + ':' + inBar + ':' + sec.bars, N, BT, isLastOfSec && !!nextSec && (!!endK || !!sec.fill && sec.fill !== 'auto' && sec.fill !== 'none'), A && A.boost); // raw: harder accents and pushes
+  if (song.arr && song.raw && !bo && !lastBar) notes = E.rawNotes(song, part, notes, type + ':' + inBar + ':' + sec.bars, N, BT, isLastOfSec && !!nextSec && (!!endK || !!sec.fill && sec.fill !== 'auto' && sec.fill !== 'none'), A && A.boost);
   if (mach && part === 'melody' && A.grow && notes.length && (A.grow >= 2 || song.sections.map((x) => x.type).lastIndexOf(sec.type) === si) && !['blues', 'songwriter', 'hiphop', 'punk', 'ambient', 'dub', 'triphop', 'acid', 'dubtechno', 'minimal'].includes(song.genre)) notes = notes.concat(notes.map((n) => Object.assign({}, n, { p: n.p + 12, v: Math.round(n.v * 0.7) })).filter((n) => n.p <= 96)); // the last big chorus: the lead doubled an octave up
   if (mach && part === 'melody' && notes.length) { // the journey and the echoes
     if (E.hypnoOf(song)) notes = E.hypnoJourney(song, sec, inBar, notes, N);
@@ -2676,6 +2727,81 @@ E.laneFxApply = function (song, sec, b, lanes, N) {
 // the lane mixer: sec.laneOff[bar] is a bit mask of lanes switched off in that bar
 E.laneIsOff = (sec, b, li) => !!(sec && sec.laneOff && (sec.laneOff[b] || 0) & (1 << li));
 E.muteLanes = (sec, b, lanes) => { const m = sec && sec.laneOff && sec.laneOff[b]; if (m) lanes.forEach((l, li) => { if (m & (1 << li)) l.fill(0); }); };
+
+// phase C: the machine's bass, chords, melody and answer follow the energy of the song too.
+// Calm sections keep the notes on the strong beats and play softer; the pad only gets softer. Your own parts stay exactly as you made them.
+E.partEnergy = function (part, notes, type, N) {
+  const d = E.DENSITY[type] != null ? E.DENSITY[type] : 1; if (d >= 1 || !notes.length) return notes;
+  const keep = 0.5 + 0.5 * d, soft = 0.75 + 0.25 * d, ST = E.STEP;
+  let out = notes.map((n) => Object.assign({}, n, { v: clamp(Math.round(n.v * soft), 10, 127) }));
+  if (part === 'pad') return out;
+  const rank = (t) => { const s2 = Math.round(t / ST); return s2 % 4 === 0 ? (s2 === 0 ? -1 : 0) : s2 % 2 === 0 ? 1 : 2; };
+  const times = [...new Set(out.map((n) => n.t))].sort((a, b) => rank(a) - rank(b) || a - b);
+  const n = Math.max(1, Math.round(times.length * keep)), kept = new Set(times.slice(0, n));
+  out = out.filter((x) => kept.has(x.t));
+  if (part === 'bass' || part === 'melody' || part === 'answer') { const ts = [...kept].sort((a, b) => a - b); out.forEach((x) => { const nx = ts.find((t) => t > x.t); const end = nx != null ? nx : N * ST; if (x.d < end - x.t - 10 && d < 0.5) x.d = Math.min(end - x.t - 10, x.d * 2); }); } // what stays rings a little longer
+  return out;
+};
+// a section that comes back (Chorus 2, Verse 2) breathes a little: the machine's bass and answer vary lightly,
+// the melody only in the last bar of a phrase, so the hook stays recognizable. Your own parts and anything you set in the mixer stay as they are.
+E.repeatVary = function (song, si, part, notes, inBar, N) {
+  if (!notes.length || !['bass', 'melody', 'answer'].includes(part)) return notes;
+  const type = song.sections[si].type; let k = 0; for (let i = 0; i < si; i++) if (song.sections[i].type === type) k++;
+  if (!k) return notes; // the first one is the original
+  const hit = part === 'melody' ? inBar % 4 === 3 : part === 'bass' ? inBar % 2 === 1 : inBar % 2 === 0;
+  if (!hit) return notes;
+  const r = rng(hash('again', song.seed, part, si, inBar));
+  const kind = part === 'bass' ? r.pick(['octave', 'repeat', 'octave']) : part === 'melody' ? r.pick(['repeat', 'octave']) : 'mix';
+  return E.varyPart(part, notes.map((n) => Object.assign({}, n)), kind, 1, r, N);
+};
+/* the mixer for the other parts: sec.laneFx[part] with the same fields, sec.laneOff bit 8 and up per part */
+E.MIX_PARTS = ['bass', 'chords', 'pad', 'melody', 'answer'];
+E.mixBit = (key) => (typeof key === 'number' || /^\d+$/.test(key) ? +key : 8 + E.MIX_PARTS.indexOf(key));
+E.partIsOff = (sec, b, part) => E.laneIsOff(sec, b, E.mixBit(part));
+E.PVARKINDS = { mix: 'Mixed', thin: 'Thin out', octave: 'Octave jumps', shift: 'Shift', accent: 'Accents', repeat: 'Repeat notes', stab: 'Short stabs', hold: 'Hold longer', displace: 'Displace' };
+E.PPROGS = { none: 'No progression', in: 'In: thin to full', out: 'Out: full to thin', swell: 'Swell: softer to louder', fade: 'Fade: louder to softer', stair: '2 steps up, 1 back', wave: 'Wave: up, down, up', walk: 'Accent walks', endout: 'Drops out at the end' };
+E.PART_RANGE = { bass: [28, 60], chords: [45, 84], pad: [45, 84], melody: [55, 96], answer: [55, 96] };
+// notes sounding together (a chord) move as one event; the event on the one is never taken away or moved
+function noteEvents(notes) { const m = new Map(); for (const n of notes) { if (!m.has(n.t)) m.set(n.t, []); m.get(n.t).push(n); } return [...m.entries()].sort((a, c) => a[0] - c[0]).map(([t, ns]) => ({ t, ns })); }
+E.varyPart = function (part, notes, kind, amt, r, N) {
+  const ST = E.STEP, BT = N * ST, rg = E.PART_RANGE[part] || [36, 96];
+  let ev = noteEvents(notes); if (!ev.length) return notes;
+  const free = () => ev.filter((e) => e.t > 0);
+  const ops = amt >= 3 ? 3 + r.int(2) : amt === 2 ? 2 : r.chance(0.75) ? 1 : 0;
+  const taken = (t) => ev.some((e) => Math.abs(e.t - t) < ST / 2);
+  if (kind === 'displace') { const k = (amt >= 3 ? 1 + r.int(2) : 1) * 2 * ST, d = r.chance(0.5) ? k : -k; for (const e of free()) { let t = e.t + d; if (t <= 0 || t >= BT) continue; e.ns.forEach((n) => { n.t = t; n.d = Math.min(n.d, BT - t - 10); }); e.t = t; } }
+  else if (kind === 'accent') { for (const e of ev) { const up = r.chance(0.3 + 0.1 * amt); e.ns.forEach((n) => { n.v = clamp(Math.round(n.v * (up ? 1.22 : 0.68 + 0.08 * (3 - amt))), 20, 124); }); } }
+  else if (kind === 'stab') { const pick = amt >= 3 ? ev : ev.filter(() => r.chance(amt === 2 ? 0.6 : 0.35)); pick.forEach((e) => e.ns.forEach((n) => { n.d = Math.min(n.d, ST * 2 - 10); })); }
+  else if (kind === 'hold') { ev.forEach((e, i) => { if (amt < 3 && !r.chance(amt === 2 ? 0.7 : 0.4)) return; const end = i + 1 < ev.length ? ev[i + 1].t : BT; e.ns.forEach((n) => { n.d = Math.max(n.d, end - e.t - 10); }); }); }
+  else for (let i = 0; i < ops; i++) {
+    const k = kind === 'mix' ? r.pick(part === 'chords' || part === 'pad' ? ['thin', 'stab', 'accent'] : ['octave', 'shift', 'repeat', 'thin']) : kind;
+    if (k === 'thin') { const w = free(); if (w.length > 1) { const e = r.pick(w); ev = ev.filter((x) => x !== e); } }
+    else if (k === 'octave') { const w = part === 'chords' || part === 'pad' ? ev : free(); if (w.length) { const e = r.pick(w), up = r.chance(0.5) ? 12 : -12; const okd = (d) => e.ns.every((n) => n.p + d >= rg[0] && n.p + d <= rg[1]); const d = okd(up) ? up : okd(-up) ? -up : 0; e.ns.forEach((n) => { n.p += d; }); } }
+    else if (k === 'shift') { const w = free(); if (w.length) { const e = r.pick(w), t = e.t + r.pick([-1, 1]) * ST; if (t > 0 && t < BT && !taken(t)) { e.ns.forEach((n) => { n.t = t; n.d = Math.min(n.d, BT - t - 10); }); e.t = t; } } }
+    else if (k === 'repeat') { const w = ev.filter((e) => e.ns[0].d >= ST * 2 - 12); if (w.length) { const e = r.pick(w), half = Math.max(ST, Math.round(e.ns[0].d / 2 / ST) * ST), t = e.t + half; if (t < BT && !taken(t)) { const add = e.ns.map((n) => ({ t, d: Math.max(30, n.d - half), p: n.p, v: Math.round(n.v * 0.82) })); e.ns.forEach((n) => { n.d = half - 10; }); ev.push({ t, ns: add }); ev.sort((a, c) => a.t - c.t); } } }
+  }
+  return ev.flatMap((e) => e.ns);
+};
+E.partFxApply = function (song, sec, b, part, notes, N) {
+  const f = sec.laneFx && sec.laneFx[part]; if (!f || !notes.length) return notes;
+  const from = f.from != null ? clamp(f.from, 0, sec.bars - 1) : 0, to = f.to != null ? clamp(f.to, from, sec.bars - 1) : sec.bars - 1;
+  if (b < from || b > to) return notes;
+  const span = Math.max(1, to - from), k = b - from;
+  notes = notes.map((n) => Object.assign({}, n));
+  if (f.rnd && b > 0) { const ev = f.every || 1, cr = ev === 'cr'; const hit = cr ? k % 8 >= 3 : ev === 2 ? k % 2 === 1 : ev === 4 ? k % 4 === 3 : true; if (hit) notes = E.varyPart(part, notes, f.kind || 'mix', f.amt || 1, rng(hash('partfx', f.rnd, part, cr ? Math.floor(k / 8) : b)), N); }
+  if (f.prog && f.prog !== 'none') {
+    const stair = (x) => x - 2 * Math.floor(x / 3), smax = Math.max(1, stair(span), stair(Math.max(0, span - 1)));
+    const p = f.prog === 'stair' ? stair(k) / smax : f.prog === 'wave' ? 0.5 - 0.5 * Math.cos(k / span * Math.PI * 3) : k / span;
+    const ST = E.STEP, w = (t) => { const s = Math.round(t / ST); return s % 4 === 0 ? 0 : s % 2 === 0 ? 1 : 2; };
+    const keepBy = (keep) => { const ev = noteEvents(notes).sort((a, c) => w(a.t) - w(c.t) || a.t - c.t); const n = Math.max(ev.length ? 1 : 0, Math.ceil(ev.length * keep)); const out = new Set(ev.slice(n)); notes = ev.filter((e) => !out.has(e)).flatMap((e) => e.ns); };
+    if (f.prog === 'in' || f.prog === 'stair' || f.prog === 'wave') keepBy(0.25 + 0.75 * p);
+    else if (f.prog === 'out') keepBy(1 - 0.75 * p);
+    else if (f.prog === 'swell' || f.prog === 'fade') { const g = f.prog === 'swell' ? 0.45 + 0.55 * p : 1 - 0.55 * p; notes.forEach((n) => { n.v = clamp(Math.round(n.v * g), 12, 127); }); }
+    else if (f.prog === 'walk') { const ev = noteEvents(notes); if (ev.length) { const acc = ev[k % ev.length]; ev.forEach((e) => e.ns.forEach((n) => { n.v = clamp(Math.round(n.v * (e === acc ? 1.3 : 0.72)), 14, 127); })); } }
+    else if (f.prog === 'endout' && b >= to - 1) notes = [];
+  }
+  return notes;
+};
 // a chosen fill on the last bar of a section
 E.FILLS = { auto: 'Machine fill', none: 'No fill', roll: 'Snare roll', build: 'Build-up roll', drop: 'Kick drops out', stop: 'Stop on the last beat', gift: 'Gift: silence, then crash', crash: 'Crash into next', hit: 'Hit, then silence', half: 'Half time' };
 E.applyFill = function (song, lanes, kind, N, r) {
@@ -2980,7 +3106,7 @@ function smoothNoise(seed, x) { const i = Math.floor(x), f = x - i, a = rng(hash
 E.applyFeel = function (song, part, notes, gbar, opts) {
   if (opts.raw) return notes;
   const f = song.parts[part].feel || { x: 0, y: 0 };
-  const at = part === 'beat' && song.dgm ? E.sectionAt(song, gbar) : null, gr = at ? E.grooveOf(song, at.s) : null, lf = part === 'beat' && song.laneFeel;
+  const at = part === 'beat' ? E.sectionAt(song, gbar) : null, gr = at ? E.grooveOf(song, at.s) : null, lf = part === 'beat' && song.laneFeel;
   let sw = gr && gr.swing != null ? gr.swing : E.swingFor(song, part);
   const shufOn = E.shuffleOf(song); if (E.GENRES[song.genre].shuffle && !shufOn && song.swingManual == null) sw = Math.min(sw, 54); // a straight blues plays straight
   const shuf = shufOn && sw > 50, sa = Math.max(0.8, clamp((sw - 50) / 16.7, 0, 1)); // a shuffle swings the eighths onto the triplet
