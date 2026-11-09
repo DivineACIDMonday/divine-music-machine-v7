@@ -658,7 +658,8 @@ F.waltz = (c, x) => {
 F.aria = (c, x) => {
   const K = x.K, KB = K.m === 'M' ? relKey(K, 5, 'm') : relKey(K, 2, 'M');
   const solos = ['svn', 'svc', 'eh', 'shn', 'ob', 'cl', 'fl', 'vc', 'hn'].filter(i => x.E.has(i));
-  const solo = x.solo && x.E.has(x.solo) ? x.solo : solos.length ? pick(x.r, solos) : 'vln1';
+  const fl = x.feel && (x.feel.leads || []).find(i => x.E.has(i) && i !== 'fl' || (i === 'fl' && x.E.has('fl')));
+  const solo = x.solo && x.E.has(x.solo) ? x.solo : fl ? fl : solos.length ? pick(x.r, solos) : 'vln1';
   const tex = x.era === 'baroque' ? 'continuo' : x.era === 'classical' ? 'alberti' : 'arpeggio';
   const R = P(c, x, { key: K, tpl: TP(x, 'close'), mel: { type: 'close', id: 'RIT', char: 'lyr' }, inten: .45, dyn: .45, tex, sec: 'Ritornello', label: 'Ritornello' });
   const A = [P(c, x, { key: K, tpl: TP(x, 'ante'), mel: { type: 'ante', id: 'AR', char: 'lyr' }, inten: .3, dyn: .45, lead: 'solo:' + solo, tex, sec: 'A', label: 'Aria' }),
@@ -1260,7 +1261,8 @@ function orchPlan(c, ph) {
   const addM = (id, pref) => { if (has(id) && !use.has(id)) { P.mel.push({ id, pref: pref || MPREF[id] || [0] }); use.add(id); return true; } return false; };
   const rest = I < .82 && !ph.final && (ph.lead || 'str') === 'str' && ph.idx % 3 === 1; /* the winds breathe: strings alone for a phrase */
   let lead = ph.lead || 'str';
-  if (lead === 'ww') { const w = ['ob', 'fl', 'cl'].filter(has); lead = w.length ? 'solo:' + w[ph.idx % w.length] : 'str'; }
+  if (lead === 'ww') { const fl = x.feel && (x.feel.leads || []).find(has); const w = ['ob', 'fl', 'cl'].filter(has); lead = fl && (ph.idx % 2 === 0 || !w.length) ? 'solo:' + fl : w.length ? 'solo:' + w[ph.idx % w.length] : 'str'; }
+  if (lead === 'str' && (ph.char === 'lyr' || ph.char === 'slow') && I < .7 && x.feel && ph.idx % 2 === 1) { const fl = (x.feel.leads || []).find(has); if (fl) lead = 'solo:' + fl; }
   if (lead.startsWith('solo:') && !addM(lead.slice(5))) lead = 'str';
   if (ph.melInBass) { lead = 'bass'; }
   if (lead === 'str' || lead === 'tutti') { addM('vln1') || addM('fl') || addM('ob') || addM('cl') || addM('vln2') || addM('hn') || addM('pno'); }
@@ -1274,8 +1276,11 @@ function orchPlan(c, ph) {
     if (lead.startsWith('solo:') && I < .6) { /* solo stays alone */ }
   }
   const addB = (id, pref) => { if (has(id) && !use.has(id)) { P.bass.push({ id, pref }); use.add(id); } };
+  const windSolo = lead.startsWith('solo:') && IM[lead.slice(5)].grp !== 'str';
+  const choir = windSolo && I >= .25 && I < .7 && era !== 'baroque' && ph.idx % 3 === 2 && ['cl', 'hn', 'bsn', 'ob', 'fl'].filter(id => has(id) && !use.has(id)).length >= 2 && !ph.final;
+  P.choir = choir;
   if (lead !== 'bass') addB('vc', [0, -12, 12]); else { addB('vc', [0, 12, -12]); if (I > .4) addB('bsn', [0, 12, -12]); }
-  if (I >= .4 || era === 'baroque') addB('cb', [-12, 0]);
+  if ((I >= .4 || era === 'baroque') && !choir) addB('cb', [-12, 0]);
   if (era === 'baroque' || I >= .55) addB('bsn', [0, -12, 12]);
   if (I >= .86 && era !== 'baroque') { addB('tba', [-12, 0]); addB('btbn', [0, -12]); }
   if (I >= .55 && era !== 'baroque') addB('cbsn', [-12, 0, -24]);
@@ -1283,11 +1288,12 @@ function orchPlan(c, ph) {
   const tex = ph.tex;
   const slow = x.tempo < 96 || ph.char === 'slow' || (ph.stretch || 1) > 1;
   const addI = (id, voices, t, pref) => { if (has(id) && !use.has(id)) { P.inner.push({ id, voices, tex: t, pref: pref || [0] }); use.add(id); return true; } return false; };
+  if (choir) { addI('cl', ['A', 'X'], 'block'); addI('ob', ['A'], 'block'); addI('hn', ['X', 'T'], 'block', [0, -12]); addI('bsn', ['T'], 'block'); P.slow = slow; return P; }
   if (tex === 'alberti') { addI('vln2', ['alb'], 'alberti'); addI('vla', ['X', 'T'], 'block'); }
   else if (tex === 'arpeggio') { if (!addI('vln2', ['arp'], 'arpeggio')) addI('vla', ['arp'], 'arpeggio'); addI('vla', ['X', 'T'], 'block'); }
   else if (tex === 'continuo') { addI('vln2', ['A', 'X'], 'continuo'); addI('vla', ['T'], 'continuo'); }
   else { addI('vln2', ['A', 'X'], tex); addI('vla', ['T'], tex); }
-  if (!use.has('vln1')) addI('vln1', ['A'], tex === 'alberti' || tex === 'arpeggio' ? 'block' : tex);
+  if (!use.has('vln1') && !(windSolo && I < .45)) addI('vln1', ['A'], tex === 'alberti' || tex === 'arpeggio' ? 'block' : tex);
   if (I >= .45 && era !== 'baroque' && !rest) addI('cl', ['A', 'X'], 'block');
   if (((I >= .5 && era !== 'baroque') || (era === 'impressionist' && I >= .3)) && !rest) addI('hn', ['X', 'T'], tex === 'march' ? 'march' : era === 'impressionist' ? 'sustain' : 'block', [0, -12]);
   if (I >= .6 && era !== 'baroque' && !rest) addI('bsn', ['T'], 'block');
