@@ -36,7 +36,13 @@ const fold = (p, lo, hi) => { while (p < lo) p += 12; while (p > hi) p -= 12; re
 JR.timeline = (plan) => { let t = 0; return plan.chapters.map((c, i) => { const s = t; t += (c.bars - (i < plan.chapters.length - 1 ? (c.overlap || 0) : 0)) * BAR; return { start: s, len: c.bars * BAR }; }); };
 
 // energy inside a chapter, u = 0..1
-const eAt = (c, u) => (u < 0.5 ? c.eStart + (c.energy - c.eStart) * (u / 0.5) : c.energy + (c.eEnd - c.energy) * ((u - 0.5) / 0.5));
+const eAt = (c, u) => c.song ? songE(c, u) : (u < 0.5 ? c.eStart + (c.energy - c.eStart) * (u / 0.5) : c.energy + (c.eEnd - c.energy) * ((u - 0.5) / 0.5));
+// a chapter that is a song of its own (Mixed journey): the same curve the planner draws
+function songE(x, u) { const S = x.song; let k = S.findIndex((q) => u < q.u1); if (k < 0) k = S.length - 1; const q = S[k];
+  const f = (u - q.u0) / Math.max(1e-6, q.u1 - q.u0), nx = S[k + 1], pv = S[k - 1];
+  let e = q.e; if (nx && f > 0.75) e = q.e + (nx.e - q.e) * (f - 0.75) / 0.25 * 0.5; if (pv && f < 0.25) e = q.e + (pv.e - q.e) * (0.25 - f) / 0.25 * 0.5;
+  return x.lo + (x.hi - x.lo) * e; }
+const ENGINE_TYPE = { intro: 'intro', verse: 'verse', build: 'build', rise: 'prechorus', chorus: 'chorus', drop: 'drop', peak: 'chorus', break: 'break', fall: 'break', outro: 'outro' };
 const layersAt = (c, u) => { const e = eAt(c, u); return Math.round(clamp(e, 0, 1) * 6); };
 
 // ---------- the four engines, one chapter at a time ----------
@@ -51,6 +57,10 @@ const symFeel = (c) => { const x = c.c;
 function studioSong(E, genreName, c, contentBars, seed, F) {
   const g = GENRE_KEY[genreName] || 'house', song = E.newSong(g, { seed });
   song.bpm = F; song.bpmAuto = false; song.keyAuto = false; song.key = { root: c.tonic, scale: c.minor ? 'minor' : 'major' }; song.meter = '4/4';
+  if (c.song) { // Mixed journey: the engine writes a real song in the chapter's form, sections on whole 8-bar phrases
+    const secs = []; let at = 0; c.song.forEach((q, k) => { const end = k === c.song.length - 1 ? contentBars : Math.max(at + 8, Math.round(q.u1 * contentBars / 8) * 8);
+      if (end > at) secs.push({ id: 'm' + k, type: ENGINE_TYPE[q.type] || 'verse', bars: end - at }); at = end; });
+    song.sections = secs; return song; }
   const secs = []; for (let b = 0, k = 0; b < contentBars; b += 8, k++) { const u = b / Math.max(1, contentBars), e = eAt(c, u);
     const type = e < 0.35 ? ['intro', 'verse'][k % 2] : e < 0.68 ? ['verse', 'prechorus', 'chorus', 'chorus'][k % 4] : ['drop', 'drop', 'build', 'drop'][k % 4];
     secs.push({ id: 'j' + k, type, bars: Math.min(8, contentBars - b) }); }
@@ -141,7 +151,8 @@ function chapterContent(ctx, plan, i) {
   const percArt = c.lead.machine === 'percussion' ? c.lead : c.guests.find((g) => g.machine === 'percussion') || nearest(JP, 'percussion', c.c);
   out.percStyle = percArt.name;
   if (roles.has('perc') || roles.has('beats')) {
-    const secs = []; for (let b = 0, k = 0; b < contentBars; b += 8, k++) { const e = eAt(c, b / contentBars); secs.push({ type: e < 0.35 ? 'verse' : e < 0.68 ? 'chorus' : 'drop', bars: Math.min(8, contentBars - b) }); }
+    const secs = []; if (c.song) { let at = 0; c.song.forEach((q, k) => { const end = k === c.song.length - 1 ? contentBars : Math.max(at + 8, Math.round(q.u1 * contentBars / 8) * 8); if (end > at) secs.push({ type: ENGINE_TYPE[q.type] || 'verse', bars: end - at }); at = end; }); }
+    else for (let b = 0, k = 0; b < contentBars; b += 8, k++) { const e = eAt(c, b / contentBars); secs.push({ type: e < 0.35 ? 'verse' : e < 0.68 ? 'chorus' : 'drop', bars: Math.min(8, contentBars - b) }); }
     const pr = P.generate({ style: PERC_KEY[percArt.name] || 'minimal', bpm: F, seed, wild: clamp(0.25 + c.energy * 0.6, 0, 1), swing: c.c.warm > 0.3 ? 0.4 : 0, sections: secs });
     out.perc = pr.events.map((e) => ({ t: Math.round(e.t * F / 60 * PPQ), d: 120, voice: e.v, v: e.vel }));
   } else out.perc = [];
@@ -213,7 +224,7 @@ function plays(plan, i, rank, bar, bars) {
   const c = plan.chapters[i], n = plan.chapters.length, np = c.players.length;
   const ph = Math.floor(bar / 8) * 8; let L = Math.max(1, layersAt(c, ph / bars));
   const edge = (i === 0 && bar < 16) || (i === n - 1 && bar >= bars - 16);
-  if (!edge && eAt(c, ph / bars) > 0.15) L = Math.max(L, Math.min(3, np)); // a chapter is never just one dry layer for long
+  if (!edge && eAt(c, ph / bars) > (c.song ? 0.4 : 0.15)) L = Math.max(L, Math.min(3, np)); // a chapter is never just one dry layer for long
   if (L === 1 && bar >= 16) L = 2;
   L = Math.min(L, np);
   if (rank >= L) return false;

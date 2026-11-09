@@ -125,6 +125,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
   <div class="row">
     <button class="btn big" id="rollAll"><svg class="die" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="5" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="11" cy="11" r="1.2" fill="currentColor"/></svg> Roll everything</button>
     <button class="btn" id="reseed" title="Same words, the dice choose again">↻ Same words, new journey</button>
+    <div class="seg" id="mode" title="Deep: one long arc through all chapters. Mixed: every chapter is a song of its own, mixed into the next."><button data-m="deep">Deep journey</button><button data-m="mixed">Mixed journey</button></div>
     <div class="grow"></div>
     <span class="muted small">Tempo</span>
     <select class="pk" id="tempo" aria-label="Tempo"><option value="0">auto</option></select>
@@ -149,6 +150,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 <details class="card how"><summary><span class="st serif">How it works</span></summary><ol>
   <li>Tick your plugins in Your rack. The machine only chooses from your ticks.</li>
   <li>The oracle gives five words. Click a word to roll it again, lock the ones you love.</li>
+  <li>Deep journey is one long arc through all chapters. Mixed journey makes every chapter a song of its own, with its own build, drop and break, mixed into the next.</li>
   <li>Every word becomes a chapter: a leading machine, guests, a feel, a key. Change anything on the cards, or roll it.</li>
   <li>Listen to the sketch in the browser. It plays the journey with simple sounds, your plugins will sound far better.</li>
   <li>Make the journey. Open Rack_Card.txt, load the plugins it names, and drop every file on bar 1.</li>
@@ -177,6 +179,7 @@ const S = {
   minutes: ss.get('journey-min', 40),
   bpm: ss.get('journey-bpm', 0),
   fixed: ss.get('journey-fixed', true),
+  mode: ss.get('journey-mode', 'deep'),
   seed: (Math.random() * 4294967296) >>> 0,
   plan: null,
   ov: [{}, {}, {}, {}, {}],
@@ -219,7 +222,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 // ---------- plan + map ----------
 function replan() {
   const recent = ls.get('journey-recent', []);
-  S.plan = JP.plan(S.words, { fixed: S.fixed, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
+  S.plan = JP.plan(S.words, { mode: S.mode, fixed: S.fixed, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
   stopPlay(); PV = null;
   drawMap(); drawChapters();
 }
@@ -230,6 +233,7 @@ function curve(p) {
   // energy over time, with the opening, the ending and the breaths drawn in
   const pts = [], N = 220, ch = p.chapters;
   for (let k = 0; k <= N; k++) { const t = k / N; let e = Math.max(0.05, Math.min(1, p.arc.f(t)));
+    if (p.mode === 'mixed') { const x = ch.find((q) => t >= q.t0 && t <= q.t1) || ch[ch.length - 1]; pts.push([t, Math.max(0.03, Math.min(1, JP.songEnergy(x, (t - x.t0) / (x.t1 - x.t0))))]); continue; }
     if (t < ch[0].t1 * 0.35) { const u = t / (ch[0].t1 * 0.35); e = p.opening.start * (1 - u) + e * u; }
     const last = ch[ch.length - 1]; if (t > last.t0 + (last.t1 - last.t0) * 0.6) { const u = (t - (last.t0 + (last.t1 - last.t0) * 0.6)) / ((last.t1 - last.t0) * 0.4); e = e * (1 - u) + last.eEnd * u; }
     for (const b of p.breaths) { const c = b.kind === 'between' ? ch[b.at].t0 : ch[b.at].t0 + (ch[b.at].t1 - ch[b.at].t0) * (b.bar / ch[b.at].bars); const d = Math.abs(t - c); if (d < 0.025) e = Math.min(e, 0.04 + d * 8); }
@@ -353,7 +357,7 @@ const HINT = (player) => ({ 'Plain MIDI': 'any instrument you like', 'XO': 'your
   'STRIIIINGS': 'set the Style named in the track, Latch off, Sync on Note', 'Berlin': 'one patch per track, the name tells which; CC70 switches articulations', 'BBC': 'one instrument per track, the name tells which; key switches are in the file',
   'Presence': 'any preset', 'Diva': 'any preset' }[player] || 'switch the plugin to Instrument mode');
 function rackCard(p, res) {
-  const L = ['DIVINE JOURNEY MACHINE . RACK CARD', '', S.words.map((w) => w.word).join(' . ') + '   ' + p.bpm + ' bpm, one tempo for the whole journey', 'Arc: ' + p.arc.name + '. Opens: ' + p.opening.name + '. Ends: ' + p.ending.name + '.', ''];
+  const L = ['DIVINE JOURNEY MACHINE . RACK CARD', '', S.words.map((w) => w.word).join(' . ') + '   ' + p.bpm + ' bpm, one tempo for the whole journey', (p.mode === 'mixed' ? 'Mixed journey: every chapter is a song of its own. ' : 'Deep journey: one long arc. ') + 'Arc: ' + p.arc.name + '. Opens: ' + p.opening.name + '. Ends: ' + p.ending.name + '.', ''];
   p.chapters.forEach((c, i) => { const b0 = Math.round(res.timeline[i].start / JR.BAR) + 1, b1 = b0 + c.bars - 1;
     L.push((i + 1) + '. ' + c.word.toUpperCase() + '   bars ' + b0 + ' to ' + b1 + '   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + ' (feels like ' + c.feelsLike + ' bpm)');
     L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
@@ -442,6 +446,9 @@ $('#svg').addEventListener('click', (e) => { const svg = e.target.closest('svg')
 // ---------- controls ----------
 $('#rollAll').onclick = () => { S.words.forEach((w, i) => { if (!S.locks[i]) { rollOne(i); S.ov[i] = {}; } }); S.seed = (Math.random() * 4294967296) >>> 0; drawWords(); replan(); };
 $('#reseed').onclick = () => { S.seed = (Math.random() * 4294967296) >>> 0; replan(); };
+function drawMode() { document.querySelectorAll('#mode button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.m === S.mode ? 'true' : 'false')); }
+document.querySelectorAll('#mode button').forEach((b) => { b.onclick = () => { S.mode = b.dataset.m; ss.set('journey-mode', S.mode); drawMode(); replan(); }; });
+drawMode();
 function drawLen() { document.querySelectorAll('#len button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.m === S.minutes ? 'true' : 'false')); }
 document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.minutes = +b.dataset.m; ss.set('journey-min', S.minutes); drawLen(); replan(); }; });
 (() => { const t = $('#tempo'); for (let b = 90; b <= 134; b += 2) t.add(new Option(b + ' bpm', b)); t.value = String(S.bpm || 0);

@@ -162,6 +162,20 @@ JP.popularity = (allWords) => { if (POP) return POP; if (!allWords) return JP.AR
     const e = JP.ARTS.map((a) => Math.exp(-JP.dist(c, a.v) * 1.5)), s = e.reduce((x, y) => x + y, 0); e.forEach((v, i) => { tot[i] += v / s; }); }
   const mean = tot.reduce((x, y) => x + y, 0) / tot.length; POP = tot.map((t) => Math.pow(mean / t, 0.8)); return POP; };
 
+// ---------- song forms for a Mixed journey: [section, weight] ----------
+JP.SONGS = {
+  club: [['intro', 2], ['build', 2], ['drop', 3], ['break', 1.5], ['build', 1.5], ['drop', 3.5], ['outro', 2]],
+  verse: [['intro', 1.5], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1.5], ['chorus', 2.5], ['outro', 1.5]],
+  slow: [['intro', 2], ['rise', 3], ['peak', 3], ['fall', 2.5], ['outro', 2]],
+};
+JP.SONG_E = { intro: 0.12, verse: 0.5, build: 0.6, rise: 0.55, chorus: 0.88, drop: 1, peak: 1, break: 0.25, fall: 0.4, outro: 0.1 };
+JP.ENGINE_TYPE = { intro: 'intro', verse: 'verse', build: 'build', rise: 'prechorus', chorus: 'chorus', drop: 'drop', peak: 'chorus', break: 'break', fall: 'break', outro: 'outro' };
+// the energy of a song at u (0..1), smooth between sections
+JP.songEnergy = (x, u) => { const S = x.song; let k = S.findIndex((q) => u < q.u1); if (k < 0) k = S.length - 1; const q = S[k];
+  const f = (u - q.u0) / Math.max(1e-6, q.u1 - q.u0), nx = S[k + 1], pv = S[k - 1];
+  let e = q.e; if (nx && f > 0.75) e = q.e + (nx.e - q.e) * (f - 0.75) / 0.25 * 0.5; if (pv && f < 0.25) e = q.e + (pv.e - q.e) * (0.25 - f) / 0.25 * 0.5;
+  return x.lo + (x.hi - x.lo) * e; };
+
 // ---------- the plan ----------
 // words: [{wheel, word}] x5; opts: {seed, minutes, rack, recent: [art names]}
 JP.plan = (words, opts = {}) => {
@@ -306,7 +320,17 @@ JP.plan = (words, opts = {}) => {
     if (x.c.tension > 0.5) c.push('upside down'); if (x.energy > 0.75) c.push('grand'); if (x.breathInside || x.energy < 0.25) c.push('half, a memory');
     x.costume = c; });
 
-  return { fixed: !!opts.fixed, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+  // Mixed journey: every chapter is a song of its own, with its own form, its own summit and its own break;
+  // the journey arc only sets how loud or soft that song lives as a whole. Deep journey keeps the one long arc.
+  const mode = opts.mode === 'mixed' ? 'mixed' : 'deep';
+  if (mode === 'mixed') ch.forEach((x) => {
+    const slow = x.c.speed < -0.35 || x.lead.machine === 'symphony' && x.c.speed < 0, sing = x.lead.machine === 'symphony' || x.lead.machine === 'score' || x.c.warm > 0.4;
+    const form = slow ? JP.SONGS.slow : sing ? JP.SONGS.verse : JP.SONGS.club;
+    const tot = form.reduce((a, f) => a + f[1], 0); let u = 0;
+    x.song = form.map(([type, w]) => { const u0 = u; u += w / tot; return { type, u0, u1: u, e: JP.SONG_E[type] }; });
+    x.hi = clamp(x.energy + 0.3, 0.45, 1); x.lo = clamp(x.energy - 0.5, 0.05, 0.4);
+  });
+  return { mode, fixed: !!opts.fixed, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 
 if (typeof module !== 'undefined') module.exports = JP;
