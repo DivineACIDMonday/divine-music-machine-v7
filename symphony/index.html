@@ -2311,7 +2311,7 @@ const SECCOL = ['#D9A84E', '#8FC29C', '#E58256', '#9CC7E3', '#C8B2E8', '#E3C77A'
 function cur() { return RES.movements[MV]; }
 function secs(m, ticks) { return ticks / 480 * 60 / m.tempo; }
 function fmt(s) { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
-function fileBase(m) { return ('Divine Symphony ' + m.title + ' seed ' + S.seed).replace(/♭/g, 'b').replace(/♯/g, ' sharp').replace(/[^\w .-]+/g, '').replace(/\s+/g, ' ').trim(); }
+function fileBase(m) { return ('Divine Symphony ' + m.title + ' ' + m.tempo + ' bpm seed ' + S.seed).replace(/♭/g, 'b').replace(/♯/g, ' sharp').replace(/[^\w .-]+/g, '').replace(/\s+/g, ' ').trim(); }
 function showResult() {
   $('result').classList.add('on');
   const tabs = $('mvTabs'); tabs.innerHTML = '';
@@ -2366,7 +2366,7 @@ $('dlZip').onclick = () => {
     m.tracks.filter(t => !(S.target === 'berlin' && t.id === 'btbn' && m.tracks.some(x => x.id === 'tbn'))).forEach((t, j) => files.push({ name: dir + String(j + 1).padStart(2, '0') + ' ' + TNAME(t) + '.mid', data: Y.writeMidi(m, [t.id], PLAIN()) }));
   });
   const url = URL.createObjectURL(zip(files));
-  const a = document.createElement('a'); a.href = url; a.download = fileBase(RES.movements[0]).replace(/ I\. Allegro/, '') + '.zip'; document.body.appendChild(a); a.click(); a.remove();
+  const a = document.createElement('a'); a.href = url; a.download = (RES.movements.length > 1 ? fileBase(RES.movements[0]).replace(/ I\. Allegro/, '').replace(/ \d+ bpm/, '') : fileBase(RES.movements[0])) + '.zip'; document.body.appendChild(a); a.click(); a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 4000);
 };
 
