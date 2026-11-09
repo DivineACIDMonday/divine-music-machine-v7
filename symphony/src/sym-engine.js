@@ -1444,8 +1444,8 @@ function render(c) {
     if (has('xyl') && brisk && (fk === 'joyful' || fk === 'stormy' || I >= .75)) placeLine('xyl', mel.filter(n => n.dur <= PPQ / 2).map(n => Object.assign({}, n, { art: 'short' })), [12, 0], 'col', ph);
     if (has('vib') && (fk === 'dreamy' || fk === 'mysterious' || x.era === 'impressionist') && I < .8) evs.forEach(ev => { if (ev.V) texNotes('arpeggio', ev, ev.V, c.meter, false).forEach(n => { const m = fold(n.m + 12, IM.vib); if (m != null) put('vib', Object.assign({}, n, { m }), 'col', ph); }); });
     if (has('mar') && (fk === 'joyful' || ph.char === 'waltz' || ph.char === 'dance') && I >= .35 && I < .9) evs.forEach(ev => { if (ev.V) texNotes(ph.char === 'waltz' ? 'oompah' : 'beats', ev, ev.V, c.meter, false).forEach(n => { if (n.voice !== 'A' && n.voice !== 'X') return; const m = fold(n.m, IM.mar); if (m != null) put('mar', Object.assign({}, n, { m, art: 'short' }), 'col', ph); }); });
-    /* Berlin Free percussion: bass drum C1, snare C2, tom C3; cymbal C1, tam-tam C2, triangle C3 (SINE, C3 = 60) */
-    const BD = 36, SN = 48, TOM = 60, CYM = 36, TAM = 48, TRI = 60;
+    /* Berlin Free percussion, mapped by ear: drums bass drum C1, snare C2, tom C3; metals swell C1, crash G#1, gong C3 (SINE, C3 = 60) */
+    const BD = 36, SN = 48, TOM = 60, SWELL = 36, CYM = 44, TAM = 60;
     const soft = x.feel && x.feel.soft;
     const march = ph.char === 'march' || ph.fan;
     const climax = I >= .9 && !soft;
@@ -1463,11 +1463,10 @@ function render(c) {
     if (x.E.has('metals')) {
       if (march && I >= .6 && !soft) bars.forEach((t, b) => { if (b % 2 === 0) put('metals', { t, dur: PPQ, m: CYM, art: 'short' }, 'col', ph); });
       else if (climax) bars.forEach((t, b) => { if (b % 4 === 0) put('metals', { t, dur: PPQ * 2, m: CYM, art: 'short' }, 'col', ph); });
-      if ((fk === 'joyful' || ph.char === 'waltz') && I >= .4 && I < .9) bars.forEach(t => put('metals', { t, dur: PPQ / 2, m: TRI, art: 'short', acc: -14 }, 'col', ph));
       if (ph.final) {
         const fe = c.events[ph.ev1 - 1];
         if (fk === 'mysterious' || fk === 'solemn' || fk === 'stormy' || (ph.key.m === 'm' && !soft)) put('metals', { t: fe.t, dur: fe.dur, m: TAM, art: 'long' }, 'col', ph);
-        if (!soft) put('metals', { t: fe.t, dur: fe.dur, m: CYM, art: 'long' }, 'col', ph);
+        if (!soft) { put('metals', { t: fe.t, dur: fe.dur, m: CYM, art: 'long' }, 'col', ph); if (fe.t >= c.bar) put('metals', { t: fe.t - c.bar, dur: c.bar, m: SWELL, art: 'long', acc: -10 }, 'col', ph); }
       }
     }
     if (has('bells') && (ph.final || ((fk === 'solemn' || fk === 'heroic') && (ph.sec === 'Coda' || ph.sec === 'Finale' || I >= .9)))) {
