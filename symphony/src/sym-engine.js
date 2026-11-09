@@ -1428,7 +1428,8 @@ function trackChunk(evs) {
   return [0x4d, 0x54, 0x72, 0x6b, (out.length >>> 24) & 255, (out.length >>> 16) & 255, (out.length >>> 8) & 255, out.length & 255].concat(out);
 }
 function keySig(K) { const sharpsMaj = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 1: -5, 8: -4, 3: -3, 10: -2, 5: -1 }; const rel = K.m === 'M' ? K.t : mod(K.t + 3, 12); let sf = sharpsMaj[rel]; if (K.alt[K.L] > 0 && sf < 0) sf += 12; if (K.alt[K.L] < 0 && sf > 0) sf -= 12; if (rel === 6 && K.alt[K.L] < 0) sf = -6; return [sf & 255, K.m === 'M' ? 0 : 1]; }
-function writeMidi(res, ids) {
+function writeMidi(res, ids, opt) {
+  const plain = opt && opt.plain;
   const sel = ids ? res.tracks.filter(t => ids.includes(t.id)) : res.tracks;
   const us = Math.round(60000000 / res.tempo);
   const cond = [{ t: 0, o: 0, d: [0xff, 0x03, ...vlq(strBytes(res.title).length), ...strBytes(res.title)] },
@@ -1441,8 +1442,8 @@ function writeMidi(res, ids) {
   sel.forEach(tr => {
     const ev = []; const nb = strBytes(tr.name);
     ev.push({ t: 0, o: 0, d: [0xff, 0x03, ...vlq(nb.length), ...nb] });
-    tr.cc.forEach(e => ev.push({ t: e.t, o: 1, d: [0xb0, e.c, e.v] }));
-    tr.ks.forEach(k => { ev.push({ t: k.t, o: 3, d: [0x90, k.m, 100] }); ev.push({ t: k.t + 12, o: 2, d: [0x80, k.m, 0] }); });
+    tr.cc.forEach(e => { if (!plain || e.c !== 1) ev.push({ t: e.t, o: 1, d: [0xb0, e.c, e.v] }); });
+    if (!plain) tr.ks.forEach(k => { ev.push({ t: k.t, o: 3, d: [0x90, k.m, 100] }); ev.push({ t: k.t + 12, o: 2, d: [0x80, k.m, 0] }); });
     tr.notes.forEach(n => { ev.push({ t: n.t, o: 4, d: [0x90, n.m, n.v] }); ev.push({ t: n.t + n.dur, o: 2, d: [0x80, n.m, 0] }); });
     chunks.push(trackChunk(ev));
   });

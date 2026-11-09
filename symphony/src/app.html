@@ -125,6 +125,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
     <label class="opt hide" id="soloW">Solo <select id="solo"></select></label>
     <label class="opt"><input type="checkbox" id="early" checked> Long notes 40 ms early</label>
     <label class="opt">Seed <input type="number" id="seed" min="1" max="999999" style="width:110px"><button class="btn" id="dice" title="New seed" aria-label="New seed">🎲</button></label>
+    <label class="opt"><input type="checkbox" id="keep"> Keep this seed</label>
   </div>
 </section>
 
@@ -145,6 +146,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
   <div class="sh"><span class="num serif">4</span><span class="st serif">Get it</span><span class="muted">One MIDI track per BBC instrument, with keyswitches, CC1 dynamics and CC11 expression.</span></div>
   <div class="go">
     <button class="btn gold" id="compose">Compose</button>
+    <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="any">Any synth</button></span></span>
     <span class="muted" id="status"></span>
   </div>
   <div class="result" id="result">
@@ -159,7 +161,16 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
     </div>
     <div class="check" id="check"></div>
     <div class="tracks" id="tracks"></div>
-    <div class="how">
+    <div class="how hide" id="howAny">
+      <b class="serif" style="font-size:17px">Into your DAW with any synth</b>
+      <ol>
+        <li>Drag the full MIDI file into your song. Every part lands on its own track.</li>
+        <li>Put any synth or sampler on any track: a 303, a pad, a piano, your choice.</li>
+        <li>No keyswitches and no CC1 in these files. Dynamics live in the velocity, CC11 is expression.</li>
+        <li>Rubato is baked into the note timing. Keep the tempo of your song at the tempo shown here.</li>
+      </ol>
+    </div>
+    <div class="how" id="how">
       <b class="serif" style="font-size:17px">Into your DAW with BBC Discover</b>
       <ol>
         <li>Drag the full MIDI file into your song. Every instrument lands on its own track.</li>
@@ -187,7 +198,7 @@ const FAM = { str: 'var(--str)', ww: 'var(--ww)', br: 'var(--br)', perc: 'var(--
 const FAMHEX = { str: '#D9A84E', ww: '#8FC29C', br: '#E58256', perc: '#9CC7E3', kb: '#C8B2E8' };
 const IM = {}; Y.INST.forEach(i => IM[i.id] = i);
 const store = { get(k, d) { try { const v = localStorage.getItem('dsym.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('dsym.' + k, JSON.stringify(v)); } catch (e) {} } };
-const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
+const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), keep: false, first: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
 let RES = null, MV = 0;
 
 /* eras */
@@ -212,6 +223,8 @@ function drawForms() {
   });
 }
 const KEYS = [['C', 'C major'], ['G', 'G major'], ['D', 'D major'], ['A', 'A major'], ['E', 'E major'], ['F', 'F major'], ['Bb', 'B♭ major'], ['Eb', 'E♭ major'], ['Ab', 'A♭ major'], ['a', 'A minor'], ['e', 'E minor'], ['b', 'B minor'], ['d', 'D minor'], ['g', 'G minor'], ['c', 'C minor'], ['f', 'F minor'], ['f#', 'F♯ minor']];
+function syncTarget() { [...$('target').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.target)); $('how').classList.toggle('hide', S.target !== 'bbc'); $('howAny').classList.toggle('hide', S.target === 'bbc'); }
+const PLAIN = () => ({ plain: S.target === 'any' });
 function syncOpts() {
   const f = Y.FORMS[S.form];
   if (!S.tempo) S.tempo = f.tempo;
@@ -232,6 +245,10 @@ function initOpts() {
   $('seed').onchange = e => { S.seed = Math.max(1, +e.target.value || 1); };
   $('dice').onclick = () => { S.seed = Math.floor(Math.random() * 900000) + 1; $('seed').value = S.seed; };
   $('solo').onchange = e => { S.solo = e.target.value; };
+  $('keep').onchange = e => { S.keep = e.target.checked; };
+  $('seed').addEventListener('input', () => { S.keep = true; $('keep').checked = true; });
+  [...$('target').children].forEach(b => b.onclick = () => { S.target = b.dataset.v; store.set('target', S.target); syncTarget(); if (RES) showResult(); });
+  syncTarget();
   syncOpts();
 }
 /* hall */
@@ -282,6 +299,8 @@ function drawPresets() {
 function compose() {
   stop();
   if (!S.inst.size) { $('status').textContent = 'Switch on at least one section first.'; return; }
+  if (!S.keep && !S.first) { S.seed = Math.floor(Math.random() * 900000) + 1; $('seed').value = S.seed; }
+  S.first = false;
   $('status').textContent = 'Composing…'; $('compose').disabled = true;
   setTimeout(() => {
     try {
@@ -313,10 +332,10 @@ function showResult() {
   const tr = $('tracks'); tr.innerHTML = '';
   m.tracks.forEach(t => {
     const used = new Set(t.ks.map(k => k.m));
-    const arts = t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
+    const arts = S.target === 'any' ? 'plain MIDI' : t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
     const d = document.createElement('div'); d.className = 'trk';
     d.innerHTML = '<span class="dot" style="background:' + FAMHEX[fam(t.id)] + '"></span><div class="info"><b>' + t.name + '</b><div>' + t.notes.length + ' notes · ' + arts + '</div></div>';
-    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'MIDI'; b.onclick = () => save(Y.writeMidi(m, [t.id]), fileBase(m) + ' - ' + t.name + '.mid', 'audio/midi');
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'MIDI'; b.onclick = () => save(Y.writeMidi(m, [t.id], PLAIN()), fileBase(m) + ' - ' + t.name + '.mid', 'audio/midi');
     d.appendChild(b); tr.appendChild(d);
   });
 }
@@ -342,14 +361,14 @@ function zip(files) {
   const end = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cs), u32(off), u16(0)));
   return new Blob(parts.concat(cen, [end]), { type: 'application/zip' });
 }
-$('dlAll').onclick = () => { if (!RES) return; const m = cur(); save(Y.writeMidi(m), fileBase(m) + '.mid', 'audio/midi'); };
+$('dlAll').onclick = () => { if (!RES) return; const m = cur(); save(Y.writeMidi(m, null, PLAIN()), fileBase(m) + '.mid', 'audio/midi'); };
 $('dlZip').onclick = () => {
   if (!RES) return;
   const files = [];
   RES.movements.forEach((m, i) => {
     const dir = RES.movements.length > 1 ? (i + 1) + ' ' + m.title.replace(/^Symphony /, '').replace(/[^\w .-]/g, '') + '/' : '';
-    files.push({ name: dir + 'Full score.mid', data: Y.writeMidi(m) });
-    m.tracks.forEach((t, j) => files.push({ name: dir + String(j + 1).padStart(2, '0') + ' ' + t.name + '.mid', data: Y.writeMidi(m, [t.id]) }));
+    files.push({ name: dir + 'Full score.mid', data: Y.writeMidi(m, null, PLAIN()) });
+    m.tracks.forEach((t, j) => files.push({ name: dir + String(j + 1).padStart(2, '0') + ' ' + t.name + '.mid', data: Y.writeMidi(m, [t.id], PLAIN()) }));
   });
   const url = URL.createObjectURL(zip(files));
   const a = document.createElement('a'); a.href = url; a.download = fileBase(RES.movements[0]).replace(/ I\. Allegro/, '') + '.zip'; document.body.appendChild(a); a.click(); a.remove();
