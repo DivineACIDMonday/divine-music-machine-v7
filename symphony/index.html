@@ -98,6 +98,15 @@ svg.hall{width:100%;height:auto;display:block;user-select:none}
 .check b{color:var(--ww)}
 footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 .hide{display:none!important}
+.feels{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.feel{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--tx);font:inherit;cursor:pointer;min-height:44px}
+.feel:hover{border-color:#5A464C}
+.feel[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#2C2124}
+.feel .ic{font-size:26px;line-height:1}
+.feel b{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif;font-size:18px}
+.feel small{display:block;color:var(--mu);font-size:13px}
+.fits{font:12px system-ui;color:#1A1208;background:var(--gold);border-radius:5px;padding:1px 6px;align-self:flex-start}
+.part select{min-height:32px;padding:2px 4px;font-size:13px}
 #suitePanel{display:flex;flex-direction:column;gap:12px;background:#171114;border:1px solid var(--line);border-radius:12px;padding:14px}
 .chain{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .part{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid #5A464C;border-radius:10px;padding:6px 6px 6px 10px}
@@ -125,13 +134,18 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
   <a class="back" href="https://divineacidmonday.github.io/">All machines</a>
 </header>
 
+<section class="step" id="s0">
+  <div class="sh"><span class="num serif">1</span><span class="st serif">What should it feel like?</span><span class="muted">One tap sets era, key, form, orchestra and tempo for that feeling. Change anything after.</span></div>
+  <div class="feels" id="feels"></div>
+</section>
+
 <section class="step" id="s1">
-  <div class="sh"><span class="num serif">1</span><span class="st serif">Choose an era</span><span class="muted">The era sets harmony, ornaments, orchestra and how freely the time breathes.</span></div>
+  <div class="sh"><span class="num serif">2</span><span class="st serif">Choose an era</span><span class="muted">The era sets harmony, ornaments, orchestra and how freely the time breathes.</span></div>
   <div class="grid eras" id="eras"></div>
 </section>
 
 <section class="step" id="s2">
-  <div class="sh"><span class="num serif">2</span><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
+  <div class="sh"><span class="num serif">3</span><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
   <div class="grid forms" id="forms"></div>
   <div id="suitePanel" class="hide">
     <div class="mozart"><b class="serif" style="font-size:18px">Your suite</b><span class="muted small">🔒 keeps a part when you compose again · ⧉ makes an exact copy · ✕ removes it</span></div>
@@ -152,7 +166,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 </section>
 
 <section class="step" id="s3">
-  <div class="sh"><span class="num serif">3</span><span class="st serif">Seat your orchestra</span><span class="muted">Tap a section to switch it on or off. Each one becomes its own MIDI track.</span></div>
+  <div class="sh"><span class="num serif">4</span><span class="st serif">Seat your orchestra</span><span class="muted">Tap a section to switch it on or off. Each one becomes its own MIDI track.</span></div>
   <div class="orch">
     <svg class="hall" id="hall" viewBox="0 0 640 380" role="group" aria-label="Orchestra seating"></svg>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -165,7 +179,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 </section>
 
 <section class="step" id="s4">
-  <div class="sh"><span class="num serif">4</span><span class="st serif">Get it</span><span class="muted">One MIDI track per BBC instrument, with keyswitches, CC1 dynamics and CC11 expression.</span></div>
+  <div class="sh"><span class="num serif">5</span><span class="st serif">Get it</span><span class="muted">One MIDI track per BBC instrument, with keyswitches, CC1 dynamics and CC11 expression.</span></div>
   <div class="go">
     <button class="btn gold" id="compose">Compose</button>
     <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="any">Any synth</button></span></span>
@@ -350,7 +364,7 @@ const TPLS = {
   intro: ['I | IV64 I | vi | V/V | V | V | V7 | V7', 'I | V65 | vi | ii6 | Cad | V | V7 | V7'],
 };
 const GROUNDS = { M: ['I V6 | vi V', 'I vi | IV V', 'I iii | IV V', 'vi IV | I V'], m: ['i v6 | iv6 V', 'i VI | iv V', 'i VII | VI V'] };
-function flavor(s, era, r, mode) {
+function flavor(s, era, r, mode, fl) {
   const bars = s.split('|').map(b => b.trim().split(/\s+/));
   const flat = []; bars.forEach((b, bi) => b.forEach((t, j) => flat.push({ bi, j, t })));
   flat.forEach((x, i) => {
@@ -369,6 +383,15 @@ function flavor(s, era, r, mode) {
       else if (t === 'vi' && r() < .5) t = 'vi7';
       else if (t === 'V7' && nx !== 'I' && r() < .5) t = 'V9';
       else if (t === 'V' && nx !== 'I' && i < flat.length - 2 && r() < .25) t = mode === 'm' ? 'VII' : 'bVII';
+    }
+    if (t === x.t && fl === 'dark') {
+      if (t === 'IV' && mode === 'M' && i > 1 && r() < .35) t = 'iv';
+      else if (t === 'vi' && mode === 'M' && (nx === 'IV' || nx === 'ii6' || nx === 'ii') && r() < .3) t = 'bVI';
+      else if ((t === 'ii6' || t === 'iio6') && mode === 'm' && (nx === 'Cad' || nx === 'V' || nx === 'V7') && r() < .45) t = 'N6';
+    } else if (t === x.t && fl === 'color' && era !== 'impressionist') {
+      if (t === 'I' && i > 0 && i < flat.length - 1 && r() < .35) t = mode === 'm' ? 'I7' : 'Ia6';
+      else if (t === 'IV' && r() < .35) t = mode === 'm' ? 'IV7' : 'IVM7';
+      else if (t === 'vi' && r() < .3) t = 'vi7';
     }
     x.t = t;
   });
@@ -573,6 +596,19 @@ const FORMS = {
 };
 Y.FORMS = FORMS;
 
+/* ================= feelings ================= */
+const FEELINGS = {
+  heroic: { name: 'Heroic', icon: '🦁', blurb: 'Brave, proud, a victory. Horns and trumpets lead.', mode: 'M', keys: ['Eb', 'D', 'C'], era: 'romantic', forms: ['overture', 'march', 'sonata'], im: 1.1, ia: .1, da: .1, tempo: 1.04, rub: 1, lead: 'solo:hn', tex: { brisk: 'repeated8', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'tbn', 'btbn', 'tba', 'timp'] },
+  tender: { name: 'Tender', icon: '🕊', blurb: 'Warm and close, like a love letter. A singing oboe over soft strings.', mode: 'M', keys: ['F', 'A', 'G'], era: 'classical', forms: ['aria', 'variations', 'minuet'], im: .75, ia: 0, da: -.15, tempo: .9, rub: 1.3, lead: 'solo:ob', tex: { brisk: 'alberti', lyr: 'arpeggio' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 },
+  mysterious: { name: 'Mysterious', icon: '🌫', blurb: 'Shadows and questions. Low strings tremble, a clarinet wanders.', mode: 'm', keys: ['d', 'c', 'f#'], era: 'romantic', forms: ['fugue', 'canon', 'sonata'], im: .85, ia: 0, da: -.12, tempo: .9, rub: 1.2, lead: 'solo:cl', tex: { brisk: 'tremolo', lyr: 'sustain' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'cl', 'bsn', 'hn', 'tbn', 'timp'], soft: 1 },
+  joyful: { name: 'Joyful', icon: '☀', blurb: 'Sunny and quick, a smile in sound. Bright strings and chattering winds.', mode: 'M', keys: ['G', 'D', 'A'], era: 'classical', forms: ['rondo', 'waltz', 'minuet'], im: 1, ia: .05, da: .05, tempo: 1.08, rub: .8, lead: 'solo:fl', tex: { brisk: 'repeated8', lyr: 'beats' }, preset: null },
+  melancholy: { name: 'Melancholy', icon: '🌧', blurb: 'Longing and rain on the window. A cello sings, minor colours everywhere.', mode: 'm', keys: ['g', 'e', 'b'], era: 'romantic', forms: ['aria', 'variations', 'canon'], im: .8, ia: 0, da: -.1, tempo: .88, rub: 1.4, lead: 'solo:vc', tex: { brisk: 'syncop', lyr: 'arpeggio' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 },
+  stormy: { name: 'Stormy', icon: '⚡', blurb: 'Wind, waves, a chase. Tremolo strings, hammering timpani.', mode: 'm', keys: ['c', 'd', 'f'], era: 'romantic', forms: ['sonata', 'overture', 'fugue'], im: 1.15, ia: .12, da: .12, tempo: 1.1, rub: .9, lead: 'str', tex: { brisk: 'tremolo', lyr: 'syncop' }, flav: 'dark', preset: null },
+  dreamy: { name: 'Dreamy', icon: '💭', blurb: 'Floating, half asleep, soft light. Flute, piano and colour chords.', mode: 'M', keys: ['F', 'Ab', 'E'], era: 'impressionist', forms: ['aria', 'waltz', 'canon'], im: .7, ia: 0, da: -.15, tempo: .86, rub: 1.4, lead: 'solo:fl', tex: { brisk: 'arpeggio', lyr: 'sustain' }, flav: 'color', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'hn', 'pno'], soft: 1 },
+  solemn: { name: 'Solemn', icon: '👑', blurb: 'Ceremony and dignity. Slow, full chords, brass like an organ.', mode: 'M', keys: ['C', 'Bb', 'D'], era: 'baroque', forms: ['fugue', 'march', 'overture'], im: 1, ia: .05, da: .05, tempo: .85, rub: .8, lead: 'str', tex: { brisk: 'continuo', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'ob', 'bsn', 'hn', 'tpt', 'tbn', 'timp', 'pno'] },
+};
+Y.FEELINGS = FEELINGS;
+
 /* ================= the composer ================= */
 function Comp(x) {
   this.x = x; this.meter = x.meter; this.bar = PPQ * x.meter; this.t = 0;
@@ -581,7 +617,7 @@ function Comp(x) {
 }
 Comp.prototype.add = function (p) {
   const x = this.x;
-  const bars = Array.isArray(p.tpl) ? p.tpl : flavor(p.tpl, p.noFlavor ? 'classical' : x.era, x.r, p.key.m);
+  const bars = Array.isArray(p.tpl) ? p.tpl : flavor(p.tpl, p.noFlavor ? 'classical' : x.era, x.r, p.key.m, p.noFlavor ? null : x.feel && x.feel.flav);
   const st = p.stretch || 1;
   const ph = Object.assign({}, p, { tpl: bars, t0: this.t, nb: bars.length * st, ev0: this.events.length, idx: this.phrases.length, uid: 'p' + this.phrases.length });
   bars.forEach((bar, bi) => {
@@ -620,6 +656,13 @@ function P(c, x, s) {
   const th = src && c.themes[src];
   const ch = (s.mel && s.mel.char) || (th && th.char) || s.char || 'lyr';
   s.char = ch;
+  const fe = x.feel;
+  if (fe) {
+    if (!s._fi) { s.inten = clamp(s.inten * fe.im + fe.ia, .12, 1); s._fi = 1; }
+    if (!s._fd) { s.dyn = clamp(s.dyn + fe.da, .12, 1); s._fd = 1; }
+    if (!s.tex && !s.poly && x.era !== 'baroque' || (!s.tex && fe.tex && x.era === 'baroque' && fe.tex[ch === 'lyr' || ch === 'slow' ? 'lyr' : 'brisk'] === 'continuo')) { const t = fe.tex[ch === 'lyr' || ch === 'slow' ? 'lyr' : 'brisk']; if (t && ch !== 'waltz' && ch !== 'march') s.tex = t; }
+    if (!s.lead && (ch === 'lyr' || ch === 'slow') && fe.lead && fe.lead !== 'str' && x.E.has(fe.lead.slice(5)) && !s.final) s.lead = fe.lead;
+  }
   if (!s.tex) s.tex = defTex(x, ch, s.inten);
   if (!s.btex) s.btex = defBtex(x, ch, s.inten);
   if (s.ctr == null) s.ctr = !s.poly && s.inten >= .35 && s.inten <= .85 && x.r() < ERAS[x.era].ctr;
@@ -627,7 +670,7 @@ function P(c, x, s) {
   return c.add(s);
 }
 function again(c, x, phs, ov) {
-  return phs.map(p => P(c, x, Object.assign({}, p, { tpl: p.tpl, label: null, sec: p.sec, mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, ctr: p.ctr }, ov || {}, { mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, noFlavor: true })));
+  return phs.map(p => P(c, x, Object.assign({}, p, ov && 'inten' in ov ? { _fi: 0 } : {}, ov && 'dyn' in ov ? { _fd: 0 } : {}, { tpl: p.tpl, label: null, sec: p.sec, mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, ctr: p.ctr }, ov || {}, { mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, noFlavor: true })));
 }
 function TP(x, name, K, X) {
   let s = pick(x.r, TPLS[name]);
@@ -636,7 +679,8 @@ function TP(x, name, K, X) {
 }
 function finalPh(c, x, K, s) {
   const tok = K.m === 'm' && x.era === 'baroque' ? 'PI' : 'I';
-  return P(c, x, Object.assign({ key: K, tpl: tok, mel: { type: 'hold' }, inten: 1, dyn: .85, final: 1, tex: 'block', btex: 'held', sec: 'Coda', ctr: false }, s || {}));
+  const soft = x.feel && x.feel.soft && !(s && s.dyn);
+  return P(c, x, Object.assign({ key: K, tpl: tok, mel: { type: 'hold' }, inten: soft ? .5 : 1, dyn: soft ? .35 : .85, final: 1, tex: 'block', btex: 'held', sec: 'Coda', ctr: false }, s || {}, soft ? { inten: .5, dyn: .35 } : {}));
 }
 
 /* ----- forms ----- */
@@ -1537,7 +1581,7 @@ function perform(c, parts) {
   const OFF = c.bar;
   const totalBeats = Math.ceil(c.t / PPQ) + 2;
   // rubato
-  const amt = x.rubato === 0 ? 0 : era.rub * (x.rubato === 2 ? 1.8 : 1) * (x.tempo < 90 ? 1.3 : 1);
+  const amt = x.rubato === 0 ? 0 : era.rub * (x.rubato === 2 ? 1.8 : 1) * (x.tempo < 90 ? 1.3 : 1) * (x.feel ? x.feel.rub : 1);
   const f = new Float64Array(totalBeats).fill(1);
   if (amt > 0) c.phrases.forEach((ph, i) => {
     const b0 = ph.t0 / PPQ, B = (ph.t1 - ph.t0) / PPQ;
@@ -1674,7 +1718,7 @@ function compose(o) {
   if (!['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'pno', 'tpt', 'tbn', 'picc'].some(i => E.has(i))) E.add('vln1');
   const meter = o.meter || FORMS[form].meter;
   const seed = (o.seed >>> 0) || 1;
-  const x = { era, form, K, E, meter, tempo: o.tempo || FORMS[form].tempo, len: clamp(o.len || 2, 1, 3), seed, r: mkRng(seed), rubato: o.rubato == null ? 1 : o.rubato, early: o.early == null ? 40 : o.early, scherzo: o.scherzo, solo: o.solo };
+  const x = { era, form, K, E, meter, tempo: o.tempo || FORMS[form].tempo, len: clamp(o.len || 2, 1, 3), seed, r: mkRng(seed), rubato: o.rubato == null ? 1 : o.rubato, early: o.early == null ? 40 : o.early, scherzo: o.scherzo, solo: o.solo, feel: FEELINGS[o.feel] || null };
   const c = new Comp(x);
   const st = ERAS[era];
   c.style = { melLo: st.melLo, melHi: st.melHi, melC: st.melC, appog: st.appog, avoid: st.avoid ? new Set(st.avoid) : null, bLo: 36, bHi: 57, bC: 46 };
@@ -1697,7 +1741,7 @@ function compose(o) {
 const CAT = { sonata: 'fast', rondo: 'fast', overture: 'fast', fugue: 'fast', aria: 'slow', canon: 'slow', variations: 'slow', minuet: 'dance', waltz: 'dance', march: 'dance' };
 Y.CAT = CAT;
 Y.SUITE_FORMS = Object.keys(CAT);
-Y.advise = function (chain) {
+Y.advise = function (chain, feel) {
   const n = chain.length, last = n ? chain[n - 1].form : null, lc = last ? CAT[last] : null;
   const used = f => chain.filter(c => c.form === f).length;
   return Y.SUITE_FORMS.map(f => {
@@ -1719,7 +1763,7 @@ Y.advise = function (chain) {
       else if (lc === 'slow' && c === 'fast') { st = 2; why = 'Back to energy.'; }
       else if (lc === 'slow' && c === 'slow') { st = 0; why = 'Two slow parts in a row lose the pulse.'; }
       else if (lc === 'dance' && f === last) { st = 0; why = 'Mozart put a slow part between two of the same dance.'; }
-      else if (lc === 'dance' && f === 'rondo') { st = 3; why = 'The classic finale after the minuet.'; }
+      else if (lc === 'dance' && f === 'rondo') { st = 3; why = 'The classic finale after a dance.'; }
       else if (lc === 'dance' && c === 'slow') { st = 3; why = 'A slow song between the dances, as in a serenade.'; }
       else if (lc === 'dance' && c === 'fast') { st = 2; why = 'Energy after the dance.'; }
       else if (lc === 'dance' && c === 'dance') { st = 1; why = 'A second, different dance can work. Contrast helps.'; }
@@ -1727,11 +1771,20 @@ Y.advise = function (chain) {
       if (f === 'fugue' && n >= 1 && st >= 2) why = 'A fugue makes a grand, learned finale.';
       if (used(f) >= 2 && st > 1) { st = 1; why = 'Already twice in your suite. Something new keeps it fresh.'; }
     }
+    const fe = FEELINGS[feel];
+    if (fe && fe.forms.includes(f) && st >= 1) { st = Math.min(3, st + 1); why += ' Fits ' + fe.name.toLowerCase() + '.'; }
     return { form: f, stars: st, why };
   }).sort((a, b) => b.stars - a.stars);
 };
 Y.suiteHint = function (chain) {
   if (!chain.length) return 'Start with a strong opening.';
+  const fs = chain.map(c => FEELINGS[c.feel]).filter(Boolean);
+  if (fs.length >= 2) {
+    const a = fs[0], z = fs[fs.length - 1];
+    if (a.mode === 'm' && z.mode === 'M') return 'From ' + a.name.toLowerCase() + ' to ' + z.name.toLowerCase() + ': a journey from dark to light. Beethoven loved that arc.';
+    if (a.mode === 'M' && z.mode === 'm') return 'From light into shadow: a tragic arc. Strong, and rare.';
+    if (z.soft && chain.length > 2) return 'It ends ' + z.name.toLowerCase() + '. A gentle farewell; a heroic or joyful finale would end in triumph.';
+  }
   const last = CAT[chain[chain.length - 1].form];
   if (chain.length === 1) return 'Now something that contrasts with it.';
   if (last === 'fast') return 'This ends with energy. A fine close.';
@@ -1756,7 +1809,14 @@ Y.planSuite = function (chain, K, era) {
     if (scherzo) tempo = 160;
     if (prev && prev.form === c.form) tempo = Math.round(tempo * (i % 2 ? .92 : 1.06));
     if (i === chain.length - 1 && i > 0 && prev && prev.key !== K) key = K;
-    out.push({ form: c.form, key, tempo, scherzo, seed: c.seed });
+    const fe = FEELINGS[c.feel];
+    if (fe) {
+      if (i === chain.length - 1 && i > 0 && fe.mode !== K.m) key = mkKey(K.L, K.t, fe.mode);
+      else if (fe.mode === 'm' && key.m === 'M') key = relKey(key, 5, 'm');
+      else if (fe.mode === 'M' && key.m === 'm') key = relKey(key, 2, 'M');
+      tempo = Math.round(tempo * fe.tempo);
+    }
+    out.push({ form: c.form, key, tempo, scherzo, seed: c.seed, feel: c.feel });
   });
   return out;
 };
@@ -1788,7 +1848,7 @@ Y.generate = function (o) {
     const plan = Y.planSuite(o.chain || [], K, o.era);
     if (!plan.length) throw new Error('Add at least one part to your suite.');
     const titles = [];
-    const parts = plan.map((p, i) => { const t = (i + 1) + '. ' + FORMS[p.form].name + (p.scherzo ? ' (scherzo)' : ''); titles.push(t); return compose(Object.assign({}, o, { form: p.form, key: p.key, tempo: Math.round(p.tempo * (o.tempoMul || 1)), seed: p.seed, scherzo: p.scherzo, title: t })); });
+    const parts = plan.map((p, i) => { const t = (i + 1) + '. ' + FORMS[p.form].name + (p.scherzo ? ' (scherzo)' : ''); titles.push(t); return compose(Object.assign({}, o, { form: p.form, key: p.key, tempo: Math.round(p.tempo * (o.tempoMul || 1)), seed: p.seed, scherzo: p.scherzo, feel: p.feel || o.feel, title: t })); });
     const res = mergeParts(parts, titles.map((t, i) => t + ' in ' + parts[i].keyName));
     res.title = 'Suite in ' + keyName(K);
     return { movements: [res] };
@@ -1873,11 +1933,30 @@ const FAM = { str: 'var(--str)', ww: 'var(--ww)', br: 'var(--br)', perc: 'var(--
 const FAMHEX = { str: '#D9A84E', ww: '#8FC29C', br: '#E58256', perc: '#9CC7E3', kb: '#C8B2E8' };
 const IM = {}; Y.INST.forEach(i => IM[i.id] = i);
 const store = { get(k, d) { try { const v = localStorage.getItem('dsym.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('dsym.' + k, JSON.stringify(v)); } catch (e) {} } };
-const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), chain: store.get('chain', []), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
+const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), chain: store.get('chain', []), feel: store.get('feel', null), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
 let RES = null, MV = 0;
 
 /* eras */
 const eraIcons = { baroque: '𝄞', classical: '♩', romantic: '♪', impressionist: '≈' };
+function drawFeels() {
+  const box = $('feels'); box.innerHTML = '';
+  const list = Object.entries(Y.FEELINGS).concat([[null, { name: 'Free choice', icon: '🎼', blurb: 'No feeling preset. You choose everything yourself.' }]]);
+  list.forEach(([id, fe]) => {
+    const b = document.createElement('button'); b.className = 'feel'; b.setAttribute('aria-pressed', S.feel === id);
+    b.innerHTML = '<span class="ic">' + fe.icon + '</span><span><b>' + fe.name + '</b><small>' + fe.blurb + '</small></span>';
+    b.onclick = () => {
+      S.feel = id; store.set('feel', id);
+      if (id) {
+        S.era = fe.era; store.set('era', S.era);
+        S.inst = new Set(fe.preset || Y.PRESETS[fe.era]); store.set('inst', [...S.inst]);
+        S.key = fe.keys[0]; store.set('key', S.key); $('key').value = S.key;
+        if (S.form !== 'suite' && !fe.forms.includes(S.form)) { S.form = fe.forms[0]; store.set('form', S.form); }
+      }
+      S.tempo = null; drawFeels(); drawEras(); drawForms(); syncOpts(); drawHall();
+    };
+    box.appendChild(b);
+  });
+}
 function drawEras() {
   $('eras').innerHTML = '';
   Object.entries(Y.ERAS).forEach(([id, e]) => {
@@ -1892,7 +1971,8 @@ function drawForms() {
   $('forms').innerHTML = '';
   Object.entries(Y.FORMS).forEach(([id, f]) => {
     const b = document.createElement('button'); b.className = 'pick'; b.setAttribute('aria-pressed', S.form === id);
-    b.innerHTML = '<h3 class="serif">' + f.name + '</h3><div class="map">' + f.map.map((m, i) => '<span class="' + (i === 0 ? 'k' : '') + '">' + m + '</span>').join('') + '</div><p>' + f.blurb + '</p><span class="yr">' + (f.meter === 3 ? '3/4' : '4/4') + ' · ' + f.tempo + ' bpm</span>';
+    const fe = Y.FEELINGS[S.feel];
+    b.innerHTML = (fe && fe.forms.includes(id) ? '<span class="fits">★ fits ' + fe.name.toLowerCase() + '</span>' : '') + '<h3 class="serif">' + f.name + '</h3><div class="map">' + f.map.map((m, i) => '<span class="' + (i === 0 ? 'k' : '') + '">' + m + '</span>').join('') + '</div><p>' + f.blurb + '</p><span class="yr">' + (f.meter === 3 ? '3/4' : '4/4') + ' · ' + f.tempo + ' bpm</span>';
     b.onclick = () => { S.form = id; store.set('form', id); S.tempo = null; drawForms(); syncOpts(); };
     $('forms').appendChild(b);
   });
@@ -1917,25 +1997,29 @@ function drawSuite() {
     const p = plan[i];
     d.innerHTML = '<span><b>' + (i + 1) + '. ' + SHORTN[c.form] + (p && p.scherzo ? ' (scherzo)' : '') + '</b><br><span class="pk">' + (p ? Y.keyName(p.key) + ' · ' + p.tempo : '') + '</span></span>';
     const mk = (txt, title, fn, cls) => { const b = document.createElement('button'); b.textContent = txt; b.title = title; b.setAttribute('aria-label', title); if (cls) b.className = cls; b.onclick = fn; d.appendChild(b); };
+    const sel = document.createElement('select'); sel.title = 'Feeling of this part'; sel.setAttribute('aria-label', 'Feeling of this part');
+    sel.innerHTML = '<option value="">🎼</option>' + Object.entries(Y.FEELINGS).map(([k, v]) => '<option value="' + k + '"' + (c.feel === k ? ' selected' : '') + '>' + v.icon + ' ' + v.name + '</option>').join('');
+    sel.onchange = () => { c.feel = sel.value || null; saveChain(); drawSuite(); };
+    d.appendChild(sel);
     mk('🔒', c.lock ? 'Locked: keeps this part' : 'Lock this part', () => { c.lock = !c.lock; saveChain(); drawSuite(); }, c.lock ? 'on' : '');
-    mk('⧉', 'Exact copy', () => { c.lock = true; S.chain.splice(i + 1, 0, { form: c.form, seed: c.seed, lock: true }); saveChain(); drawSuite(); });
+    mk('⧉', 'Exact copy', () => { c.lock = true; S.chain.splice(i + 1, 0, { form: c.form, seed: c.seed, lock: true, feel: c.feel }); saveChain(); drawSuite(); });
     mk('✕', 'Remove', () => { S.chain.splice(i, 1); saveChain(); drawSuite(); });
     if (!c.lock) d.querySelector('button').style.opacity = .45;
     ch.appendChild(d);
   });
   $('hint').textContent = Y.suiteHint(S.chain);
   const adv = $('adv'); adv.innerHTML = '';
-  Y.advise(S.chain).forEach(a => {
+  Y.advise(S.chain, S.feel).forEach(a => {
     const b = document.createElement('button'); b.className = 's' + a.stars;
     b.innerHTML = '<span class="stars">' + (a.stars ? '★'.repeat(a.stars) : '⚠') + '</span><span><b>' + Y.FORMS[a.form].name + '</b><small>' + a.why + '</small></span>';
-    b.onclick = () => { S.chain.push({ form: a.form, seed: newSeed(), lock: false }); saveChain(); drawSuite(); };
+    b.onclick = () => { S.chain.push({ form: a.form, seed: newSeed(), lock: false, feel: S.feel }); saveChain(); drawSuite(); };
     adv.appendChild(b);
   });
 }
 function syncOpts() {
   drawSuite();
   const f = Y.FORMS[S.form];
-  if (!S.tempo) S.tempo = f.tempo;
+  if (!S.tempo) S.tempo = Math.round(f.tempo * (Y.FEELINGS[S.feel] ? Y.FEELINGS[S.feel].tempo : 1));
   $('tempo').value = S.tempo; $('tempoV').textContent = S.tempo + ' bpm';
   $('soloW').classList.toggle('hide', S.form !== 'aria');
   [...$('len').children].forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === S.len));
@@ -2015,7 +2099,7 @@ function compose() {
   setTimeout(() => {
     try {
       const t0 = performance.now();
-      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed })), solo: S.solo === 'auto' ? null : S.solo });
+      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed, feel: c.feel })), feel: S.feel, solo: S.solo === 'auto' ? null : S.solo });
       MV = 0;
       $('status').textContent = 'Done in ' + Math.round(performance.now() - t0) + ' ms. Seed ' + S.seed + '.';
       showResult(); if (S.form === 'suite') drawSuite();
@@ -2152,7 +2236,7 @@ function stop() {
 }
 $('play').onclick = play;
 $('compose').onclick = compose;
-drawEras(); drawForms(); initOpts(); drawPresets(); drawHall();
+drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); drawHall();
 })();
 </script>
 </body></html>

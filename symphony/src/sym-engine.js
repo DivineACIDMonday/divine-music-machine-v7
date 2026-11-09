@@ -139,7 +139,7 @@ const TPLS = {
   intro: ['I | IV64 I | vi | V/V | V | V | V7 | V7', 'I | V65 | vi | ii6 | Cad | V | V7 | V7'],
 };
 const GROUNDS = { M: ['I V6 | vi V', 'I vi | IV V', 'I iii | IV V', 'vi IV | I V'], m: ['i v6 | iv6 V', 'i VI | iv V', 'i VII | VI V'] };
-function flavor(s, era, r, mode) {
+function flavor(s, era, r, mode, fl) {
   const bars = s.split('|').map(b => b.trim().split(/\s+/));
   const flat = []; bars.forEach((b, bi) => b.forEach((t, j) => flat.push({ bi, j, t })));
   flat.forEach((x, i) => {
@@ -158,6 +158,15 @@ function flavor(s, era, r, mode) {
       else if (t === 'vi' && r() < .5) t = 'vi7';
       else if (t === 'V7' && nx !== 'I' && r() < .5) t = 'V9';
       else if (t === 'V' && nx !== 'I' && i < flat.length - 2 && r() < .25) t = mode === 'm' ? 'VII' : 'bVII';
+    }
+    if (t === x.t && fl === 'dark') {
+      if (t === 'IV' && mode === 'M' && i > 1 && r() < .35) t = 'iv';
+      else if (t === 'vi' && mode === 'M' && (nx === 'IV' || nx === 'ii6' || nx === 'ii') && r() < .3) t = 'bVI';
+      else if ((t === 'ii6' || t === 'iio6') && mode === 'm' && (nx === 'Cad' || nx === 'V' || nx === 'V7') && r() < .45) t = 'N6';
+    } else if (t === x.t && fl === 'color' && era !== 'impressionist') {
+      if (t === 'I' && i > 0 && i < flat.length - 1 && r() < .35) t = mode === 'm' ? 'I7' : 'Ia6';
+      else if (t === 'IV' && r() < .35) t = mode === 'm' ? 'IV7' : 'IVM7';
+      else if (t === 'vi' && r() < .3) t = 'vi7';
     }
     x.t = t;
   });
@@ -362,6 +371,19 @@ const FORMS = {
 };
 Y.FORMS = FORMS;
 
+/* ================= feelings ================= */
+const FEELINGS = {
+  heroic: { name: 'Heroic', icon: '🦁', blurb: 'Brave, proud, a victory. Horns and trumpets lead.', mode: 'M', keys: ['Eb', 'D', 'C'], era: 'romantic', forms: ['overture', 'march', 'sonata'], im: 1.1, ia: .1, da: .1, tempo: 1.04, rub: 1, lead: 'solo:hn', tex: { brisk: 'repeated8', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'tbn', 'btbn', 'tba', 'timp'] },
+  tender: { name: 'Tender', icon: '🕊', blurb: 'Warm and close, like a love letter. A singing oboe over soft strings.', mode: 'M', keys: ['F', 'A', 'G'], era: 'classical', forms: ['aria', 'variations', 'minuet'], im: .75, ia: 0, da: -.15, tempo: .9, rub: 1.3, lead: 'solo:ob', tex: { brisk: 'alberti', lyr: 'arpeggio' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 },
+  mysterious: { name: 'Mysterious', icon: '🌫', blurb: 'Shadows and questions. Low strings tremble, a clarinet wanders.', mode: 'm', keys: ['d', 'c', 'f#'], era: 'romantic', forms: ['fugue', 'canon', 'sonata'], im: .85, ia: 0, da: -.12, tempo: .9, rub: 1.2, lead: 'solo:cl', tex: { brisk: 'tremolo', lyr: 'sustain' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'cl', 'bsn', 'hn', 'tbn', 'timp'], soft: 1 },
+  joyful: { name: 'Joyful', icon: '☀', blurb: 'Sunny and quick, a smile in sound. Bright strings and chattering winds.', mode: 'M', keys: ['G', 'D', 'A'], era: 'classical', forms: ['rondo', 'waltz', 'minuet'], im: 1, ia: .05, da: .05, tempo: 1.08, rub: .8, lead: 'solo:fl', tex: { brisk: 'repeated8', lyr: 'beats' }, preset: null },
+  melancholy: { name: 'Melancholy', icon: '🌧', blurb: 'Longing and rain on the window. A cello sings, minor colours everywhere.', mode: 'm', keys: ['g', 'e', 'b'], era: 'romantic', forms: ['aria', 'variations', 'canon'], im: .8, ia: 0, da: -.1, tempo: .88, rub: 1.4, lead: 'solo:vc', tex: { brisk: 'syncop', lyr: 'arpeggio' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 },
+  stormy: { name: 'Stormy', icon: '⚡', blurb: 'Wind, waves, a chase. Tremolo strings, hammering timpani.', mode: 'm', keys: ['c', 'd', 'f'], era: 'romantic', forms: ['sonata', 'overture', 'fugue'], im: 1.15, ia: .12, da: .12, tempo: 1.1, rub: .9, lead: 'str', tex: { brisk: 'tremolo', lyr: 'syncop' }, flav: 'dark', preset: null },
+  dreamy: { name: 'Dreamy', icon: '💭', blurb: 'Floating, half asleep, soft light. Flute, piano and colour chords.', mode: 'M', keys: ['F', 'Ab', 'E'], era: 'impressionist', forms: ['aria', 'waltz', 'canon'], im: .7, ia: 0, da: -.15, tempo: .86, rub: 1.4, lead: 'solo:fl', tex: { brisk: 'arpeggio', lyr: 'sustain' }, flav: 'color', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'hn', 'pno'], soft: 1 },
+  solemn: { name: 'Solemn', icon: '👑', blurb: 'Ceremony and dignity. Slow, full chords, brass like an organ.', mode: 'M', keys: ['C', 'Bb', 'D'], era: 'baroque', forms: ['fugue', 'march', 'overture'], im: 1, ia: .05, da: .05, tempo: .85, rub: .8, lead: 'str', tex: { brisk: 'continuo', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'ob', 'bsn', 'hn', 'tpt', 'tbn', 'timp', 'pno'] },
+};
+Y.FEELINGS = FEELINGS;
+
 /* ================= the composer ================= */
 function Comp(x) {
   this.x = x; this.meter = x.meter; this.bar = PPQ * x.meter; this.t = 0;
@@ -370,7 +392,7 @@ function Comp(x) {
 }
 Comp.prototype.add = function (p) {
   const x = this.x;
-  const bars = Array.isArray(p.tpl) ? p.tpl : flavor(p.tpl, p.noFlavor ? 'classical' : x.era, x.r, p.key.m);
+  const bars = Array.isArray(p.tpl) ? p.tpl : flavor(p.tpl, p.noFlavor ? 'classical' : x.era, x.r, p.key.m, p.noFlavor ? null : x.feel && x.feel.flav);
   const st = p.stretch || 1;
   const ph = Object.assign({}, p, { tpl: bars, t0: this.t, nb: bars.length * st, ev0: this.events.length, idx: this.phrases.length, uid: 'p' + this.phrases.length });
   bars.forEach((bar, bi) => {
@@ -409,6 +431,13 @@ function P(c, x, s) {
   const th = src && c.themes[src];
   const ch = (s.mel && s.mel.char) || (th && th.char) || s.char || 'lyr';
   s.char = ch;
+  const fe = x.feel;
+  if (fe) {
+    if (!s._fi) { s.inten = clamp(s.inten * fe.im + fe.ia, .12, 1); s._fi = 1; }
+    if (!s._fd) { s.dyn = clamp(s.dyn + fe.da, .12, 1); s._fd = 1; }
+    if (!s.tex && !s.poly && x.era !== 'baroque' || (!s.tex && fe.tex && x.era === 'baroque' && fe.tex[ch === 'lyr' || ch === 'slow' ? 'lyr' : 'brisk'] === 'continuo')) { const t = fe.tex[ch === 'lyr' || ch === 'slow' ? 'lyr' : 'brisk']; if (t && ch !== 'waltz' && ch !== 'march') s.tex = t; }
+    if (!s.lead && (ch === 'lyr' || ch === 'slow') && fe.lead && fe.lead !== 'str' && x.E.has(fe.lead.slice(5)) && !s.final) s.lead = fe.lead;
+  }
   if (!s.tex) s.tex = defTex(x, ch, s.inten);
   if (!s.btex) s.btex = defBtex(x, ch, s.inten);
   if (s.ctr == null) s.ctr = !s.poly && s.inten >= .35 && s.inten <= .85 && x.r() < ERAS[x.era].ctr;
@@ -416,7 +445,7 @@ function P(c, x, s) {
   return c.add(s);
 }
 function again(c, x, phs, ov) {
-  return phs.map(p => P(c, x, Object.assign({}, p, { tpl: p.tpl, label: null, sec: p.sec, mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, ctr: p.ctr }, ov || {}, { mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, noFlavor: true })));
+  return phs.map(p => P(c, x, Object.assign({}, p, ov && 'inten' in ov ? { _fi: 0 } : {}, ov && 'dyn' in ov ? { _fd: 0 } : {}, { tpl: p.tpl, label: null, sec: p.sec, mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, ctr: p.ctr }, ov || {}, { mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, noFlavor: true })));
 }
 function TP(x, name, K, X) {
   let s = pick(x.r, TPLS[name]);
@@ -425,7 +454,8 @@ function TP(x, name, K, X) {
 }
 function finalPh(c, x, K, s) {
   const tok = K.m === 'm' && x.era === 'baroque' ? 'PI' : 'I';
-  return P(c, x, Object.assign({ key: K, tpl: tok, mel: { type: 'hold' }, inten: 1, dyn: .85, final: 1, tex: 'block', btex: 'held', sec: 'Coda', ctr: false }, s || {}));
+  const soft = x.feel && x.feel.soft && !(s && s.dyn);
+  return P(c, x, Object.assign({ key: K, tpl: tok, mel: { type: 'hold' }, inten: soft ? .5 : 1, dyn: soft ? .35 : .85, final: 1, tex: 'block', btex: 'held', sec: 'Coda', ctr: false }, s || {}, soft ? { inten: .5, dyn: .35 } : {}));
 }
 
 /* ----- forms ----- */
@@ -1326,7 +1356,7 @@ function perform(c, parts) {
   const OFF = c.bar;
   const totalBeats = Math.ceil(c.t / PPQ) + 2;
   // rubato
-  const amt = x.rubato === 0 ? 0 : era.rub * (x.rubato === 2 ? 1.8 : 1) * (x.tempo < 90 ? 1.3 : 1);
+  const amt = x.rubato === 0 ? 0 : era.rub * (x.rubato === 2 ? 1.8 : 1) * (x.tempo < 90 ? 1.3 : 1) * (x.feel ? x.feel.rub : 1);
   const f = new Float64Array(totalBeats).fill(1);
   if (amt > 0) c.phrases.forEach((ph, i) => {
     const b0 = ph.t0 / PPQ, B = (ph.t1 - ph.t0) / PPQ;
@@ -1463,7 +1493,7 @@ function compose(o) {
   if (!['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'pno', 'tpt', 'tbn', 'picc'].some(i => E.has(i))) E.add('vln1');
   const meter = o.meter || FORMS[form].meter;
   const seed = (o.seed >>> 0) || 1;
-  const x = { era, form, K, E, meter, tempo: o.tempo || FORMS[form].tempo, len: clamp(o.len || 2, 1, 3), seed, r: mkRng(seed), rubato: o.rubato == null ? 1 : o.rubato, early: o.early == null ? 40 : o.early, scherzo: o.scherzo, solo: o.solo };
+  const x = { era, form, K, E, meter, tempo: o.tempo || FORMS[form].tempo, len: clamp(o.len || 2, 1, 3), seed, r: mkRng(seed), rubato: o.rubato == null ? 1 : o.rubato, early: o.early == null ? 40 : o.early, scherzo: o.scherzo, solo: o.solo, feel: FEELINGS[o.feel] || null };
   const c = new Comp(x);
   const st = ERAS[era];
   c.style = { melLo: st.melLo, melHi: st.melHi, melC: st.melC, appog: st.appog, avoid: st.avoid ? new Set(st.avoid) : null, bLo: 36, bHi: 57, bC: 46 };
@@ -1486,7 +1516,7 @@ function compose(o) {
 const CAT = { sonata: 'fast', rondo: 'fast', overture: 'fast', fugue: 'fast', aria: 'slow', canon: 'slow', variations: 'slow', minuet: 'dance', waltz: 'dance', march: 'dance' };
 Y.CAT = CAT;
 Y.SUITE_FORMS = Object.keys(CAT);
-Y.advise = function (chain) {
+Y.advise = function (chain, feel) {
   const n = chain.length, last = n ? chain[n - 1].form : null, lc = last ? CAT[last] : null;
   const used = f => chain.filter(c => c.form === f).length;
   return Y.SUITE_FORMS.map(f => {
@@ -1508,7 +1538,7 @@ Y.advise = function (chain) {
       else if (lc === 'slow' && c === 'fast') { st = 2; why = 'Back to energy.'; }
       else if (lc === 'slow' && c === 'slow') { st = 0; why = 'Two slow parts in a row lose the pulse.'; }
       else if (lc === 'dance' && f === last) { st = 0; why = 'Mozart put a slow part between two of the same dance.'; }
-      else if (lc === 'dance' && f === 'rondo') { st = 3; why = 'The classic finale after the minuet.'; }
+      else if (lc === 'dance' && f === 'rondo') { st = 3; why = 'The classic finale after a dance.'; }
       else if (lc === 'dance' && c === 'slow') { st = 3; why = 'A slow song between the dances, as in a serenade.'; }
       else if (lc === 'dance' && c === 'fast') { st = 2; why = 'Energy after the dance.'; }
       else if (lc === 'dance' && c === 'dance') { st = 1; why = 'A second, different dance can work. Contrast helps.'; }
@@ -1516,11 +1546,20 @@ Y.advise = function (chain) {
       if (f === 'fugue' && n >= 1 && st >= 2) why = 'A fugue makes a grand, learned finale.';
       if (used(f) >= 2 && st > 1) { st = 1; why = 'Already twice in your suite. Something new keeps it fresh.'; }
     }
+    const fe = FEELINGS[feel];
+    if (fe && fe.forms.includes(f) && st >= 1) { st = Math.min(3, st + 1); why += ' Fits ' + fe.name.toLowerCase() + '.'; }
     return { form: f, stars: st, why };
   }).sort((a, b) => b.stars - a.stars);
 };
 Y.suiteHint = function (chain) {
   if (!chain.length) return 'Start with a strong opening.';
+  const fs = chain.map(c => FEELINGS[c.feel]).filter(Boolean);
+  if (fs.length >= 2) {
+    const a = fs[0], z = fs[fs.length - 1];
+    if (a.mode === 'm' && z.mode === 'M') return 'From ' + a.name.toLowerCase() + ' to ' + z.name.toLowerCase() + ': a journey from dark to light. Beethoven loved that arc.';
+    if (a.mode === 'M' && z.mode === 'm') return 'From light into shadow: a tragic arc. Strong, and rare.';
+    if (z.soft && chain.length > 2) return 'It ends ' + z.name.toLowerCase() + '. A gentle farewell; a heroic or joyful finale would end in triumph.';
+  }
   const last = CAT[chain[chain.length - 1].form];
   if (chain.length === 1) return 'Now something that contrasts with it.';
   if (last === 'fast') return 'This ends with energy. A fine close.';
@@ -1545,7 +1584,14 @@ Y.planSuite = function (chain, K, era) {
     if (scherzo) tempo = 160;
     if (prev && prev.form === c.form) tempo = Math.round(tempo * (i % 2 ? .92 : 1.06));
     if (i === chain.length - 1 && i > 0 && prev && prev.key !== K) key = K;
-    out.push({ form: c.form, key, tempo, scherzo, seed: c.seed });
+    const fe = FEELINGS[c.feel];
+    if (fe) {
+      if (i === chain.length - 1 && i > 0 && fe.mode !== K.m) key = mkKey(K.L, K.t, fe.mode);
+      else if (fe.mode === 'm' && key.m === 'M') key = relKey(key, 5, 'm');
+      else if (fe.mode === 'M' && key.m === 'm') key = relKey(key, 2, 'M');
+      tempo = Math.round(tempo * fe.tempo);
+    }
+    out.push({ form: c.form, key, tempo, scherzo, seed: c.seed, feel: c.feel });
   });
   return out;
 };
@@ -1577,7 +1623,7 @@ Y.generate = function (o) {
     const plan = Y.planSuite(o.chain || [], K, o.era);
     if (!plan.length) throw new Error('Add at least one part to your suite.');
     const titles = [];
-    const parts = plan.map((p, i) => { const t = (i + 1) + '. ' + FORMS[p.form].name + (p.scherzo ? ' (scherzo)' : ''); titles.push(t); return compose(Object.assign({}, o, { form: p.form, key: p.key, tempo: Math.round(p.tempo * (o.tempoMul || 1)), seed: p.seed, scherzo: p.scherzo, title: t })); });
+    const parts = plan.map((p, i) => { const t = (i + 1) + '. ' + FORMS[p.form].name + (p.scherzo ? ' (scherzo)' : ''); titles.push(t); return compose(Object.assign({}, o, { form: p.form, key: p.key, tempo: Math.round(p.tempo * (o.tempoMul || 1)), seed: p.seed, scherzo: p.scherzo, feel: p.feel || o.feel, title: t })); });
     const res = mergeParts(parts, titles.map((t, i) => t + ' in ' + parts[i].keyName));
     res.title = 'Suite in ' + keyName(K);
     return { movements: [res] };

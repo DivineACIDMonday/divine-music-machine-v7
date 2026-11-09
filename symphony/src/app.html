@@ -98,6 +98,15 @@ svg.hall{width:100%;height:auto;display:block;user-select:none}
 .check b{color:var(--ww)}
 footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 .hide{display:none!important}
+.feels{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.feel{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--tx);font:inherit;cursor:pointer;min-height:44px}
+.feel:hover{border-color:#5A464C}
+.feel[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#2C2124}
+.feel .ic{font-size:26px;line-height:1}
+.feel b{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif;font-size:18px}
+.feel small{display:block;color:var(--mu);font-size:13px}
+.fits{font:12px system-ui;color:#1A1208;background:var(--gold);border-radius:5px;padding:1px 6px;align-self:flex-start}
+.part select{min-height:32px;padding:2px 4px;font-size:13px}
 #suitePanel{display:flex;flex-direction:column;gap:12px;background:#171114;border:1px solid var(--line);border-radius:12px;padding:14px}
 .chain{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
 .part{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid #5A464C;border-radius:10px;padding:6px 6px 6px 10px}
@@ -125,13 +134,18 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
   <a class="back" href="https://divineacidmonday.github.io/">All machines</a>
 </header>
 
+<section class="step" id="s0">
+  <div class="sh"><span class="num serif">1</span><span class="st serif">What should it feel like?</span><span class="muted">One tap sets era, key, form, orchestra and tempo for that feeling. Change anything after.</span></div>
+  <div class="feels" id="feels"></div>
+</section>
+
 <section class="step" id="s1">
-  <div class="sh"><span class="num serif">1</span><span class="st serif">Choose an era</span><span class="muted">The era sets harmony, ornaments, orchestra and how freely the time breathes.</span></div>
+  <div class="sh"><span class="num serif">2</span><span class="st serif">Choose an era</span><span class="muted">The era sets harmony, ornaments, orchestra and how freely the time breathes.</span></div>
   <div class="grid eras" id="eras"></div>
 </section>
 
 <section class="step" id="s2">
-  <div class="sh"><span class="num serif">2</span><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
+  <div class="sh"><span class="num serif">3</span><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
   <div class="grid forms" id="forms"></div>
   <div id="suitePanel" class="hide">
     <div class="mozart"><b class="serif" style="font-size:18px">Your suite</b><span class="muted small">🔒 keeps a part when you compose again · ⧉ makes an exact copy · ✕ removes it</span></div>
@@ -152,7 +166,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 </section>
 
 <section class="step" id="s3">
-  <div class="sh"><span class="num serif">3</span><span class="st serif">Seat your orchestra</span><span class="muted">Tap a section to switch it on or off. Each one becomes its own MIDI track.</span></div>
+  <div class="sh"><span class="num serif">4</span><span class="st serif">Seat your orchestra</span><span class="muted">Tap a section to switch it on or off. Each one becomes its own MIDI track.</span></div>
   <div class="orch">
     <svg class="hall" id="hall" viewBox="0 0 640 380" role="group" aria-label="Orchestra seating"></svg>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -165,7 +179,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 </section>
 
 <section class="step" id="s4">
-  <div class="sh"><span class="num serif">4</span><span class="st serif">Get it</span><span class="muted">One MIDI track per BBC instrument, with keyswitches, CC1 dynamics and CC11 expression.</span></div>
+  <div class="sh"><span class="num serif">5</span><span class="st serif">Get it</span><span class="muted">One MIDI track per BBC instrument, with keyswitches, CC1 dynamics and CC11 expression.</span></div>
   <div class="go">
     <button class="btn gold" id="compose">Compose</button>
     <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="any">Any synth</button></span></span>
@@ -220,11 +234,30 @@ const FAM = { str: 'var(--str)', ww: 'var(--ww)', br: 'var(--br)', perc: 'var(--
 const FAMHEX = { str: '#D9A84E', ww: '#8FC29C', br: '#E58256', perc: '#9CC7E3', kb: '#C8B2E8' };
 const IM = {}; Y.INST.forEach(i => IM[i.id] = i);
 const store = { get(k, d) { try { const v = localStorage.getItem('dsym.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('dsym.' + k, JSON.stringify(v)); } catch (e) {} } };
-const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), chain: store.get('chain', []), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
+const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), chain: store.get('chain', []), feel: store.get('feel', null), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
 let RES = null, MV = 0;
 
 /* eras */
 const eraIcons = { baroque: '𝄞', classical: '♩', romantic: '♪', impressionist: '≈' };
+function drawFeels() {
+  const box = $('feels'); box.innerHTML = '';
+  const list = Object.entries(Y.FEELINGS).concat([[null, { name: 'Free choice', icon: '🎼', blurb: 'No feeling preset. You choose everything yourself.' }]]);
+  list.forEach(([id, fe]) => {
+    const b = document.createElement('button'); b.className = 'feel'; b.setAttribute('aria-pressed', S.feel === id);
+    b.innerHTML = '<span class="ic">' + fe.icon + '</span><span><b>' + fe.name + '</b><small>' + fe.blurb + '</small></span>';
+    b.onclick = () => {
+      S.feel = id; store.set('feel', id);
+      if (id) {
+        S.era = fe.era; store.set('era', S.era);
+        S.inst = new Set(fe.preset || Y.PRESETS[fe.era]); store.set('inst', [...S.inst]);
+        S.key = fe.keys[0]; store.set('key', S.key); $('key').value = S.key;
+        if (S.form !== 'suite' && !fe.forms.includes(S.form)) { S.form = fe.forms[0]; store.set('form', S.form); }
+      }
+      S.tempo = null; drawFeels(); drawEras(); drawForms(); syncOpts(); drawHall();
+    };
+    box.appendChild(b);
+  });
+}
 function drawEras() {
   $('eras').innerHTML = '';
   Object.entries(Y.ERAS).forEach(([id, e]) => {
@@ -239,7 +272,8 @@ function drawForms() {
   $('forms').innerHTML = '';
   Object.entries(Y.FORMS).forEach(([id, f]) => {
     const b = document.createElement('button'); b.className = 'pick'; b.setAttribute('aria-pressed', S.form === id);
-    b.innerHTML = '<h3 class="serif">' + f.name + '</h3><div class="map">' + f.map.map((m, i) => '<span class="' + (i === 0 ? 'k' : '') + '">' + m + '</span>').join('') + '</div><p>' + f.blurb + '</p><span class="yr">' + (f.meter === 3 ? '3/4' : '4/4') + ' · ' + f.tempo + ' bpm</span>';
+    const fe = Y.FEELINGS[S.feel];
+    b.innerHTML = (fe && fe.forms.includes(id) ? '<span class="fits">★ fits ' + fe.name.toLowerCase() + '</span>' : '') + '<h3 class="serif">' + f.name + '</h3><div class="map">' + f.map.map((m, i) => '<span class="' + (i === 0 ? 'k' : '') + '">' + m + '</span>').join('') + '</div><p>' + f.blurb + '</p><span class="yr">' + (f.meter === 3 ? '3/4' : '4/4') + ' · ' + f.tempo + ' bpm</span>';
     b.onclick = () => { S.form = id; store.set('form', id); S.tempo = null; drawForms(); syncOpts(); };
     $('forms').appendChild(b);
   });
@@ -264,25 +298,29 @@ function drawSuite() {
     const p = plan[i];
     d.innerHTML = '<span><b>' + (i + 1) + '. ' + SHORTN[c.form] + (p && p.scherzo ? ' (scherzo)' : '') + '</b><br><span class="pk">' + (p ? Y.keyName(p.key) + ' · ' + p.tempo : '') + '</span></span>';
     const mk = (txt, title, fn, cls) => { const b = document.createElement('button'); b.textContent = txt; b.title = title; b.setAttribute('aria-label', title); if (cls) b.className = cls; b.onclick = fn; d.appendChild(b); };
+    const sel = document.createElement('select'); sel.title = 'Feeling of this part'; sel.setAttribute('aria-label', 'Feeling of this part');
+    sel.innerHTML = '<option value="">🎼</option>' + Object.entries(Y.FEELINGS).map(([k, v]) => '<option value="' + k + '"' + (c.feel === k ? ' selected' : '') + '>' + v.icon + ' ' + v.name + '</option>').join('');
+    sel.onchange = () => { c.feel = sel.value || null; saveChain(); drawSuite(); };
+    d.appendChild(sel);
     mk('🔒', c.lock ? 'Locked: keeps this part' : 'Lock this part', () => { c.lock = !c.lock; saveChain(); drawSuite(); }, c.lock ? 'on' : '');
-    mk('⧉', 'Exact copy', () => { c.lock = true; S.chain.splice(i + 1, 0, { form: c.form, seed: c.seed, lock: true }); saveChain(); drawSuite(); });
+    mk('⧉', 'Exact copy', () => { c.lock = true; S.chain.splice(i + 1, 0, { form: c.form, seed: c.seed, lock: true, feel: c.feel }); saveChain(); drawSuite(); });
     mk('✕', 'Remove', () => { S.chain.splice(i, 1); saveChain(); drawSuite(); });
     if (!c.lock) d.querySelector('button').style.opacity = .45;
     ch.appendChild(d);
   });
   $('hint').textContent = Y.suiteHint(S.chain);
   const adv = $('adv'); adv.innerHTML = '';
-  Y.advise(S.chain).forEach(a => {
+  Y.advise(S.chain, S.feel).forEach(a => {
     const b = document.createElement('button'); b.className = 's' + a.stars;
     b.innerHTML = '<span class="stars">' + (a.stars ? '★'.repeat(a.stars) : '⚠') + '</span><span><b>' + Y.FORMS[a.form].name + '</b><small>' + a.why + '</small></span>';
-    b.onclick = () => { S.chain.push({ form: a.form, seed: newSeed(), lock: false }); saveChain(); drawSuite(); };
+    b.onclick = () => { S.chain.push({ form: a.form, seed: newSeed(), lock: false, feel: S.feel }); saveChain(); drawSuite(); };
     adv.appendChild(b);
   });
 }
 function syncOpts() {
   drawSuite();
   const f = Y.FORMS[S.form];
-  if (!S.tempo) S.tempo = f.tempo;
+  if (!S.tempo) S.tempo = Math.round(f.tempo * (Y.FEELINGS[S.feel] ? Y.FEELINGS[S.feel].tempo : 1));
   $('tempo').value = S.tempo; $('tempoV').textContent = S.tempo + ' bpm';
   $('soloW').classList.toggle('hide', S.form !== 'aria');
   [...$('len').children].forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === S.len));
@@ -362,7 +400,7 @@ function compose() {
   setTimeout(() => {
     try {
       const t0 = performance.now();
-      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed })), solo: S.solo === 'auto' ? null : S.solo });
+      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed, feel: c.feel })), feel: S.feel, solo: S.solo === 'auto' ? null : S.solo });
       MV = 0;
       $('status').textContent = 'Done in ' + Math.round(performance.now() - t0) + ' ms. Seed ' + S.seed + '.';
       showResult(); if (S.form === 'suite') drawSuite();
@@ -499,7 +537,7 @@ function stop() {
 }
 $('play').onclick = play;
 $('compose').onclick = compose;
-drawEras(); drawForms(); initOpts(); drawPresets(); drawHall();
+drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); drawHall();
 })();
 </script>
 </body></html>
