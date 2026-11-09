@@ -209,14 +209,14 @@ function contour(n, r, kind, era) {
     let s;
     switch (kind) {
       case 'arch': s = i < (n - 1) / 2 ? 1 : -1; break;
-      case 'leap': s = i === 0 ? pick(r, era === 'romantic' ? [3, 4, 5] : [2, 3, 4, -2]) : -1; break;
+      case 'leap': s = i === 0 ? pick(r, era === 'romantic' ? [3, 4, 5, -3] : [3, 4, -3, 2]) : (i === 2 && n > 4 && r() < .4 ? 2 : -1); break;
       case 'down': s = -1; break;
       case 'up': s = 1; break;
       case 'nb': s = i % 2 ? -1 : 1; break;
       case 'arp': s = i % 3 === 2 ? -2 : 2; break;
       default: s = pick(r, [1, -1]);
     }
-    if (kind !== 'leap' || i > 0) { if (r() < .16) s *= 2; if (r() < .07) s = 0; }
+    if (kind !== 'leap' || i > 0) { if (r() < .26) s *= 2; if (r() < .07) s = 0; }
     st.push(s);
   }
   return st;
@@ -224,7 +224,7 @@ function contour(n, r, kind, era) {
 const sum = a => a.reduce((x, y) => x + y, 0);
 
 /* ================= the line maker: beam search ================= */
-const ICOST = [0.8, 0, 1.2, 3, 4.5, 6.5, 9, 5.5];
+const ICOST = [0.8, 0, 1.2, 2.4, 3.6, 5.5, 9, 5];
 function line(sk, o) {
   const W = o.width || 18, leap = o.leap || 7;
   let beam = [{ c: 0, D: o.prevD == null ? null : o.prevD, m: o.prevM, t: o.prevT, st: 0, nct: 0, ev: null, path: null, n: null }];
@@ -388,12 +388,12 @@ Y.FORMS = FORMS;
 
 /* ================= feelings ================= */
 const FEELINGS = {
-  heroic: { name: 'Heroic', icon: '🦁', blurb: 'Brave, proud, a victory. Horns and trumpets lead.', mode: 'M', keys: ['Eb', 'D', 'C'], era: 'romantic', forms: ['overture', 'march', 'sonata'], im: 1.1, ia: .1, da: .1, tempo: 1.04, rub: 1, lead: 'solo:hn', tex: { brisk: 'repeated8', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'tbn', 'btbn', 'tba', 'timp'] , leads: ['shn', 'hn'], bfo: ['shn', 'stpt', 'bells', 'cbsn'] },
+  heroic: { name: 'Heroic', icon: '🦁', blurb: 'Brave, proud, a victory. Horns and trumpets lead.', mode: 'M', keys: ['Eb', 'D', 'C'], era: 'romantic', forms: ['overture', 'march', 'sonata'], im: 1.04, ia: .05, da: .06, tempo: 1.04, rub: 1, lead: 'solo:hn', tex: { brisk: 'repeated8', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'tbn', 'btbn', 'tba', 'timp'] , leads: ['shn', 'hn'], bfo: ['shn', 'stpt', 'bells', 'cbsn'] },
   tender: { name: 'Tender', icon: '🕊', blurb: 'Warm and close, like a love letter. A singing oboe over soft strings.', mode: 'M', keys: ['F', 'A', 'G'], era: 'classical', forms: ['aria', 'variations', 'minuet'], im: .75, ia: 0, da: -.15, tempo: .9, rub: 1.3, lead: 'solo:ob', tex: { brisk: 'alberti', lyr: 'arpeggio' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 , leads: ['svn', 'ob'], bfo: ['svn', 'eh'] },
   mysterious: { name: 'Mysterious', icon: '🌫', blurb: 'Shadows and questions. Low strings tremble, a clarinet wanders.', mode: 'm', keys: ['d', 'c', 'f#'], era: 'romantic', forms: ['fugue', 'canon', 'sonata'], im: .85, ia: 0, da: -.12, tempo: .9, rub: 1.2, lead: 'solo:cl', tex: { brisk: 'tremolo', lyr: 'sustain' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'cl', 'bsn', 'hn', 'tbn', 'timp'], soft: 1 , leads: ['bcl', 'cl'], bfo: ['bcl', 'cbsn', 'vib'] },
   joyful: { name: 'Joyful', icon: '☀', blurb: 'Sunny and quick, a smile in sound. Bright strings and chattering winds.', mode: 'M', keys: ['G', 'D', 'A'], era: 'classical', forms: ['rondo', 'waltz', 'minuet'], im: 1, ia: .05, da: .05, tempo: 1.08, rub: .8, lead: 'solo:fl', tex: { brisk: 'repeated8', lyr: 'beats' }, preset: null , leads: ['fl'], bfo: ['glock', 'xyl', 'mar'] },
   melancholy: { name: 'Melancholy', icon: '🌧', blurb: 'Longing and rain on the window. A cello sings, minor colours everywhere.', mode: 'm', keys: ['g', 'e', 'b'], era: 'romantic', forms: ['aria', 'variations', 'canon'], im: .8, ia: 0, da: -.1, tempo: .88, rub: 1.4, lead: 'solo:vc', tex: { brisk: 'syncop', lyr: 'arpeggio' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 , leads: ['svc', 'eh', 'vc'], bfo: ['eh', 'svc', 'bcl'] },
-  stormy: { name: 'Stormy', icon: '⚡', blurb: 'Wind, waves, a chase. Tremolo strings, hammering timpani.', mode: 'm', keys: ['c', 'd', 'f'], era: 'romantic', forms: ['sonata', 'overture', 'fugue'], im: 1.15, ia: .12, da: .12, tempo: 1.1, rub: .9, lead: 'str', tex: { brisk: 'tremolo', lyr: 'syncop' }, flav: 'dark', preset: null , leads: [], bfo: ['cbsn', 'bcl', 'stbn'] },
+  stormy: { name: 'Stormy', icon: '⚡', blurb: 'Wind, waves, a chase. Tremolo strings, hammering timpani.', mode: 'm', keys: ['c', 'd', 'f'], era: 'romantic', forms: ['sonata', 'overture', 'fugue'], im: 1.06, ia: .06, da: .07, tempo: 1.1, rub: .9, lead: 'str', tex: { brisk: 'tremolo', lyr: 'syncop' }, flav: 'dark', preset: null , leads: [], bfo: ['cbsn', 'bcl', 'stbn'] },
   dreamy: { name: 'Dreamy', icon: '💭', blurb: 'Floating, half asleep, soft light. Flute, piano and colour chords.', mode: 'M', keys: ['F', 'Ab', 'E'], era: 'impressionist', forms: ['aria', 'waltz', 'canon'], im: .7, ia: 0, da: -.15, tempo: .86, rub: 1.4, lead: 'solo:fl', tex: { brisk: 'arpeggio', lyr: 'sustain' }, flav: 'color', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'hn', 'pno'], soft: 1 , leads: ['fl', 'svn'], bfo: ['vib', 'glock', 'svn'] },
   solemn: { name: 'Solemn', icon: '👑', blurb: 'Ceremony and dignity. Slow, full chords, brass like an organ.', mode: 'M', keys: ['C', 'Bb', 'D'], era: 'baroque', forms: ['fugue', 'march', 'overture'], im: 1, ia: .05, da: .05, tempo: .85, rub: .8, lead: 'str', tex: { brisk: 'continuo', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'ob', 'bsn', 'hn', 'tpt', 'tbn', 'timp', 'pno'] , leads: [], bfo: ['bells', 'stbn', 'cbsn'] },
 };
@@ -488,6 +488,14 @@ function finalPh(c, x, K, s) {
   return P(c, x, Object.assign({ key: K, tpl: tok, mel: { type: 'hold' }, inten: soft ? .5 : 1, dyn: soft ? .35 : .85, final: 1, tex: 'block', btex: 'held', sec: 'Coda', ctr: false }, s || {}, soft ? { inten: .5, dyn: .35 } : {}));
 }
 
+function shapeDyn(c) { /* wider dynamics, and a quieter phrase before each climax */
+  const P = c.phrases;
+  P.forEach(p => { p.dyn = clamp(.5 + (p.dyn - .5) * 1.35, .1, .98); });
+  for (let i = 1; i < P.length; i++) {
+    const a = P[i - 1], b = P[i];
+    if (b.dyn >= .8 && a.dyn >= .62 && !a.final && b.dyn - a.dyn < .2) a.dyn = Math.max(.35, b.dyn - .32);
+  }
+}
 /* ----- forms ----- */
 const F = {};
 F.minuet = (c, x) => {
@@ -854,10 +862,10 @@ function getTheme(c, id, ch, r) {
     const A = pick(r, pool);
     let B = pick(r, A.length >= 4 ? calm : pool); if (B === A) B = pick(r, calm);
     const C = pick(r, pool);
-    const ka = ch2 === 'march' ? pick(r, ['arp', 'leap', 'up']) : pick(r, ['leap', 'arch', 'nb', 'up', 'arch']);
+    const ka = ch2 === 'march' ? pick(r, ['arp', 'leap', 'up']) : pick(r, ['leap', 'leap', 'arp', 'arch', 'nb', 'up']);
     th.A = { rh: A, st: contour(A.length, r, ka, x.era) };
-    th.B = { rh: B, st: contour(B.length, r, pick(r, ['down', 'arch', 'down', 'nb']), x.era) };
-    th.C = { rh: C, st: contour(C.length, r, pick(r, ['up', 'arch', 'nb', 'leap']), x.era) };
+    th.B = { rh: B, st: contour(B.length, r, pick(r, ['down', 'arch', 'leap', 'arp', 'nb']), x.era) };
+    th.C = { rh: C, st: contour(C.length, r, pick(r, ['up', 'arp', 'leap', 'arch']), x.era) };
   }
   return th;
 }
@@ -999,7 +1007,7 @@ function genMel(c) {
         }
       }
       const pv = head.length ? head[head.length - 1] : last;
-      const o = { lo: st.melLo, hi: st.melHi, center: st.melC, half: 8, prevD: pv ? pv.D : null, prevM: pv ? pv.m : null, prevT: pv ? pv.t : null, start: st.melC, fixed: [c.bassCheck], r, noise: 1.1, wm: 2.6, appog: st.appog && ph.char === 'lyr', avoid: st.avoid };
+      const o = { lo: st.melLo, hi: st.melHi, center: st.melC, half: 8, prevD: pv ? pv.D : null, prevM: pv ? pv.m : null, prevT: pv ? pv.t : null, start: st.melC, fixed: [c.bassCheck], r, noise: 1.1, wm: 3.2, appog: st.appog && ph.char === 'lyr', avoid: st.avoid };
       if (sp.type === 'cadenza') { o.wm = 4; }
       notes = head.concat(sk.length ? line(sk, o) : []);
       if (sp.id && !sp.head && !(c.themes[sp.id] && c.themes[sp.id].notes)) storeTheme(c, sp.id, ph, notes, ph.stretch);
@@ -1210,6 +1218,7 @@ function orchPlan(c, ph) {
   const has = id => E.has(id), use = new Set();
   const P = { mel: [], inner: [], bass: [], ctr: [], tpt: false, timp: false, pno: null };
   const addM = (id, pref) => { if (has(id) && !use.has(id)) { P.mel.push({ id, pref: pref || MPREF[id] || [0] }); use.add(id); return true; } return false; };
+  const rest = I < .82 && !ph.final && (ph.lead || 'str') === 'str' && ph.idx % 3 === 1; /* the winds breathe: strings alone for a phrase */
   let lead = ph.lead || 'str';
   if (lead === 'ww') { const w = ['ob', 'fl', 'cl'].filter(has); lead = w.length ? 'solo:' + w[ph.idx % w.length] : 'str'; }
   if (lead.startsWith('solo:') && !addM(lead.slice(5))) lead = 'str';
@@ -1217,18 +1226,18 @@ function orchPlan(c, ph) {
   if (lead === 'str' || lead === 'tutti') { addM('vln1') || addM('fl') || addM('ob') || addM('cl') || addM('vln2') || addM('hn') || addM('pno'); }
   if (lead !== 'bass') {
     if (era === 'baroque' && I >= .45) addM('ob', [0, -12]);
-    if (I >= .6) addM('fl', [12, 0]);
-    if (I >= .72) addM('ob', [0, -12]);
-    if (I >= .82) addM('vln2', [-12, 0]);
+    if (I >= .65 && !rest) addM('fl', [12, 0]);
+    if (I >= .78 && !rest) addM('ob', [0, -12]);
+    if (I >= .86) addM('vln2', [-12, 0]);
     if (I >= .9 && era !== 'baroque' && era !== 'classical') addM('picc', [12, 24]);
     if (I >= .9 && era === 'romantic') addM('cl', [0, -12]);
     if (lead.startsWith('solo:') && I < .6) { /* solo stays alone */ }
   }
   const addB = (id, pref) => { if (has(id) && !use.has(id)) { P.bass.push({ id, pref }); use.add(id); } };
   if (lead !== 'bass') addB('vc', [0, -12, 12]); else { addB('vc', [0, 12, -12]); if (I > .4) addB('bsn', [0, 12, -12]); }
-  if (I >= .25 || era === 'baroque') addB('cb', [-12, 0]);
+  if (I >= .4 || era === 'baroque') addB('cb', [-12, 0]);
   if (era === 'baroque' || I >= .55) addB('bsn', [0, -12, 12]);
-  if (I >= .82 && era !== 'baroque') { addB('tba', [-12, 0]); addB('btbn', [0, -12]); }
+  if (I >= .86 && era !== 'baroque') { addB('tba', [-12, 0]); addB('btbn', [0, -12]); }
   if (I >= .55 && era !== 'baroque') addB('cbsn', [-12, 0, -24]);
   if (ph.ctrLine) { const cid = ['hn', 'vc', 'vla', 'bsn'].find(id => has(id) && !use.has(id) && (id !== 'vc' || has('cb'))); if (cid) { if (cid === 'vc') P.bass = P.bass.filter(b => b.id !== 'vc'); P.ctr.push({ id: cid, pref: [0, -12, 12] }); use.add(cid); } }
   const tex = ph.tex;
@@ -1239,11 +1248,11 @@ function orchPlan(c, ph) {
   else if (tex === 'continuo') { addI('vln2', ['A', 'X'], 'continuo'); addI('vla', ['T'], 'continuo'); }
   else { addI('vln2', ['A', 'X'], tex); addI('vla', ['T'], tex); }
   if (!use.has('vln1')) addI('vln1', ['A'], tex === 'alberti' || tex === 'arpeggio' ? 'block' : tex);
-  if (I >= .4 && era !== 'baroque') addI('cl', ['A', 'X'], 'block');
-  if ((I >= .45 && era !== 'baroque') || (era === 'impressionist' && I >= .25)) addI('hn', ['X', 'T'], tex === 'march' ? 'march' : era === 'impressionist' ? 'sustain' : 'block', [0, -12]);
-  if (I >= .55 && era !== 'baroque') addI('bsn', ['T'], 'block');
-  if (I >= .7) { addI('fl', ['A'], 'block', [12, 0]); addI('ob', ['A', 'X'], 'block'); }
-  if (I >= .8 && era !== 'baroque') addI('tbn', ['X', 'T'], tex === 'march' ? 'march' : 'block');
+  if (I >= .45 && era !== 'baroque' && !rest) addI('cl', ['A', 'X'], 'block');
+  if (((I >= .5 && era !== 'baroque') || (era === 'impressionist' && I >= .3)) && !rest) addI('hn', ['X', 'T'], tex === 'march' ? 'march' : era === 'impressionist' ? 'sustain' : 'block', [0, -12]);
+  if (I >= .6 && era !== 'baroque' && !rest) addI('bsn', ['T'], 'block');
+  if (I >= .76 && !rest) { addI('fl', ['A'], 'block', [12, 0]); addI('ob', ['A', 'X'], 'block'); }
+  if (I >= .84 && era !== 'baroque') addI('tbn', ['X', 'T'], tex === 'march' ? 'march' : 'block');
   if (ph.fan && era === 'baroque' && I >= .6) addI('tbn', ['X', 'T'], 'block');
   if (I >= .3 && I < .85 && (era === 'romantic' || era === 'impressionist')) addI('bcl', ['T'], 'block', [-12, 0]);
   if (I >= .65) addI('stbn', ['T'], tex === 'march' ? 'march' : 'block');
@@ -1598,6 +1607,7 @@ function compose(o) {
   const st = ERAS[era];
   c.style = { melLo: st.melLo, melHi: st.melHi, melC: st.melC, appog: st.appog, avoid: st.avoid ? new Set(st.avoid) : null, bLo: 36, bHi: 57, bC: 46 };
   F[form](c, x);
+  shapeDyn(c);
   genBass(c);
   genMel(c);
   genBass(c, true);
