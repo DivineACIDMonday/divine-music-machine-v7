@@ -258,6 +258,9 @@ function drawMap() {
   s += `<path d="${path} L ${X(1)} ${bot} L ${X(0)} ${bot} Z" fill="url(#g)" opacity=".35"/><defs><linearGradient id="g" x1="0" x2="1">${HEX.map((h, i) => `<stop offset="${(ch[i] ? (ch[i].t0 + ch[i].t1) / 2 : 0)}" stop-color="${h}"/>`).join('')}</linearGradient></defs>`;
   s += `<path d="${path}" fill="none" stroke="#EDE6D8" stroke-width="2.4" stroke-linejoin="round"/>`;
   // transitions and breaths
+  ch.forEach((c, i) => { if (i === ch.length - 1 || !c.overlap) return; const w = Math.max(6, (X(c.t1) - X(c.t0)) * c.overlap / c.bars), x1 = X(c.t1);
+    s += `<defs><linearGradient id="tz${i}" x1="0" x2="1"><stop offset="0" stop-color="${HEX[i]}" stop-opacity=".0"/><stop offset=".5" stop-color="${HEX[i]}" stop-opacity=".28"/><stop offset="1" stop-color="${HEX[i + 1]}" stop-opacity=".28"/></linearGradient></defs>`;
+    s += `<rect x="${x1 - w}" y="${top - 43}" width="${w * 2}" height="${bot - top + 43}" fill="url(#tz${i})"/>`; });
   ch.forEach((c, i) => { if (i === ch.length - 1) return; const x = X(c.t1), tr = JP.TRANSITIONS[c.out];
     s += `<line x1="${x}" y1="${top - 6}" x2="${x}" y2="${bot}" stroke="#3A4560" stroke-dasharray="3 4"/>`;
     s += `<circle cx="${x}" cy="${top + 10}" r="12" fill="#0B0E14" stroke="#556080"/><text x="${x}" y="${top + 15}" text-anchor="middle" fill="#EDE6D8" font-size="13">${tr.icon}</text>`; });

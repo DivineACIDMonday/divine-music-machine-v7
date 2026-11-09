@@ -7556,11 +7556,12 @@ const JP_PLAIN = 'Plain MIDI';
 const JR_ROLE = { beats: 'Beat', perc: 'Percussion', bass: 'Bass', chords: 'Chords', melody: 'Melody', orch: 'Orchestra', motif: 'Motif' };
 
 // who plays in this bar: the energy sets how many layers, and the layers breathe in waves of 16 bars
-function plays(plan, i, rank, bar) {
-  const c = plan.chapters[i], n = plan.chapters.length, np = c.players.length, len = c.bars * BAR;
-  const ph = Math.floor(bar / 8) * 8; let L = Math.max(1, layersAt(c, ph * BAR / len));
-  const edge = (i === 0 && bar < 16) || (i === n - 1 && bar >= c.bars - 16);
-  if (!edge && eAt(c, ph / c.bars) > 0.15) L = Math.max(L, Math.min(3, np)); // a chapter is never just one dry layer for long
+function plays(plan, i, rank, bar, bars) {
+  // bar and bars are counted in the chapter's own musical bars, so phrases stay whole in every feel
+  const c = plan.chapters[i], n = plan.chapters.length, np = c.players.length;
+  const ph = Math.floor(bar / 8) * 8; let L = Math.max(1, layersAt(c, ph / bars));
+  const edge = (i === 0 && bar < 16) || (i === n - 1 && bar >= bars - 16);
+  if (!edge && eAt(c, ph / bars) > 0.15) L = Math.max(L, Math.min(3, np)); // a chapter is never just one dry layer for long
   if (L === 1 && bar >= 16) L = 2;
   L = Math.min(L, np);
   if (rank >= L) return false;
@@ -7571,37 +7572,104 @@ function plays(plan, i, rank, bar) {
   return true;
 }
 
+// ---------- the transitions: one beat, one bass, one harmony, one melody at a time ----------
+// window out = the last bars of this chapter that overlap the next one; window in = the first bars that overlap the previous one
+const HARM = new Set(['chords', 'orch']);
+function win(plan, i) {
+  const c = plan.chapters[i], nx = plan.chapters[i + 1], pv = plan.chapters[i - 1];
+  const out = nx ? c.overlap || 0 : 0, inn = pv ? pv.overlap || 0 : 0;
+  return { out, inn, nx, pv, keyOut: nx && (nx.tonic !== c.tonic || nx.minor !== c.minor), keyIn: pv && (pv.tonic !== c.tonic || pv.minor !== c.minor),
+    feelOut: nx && nx.feel.id !== c.feel.id, feelIn: pv && pv.feel.id !== c.feel.id,
+    // the new melody waits for the first whole phrase after the handover, then grows in over 8 bars
+    melodyIn: pv ? Math.max(8, Math.ceil(inn / 8) * 8) : 0 };
+}
+// the rhythm handover in the chapter's own time: the old kick and snare leave halfway, the new ones arrive halfway; hats carry the seam
+function handRhythm(list, plan, i, isKick, isBack) {
+  const c = plan.chapters[i], w = win(plan, i), k = c.feelsLike / plan.bpm, cb = (jb) => jb * BAR * k;
+  const W0 = cb(c.bars - w.out), Wh = cb(c.bars - w.out / 2), I1 = cb(w.inn), Ih = cb(w.inn / 2);
+  return list.filter((n) => { if (n.roll) return true;
+    if (w.out && n.t >= W0) { if (w.feelOut) return false; if ((isKick(n) || isBack(n)) && n.t >= Wh) return false; }
+    if (w.inn && n.t < I1) { if (w.feelIn) return false; if ((isKick(n) || isBack(n)) && n.t < Ih) return false; }
+    return true; });
+}
+
 // ---------- shaping in journey time: layers, breaths, transitions, the ending ----------
 function shape(plan, i, role, rank, notes, tl) {
-  const c = plan.chapters[i], n = plan.chapters.length, len = c.bars * BAR, prev = plan.chapters[i - 1], o = [];
-  const ovIn = prev ? prev.overlap || 0 : 0;
+  const c = plan.chapters[i], n = plan.chapters.length, len = c.bars * BAR, o = [], w = win(plan, i);
+  const k = c.feelsLike / plan.bpm, cbars = c.bars * k;
   for (const x of notes) {
     if (x.t < -PPQ / 2 || x.t >= len) continue; if (x.t < 0) x = Object.assign({}, x, { t: 0 }); const bar = Math.floor(x.t / BAR), u = x.t / len;
-    if (role !== 'motif') {
-      // layers: each role has a rank; it plays when the energy carries that many layers (checked per 8 bars, so layers enter on phrases)
-      if (!x.ks && !plays(plan, i, rank, bar)) continue;
+    const fb = x.t / BAR; // bar as a fraction, for smooth fades
+    let fade = 1;
+    if (role === 'motif' && ((w.out && w.keyOut && fb >= c.bars - w.out / 2) || (w.inn && w.keyIn && fb < w.inn / 2))) continue; // the motif speaks the key that sounds
+    if (role !== 'motif' && !x.ks) {
+      // layers: each role has a rank; it plays when the energy carries that many layers
+      if (!plays(plan, i, rank, Math.floor(x.t * k / BAR), cbars)) continue;
       // a breath inside the chapter: two bars where only the motif sounds
       if (c.breathInside && bar >= c.breathInside.bar && bar < c.breathInside.bar + 2) continue;
-      // the way out of this chapter
-      if (i < n - 1) { const endBar = c.bars;
-        if (c.out === 'breath' && bar >= endBar - 2) continue;
-        if (c.out === 'bassout' && role === 'bass' && bar >= endBar - 8) continue;
-        if (c.out === 'motif' && bar >= endBar - 4 && rank > 0) continue; }
-      // the way in: the bass waits until the overlap is over, so two basses never fight
-      if (ovIn && role === 'bass' && bar < ovIn) continue;
+      // the way out
+      if (i < n - 1) {
+        if (c.out === 'breath' && bar >= c.bars - 2) continue;
+        if (c.out === 'motif' && bar >= c.bars - 4 && rank > 0) continue;
+        if (w.out && bar >= c.bars - w.out) { const p = (fb - (c.bars - w.out)) / w.out;
+          if (role === 'melody' || role === 'bass') continue;                         // the old melody and bass leave as the window opens
+          if (HARM.has(role) && w.keyOut && p >= 0.5) continue;                       // two keys never sound together
+          fade = c.out === 'filter' ? 1 - 0.75 * p : 1 - 0.5 * p; }
+        if (c.out === 'riser' && bar >= c.bars - 4) fade *= 0.8 + 0.3 * ((fb - (c.bars - 4)) / 4); // the riser lifts everything
+      }
+      // the way in
+      if (w.inn && bar < w.inn) { const p = fb / w.inn;
+        if (role === 'bass') continue;
+        if (HARM.has(role) && w.keyIn && p < 0.5) continue;
+        fade = Math.min(fade, w.pv.out === 'filter' ? 0.25 + 0.75 * p : 0.5 + 0.5 * p); }
+      if (role === 'melody' && w.pv) { if (bar < w.melodyIn) continue; fade = Math.min(fade, 0.55 + 0.45 * clamp((fb - w.melodyIn) / 8, 0, 1)); }
     }
     let v = x.v;
-    if (!x.ks) { v = v * (0.72 + 0.4 * eAt(c, u));
-      if (i < n - 1 && c.out === 'filter' && bar >= c.bars - 8) v *= 1 - 0.5 * ((x.t - (c.bars - 8) * BAR) / (8 * BAR));
-      if (ovIn && bar < ovIn && prev.out === 'filter') v *= 0.5 + 0.5 * (x.t / (ovIn * BAR));
+    if (!x.ks) { v = v * (0.72 + 0.4 * eAt(c, u)) * fade;
       if (i === n - 1 && plan.ending.id === 'fade') v *= 1 - 0.7 * clamp((u - 0.75) / 0.25, 0, 1); }
-    o.push({ t: x.t + tl[i].start, d: Math.min(x.d, len - x.t), p: x.p, v: clamp(Math.round(v), 1, 127), ks: x.ks });
+    // nothing rings over the line it may not cross: the old melody and bass stop as the window opens, the old harmony at its middle when the key changes
+    let lim = len;
+    if (w.out && i < n - 1) { const W0 = (c.bars - w.out) * BAR, Wh = (c.bars - w.out / 2) * BAR;
+      if ((role === 'melody' || role === 'bass') && x.t < W0) lim = W0; else if ((HARM.has(role) || role === 'melody' || role === 'motif') && w.keyOut && x.t < Wh) lim = Wh; }
+    if (lim - x.t < 90) continue;
+    o.push({ t: x.t + tl[i].start, d: Math.max(30, Math.min(x.d, lim - x.t)), p: x.p, v: clamp(Math.round(v), 1, 127), ks: x.ks });
   }
   return o;
 }
 
+// ---------- the players listen to each other ----------
+// the melody rests while the motif speaks (call and response), the chords step aside under the melody,
+// the supporting layers play softer when a voice sings or when the stage is full, and every 32 bars they all breathe in together
+function listen(all, plan, tl) {
+  plan.chapters.forEach((c, i) => {
+    const T = all.filter((t) => t.chapter === i), s0 = tl[i].start, w = win(plan, i), byRole = (r) => T.filter((t) => t.role === r);
+    const barOf = (t) => Math.floor((t - s0) / BAR);
+    // where the voices are: motif statements and melody, per bar
+    const motifSpans = []; byRole('motif').forEach((t) => t.notes.forEach((n) => motifSpans.push([n.t - PPQ, n.t + n.d + PPQ / 2])));
+    const sings = new Set(), melLow = {};
+    byRole('melody').forEach((t) => { t.notes = t.notes.filter((n) => !motifSpans.some(([a, b]) => n.t < b && n.t + n.d > a)); });
+    byRole('melody').concat(byRole('motif')).forEach((t) => t.notes.forEach((n) => { if (n.ks) return; const b = barOf(n.t); sings.add(b); if (t.role === 'melody') melLow[b] = Math.min(melLow[b] == null ? 999 : melLow[b], n.p); }));
+    // how full the stage is, per bar
+    const full = {}; T.forEach((t) => { const seen = new Set(); t.notes.forEach((n) => { const b = barOf(n.t); if (!seen.has(b)) { seen.add(b); full[b] = (full[b] || 0) + 1; } }); });
+    T.forEach((t) => {
+      const support = t.role === 'chords' || t.role === 'orch' || t.role === 'perc';
+      t.notes.forEach((n) => { if (n.ks) return; const b = barOf(n.t);
+        if (t.role === 'chords' && melLow[b] != null && n.p >= melLow[b] - 1 && n.p - 12 >= 40) n.p -= 12; // under the melody, never on top of it
+        if (support && sings.has(b)) n.v = Math.max(1, Math.round(n.v * 0.84));
+        if (support && (full[b] || 0) >= 6) n.v = Math.max(1, Math.round(n.v * 0.9)); });
+    });
+    // the shared breath: the last two beats before every 32nd bar, everyone lets go together (not in a handover, not at the very start or end)
+    for (let b = 32; b < c.bars - Math.max(16, w.out); b += 32) { if (b < Math.max(16, w.inn + 8)) continue;
+      const g0 = s0 + b * BAR - 2 * PPQ, g1 = s0 + b * BAR;
+      T.forEach((t) => { if (t.role === 'motif') return;
+        t.notes = t.notes.filter((n) => n.ks || !(n.t >= g0 && n.t < g1));
+        if (t.role !== 'beats' && t.role !== 'perc') t.notes.forEach((n) => { if (!n.ks && n.t < g0 && n.t + n.d > g0) n.d = Math.max(60, g0 - n.t); }); });
+    }
+  });
+}
+
 // the riser: a snare roll into the next chapter, written into the beat
-function riserRoll(c, i, tl) { const out = [], end = c.bars * BAR, start = end - 4 * BAR; for (let t = start, k = 0; t < end; k++) { const step = k < 16 ? PPQ / 2 : k < 32 ? PPQ / 4 : PPQ / 8; out.push({ t, d: 60, lane: 2, v: 50 + Math.round(70 * (t - start) / (end - start)) }); t += step; } return out; }
+function riserRoll(c, i, tl) { const out = [], end = c.bars * BAR, start = end - 4 * BAR; for (let t = start, k = 0; t < end; k++) { const step = k < 16 ? PPQ / 2 : k < 32 ? PPQ / 4 : PPQ / 8; out.push({ t, d: 60, lane: 2, roll: 1, v: 50 + Math.round(70 * (t - start) / (end - start)) }); t += step; } return out; }
 
 // ---------- the whole journey ----------
 JR.render = function (plan, ctx) {
@@ -7609,10 +7677,14 @@ JR.render = function (plan, ctx) {
   const tl = JR.timeline(plan), all = [];
   plan.chapters.forEach((c, i) => {
     const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle];
-    if (i < plan.chapters.length - 1 && c.out === 'riser' && content.beat.length) content.beat = content.beat.concat(riserRoll(c, i, tl).map((n) => ({ t: Math.round(n.t * c.feelsLike / plan.bpm), d: n.d, lane: n.lane, v: n.v })));
+    // the rhythm handover with the neighbours, and a crash on the first beat after a cut or a riser
+    content.beat = handRhythm(content.beat, plan, i, (n) => n.lane <= 1, (n) => n.lane === 2 || n.lane === 3);
+    content.perc = handRhythm(content.perc, plan, i, (n) => KICKS.has(n.voice), (n) => /snare|slap|clo/.test(n.voice));
+    if (i > 0 && ['cut', 'riser'].includes(plan.chapters[i - 1].out) && content.beat.length) content.beat.push({ t: 0, d: 240, lane: 7, v: 112 });
+    if (i < plan.chapters.length - 1 && c.out === 'riser' && content.beat.length) content.beat = content.beat.concat(riserRoll(c, i, tl).map((n) => ({ t: Math.round(n.t * c.feelsLike / plan.bpm), d: n.d, lane: n.lane, v: n.v, roll: 1 })));
     // the motif: at the start of the chapter, at every 16 bars, in a breath and before a motif bridge
     const mo = motifNotes(plan, c, c.feelsLike), motif = []; const put = (bar) => mo.notes.forEach((n) => motif.push(Object.assign({}, n, { t: n.t + Math.round(bar * BAR * c.feelsLike / plan.bpm) })));
-    for (let b = 0; b < c.bars - 4; b += 16) put(b);
+    const w0 = win(plan, i); for (let b = 0; b < c.bars - 4; b += 16) put(b === 0 && w0.inn ? Math.ceil(w0.inn / 2) : b); // after a handover the motif is the pivot into the new key
     if (c.breathInside) put(c.breathInside.bar); if (i < plan.chapters.length - 1 && (c.out === 'motif' || c.out === 'breath')) put(c.bars - 4);
     content.motif = motif;
     // content time to journey time: the chapter was written at its own feel tempo
@@ -7629,6 +7701,7 @@ JR.render = function (plan, ctx) {
         all.push({ chapter: i, word: c.word, role: p.role, player: p.player, name: (i + 1) + ' ' + c.word + ' . ' + t.name, notes, cc }); }
     }
   });
+  listen(all, plan, tl);
   // the ending: abrupt stops everything on one last hit
   if (plan.ending.id === 'abrupt') { const last = tl[tl.length - 1], end = last.start + last.len; all.forEach((t) => { t.notes = t.notes.filter((n) => n.t < end - BAR || n.t === end - BAR); t.notes.forEach((n) => { if (n.t + n.d > end) n.d = end - n.t; }); }); }
   const totalTicks = tl[tl.length - 1].start + tl[tl.length - 1].len;
@@ -7784,6 +7857,9 @@ function drawMap() {
   s += `<path d="${path} L ${X(1)} ${bot} L ${X(0)} ${bot} Z" fill="url(#g)" opacity=".35"/><defs><linearGradient id="g" x1="0" x2="1">${HEX.map((h, i) => `<stop offset="${(ch[i] ? (ch[i].t0 + ch[i].t1) / 2 : 0)}" stop-color="${h}"/>`).join('')}</linearGradient></defs>`;
   s += `<path d="${path}" fill="none" stroke="#EDE6D8" stroke-width="2.4" stroke-linejoin="round"/>`;
   // transitions and breaths
+  ch.forEach((c, i) => { if (i === ch.length - 1 || !c.overlap) return; const w = Math.max(6, (X(c.t1) - X(c.t0)) * c.overlap / c.bars), x1 = X(c.t1);
+    s += `<defs><linearGradient id="tz${i}" x1="0" x2="1"><stop offset="0" stop-color="${HEX[i]}" stop-opacity=".0"/><stop offset=".5" stop-color="${HEX[i]}" stop-opacity=".28"/><stop offset="1" stop-color="${HEX[i + 1]}" stop-opacity=".28"/></linearGradient></defs>`;
+    s += `<rect x="${x1 - w}" y="${top - 43}" width="${w * 2}" height="${bot - top + 43}" fill="url(#tz${i})"/>`; });
   ch.forEach((c, i) => { if (i === ch.length - 1) return; const x = X(c.t1), tr = JP.TRANSITIONS[c.out];
     s += `<line x1="${x}" y1="${top - 6}" x2="${x}" y2="${bot}" stroke="#3A4560" stroke-dasharray="3 4"/>`;
     s += `<circle cx="${x}" cy="${top + 10}" r="12" fill="#0B0E14" stroke="#556080"/><text x="${x}" y="${top + 15}" text-anchor="middle" fill="#EDE6D8" font-size="13">${tr.icon}</text>`; });
