@@ -512,6 +512,8 @@ function TP(x, name, K, X) {
 function finalPh(c, x, K, s) {
   const tok = K.m === 'm' && x.era === 'baroque' ? 'PI' : 'I';
   const soft = x.feel && x.feel.soft && !(s && s.dyn);
+  const big = !soft && !(s && (s.poly || (s.inten != null && s.inten < .8)));
+  if (big) P(c, x, { key: K, tpl: K.m === 'm' && x.era === 'baroque' ? 'V7 i | V7 i' : 'V7 I | V7 I', mel: { type: 'close' }, inten: 1, dyn: .92, tex: x.era === 'baroque' ? 'continuo' : 'beats', btex: 'beats', fan: 1, char: 'march', sec: 'Coda', ctr: false, noFlavor: 1 });
   return P(c, x, Object.assign({ key: K, tpl: tok, mel: { type: 'hold' }, inten: soft ? .5 : 1, dyn: soft ? .35 : .85, final: 1, tex: 'block', btex: 'held', sec: 'Coda', ctr: false }, s || {}, soft ? { inten: .5, dyn: .35 } : {}));
 }
 
@@ -578,7 +580,7 @@ F.sonata = (c, x, opt) => {
   const path = maj ? [relKey(K, 5, 'm'), relKey(K, 1, 'm'), relKey(K, 2, 'm'), relKey(K, 3, 'M')] : [relKey(K, 3, 'm'), relKey(K, 6, 'M'), relKey(K, 2, 'M'), relKey(K, 5, 'M')];
   const nBlocks = x.len === 1 ? 2 : x.len === 2 ? 3 : 4;
   const dv = TP(x, 'dev');
-  for (let i = 0; i < nBlocks; i++) P(c, x, { key: path[i], tpl: dv + ' | ' + dv, mel: { type: 'free', from: i % 2 ? 'S' : 'P' }, inten: .82 + i * .03, dyn: .7 + i * .05, lead: i % 2 ? 'ww' : 'str', tex: x.era === 'baroque' ? 'continuo' : 'tremolo', sec: 'Development', label: i ? null : 'Development' });
+  for (let i = 0; i < nBlocks; i++) P(c, x, { key: path[i], tpl: dv + ' | ' + dv, mel: { type: 'free', from: i % 2 ? 'S' : 'P' }, inten: .82 + i * .03, dyn: .7 + i * .05, lead: i % 2 ? 'ww' : 'str', tex: x.era === 'baroque' ? 'continuo' : 'tremolo', sec: 'Development', label: i ? null : 'Development', imit: 1, ctr: false });
   P(c, x, { key: K, tpl: TP(x, 'retrans'), mel: { type: 'free', from: 'P', cad: 'HC' }, inten: .7, dyn: .6, btex: 'pedal', pedal: 4, sec: 'Development', label: 'Retransition' });
   // recapitulation
   again(c, x, [ex[0]], { sec: 'Recapitulation', label: 'Recapitulation' });
@@ -1206,8 +1208,15 @@ function genCounter(c) {
   c.events.forEach(e => { if (e.V) ['A', 'X', 'T'].forEach((v, i) => lines[v].push({ t: e.t, dur: e.dur, m: e.V[i] })); });
   c.innerLines = lines;
   for (const ph of c.phrases) {
-    if (ph.poly || !ph.ctr || ph.melInBass) continue;
+    if (ph.poly || !(ph.ctr || ph.imit) || ph.melInBass) continue;
     const r = mkRng(x.seed * 7 + ph.idx * 313 + 11);
+    if (ph.imit) { /* a second voice follows the first, half a bar later and lower: imitation */
+      const dl = c.meter === 4 ? 2 * PPQ : c.bar;
+      const src = c.mel.filter(n => n.t >= ph.t0 && n.t + dl < ph.t1);
+      const sk = src.map((n, i) => { const t = n.t + dl, ev = evAt(c.events, t); return { t, dur: n.dur, ev, strong: ev.t === t || (t - ph.t0) % (2 * PPQ) === 0, want: i ? n.D - src[i - 1].D : null }; });
+      if (sk.length > 2) { ph.ctrLine = line(sk, { lo: 45, hi: 67, center: 55, half: 8, fixed: [c.mel, c.bassCheck, lines.A, lines.X, lines.T], above: [c.bassCheck], below: [c.mel], r, noise: .8, wm: 3.5, uni: 6 }); minorFix(ph.ctrLine, c.events, [c.mel, c.bassCheck]); }
+      continue;
+    }
     const step = ph.char === 'lyr' || ph.char === 'slow' ? 2 * PPQ : PPQ;
     const sk = [];
     for (let i = ph.ev0; i < ph.ev1; i++) { const e = c.events[i]; for (let t = e.t; t < e.t + e.dur; t += step) sk.push({ t, dur: Math.min(step, e.t + e.dur - t), ev: e, strong: t === e.t }); }
@@ -1284,7 +1293,7 @@ function orchPlan(c, ph) {
   if (era === 'baroque' || I >= .55) addB('bsn', [0, -12, 12]);
   if (I >= .86 && era !== 'baroque') { addB('tba', [-12, 0]); addB('btbn', [0, -12]); }
   if (I >= .55 && era !== 'baroque') addB('cbsn', [-12, 0, -24]);
-  if (ph.ctrLine) { const cid = ['hn', 'vc', 'vla', 'bsn'].find(id => has(id) && !use.has(id) && (id !== 'vc' || has('cb'))); if (cid) { if (cid === 'vc') P.bass = P.bass.filter(b => b.id !== 'vc'); P.ctr.push({ id: cid, pref: [0, -12, 12] }); use.add(cid); } }
+  if (ph.ctrLine) { const cid = (ph.imit ? ['vc', 'bsn', 'vla', 'hn'] : ['hn', 'vc', 'vla', 'bsn']).find(id => has(id) && !use.has(id) && (id !== 'vc' || has('cb'))); if (cid) { if (cid === 'vc') P.bass = P.bass.filter(b => b.id !== 'vc'); P.ctr.push({ id: cid, pref: [0, -12, 12] }); use.add(cid); } }
   const tex = ph.tex;
   const slow = x.tempo < 96 || ph.char === 'slow' || (ph.stretch || 1) > 1;
   const addI = (id, voices, t, pref) => { if (has(id) && !use.has(id)) { P.inner.push({ id, voices, tex: t, pref: pref || [0] }); use.add(id); return true; } return false; };
@@ -1803,7 +1812,7 @@ function mergeParts(parts, titles, labels) {
     m.markers.forEach(x => markers.push({ t: sh(x.t), text: x.text }));
     const end = sh(m.end);
     secs.push({ label: (FEELINGS[m.feel] ? FEELINGS[m.feel].icon + ' ' : '') + (labels ? labels[i] : (i + 1) + '. ' + FORMS[m.form].name.replace(' form', '').replace('Theme and v', 'V')), t0: off, t1: end, key: m.keyName, tempo: m.tempo });
-    off = end + Math.round(PPQ * 2);
+    off = end + Math.round(4 * master / 60 * PPQ);
   });
   const ord = INST.map(i => i.id).filter(id => tracks[id]);
   return { tracks: ord.map(id => tracks[id]), end: off, OFF: first.OFF, markers, secs, tempo: master, meter: first.meter, key: first.key, keyName: first.keyName, era: first.era, form: 'suite', parts };

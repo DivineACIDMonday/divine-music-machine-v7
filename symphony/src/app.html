@@ -588,26 +588,35 @@ const VOICE = {
   str: { type: 'sawtooth', cut: 2600, att: .09, gain: .09 }, ww: { type: 'triangle', cut: 3800, att: .04, gain: .14 },
   br: { type: 'sawtooth', cut: 1800, att: .05, gain: .08 }, perc: { type: 'sine', cut: 900, att: .002, gain: .5 }, kb: { type: 'triangle', cut: 5000, att: .003, gain: .13 },
 };
-const PAN = { vln1: -.55, vln2: -.25, vla: .2, vc: .45, cb: .65, picc: -.2, fl: -.15, ob: .1, cl: -.05, bsn: .2, hn: -.4, tpt: .1, tbn: .35, btbn: .45, tba: .55, timp: 0, pno: -.6 };
+const PAN = { svn: -.4, svc: .35, eh: .05, bcl: -.1, cbsn: .3, shn: -.45, stpt: .15, stbn: .3, bells: .1, glock: -.3, vib: -.2, mar: .25, xyl: .2, vln1: -.55, vln2: -.25, vla: .2, vc: .45, cb: .65, picc: -.2, fl: -.15, ob: .1, cl: -.05, bsn: .2, hn: -.4, tpt: .1, tbn: .35, btbn: .45, tba: .55, timp: 0, pno: -.6 };
 function noteOn(n, when) {
   const f = fam(n.id), V = VOICE[f], dur = Math.max(.06, n.d);
-  const o = AC.createOscillator(), g = AC.createGain(), lp = AC.createBiquadFilter(), p = AC.createStereoPanner ? AC.createStereoPanner() : null;
-  o.type = V.type; o.frequency.value = 440 * Math.pow(2, (n.m - 69) / 12);
-  if (f === 'str' || f === 'br') o.detune.value = (Math.random() * 12 - 6);
-  lp.type = 'lowpass'; lp.frequency.value = V.cut * (0.6 + n.v / 160);
+  const g = AC.createGain(), lp = AC.createBiquadFilter(), p = AC.createStereoPanner ? AC.createStereoPanner() : null;
+  const hz = 440 * Math.pow(2, (n.m - 69) / 12);
+  const oscs = [];
+  const mk = (type, det, lvl) => { const o = AC.createOscillator(), og = AC.createGain(); o.type = type; o.frequency.value = hz; o.detune.value = det; og.gain.value = lvl; o.connect(og); og.connect(lp); oscs.push(o); return o; };
+  if (f === 'str') { mk('sawtooth', -7, .6); mk('sawtooth', 7, .6); }
+  else if (f === 'br') { mk('sawtooth', -4, .7); mk('square', 4, .25); }
+  else if (f === 'ww') { mk('triangle', 0, .9); mk('sine', 0, .4); }
+  else if (f === 'perc') { mk('sine', 0, 1); if (IM[n.id].x) mk('sine', 1200 * Math.log2(2.76), .35); }
+  else { mk('triangle', 0, .8); mk('sine', 1200, .2); }
+  lp.type = 'lowpass'; lp.Q.value = .7;
+  const bright = V.cut * (0.55 + n.v / 150);
+  if (f === 'br') { lp.frequency.setValueAtTime(bright * .35, when); lp.frequency.linearRampToValueAtTime(bright, when + .12); } else lp.frequency.value = bright;
   const pk = V.gain * Math.pow(n.v / 127, 1.4) * (n.art === 'pizz' ? 1.6 : 1);
   const att = n.art === 'long' ? V.att : .006;
-  const rel = f === 'perc' ? .5 : n.art === 'pizz' ? .25 : .12;
+  const rel = f === 'perc' ? .6 : n.art === 'pizz' ? .25 : f === 'str' ? .25 : .14;
   g.gain.setValueAtTime(0, when);
   g.gain.linearRampToValueAtTime(pk, when + att);
-  if (f === 'perc' || f === 'kb' || n.art === 'pizz') { g.gain.exponentialRampToValueAtTime(Math.max(.0004, pk * .05), when + (f === 'kb' ? 1.4 : .45)); }
+  if (f === 'perc' || f === 'kb' || n.art === 'pizz') g.gain.exponentialRampToValueAtTime(Math.max(.0004, pk * .05), when + (f === 'kb' ? 1.4 : IM[n.id].x ? 1.2 : .45));
   else g.gain.setValueAtTime(pk, when + Math.max(att, dur - .02));
   g.gain.linearRampToValueAtTime(0, when + dur + rel);
-  if (f === 'perc') { o.frequency.setValueAtTime(o.frequency.value * 1.5, when); o.frequency.exponentialRampToValueAtTime(o.frequency.value, when + .05); }
+  if (n.id === 'timp') oscs.forEach(o => { o.frequency.setValueAtTime(hz * 1.5, when); o.frequency.exponentialRampToValueAtTime(hz, when + .05); });
+  if ((f === 'str' || f === 'ww') && n.art === 'long' && dur > .35) { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = 5.2; lg.gain.setValueAtTime(0, when); lg.gain.linearRampToValueAtTime(hz * .004, when + .3); l.connect(lg); oscs.forEach(o => lg.connect(o.frequency)); l.start(when); l.stop(when + dur + rel); }
   if (n.art === 'trem') { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = 11; lg.gain.value = pk * .5; l.connect(lg); lg.connect(g.gain); l.start(when); l.stop(when + dur + rel); }
-  o.connect(lp); lp.connect(g);
-  if (p) { p.pan.value = PAN[n.id] || 0; g.connect(p); p.connect(master); } else g.connect(master);
-  o.start(when); o.stop(when + dur + rel + .05);
+  lp.connect(g);
+  if (p) { p.pan.value = PAN[n.id] != null ? PAN[n.id] : 0; g.connect(p); p.connect(master); } else g.connect(master);
+  oscs.forEach(o => { o.start(when); o.stop(when + dur + rel + .05); });
 }
 function play() {
   if (playing) { stop(); return; }
@@ -621,7 +630,7 @@ function play() {
   t0 = AC.currentTime + .15; playing = true; $('play').textContent = '■ Stop';
   const tick = () => {
     const now = AC.currentTime - t0, horizon = now + .5;
-    let budget = 220;
+    let budget = 160;
     while (qi < queue.length && queue[qi].t < horizon && budget-- > 0) { const n = queue[qi++]; if (n.t >= now - .05) noteOn(n, t0 + Math.max(n.t, now)); }
     if (qi >= queue.length && now > queue[queue.length - 1].t + 4) stop();
   };
