@@ -1507,7 +1507,7 @@ function perform(c, parts) {
 
 /* ================= MIDI ================= */
 function vlq(n) { const b = [n & 0x7f]; while ((n >>= 7)) b.unshift((n & 0x7f) | 0x80); return b; }
-function strBytes(s) { const o = []; for (const ch of unescape(encodeURIComponent(s))) o.push(ch.charCodeAt(0)); return o; }
+function strBytes(s) { const o = []; for (const ch of unescape(encodeURIComponent(String(s).replace(/♭/g, 'b').replace(/♯/g, '#')))) o.push(ch.charCodeAt(0)); return o; }
 function trackChunk(evs) {
   evs.sort((a, b) => a.t - b.t || a.o - b.o);
   const out = []; let last = 0;
