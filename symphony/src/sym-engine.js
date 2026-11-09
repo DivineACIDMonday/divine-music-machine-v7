@@ -1459,9 +1459,48 @@ function trackChunk(evs) {
   return [0x4d, 0x54, 0x72, 0x6b, (out.length >>> 24) & 255, (out.length >>> 16) & 255, (out.length >>> 8) & 255, out.length & 255].concat(out);
 }
 function keySig(K) { const sharpsMaj = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 1: -5, 8: -4, 3: -3, 10: -2, 5: -1 }; const rel = K.m === 'M' ? K.t : mod(K.t + 3, 12); let sf = sharpsMaj[rel]; if (K.alt[K.L] > 0 && sf < 0) sf += 12; if (K.alt[K.L] < 0 && sf > 0) sf -= 12; if (rel === 6 && K.alt[K.L] < 0) sf = -6; return [sf & 255, K.m === 'M' ? 0 : 1]; }
+/* Orchestral Tools Berlin Free Orchestra in SINE: articulations switched with CC70 (Articulation Switch),
+   the value range split evenly over the loaded articulations in their default order. Ranges from the OT docs (C3 = 60). */
+const BFO = {
+  vln1: { name: 'Violins a8 (1st)', n: 4, map: [0, 1, 2, 3], lo: 55, hi: 98 },
+  vln2: { name: 'Violins a8 (2nd)', n: 4, map: [0, 1, 2, 3], lo: 55, hi: 98 },
+  vla: { name: 'Violas a5', n: 4, map: [0, 1, 2, 3], lo: 48, hi: 86 },
+  vc: { name: 'Celli a5', n: 4, map: [0, 1, 2, 3], lo: 36, hi: 84 },
+  cb: { name: 'Basses a4', n: 3, map: [0, 1, 2], lo: 23, hi: 72 },
+  picc: { name: 'Solo Piccolo Flute', n: 2, map: [0, 1], lo: 74, hi: 108 },
+  fl: { name: 'Solo Flute', n: 3, map: [1, 2], lo: 60, hi: 96 },
+  ob: { name: 'Solo Oboe', n: 2, map: [0, 1], lo: 60, hi: 89 },
+  cl: { name: 'Solo Clarinet', n: 3, map: [1, 2], lo: 50, hi: 89 },
+  bsn: { name: 'Solo Bassoon', n: 2, map: [0, 1], lo: 34, hi: 74 },
+  hn: { name: 'French Horns a4', n: 2, map: [1, 1], lo: 34, hi: 77 },
+  tpt: { name: 'Trumpets a3', n: 2, map: [0, 1], lo: 54, hi: 84 },
+  tbn: { name: 'Trombones a3', n: 2, map: [1, 1], lo: 34, hi: 72 },
+  tba: { name: 'Solo Tuba', n: 2, map: [1, 1], lo: 27, hi: 63 },
+  timp: { name: 'Timpani', n: 0, lo: 48, hi: 60 },
+  pno: { name: 'Harp', n: 0, lo: 24, hi: 103 },
+};
+Y.BFO = BFO;
+function toBerlin(tracks) {
+  const out = [];
+  const byId = {}; tracks.forEach(t => byId[t.id] = t);
+  tracks.forEach(t => {
+    if (t.id === 'btbn') return;
+    const B = BFO[t.id]; if (!B) return;
+    let notes = t.notes, ks = t.ks, cc = t.cc;
+    if (t.id === 'tbn' && byId.btbn) { notes = notes.concat(byId.btbn.notes); ks = ks.concat(byId.btbn.ks); }
+    notes = notes.map(n => { let m = n.m, k = 0; while (m < B.lo && k++ < 6) m += 12; while (m > B.hi && k++ < 12) m -= 12; return Object.assign({}, n, { m }); }).sort((a, b) => a.t - b.t);
+    const sw = [];
+    if (B.n) { let cur = -1; ks.slice().sort((a, b) => a.t - b.t).forEach(k => { const a = B.map[Math.min(k.m, B.map.length - 1)]; if (a !== cur) { sw.push({ t: k.t, c: 70, v: Math.floor((a + .5) * 128 / B.n) }); cur = a; } }); if (!sw.length) sw.push({ t: 0, c: 70, v: Math.floor((B.map[0] + .5) * 128 / B.n) }); }
+    out.push({ id: t.id, name: B.name, notes, cc: cc.concat(sw), ks: [], ksType: null });
+  });
+  if (!byId.tbn && byId.btbn) { const t = byId.btbn, B = BFO.tbn; out.push({ id: 'tbn', name: B.name, notes: t.notes.map(n => { let m = n.m; while (m < B.lo) m += 12; return Object.assign({}, n, { m }); }), cc: t.cc.concat([{ t: 0, c: 70, v: 96 }]), ks: [], ksType: null }); }
+  return out;
+}
 function writeMidi(res, ids, opt) {
   const plain = opt && opt.plain;
-  const sel = ids ? res.tracks.filter(t => ids.includes(t.id)) : res.tracks;
+  let pool = res.tracks;
+  if (opt && opt.target === 'berlin') { pool = toBerlin(res.tracks.filter(t => !ids || ids.includes(t.id) || (ids.includes('tbn') && t.id === 'btbn'))); }
+  const sel = ids && !(opt && opt.target === 'berlin') ? pool.filter(t => ids.includes(t.id)) : pool;
   const us = Math.round(60000000 / res.tempo);
   const cond = [{ t: 0, o: 0, d: [0xff, 0x03, ...vlq(strBytes(res.title).length), ...strBytes(res.title)] },
     { t: 0, o: 0, d: [0xff, 0x51, 3, (us >> 16) & 255, (us >> 8) & 255, us & 255] },

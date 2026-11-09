@@ -182,7 +182,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
   <div class="sh"><span class="num serif">5</span><span class="st serif">Get it</span><span class="muted">One MIDI track per BBC instrument, with keyswitches, CC1 dynamics and CC11 expression.</span></div>
   <div class="go">
     <button class="btn gold" id="compose">Compose</button>
-    <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="any">Any synth</button></span></span>
+    <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span>
     <span class="muted" id="status"></span>
   </div>
   <div class="result" id="result">
@@ -197,6 +197,17 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
     </div>
     <div class="check" id="check"></div>
     <div class="tracks" id="tracks"></div>
+    <div class="how hide" id="howBer">
+      <b class="serif" style="font-size:17px">Into your DAW with Berlin Free Orchestra</b>
+      <ol>
+        <li>Drag the full MIDI file into your song. Every instrument lands on its own track, named after its SINE patch.</li>
+        <li>On each track, load SINE Player and the patch with the same name, with all its articulations.</li>
+        <li>In SINE, at Loaded Articulations, switch <span class="kbd">KS</span> to <span class="kbd">CC</span>. The articulations now follow CC70, already written in.</li>
+        <li>CC1 drives the dynamics and CC11 the expression, the SINE defaults.</li>
+        <li>Violins a8 plays both violin parts: load it on both violin tracks. The harp plays the piano part, the bass trombone joins the trombones.</li>
+        <li>Rubato is baked into the note timing. Keep the tempo of your song at the tempo shown here.</li>
+      </ol>
+    </div>
     <div class="how hide" id="howAny">
       <b class="serif" style="font-size:17px">Into your DAW with any synth</b>
       <ol>
@@ -1684,9 +1695,48 @@ function trackChunk(evs) {
   return [0x4d, 0x54, 0x72, 0x6b, (out.length >>> 24) & 255, (out.length >>> 16) & 255, (out.length >>> 8) & 255, out.length & 255].concat(out);
 }
 function keySig(K) { const sharpsMaj = { 0: 0, 7: 1, 2: 2, 9: 3, 4: 4, 11: 5, 6: 6, 1: -5, 8: -4, 3: -3, 10: -2, 5: -1 }; const rel = K.m === 'M' ? K.t : mod(K.t + 3, 12); let sf = sharpsMaj[rel]; if (K.alt[K.L] > 0 && sf < 0) sf += 12; if (K.alt[K.L] < 0 && sf > 0) sf -= 12; if (rel === 6 && K.alt[K.L] < 0) sf = -6; return [sf & 255, K.m === 'M' ? 0 : 1]; }
+/* Orchestral Tools Berlin Free Orchestra in SINE: articulations switched with CC70 (Articulation Switch),
+   the value range split evenly over the loaded articulations in their default order. Ranges from the OT docs (C3 = 60). */
+const BFO = {
+  vln1: { name: 'Violins a8 (1st)', n: 4, map: [0, 1, 2, 3], lo: 55, hi: 98 },
+  vln2: { name: 'Violins a8 (2nd)', n: 4, map: [0, 1, 2, 3], lo: 55, hi: 98 },
+  vla: { name: 'Violas a5', n: 4, map: [0, 1, 2, 3], lo: 48, hi: 86 },
+  vc: { name: 'Celli a5', n: 4, map: [0, 1, 2, 3], lo: 36, hi: 84 },
+  cb: { name: 'Basses a4', n: 3, map: [0, 1, 2], lo: 23, hi: 72 },
+  picc: { name: 'Solo Piccolo Flute', n: 2, map: [0, 1], lo: 74, hi: 108 },
+  fl: { name: 'Solo Flute', n: 3, map: [1, 2], lo: 60, hi: 96 },
+  ob: { name: 'Solo Oboe', n: 2, map: [0, 1], lo: 60, hi: 89 },
+  cl: { name: 'Solo Clarinet', n: 3, map: [1, 2], lo: 50, hi: 89 },
+  bsn: { name: 'Solo Bassoon', n: 2, map: [0, 1], lo: 34, hi: 74 },
+  hn: { name: 'French Horns a4', n: 2, map: [1, 1], lo: 34, hi: 77 },
+  tpt: { name: 'Trumpets a3', n: 2, map: [0, 1], lo: 54, hi: 84 },
+  tbn: { name: 'Trombones a3', n: 2, map: [1, 1], lo: 34, hi: 72 },
+  tba: { name: 'Solo Tuba', n: 2, map: [1, 1], lo: 27, hi: 63 },
+  timp: { name: 'Timpani', n: 0, lo: 48, hi: 60 },
+  pno: { name: 'Harp', n: 0, lo: 24, hi: 103 },
+};
+Y.BFO = BFO;
+function toBerlin(tracks) {
+  const out = [];
+  const byId = {}; tracks.forEach(t => byId[t.id] = t);
+  tracks.forEach(t => {
+    if (t.id === 'btbn') return;
+    const B = BFO[t.id]; if (!B) return;
+    let notes = t.notes, ks = t.ks, cc = t.cc;
+    if (t.id === 'tbn' && byId.btbn) { notes = notes.concat(byId.btbn.notes); ks = ks.concat(byId.btbn.ks); }
+    notes = notes.map(n => { let m = n.m, k = 0; while (m < B.lo && k++ < 6) m += 12; while (m > B.hi && k++ < 12) m -= 12; return Object.assign({}, n, { m }); }).sort((a, b) => a.t - b.t);
+    const sw = [];
+    if (B.n) { let cur = -1; ks.slice().sort((a, b) => a.t - b.t).forEach(k => { const a = B.map[Math.min(k.m, B.map.length - 1)]; if (a !== cur) { sw.push({ t: k.t, c: 70, v: Math.floor((a + .5) * 128 / B.n) }); cur = a; } }); if (!sw.length) sw.push({ t: 0, c: 70, v: Math.floor((B.map[0] + .5) * 128 / B.n) }); }
+    out.push({ id: t.id, name: B.name, notes, cc: cc.concat(sw), ks: [], ksType: null });
+  });
+  if (!byId.tbn && byId.btbn) { const t = byId.btbn, B = BFO.tbn; out.push({ id: 'tbn', name: B.name, notes: t.notes.map(n => { let m = n.m; while (m < B.lo) m += 12; return Object.assign({}, n, { m }); }), cc: t.cc.concat([{ t: 0, c: 70, v: 96 }]), ks: [], ksType: null }); }
+  return out;
+}
 function writeMidi(res, ids, opt) {
   const plain = opt && opt.plain;
-  const sel = ids ? res.tracks.filter(t => ids.includes(t.id)) : res.tracks;
+  let pool = res.tracks;
+  if (opt && opt.target === 'berlin') { pool = toBerlin(res.tracks.filter(t => !ids || ids.includes(t.id) || (ids.includes('tbn') && t.id === 'btbn'))); }
+  const sel = ids && !(opt && opt.target === 'berlin') ? pool.filter(t => ids.includes(t.id)) : pool;
   const us = Math.round(60000000 / res.tempo);
   const cond = [{ t: 0, o: 0, d: [0xff, 0x03, ...vlq(strBytes(res.title).length), ...strBytes(res.title)] },
     { t: 0, o: 0, d: [0xff, 0x51, 3, (us >> 16) & 255, (us >> 8) & 255, us & 255] },
@@ -1978,8 +2028,9 @@ function drawForms() {
   });
 }
 const KEYS = [['C', 'C major'], ['G', 'G major'], ['D', 'D major'], ['A', 'A major'], ['E', 'E major'], ['F', 'F major'], ['Bb', 'B♭ major'], ['Eb', 'E♭ major'], ['Ab', 'A♭ major'], ['a', 'A minor'], ['e', 'E minor'], ['b', 'B minor'], ['d', 'D minor'], ['g', 'G minor'], ['c', 'C minor'], ['f', 'F minor'], ['f#', 'F♯ minor']];
-function syncTarget() { [...$('target').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.target)); $('how').classList.toggle('hide', S.target !== 'bbc'); $('howAny').classList.toggle('hide', S.target === 'bbc'); }
-const PLAIN = () => ({ plain: S.target === 'any' });
+function syncTarget() { [...$('target').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.target)); $('how').classList.toggle('hide', S.target !== 'bbc'); $('howAny').classList.toggle('hide', S.target !== 'any'); $('howBer').classList.toggle('hide', S.target !== 'berlin'); }
+const PLAIN = () => ({ plain: S.target === 'any', target: S.target });
+const TNAME = t => S.target === 'berlin' && Y.BFO[t.id] ? Y.BFO[t.id].name : t.name;
 const SHORTN = { sonata: 'Sonata', rondo: 'Rondo', overture: 'Overture', fugue: 'Fugue', aria: 'Aria', canon: 'Canon', variations: 'Variations', minuet: 'Minuet', waltz: 'Waltz', march: 'March' };
 const newSeed = () => Math.floor(Math.random() * 900000) + 1;
 function saveChain() { store.set('chain', S.chain); }
@@ -2111,7 +2162,7 @@ const SECCOL = ['#D9A84E', '#8FC29C', '#E58256', '#9CC7E3', '#C8B2E8', '#E3C77A'
 function cur() { return RES.movements[MV]; }
 function secs(m, ticks) { return ticks / 480 * 60 / m.tempo; }
 function fmt(s) { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
-function fileBase(m) { return ('Divine Symphony ' + m.title + ' seed ' + S.seed).replace(/[^\w ♭♯.-]+/g, '').replace(/\s+/g, ' ').trim(); }
+function fileBase(m) { return ('Divine Symphony ' + m.title + ' seed ' + S.seed).replace(/♭/g, 'b').replace(/♯/g, ' sharp').replace(/[^\w .-]+/g, '').replace(/\s+/g, ' ').trim(); }
 function showResult() {
   $('result').classList.add('on');
   const tabs = $('mvTabs'); tabs.innerHTML = '';
@@ -2125,11 +2176,12 @@ function showResult() {
   $('ptime').textContent = 'A rough sketch with simple synths. The real sound comes from BBC Discover.';
   const tr = $('tracks'); tr.innerHTML = '';
   m.tracks.forEach(t => {
+    if (S.target === 'berlin' && t.id === 'btbn' && m.tracks.some(x => x.id === 'tbn')) return;
     const used = new Set(t.ks.map(k => k.m));
-    const arts = S.target === 'any' ? 'plain MIDI' : t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
+    const arts = S.target === 'any' ? 'plain MIDI' : S.target === 'berlin' ? (Y.BFO[t.id] && Y.BFO[t.id].n ? 'articulations on CC70' : 'no articulation switch') + (t.id === 'tbn' ? ', bass trombone included' : '') : t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
     const d = document.createElement('div'); d.className = 'trk';
-    d.innerHTML = '<span class="dot" style="background:' + FAMHEX[fam(t.id)] + '"></span><div class="info"><b>' + t.name + '</b><div>' + t.notes.length + ' notes · ' + arts + '</div></div>';
-    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'MIDI'; b.onclick = () => save(Y.writeMidi(m, [t.id], PLAIN()), fileBase(m) + ' - ' + t.name + '.mid', 'audio/midi');
+    d.innerHTML = '<span class="dot" style="background:' + FAMHEX[fam(t.id)] + '"></span><div class="info"><b>' + TNAME(t) + '</b><div>' + t.notes.length + ' notes · ' + arts + '</div></div>';
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'MIDI'; b.onclick = () => save(Y.writeMidi(m, [t.id], PLAIN()), fileBase(m) + ' - ' + TNAME(t) + '.mid', 'audio/midi');
     d.appendChild(b); tr.appendChild(d);
   });
 }
@@ -2162,7 +2214,7 @@ $('dlZip').onclick = () => {
   RES.movements.forEach((m, i) => {
     const dir = RES.movements.length > 1 ? (i + 1) + ' ' + m.title.replace(/^Symphony /, '').replace(/[^\w .-]/g, '') + '/' : '';
     files.push({ name: dir + 'Full score.mid', data: Y.writeMidi(m, null, PLAIN()) });
-    m.tracks.forEach((t, j) => files.push({ name: dir + String(j + 1).padStart(2, '0') + ' ' + t.name + '.mid', data: Y.writeMidi(m, [t.id], PLAIN()) }));
+    m.tracks.filter(t => !(S.target === 'berlin' && t.id === 'btbn' && m.tracks.some(x => x.id === 'tbn'))).forEach((t, j) => files.push({ name: dir + String(j + 1).padStart(2, '0') + ' ' + TNAME(t) + '.mid', data: Y.writeMidi(m, [t.id], PLAIN()) }));
   });
   const url = URL.createObjectURL(zip(files));
   const a = document.createElement('a'); a.href = url; a.download = fileBase(RES.movements[0]).replace(/ I\. Allegro/, '') + '.zip'; document.body.appendChild(a); a.click(); a.remove();
