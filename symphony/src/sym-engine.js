@@ -227,7 +227,7 @@ const sum = a => a.reduce((x, y) => x + y, 0);
 const ICOST = [0.8, 0, 1.2, 2.4, 3.6, 5.5, 9, 5];
 function line(sk, o) {
   const W = o.width || 18, leap = o.leap || 7;
-  let beam = [{ c: 0, D: o.prevD == null ? null : o.prevD, m: o.prevM, t: o.prevT, st: 0, nct: 0, ev: null, path: null, n: null }];
+  let beam = [{ c: 0, D: o.prevD == null ? null : o.prevD, m: o.prevM, t: o.prevT, st: 0, nct: 0, ev: null, path: null, n: null, mx: -1 }];
   const Dlo = mToD(o.lo), Dhi = mToD(o.hi) + 1;
   const fixed = (o.fixed || []).filter(Boolean);
   for (const n of sk) {
@@ -272,8 +272,14 @@ function line(sk, o) {
         if (o.above) for (const A of o.above) { const x = sounding(A, n.t); if (x != null && m >= x) c += 60; }
         if (o.below) for (const B of o.below) { const x = sounding(B, n.t); if (x != null && m <= x) c += 60; }
         const ov = Math.abs(m - o.center) - (o.half || 9); if (ov > 0) c += ov * 1.4;
+        let mx = s.mx;
+        if (o.peak && n.t >= o.peak.t0) {
+          const pp = (n.t - o.peak.t0) / (o.peak.t1 - o.peak.t0);
+          if (m > mx) { if (mx >= 0 && pp < .45) c += 3.5; if (pp >= .5 && pp <= .82 && mx >= 0 && m >= mx + 2) c -= 3; if (pp > .85 && mx >= 0) c += 3; mx = m; }
+          else if (m === mx && pp > .3) c += 3.2;
+        }
         if (o.r) c += o.r() * (o.noise == null ? 1.2 : o.noise);
-        next.push({ c, D, m, t: n.t, st: s.D == null ? 0 : D - s.D, nct: ct ? 0 : 1, ev, path: s, n });
+        next.push({ c, D, m, t: n.t, st: s.D == null ? 0 : D - s.D, nct: ct ? 0 : 1, ev, path: s, n, mx });
       }
     }
     next.sort((x, y) => x.c - y.c);
@@ -422,7 +428,8 @@ function Comp(x) {
 }
 Comp.prototype.add = function (p) {
   const x = this.x;
-  const bars = Array.isArray(p.tpl) ? p.tpl : flavor(p.tpl, p.noFlavor ? 'classical' : x.era, x.r, p.key.m, p.noFlavor ? null : x.feel && x.feel.flav);
+  let bars = Array.isArray(p.tpl) ? p.tpl : flavor(p.tpl, p.noFlavor ? 'classical' : x.era, x.r, p.key.m, p.noFlavor ? null : x.feel && x.feel.flav);
+  if (!Array.isArray(p.tpl) && !p.poly && bars.length >= 4) bars = drive(bars, p.mel && p.mel.head);
   const st = p.stretch || 1;
   const ph = Object.assign({}, p, { tpl: bars, t0: this.t, nb: bars.length * st, ev0: this.events.length, idx: this.phrases.length, uid: 'p' + this.phrases.length });
   bars.forEach((bar, bi) => {
@@ -474,7 +481,27 @@ function P(c, x, s) {
   if (s.mel && s.mel.id && !c.themes[s.mel.id]) c.themes[s.mel.id] = { char: ch };
   return c.add(s);
 }
+function drive(bars, head) { /* Caplin: the harmonic rhythm quickens into the cadence */
+  bars = bars.map(b => b.slice());
+  const n = bars.length, last = bars[n - 1];
+  if (last.length !== 1 || !/^(I|V|PI)$/.test(last[0])) return bars;
+  const SPLIT = { I: ['I', 'IV'], vi: ['vi', 'IV'], IV: ['IV', 'ii6'], ii: ['ii', 'V'], V7: ['Cad', 'V7'] };
+  for (const i of n >= 8 || !head ? [n - 2, n - 3] : [n - 2]) {
+    const b = bars[i]; if (!b || b.length !== 1) continue;
+    const t = b[0], nx = bars[i + 1][0];
+    if (t === 'V7' && !(i === n - 2 && last[0] === 'I')) continue;
+    if (t === 'ii' && nx !== 'I' && nx !== 'Cad') continue;
+    if (SPLIT[t] && !(SPLIT[t][1] === nx)) bars[i] = SPLIT[t];
+  }
+  return bars;
+}
 function again(c, x, phs, ov) {
+  if (ov && (ov.label || ov.key) && !ov.orn && !ov.lead && !c.x.exact) {
+    ov = Object.assign({}, ov);
+    const lyr = phs.some(p => p.char === 'lyr');
+    if (lyr && c.x.era !== 'baroque') ov.orn = 'turn';
+    else if (c.x.r() < .5 && phs.every(p => p.inten < .8)) ov.lead = 'ww';
+  }
   return phs.map(p => P(c, x, Object.assign({}, p, ov && 'inten' in ov ? { _fi: 0 } : {}, ov && 'dyn' in ov ? { _fd: 0 } : {}, { tpl: p.tpl, label: null, sec: p.sec, mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, ctr: p.ctr }, ov || {}, { mel: p.mel ? { restate: p.uid, orn: ov && ov.orn } : null, noFlavor: true })));
 }
 function TP(x, name, K, X) {
@@ -994,6 +1021,7 @@ function genMel(c) {
       const th = c.themes[sp.restate];
       notes = th && th.notes ? restateNotes(c, ph, th) : [];
       notes = ornament(c, notes, sp.orn);
+      if (last) notes = notes.filter(n => n.t >= ph.t0 || n.t >= last.t + last.dur);
     } else {
       let sk = planMel(c, ph, r);
       markStrong(c, ph, sk);
@@ -1003,12 +1031,24 @@ function genMel(c) {
         if (src && src.notes) {
           const half = Math.floor(ph.tpl.length / 2) * c.bar * (ph.stretch || 1);
           head = restateNotes(c, ph, src, half);
+          if (last) head = head.filter(n => n.t >= ph.t0 || n.t >= last.t + last.dur);
           sk = sk.filter(n => n.t >= ph.t0 + half);
         }
+      }
+      // upbeat into a new theme
+      const ub = !head.length && (sp.type === 'sent' || sp.type === 'ante') && x.era !== 'baroque' && r() < .4 && (!last || last.t + last.dur <= ph.t0 - PPQ) && ph.t0 >= PPQ;
+      if (ub) {
+        const g = new Set([dpc(ph.key, 4), dpc(ph.key, 0)]);
+        const twoE = r() < .5;
+        const up = twoE ? [{ t: ph.t0 - PPQ, dur: PPQ / 2 }, { t: ph.t0 - PPQ / 2, dur: PPQ / 2, want: 1 }] : [{ t: ph.t0 - PPQ, dur: PPQ }];
+        up.forEach(n => { n.ev = evAt(c.events, n.t); n.strong = false; });
+        up[0].goal = g;
+        sk = up.concat(sk);
       }
       const pv = head.length ? head[head.length - 1] : last;
       const o = { lo: st.melLo, hi: st.melHi, center: st.melC, half: 8, prevD: pv ? pv.D : null, prevM: pv ? pv.m : null, prevT: pv ? pv.t : null, start: st.melC, fixed: [c.bassCheck], r, noise: 1.1, wm: 3.2, appog: st.appog && ph.char === 'lyr', avoid: st.avoid };
       if (sp.type === 'cadenza') { o.wm = 4; }
+      o.peak = { t0: ph.t0, t1: ph.t1 };
       notes = head.concat(sk.length ? line(sk, o) : []);
       if (sp.id && !sp.head && !(c.themes[sp.id] && c.themes[sp.id].notes)) storeTheme(c, sp.id, ph, notes, ph.stretch);
       if (sp.head && sp.id && sp.headFrom && !(c.themes[sp.id] && c.themes[sp.id].notes)) storeTheme(c, sp.id, ph, notes, ph.stretch);
@@ -1408,7 +1448,38 @@ function render(c) {
 
 /* ================= performance: dynamics, rubato, keyswitches ================= */
 const ROLEOFF = { col: -.1, mel: 0, dbl: -.04, inner: -.13, pad: -.12, bass: -.06, ctr: -.06, brass: -.1, timp: -.02, pno: -.08 };
+function phrasing(c, parts) {
+  // summit of each phrase, for the hairpins
+  c.phrases.forEach(ph => {
+    const mel = c.mel.filter(n => n.t >= ph.t0 && n.t < ph.t1);
+    if (mel.length > 2) { const mx = Math.max(...mel.map(n => n.m)); const at = mel.find(n => n.m === mx); ph.peakP = clamp((at.t + at.dur / 2 - ph.t0) / (ph.t1 - ph.t0), .3, .85); }
+  });
+  // Mattheson: a breath before the big returns
+  const big = /^(Recapitulation|Coda|Da capo|Return|Refrain|Waltz 1 again|Finale)/;
+  const gaps = [];
+  c.phrases.forEach((ph, i) => { if (i && ph.label && big.test(ph.label) && !c.phrases[i - 1].final) gaps.push(ph.t0); });
+  c.gaps = gaps;
+  for (const id in parts) {
+    const L = parts[id];
+    gaps.forEach(g => {
+      const a = g - PPQ;
+      for (let k = L.length - 1; k >= 0; k--) { const n = L[k]; if (n.t >= a && n.t < g) L.splice(k, 1); else if (n.t < a && n.t + n.dur > a) n.dur = a - n.t; }
+    });
+  }
+  // Leopold Mozart: slurred pairs, the second note lighter and shorter; phrase ends lifted
+  ['vln1', 'fl', 'ob', 'cl', 'svn', 'svc', 'eh', 'shn', 'hn', 'vc'].forEach(id => {
+    const L = parts[id].filter(n => n.role === 'mel' || n.role === 'dbl' || n.role === 'ctr');
+    for (let i = 0; i + 1 < L.length; i++) {
+      const a = L[i], b = L[i + 1];
+      if (a.art !== 'long' || b.t !== a.t + a.dur) continue;
+      const step = b.m - a.m;
+      if (step < 0 && step >= -2 && a.dur <= PPQ && b.dur <= a.dur && (a.t % (2 * a.dur)) === 0) { a.acc = 6; b.acc = -14; b.lift = .72; i++; }
+    }
+    for (let i = 0; i < L.length; i++) { const n = L[i], nx = L[i + 1]; if (!nx || nx.t - (n.t + n.dur) >= PPQ / 2) { n.lift = Math.min(n.lift || 1, .88); n.acc = (n.acc || 0) - 5; } }
+  });
+}
 function perform(c, parts) {
+  phrasing(c, parts);
   const x = c.x, era = ERAS[x.era], r = mkRng(x.seed * 3 + 99);
   const OFF = c.bar;
   const totalBeats = Math.ceil(c.t / PPQ) + 2;
@@ -1431,6 +1502,7 @@ function perform(c, parts) {
     const cz = c.phrases.find(p => p.cadenza);
     if (cz) for (let b = cz.t0 / PPQ; b < cz.t0 / PPQ + c.meter; b++) f[b] *= 1.5;
   }
+  if (x.rubato !== 0) c.phrases.forEach((ph, i) => { if (i && ph.label && /^(Recapitulation|Coda|Da capo|Return|Refrain|Waltz 1 again|Finale)/.test(ph.label)) { const b = ph.t0 / PPQ - 1; if (b >= 0) f[b] *= 1.35; } });
   const W = new Float64Array(totalBeats + 1);
   for (let b = 0; b < totalBeats; b++) W[b + 1] = W[b] + f[b] * PPQ;
   const warp = t => { const b = Math.min(totalBeats - 1, Math.floor(t / PPQ)), fr = t / PPQ - b; return OFF + Math.round(W[b] + fr * f[b] * PPQ); };
@@ -1439,7 +1511,8 @@ function perform(c, parts) {
     const p = clamp((t - ph.t0) / (ph.t1 - ph.t0), 0, 1);
     let v = ph.dyn;
     if (!era.terr) {
-      const arc = p < .65 ? p / .65 : (1 - p) / .35;
+      const pk = ph.peakP || .65;
+      const arc = p < pk ? p / pk : (1 - p) / (1 - pk);
       v += era.amp * (arc - .5);
       const nx = c.phrases[ph.idx + 1];
       if (nx && nx.dyn - ph.dyn > .15 && p > .6) v += (nx.dyn - ph.dyn) * (p - .6) / .4;
@@ -1457,12 +1530,14 @@ function perform(c, parts) {
       const lv = lvl(ph, n.t, n.role);
       let v = 28 + 84 * lv + (beatPos === 0 ? 8 : beatPos === 2 && c.meter === 4 ? 3 : (n.t % PPQ) ? -5 : 0) + (r() * 8 - 4);
       if (n.art === 'short' || n.art === 'pizz') v += 5;
+      if (n.acc) v += n.acc;
       if (n.roll) v = 50 + 60 * lv * (0.6 + 0.4 * ((n.t - ph.t0) / Math.max(1, ph.t1 - ph.t0)));
       v = Math.round(clamp(v, 18, 124));
       let t1 = warp(n.t), t2 = warp(n.t + n.dur);
       let d = t2 - t1;
       if (n.art === 'short' || n.art === 'pizz') d = Math.max(40, Math.min(d, Math.round(d * .55)));
       else d = Math.max(30, d - 12);
+      if (n.lift) d = Math.max(40, Math.round(d * n.lift));
       if (inst.ks && n.art === 'long' && x.early) { const sh = Math.round(x.early / tempoMs); t1 = Math.max(OFF / 2, t1 - sh); }
       if (n.art !== 'long' || !inst.ks) t1 += Math.round(r() * 6 - 3);
       notes.push({ t: t1, dur: d, m: n.m, v, art: inst.ks ? n.art : 'long' });
