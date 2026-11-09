@@ -437,7 +437,7 @@ $('#rollAll').onclick = () => { S.words.forEach((w, i) => { if (!S.locks[i]) { r
 $('#reseed').onclick = () => { S.seed = (Math.random() * 4294967296) >>> 0; replan(); };
 function drawLen() { document.querySelectorAll('#len button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.m === S.minutes ? 'true' : 'false')); }
 document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.minutes = +b.dataset.m; ss.set('journey-min', S.minutes); drawLen(); replan(); }; });
-(() => { const t = $('#tempo'); for (let b = 90; b <= 140; b += 2) t.add(new Option(b + ' bpm', b)); t.value = String(S.bpm || 0);
+(() => { const t = $('#tempo'); for (let b = 90; b <= 134; b += 2) t.add(new Option(b + ' bpm', b)); t.value = String(S.bpm || 0);
   t.onchange = () => { S.bpm = +t.value; ss.set('journey-bpm', S.bpm); replan(); }; })();
 if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
 drawRack(); drawWords(); drawLen(); replan();
