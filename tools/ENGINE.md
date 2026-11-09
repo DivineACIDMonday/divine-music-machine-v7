@@ -25,3 +25,4 @@ Every app page carries a copy of it inline, so each page stays one self-containe
 - Score Machine: `score/index.html` is its own source (own engine).
 - Percussion Machine: `divineacidmonday.github.io/percussion/src/` (app.html, perc-engine.js, build.py).
 - Symphony Machine: `symphony/src/` (app.html, sym-engine.js, build.py, test.js). Own engine, built for BBC Symphony Orchestra Discover. Edit the source, run `python3 symphony/src/build.py`, then `node symphony/src/test.js`.
+- Voice leading for chords and pad (E.leadVoices, from the Symphony Machine): after the melody ceiling, each block chord takes the closest voicing to the previous one without parallel fifths or octaves; rhythm untouched, own material untouched (band only runs on machine material). Measured over all genres: parallels 16.5% -> 5.4% of chord changes, voice movement 2.8 -> 2.0 semitones, beats bit-identical.

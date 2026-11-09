@@ -2355,6 +2355,61 @@ E.snapTo = (p, pcs, max) => { for (let d = 0; d <= max; d++) for (const q of [p 
 E.padPlays = (A) => !!A && (A.harm === 'pad' || A.harm === 'drone' || A.harm === 'full' && !!A.padToo);
 E.handover = (song, si, inBar) => !!song.arr && inBar < 2 && si > 0 && (E.arrangeOf(song, si) || {}).harm === 'pad' && ['full', 'stabs'].includes((E.arrangeOf(song, si - 1) || {}).harm);
 E.beatLanesAt = function (song, gbar, res) { let m = E._blc.get(res); if (!m) { m = {}; E._blc.set(res, m); } if (!(gbar in m)) { let x = null; try { const o = E.renderBar(song, 'beat', gbar, res, { lanes: true }); x = o && o.lanes ? o.lanes : null; } catch (e) { x = null; } m[gbar] = x; } return m[gbar]; };
+/* ---------- voice leading, learned in the Symphony Machine ---------- */
+E._vlc = new WeakMap();
+E.prevVoicing = function (song, part, gbar, res) {
+  if (gbar < 0) return null;
+  let m = E._vlc.get(res); if (!m) { m = {}; E._vlc.set(res, m); }
+  const k = part + ':' + gbar;
+  if (!(k in m)) { m[k] = null; try { E.renderBar(song, part, gbar, res, {}); } catch (e) { /* a bar that cannot render leaves no voicing */ } }
+  return m[k];
+};
+E.bestVoicing = function (ps, prev) {
+  const n = ps.length, lo = ps[0] - 5, hi = ps[n - 1], span0 = ps[n - 1] - ps[0];
+  const opts = ps.map((p) => { const o = []; for (let q = lo; q <= hi; q++) if ((q - p) % 12 === 0) o.push(q); return o.length ? o : [p]; });
+  const mean0 = ps.reduce((a, b) => a + b, 0) / n;
+  let best = ps, bc = 1e9;
+  const pick = (i, cur) => {
+    if (i === n) {
+      const v = cur.slice().sort((a, b) => a - b);
+      for (let k = 1; k < n; k++) if (v[k] === v[k - 1] || v[k] - v[k - 1] > 12) return;
+      if (v[n - 1] - v[0] > Math.max(span0 + 4, 12)) return;
+      let c = 0;
+      if (prev.length !== n) { for (const q of v) c += Math.min(...prev.map((x) => Math.abs(x - q))); }
+      else for (let k = 0; k < n; k++) c += Math.abs(v[k] - prev[k]);
+      if (prev.length === n) for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) {
+        const a1 = prev[a], a2 = v[a], b1 = prev[b], b2 = v[b];
+        if (a1 === a2 || b1 === b2 || Math.sign(a2 - a1) !== Math.sign(b2 - b1)) continue;
+        const i1 = Math.abs(b1 - a1) % 12, i2 = Math.abs(b2 - a2) % 12;
+        if (i1 === i2 && (i1 === 0 || i1 === 7)) c += 30;
+      }
+      c += Math.abs(v.reduce((x, y) => x + y, 0) / n - mean0) * 0.6; // stay in the register the genre chose
+      if (c < bc) { bc = c; best = v; }
+      return;
+    }
+    for (const q of opts[i]) { cur.push(q); pick(i + 1, cur); cur.pop(); }
+  };
+  pick(0, []);
+  return best;
+};
+E.leadVoices = function (song, part, gbar, res, notes) {
+  let m = E._vlc.get(res); if (!m) { m = {}; E._vlc.set(res, m); }
+  let prev = E.prevVoicing(song, part, gbar - 1, res);
+  const groups = new Map();
+  notes.forEach((x) => { if (!groups.has(x.t)) groups.set(x.t, []); groups.get(x.t).push(x); });
+  const chosen = new Map();
+  for (const t of [...groups.keys()].sort((a, b) => a - b)) {
+    const g = groups.get(t); if (g.length < 3 || g.length > 6) continue; // single lines and arpeggios keep their own path
+    g.sort((a, b) => a.p - b.p);
+    const ps = g.map((x) => x.p), sig = ps.map((p) => ((p % 12) + 12) % 12).join(',');
+    let v = chosen.get(sig);
+    if (!v) { v = prev && prev.length ? E.bestVoicing(ps, prev) : ps; chosen.set(sig, v); }
+    g.forEach((x, i) => { x.p = v[i]; });
+    prev = v;
+  }
+  m[part + ':' + gbar] = prev;
+  return notes;
+};
 E.band = function (song, si, sec, inBar, part, notes, res, gbar, N, BT, type, nextSec, isLastOfSec) {
   const ST = E.STEP, lanes = E.beatLanesAt(song, gbar, res), kicks = [], acc = new Set(), r = rng(hash(song.seed, 'band', part, gbar));
   if (lanes) for (let s = 0; s < N; s++) { if ((lanes[K][s] || 0) >= 70) { kicks.push(s); acc.add(s); } if ((lanes[SN][s] || 0) >= 80 || (lanes[CP] && lanes[CP][s] >= 80)) acc.add(s); }
@@ -2418,6 +2473,8 @@ E.band = function (song, si, sec, inBar, part, notes, res, gbar, N, BT, type, ne
   if (part === 'melody' && turn && r.chance(0.5)) { notes = notes.filter((n) => n.t < BT / 2); notes.forEach((n) => { if (n.t + n.d > BT / 2) n.d = Math.max(30, BT / 2 - n.t - 10); }); }
   // the melody owns the top: chords and pad stay under her, so the ear follows her line and not the top of a chord
   if ((part === 'chords' || part === 'pad') && notes.length) { const mel = E.melodyAt(song, gbar, res); if (mel && mel.length) { const ceil = Math.min(...mel.map((m) => m.p)) - 2, floor = part === 'pad' ? 45 : 48; notes.forEach((n) => { while (n.p > ceil && n.p - 12 >= floor) n.p -= 12; }); const seen = new Set(); notes = notes.filter((n) => { const k = n.t + ':' + n.p; if (seen.has(k)) return false; seen.add(k); return true; }); } }
+  // voice leading (from the Symphony Machine): each chord moves to the next by the shortest way, without parallel fifths or octaves; the rhythm stays exactly as it is
+  if ((part === 'chords' || part === 'pad') && notes.length) notes = E.leadVoices(song, part, gbar, res, notes);
   // one accent map: everyone leans a little on the kick and the snare, and plays a touch softer in between
   if (acc.size && part !== 'pad') notes.forEach((n) => { const s = Math.round(n.t / ST); if (acc.has(s)) n.v = Math.min(127, n.v + 6); else if (s % 2 === 1) n.v = Math.max(20, n.v - 4); });
   return notes;
