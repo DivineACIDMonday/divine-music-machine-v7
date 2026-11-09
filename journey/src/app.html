@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Five oracle words become a musical journey through styles, rhythms and orchestras: one tempo, one travelling motif, every machine of the suite. By Divine Monday.">
+<meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
+<meta name="theme-color" content="#0B0E14">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/divine-music-machine-v7/favicon.svg">
+<title>Divine Journey Machine</title>
+<style>
+:root{color-scheme:dark;--bg:#0B0E14;--card:#131824;--card2:#1A2030;--line:#263044;--tx:#EDE6D8;--mu:#9AA3B2;--gold:#E7B65C;--c0:#E7B65C;--c1:#4FB3A9;--c2:#D9668A;--c3:#9B87E0;--c4:#6FA8DC}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:radial-gradient(1100px 520px at 50% -180px,#1C2338 0,var(--bg) 62%) fixed,var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.serif{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:6px 0}
+.logo{font-size:28px;font-weight:700;letter-spacing:.3px;line-height:1.1}
+.logo i{color:var(--gold)}
+.tag{font:12px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--mu);border:1px solid var(--line);border-radius:6px;padding:4px 7px}
+.grow{flex:1 1 20px}
+.back{color:var(--mu);text-decoration:none;font-size:14px}.back:hover{color:var(--tx)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.sh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.st{font-size:21px;font-style:italic}
+.muted{color:var(--mu);font-size:14px}.small{font-size:13px}
+button{font:inherit;color:inherit}
+.btn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer;min-height:42px}
+.btn:hover{border-color:#3C4A66}
+.btn.big{background:linear-gradient(180deg,#2A2416,#1E1A10);border-color:#5C4A22;color:var(--gold);font-weight:600}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--mu);padding:9px 13px;cursor:pointer;min-height:42px}
+.seg button[aria-pressed=true]{background:#2A2416;color:var(--gold)}
+/* rack */
+details.rack summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+details.rack summary::-webkit-details-marker{display:none}
+.rk{display:grid;grid-template-columns:130px 1fr;gap:8px 12px;align-items:start;margin-top:12px}
+.rk .el{color:var(--mu);font-size:14px;padding-top:7px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#0F131C;border:1px solid var(--line);border-radius:999px;padding:6px 11px;cursor:pointer;font-size:13.5px;color:var(--mu);min-height:34px}
+.chip[aria-pressed=true]{border-color:var(--gold);color:var(--tx);background:#221D12}
+.chip.plain[aria-pressed=true]{border-color:#7E8899;background:#1B2130}
+/* words */
+.words{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.w{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+.wl{font:11px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;text-align:center}
+.wb{background:var(--card2);border:1px solid var(--line);border-top:3px solid var(--wc);border-radius:12px;min-height:74px;cursor:pointer;font-size:22px;padding:8px 6px;overflow:hidden;word-break:break-word;transition:transform .15s}
+.wb:hover{border-color:var(--wc)}
+.wb.spin{animation:spin .45s ease}
+@keyframes spin{0%{transform:translateY(0);opacity:1}45%{transform:translateY(-14px);opacity:0}55%{transform:translateY(14px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.lock{align-self:center;background:transparent;border:1px solid var(--line);border-radius:8px;padding:3px 10px;cursor:pointer;font-size:14px;color:var(--mu);min-height:32px}
+.lock[aria-pressed=true]{border-color:var(--gold);color:var(--gold)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+/* map */
+#map svg{width:100%;height:auto;display:block}
+.facts{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--mu)}
+.facts b{color:var(--tx);font-weight:600}
+/* chapters */
+.chs{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.ch{background:var(--card2);border:1px solid var(--line);border-left:4px solid var(--wc);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:9px}
+.ch h3{margin:0;font-size:24px;font-weight:600;display:flex;align-items:baseline;gap:8px}
+.ch h3 small{font:12px ui-monospace,Menlo,monospace;color:var(--mu)}
+.kv{display:grid;grid-template-columns:84px 1fr;gap:3px 10px;font-size:14px}
+.kv dt{color:var(--mu)}.kv dd{margin:0}
+.bars{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.bar{display:flex;flex-direction:column;align-items:center;gap:3px;font:10px ui-monospace,Menlo,monospace;color:var(--mu)}
+.bar i{display:block;width:100%;height:30px;background:#0F131C;border-radius:4px;position:relative;overflow:hidden}
+.bar i b{position:absolute;left:0;right:0;background:var(--wc);opacity:.85}
+.players{display:flex;flex-direction:column;gap:3px;font-size:14px}
+.pl{display:flex;gap:8px}.pl span:first-child{color:var(--mu);min-width:84px}
+.sw{color:var(--gold);font-size:12.5px}
+.cos{display:flex;flex-wrap:wrap;gap:5px}
+.cos span{font:12px ui-monospace,Menlo,monospace;background:#0F131C;border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:#D9D2C4}
+.out{font-size:13.5px;color:var(--mu);border-top:1px dashed var(--line);padding-top:8px}
+footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
+@media (max-width:760px){.words{grid-template-columns:repeat(2,1fr)}.w:last-child{grid-column:1/-1}.rk{grid-template-columns:1fr}.rk .el{padding-top:0}.wb{font-size:19px}}
+</style></head><body>
+<div id="app">
+<header>
+  <div class="logo serif">Divine <i>Journey</i> Machine</div>
+  <span class="tag">phase 1 · the map</span>
+  <div class="grow"></div>
+  <a class="back" href="/">← all machines</a>
+</header>
+
+<details class="card rack" id="rackBox">
+  <summary><span class="st serif">Your rack</span><span class="muted" id="rackSum"></span></summary>
+  <div class="muted small" style="margin-top:6px">Tick the instruments you want to use. The machine only chooses from your ticks. Kept for this session.</div>
+  <div class="rk" id="rack"></div>
+</details>
+
+<section class="card">
+  <div class="sh"><span class="st serif">The oracle speaks</span><span class="muted">Click a word to roll only that word. Lock what you love.</span></div>
+  <div class="words" id="words"></div>
+  <div class="row">
+    <button class="btn big" id="rollAll">🎲 Roll everything</button>
+    <button class="btn" id="reseed" title="Same words, the dice choose again">↻ Same words, new journey</button>
+    <div class="grow"></div>
+    <span class="muted small">Length</span>
+    <div class="seg" id="len"><button data-m="20">20 min</button><button data-m="40">40 min</button><button data-m="70">70 min</button></div>
+  </div>
+</section>
+
+<section class="card" id="map">
+  <div class="sh"><span class="st serif">The journey</span><span class="muted" id="arcName"></span></div>
+  <div id="svg"></div>
+  <div class="facts" id="facts"></div>
+</section>
+
+<section class="chs" id="chs"></section>
+
+<section class="card" style="align-items:center;text-align:center">
+  <button class="btn big" disabled>▶ Make the journey</button>
+  <div class="muted small">The sound arrives in phase 2. For now: does the map feel right?</div>
+</section>
+<footer>© 2026 Divine Monday</footer>
+</div>
+
+<script>/*WORDS*/</script>
+<script>/*PLAN*/</script>
+<script>
+const $ = (s) => document.querySelector(s);
+const WHEELS = [['W1', 'Mood'], ['W2', 'Motion'], ['W3', 'Colour'], ['W4', 'Place'], ['W5', 'Idea']];
+const COL = ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
+const HEX = ['#E7B65C', '#4FB3A9', '#D9668A', '#9B87E0', '#6FA8DC'];
+const ss = { get(k, d) { try { const v = sessionStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* this session keeps nothing; fine */ } } };
+const ls = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* fine */ } } };
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const rnd = (a) => a[Math.floor(Math.random() * a.length)];
+
+const S = {
+  rack: ss.get('journey-rack', null) || JP.defaultRack(),
+  words: WHEELS.map(([w]) => ({ wheel: w, word: rnd(JW[w]) })),
+  locks: [false, false, false, false, false],
+  minutes: ss.get('journey-min', 40),
+  seed: (Math.random() * 4294967296) >>> 0,
+  plan: null,
+};
+
+// ---------- rack ----------
+function rackSummary() { const n = Object.values(S.rack).reduce((s, l) => s + l.filter((x) => x !== JP.PLAIN).length, 0); $('#rackSum').textContent = n ? n + ' instruments ticked' : 'only plain MIDI so far, tick your plugins here'; }
+function drawRack() {
+  const el = $('#rack'); el.innerHTML = '';
+  for (const [k, def] of Object.entries(JP.RACK)) {
+    const lab = document.createElement('div'); lab.className = 'el'; lab.textContent = def.icon + ' ' + def.name;
+    const chips = document.createElement('div'); chips.className = 'chips';
+    [JP.PLAIN, ...def.items].forEach((it) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (it === JP.PLAIN ? ' plain' : ''); b.textContent = it;
+      b.setAttribute('aria-pressed', S.rack[k].includes(it) ? 'true' : 'false');
+      b.onclick = () => { const on = S.rack[k].includes(it); if (on && S.rack[k].length === 1) return; S.rack[k] = on ? S.rack[k].filter((x) => x !== it) : [...S.rack[k], it];
+        ss.set('journey-rack', S.rack); drawRack(); replan(); };
+      chips.append(b); });
+    el.append(lab, chips);
+  }
+  rackSummary();
+}
+
+// ---------- words ----------
+function drawWords() {
+  const el = $('#words'); el.innerHTML = '';
+  S.words.forEach((w, i) => {
+    const box = document.createElement('div'); box.className = 'w'; box.style.setProperty('--wc', COL[i]);
+    const l = document.createElement('div'); l.className = 'wl'; l.style.color = HEX[i]; l.textContent = (i + 1) + ' · ' + WHEELS[i][1];
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'wb serif'; b.textContent = w.word; b.title = 'Roll this word again';
+    b.onclick = () => { if (S.locks[i]) return; rollOne(i); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin'); setTimeout(() => { b.textContent = S.words[i].word; }, 200); replan(); };
+    const lk = document.createElement('button'); lk.type = 'button'; lk.className = 'lock'; lk.setAttribute('aria-pressed', S.locks[i] ? 'true' : 'false'); lk.textContent = S.locks[i] ? '🔒 locked' : '🔓';
+    lk.onclick = () => { S.locks[i] = !S.locks[i]; drawWords(); };
+    box.append(l, b, lk); el.append(box);
+  });
+}
+function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 0; while (w === S.words[i].word && t++ < 5) w = rnd(list); S.words[i] = { wheel: S.words[i].wheel, word: w }; }
+
+// ---------- plan + map ----------
+function replan() {
+  const recent = ls.get('journey-recent', []);
+  S.plan = JP.plan(S.words, { seed: S.seed, minutes: S.minutes, rack: S.rack, recent, allWords: JW });
+  drawMap(); drawChapters();
+}
+function remember() { // after a journey is made (phase 2) this list makes the next one choose differently
+  const r = ls.get('journey-recent', []); const add = S.plan.chapters.map((c) => c.lead.name); ls.set('journey-recent', [...add, ...r].slice(0, 30)); }
+
+function curve(p) {
+  // energy over time, with the opening, the ending and the breaths drawn in
+  const pts = [], N = 220, ch = p.chapters;
+  for (let k = 0; k <= N; k++) { const t = k / N; let e = Math.max(0.05, Math.min(1, p.arc.f(t)));
+    if (t < ch[0].t1 * 0.35) { const u = t / (ch[0].t1 * 0.35); e = p.opening.start * (1 - u) + e * u; }
+    const last = ch[ch.length - 1]; if (t > last.t0 + (last.t1 - last.t0) * 0.6) { const u = (t - (last.t0 + (last.t1 - last.t0) * 0.6)) / ((last.t1 - last.t0) * 0.4); e = e * (1 - u) + last.eEnd * u; }
+    for (const b of p.breaths) { const c = b.kind === 'between' ? ch[b.at].t0 : ch[b.at].t0 + (ch[b.at].t1 - ch[b.at].t0) * (b.bar / ch[b.at].bars); const d = Math.abs(t - c); if (d < 0.025) e = Math.min(e, 0.04 + d * 8); }
+    pts.push([t, e]); }
+  if (p.ending.id === 'abrupt') pts.push([1, 0]);
+  return pts;
+}
+function drawMap() {
+  const p = S.plan, W = 1000, H = 296, top = 56, bot = 222, ch = p.chapters;
+  const X = (t) => 10 + t * (W - 20), Y = (e) => bot - e * (bot - top - 18);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Energy of the journey over time">`;
+  ch.forEach((c, i) => { s += `<rect x="${X(c.t0)}" y="${top - 46}" width="${X(c.t1) - X(c.t0)}" height="${bot - top + 46}" fill="${HEX[i]}" opacity=".07"/>`;
+    s += `<rect x="${X(c.t0)}" y="${top - 46}" width="${X(c.t1) - X(c.t0)}" height="3" fill="${HEX[i]}"/>`;
+    const cx = (X(c.t0) + X(c.t1)) / 2;
+    s += `<text x="${cx}" y="${top - 22}" text-anchor="middle" fill="${HEX[i]}" font-size="19" font-family="Georgia,serif">${esc(c.word)}</text>`;
+    s += `<text x="${cx}" y="${top - 3}" text-anchor="middle" fill="#9AA3B2" font-size="12.5">${JP.MACHINES[c.lead.machine].icon} ${esc(c.lead.name)}${c.guests.map((g) => ' ' + JP.MACHINES[g.machine].icon).join('')}</text>`;
+    s += `<text x="${cx}" y="${bot + 22}" text-anchor="middle" fill="#9AA3B2" font-size="12">${esc(c.key)} · ${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}</text>`;
+    s += `<text x="${cx}" y="${bot + 40}" text-anchor="middle" fill="#6B7486" font-size="11.5">${c.bars} bars · ${c.minutes.toFixed(1)} min</text>`;
+    // the motif, in this chapter's costume
+    const m = p.motif, sc = c.costume.includes('quicker') ? 0.6 : c.costume.includes('slower') ? 1.5 : 1, half = c.costume.includes('half, a memory');
+    const tot = m.rhythm.reduce((a, b) => a + b, 0) * sc, mx = cx - Math.min(tot * 9, (X(c.t1) - X(c.t0)) / 2 - 8);
+    let acc = 0; m.degrees.forEach((d, k) => { if (half && k >= Math.ceil(m.degrees.length / 2)) return; const dd = c.costume.includes('upside down') ? -d : d;
+      s += `<circle cx="${mx + acc * 9}" cy="${bot - 6 - (dd + 4) * 2.2 - (c.costume.includes('high') ? 6 : 0) + (c.costume.includes('low') ? 6 : 0)}" r="${c.costume.includes('grand') ? 3.4 : 2.4}" fill="${HEX[i]}" opacity=".9"/>`; acc += m.rhythm[k] * sc; });
+  });
+  const pts = curve(p), path = pts.map(([t, e], k) => (k ? 'L' : 'M') + X(t).toFixed(1) + ' ' + Y(e).toFixed(1)).join(' ');
+  s += `<path d="${path} L ${X(1)} ${bot} L ${X(0)} ${bot} Z" fill="url(#g)" opacity=".35"/><defs><linearGradient id="g" x1="0" x2="1">${HEX.map((h, i) => `<stop offset="${(ch[i] ? (ch[i].t0 + ch[i].t1) / 2 : 0)}" stop-color="${h}"/>`).join('')}</linearGradient></defs>`;
+  s += `<path d="${path}" fill="none" stroke="#EDE6D8" stroke-width="2.4" stroke-linejoin="round"/>`;
+  // transitions and breaths
+  ch.forEach((c, i) => { if (i === ch.length - 1) return; const x = X(c.t1), tr = JP.TRANSITIONS[c.out];
+    s += `<line x1="${x}" y1="${top - 6}" x2="${x}" y2="${bot}" stroke="#3A4560" stroke-dasharray="3 4"/>`;
+    s += `<circle cx="${x}" cy="${top + 10}" r="12" fill="#0B0E14" stroke="#556080"/><text x="${x}" y="${top + 15}" text-anchor="middle" fill="#EDE6D8" font-size="13">${tr.icon}</text>`; });
+  p.breaths.filter((b) => b.kind === 'inside').forEach((b) => { const c = ch[b.at], x = X(c.t0 + (c.t1 - c.t0) * b.bar / c.bars);
+    s += `<circle cx="${x}" cy="${Y(0.04)}" r="9" fill="none" stroke="#EDE6D8" stroke-width="1.5"/><text x="${x}" y="${Y(0.04) - 14}" text-anchor="middle" fill="#EDE6D8" font-size="11">breath</text>`; });
+  s += `<text x="${X(0) + 2}" y="${bot + 62}" fill="#9AA3B2" font-size="12">▸ opens: ${esc(p.opening.name.toLowerCase())}</text>`;
+  s += `<text x="${X(1) - 2}" y="${bot + 62}" text-anchor="end" fill="#9AA3B2" font-size="12">ends: ${esc(p.ending.name.toLowerCase())} ◂</text>`;
+  s += '</svg>';
+  $('#svg').innerHTML = s;
+  $('#arcName').textContent = p.arc.name;
+  const mins = p.chapters.reduce((a, c) => a + c.minutes, 0);
+  $('#facts').innerHTML = `<span>One tempo <b>${p.bpm} bpm</b></span><span>Length <b>${Math.round(mins)} min</b> · ${p.totalBars} bars</span>`
+    + `<span>Opens <b>${esc(p.opening.name)}</b>, ${esc(p.opening.desc)}</span><span>Ends <b>${esc(p.ending.name)}</b>, ${esc(p.ending.desc)}</span>`
+    + `<span>Breaths <b>${p.breaths.length}</b></span><span>Swaps <b>${p.swaps.length}</b></span><span>Motif <b>${p.motif.degrees.length} notes</b></span>`;
+}
+
+const DIMN = { light: 'light', speed: 'speed', warm: 'warmth', weight: 'weight', tension: 'tension', world: 'world' };
+function drawChapters() {
+  const p = S.plan, el = $('#chs'); el.innerHTML = '';
+  p.chapters.forEach((c, i) => {
+    const d = document.createElement('article'); d.className = 'ch'; d.style.setProperty('--wc', COL[i]);
+    const bars = JP.DIMS.map((k) => { const v = c.c[k], lo = k === 'world' ? 0 : -1, h = (v - lo) / (1 - lo);
+      return `<div class="bar"><i><b style="bottom:0;height:${Math.round(h * 100)}%"></b></i>${DIMN[k]}</div>`; }).join('');
+    const pl = c.players.map((x) => `<div class="pl"><span>${JP.RACK[x.role].icon} ${JP.ROLE_NAME[x.role]}</span><span>${esc(x.player)}${x.swapped ? ` <span class="sw">⇄ from your ${JP.RACK[x.swapped].name.toLowerCase()} rack</span>` : ''}</span></div>`).join('');
+    const out = i < p.chapters.length - 1 ? `Into the next: <b>${JP.TRANSITIONS[c.out].icon} ${JP.TRANSITIONS[c.out].name}</b>${c.overlap ? `, ${c.overlap} bars overlap` : ''}` : `The end: <b>${esc(p.ending.name)}</b>`;
+    const br = c.breathInside ? `<div class="sw">○ a breath at bar ${c.breathInside.bar}</div>` : '';
+    d.innerHTML = `<h3 class="serif" style="color:${HEX[i]}">${esc(c.word)} <small>${i + 1} · ${WHEELS[i][1].toLowerCase()}</small></h3>
+      <div class="bars">${bars}</div>
+      <dl class="kv"><dt>Leader</dt><dd>${JP.MACHINES[c.lead.machine].icon} <b>${esc(c.lead.name)}</b> <span class="muted small">from ${JP.MACHINES[c.lead.machine].name}</span></dd>
+      <dt>Guests</dt><dd>${c.guests.map((g) => `${JP.MACHINES[g.machine].icon} ${esc(g.name)}`).join(' · ') || 'none'}</dd>
+      <dt>Feel</dt><dd>${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}, feels like ${c.feelsLike} bpm</dd>
+      <dt>Key</dt><dd>${esc(c.key)}${c.keyMove === 'golden' ? ' <span class="sw">✦ golden step up</span>' : ''}</dd>
+      <dt>Length</dt><dd>${c.bars} bars · ${c.minutes.toFixed(1)} min</dd>
+      <dt>Layers</dt><dd>${c.layersStart} → ${c.layers} → ${c.layersEnd}</dd></dl>
+      <div class="players">${pl}</div>${br}
+      <div class="cos">${c.costume.map((x) => `<span>✦ ${esc(x)}</span>`).join('')}</div>
+      <div class="out">${out}</div>`;
+    el.append(d);
+  });
+}
+
+// ---------- controls ----------
+$('#rollAll').onclick = () => { S.words.forEach((w, i) => { if (!S.locks[i]) rollOne(i); }); S.seed = (Math.random() * 4294967296) >>> 0; drawWords(); replan(); };
+$('#reseed').onclick = () => { S.seed = (Math.random() * 4294967296) >>> 0; replan(); };
+function drawLen() { document.querySelectorAll('#len button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.m === S.minutes ? 'true' : 'false')); }
+document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.minutes = +b.dataset.m; ss.set('journey-min', S.minutes); drawLen(); replan(); }; });
+if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
+drawRack(); drawWords(); drawLen(); replan();
+</script>
+</body></html>

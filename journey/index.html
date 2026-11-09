@@ -1,0 +1,551 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Five oracle words become a musical journey through styles, rhythms and orchestras: one tempo, one travelling motif, every machine of the suite. By Divine Monday.">
+<meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
+<meta name="theme-color" content="#0B0E14">
+<meta name="robots" content="noindex">
+<link rel="icon" href="/divine-music-machine-v7/favicon.svg">
+<title>Divine Journey Machine</title>
+<style>
+:root{color-scheme:dark;--bg:#0B0E14;--card:#131824;--card2:#1A2030;--line:#263044;--tx:#EDE6D8;--mu:#9AA3B2;--gold:#E7B65C;--c0:#E7B65C;--c1:#4FB3A9;--c2:#D9668A;--c3:#9B87E0;--c4:#6FA8DC}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:radial-gradient(1100px 520px at 50% -180px,#1C2338 0,var(--bg) 62%) fixed,var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.serif{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:6px 0}
+.logo{font-size:28px;font-weight:700;letter-spacing:.3px;line-height:1.1}
+.logo i{color:var(--gold)}
+.tag{font:12px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--mu);border:1px solid var(--line);border-radius:6px;padding:4px 7px}
+.grow{flex:1 1 20px}
+.back{color:var(--mu);text-decoration:none;font-size:14px}.back:hover{color:var(--tx)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.sh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.st{font-size:21px;font-style:italic}
+.muted{color:var(--mu);font-size:14px}.small{font-size:13px}
+button{font:inherit;color:inherit}
+.btn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer;min-height:42px}
+.btn:hover{border-color:#3C4A66}
+.btn.big{background:linear-gradient(180deg,#2A2416,#1E1A10);border-color:#5C4A22;color:var(--gold);font-weight:600}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--mu);padding:9px 13px;cursor:pointer;min-height:42px}
+.seg button[aria-pressed=true]{background:#2A2416;color:var(--gold)}
+/* rack */
+details.rack summary{cursor:pointer;list-style:none;display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+details.rack summary::-webkit-details-marker{display:none}
+.rk{display:grid;grid-template-columns:130px 1fr;gap:8px 12px;align-items:start;margin-top:12px}
+.rk .el{color:var(--mu);font-size:14px;padding-top:7px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{background:#0F131C;border:1px solid var(--line);border-radius:999px;padding:6px 11px;cursor:pointer;font-size:13.5px;color:var(--mu);min-height:34px}
+.chip[aria-pressed=true]{border-color:var(--gold);color:var(--tx);background:#221D12}
+.chip.plain[aria-pressed=true]{border-color:#7E8899;background:#1B2130}
+/* words */
+.words{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.w{display:flex;flex-direction:column;align-items:stretch;gap:6px}
+.wl{font:11px ui-monospace,Menlo,monospace;letter-spacing:.08em;text-transform:uppercase;text-align:center}
+.wb{background:var(--card2);border:1px solid var(--line);border-top:3px solid var(--wc);border-radius:12px;min-height:74px;cursor:pointer;font-size:22px;padding:8px 6px;overflow:hidden;word-break:break-word;transition:transform .15s}
+.wb:hover{border-color:var(--wc)}
+.wb.spin{animation:spin .45s ease}
+@keyframes spin{0%{transform:translateY(0);opacity:1}45%{transform:translateY(-14px);opacity:0}55%{transform:translateY(14px);opacity:0}100%{transform:translateY(0);opacity:1}}
+.lock{align-self:center;background:transparent;border:1px solid var(--line);border-radius:8px;padding:3px 10px;cursor:pointer;font-size:14px;color:var(--mu);min-height:32px}
+.lock[aria-pressed=true]{border-color:var(--gold);color:var(--gold)}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+/* map */
+#map svg{width:100%;height:auto;display:block}
+.facts{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:14px;color:var(--mu)}
+.facts b{color:var(--tx);font-weight:600}
+/* chapters */
+.chs{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.ch{background:var(--card2);border:1px solid var(--line);border-left:4px solid var(--wc);border-radius:12px;padding:14px;display:flex;flex-direction:column;gap:9px}
+.ch h3{margin:0;font-size:24px;font-weight:600;display:flex;align-items:baseline;gap:8px}
+.ch h3 small{font:12px ui-monospace,Menlo,monospace;color:var(--mu)}
+.kv{display:grid;grid-template-columns:84px 1fr;gap:3px 10px;font-size:14px}
+.kv dt{color:var(--mu)}.kv dd{margin:0}
+.bars{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.bar{display:flex;flex-direction:column;align-items:center;gap:3px;font:10px ui-monospace,Menlo,monospace;color:var(--mu)}
+.bar i{display:block;width:100%;height:30px;background:#0F131C;border-radius:4px;position:relative;overflow:hidden}
+.bar i b{position:absolute;left:0;right:0;background:var(--wc);opacity:.85}
+.players{display:flex;flex-direction:column;gap:3px;font-size:14px}
+.pl{display:flex;gap:8px}.pl span:first-child{color:var(--mu);min-width:84px}
+.sw{color:var(--gold);font-size:12.5px}
+.cos{display:flex;flex-wrap:wrap;gap:5px}
+.cos span{font:12px ui-monospace,Menlo,monospace;background:#0F131C;border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:#D9D2C4}
+.out{font-size:13.5px;color:var(--mu);border-top:1px dashed var(--line);padding-top:8px}
+footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
+@media (max-width:760px){.words{grid-template-columns:repeat(2,1fr)}.w:last-child{grid-column:1/-1}.rk{grid-template-columns:1fr}.rk .el{padding-top:0}.wb{font-size:19px}}
+</style></head><body>
+<div id="app">
+<header>
+  <div class="logo serif">Divine <i>Journey</i> Machine</div>
+  <span class="tag">phase 1 · the map</span>
+  <div class="grow"></div>
+  <a class="back" href="/">← all machines</a>
+</header>
+
+<details class="card rack" id="rackBox">
+  <summary><span class="st serif">Your rack</span><span class="muted" id="rackSum"></span></summary>
+  <div class="muted small" style="margin-top:6px">Tick the instruments you want to use. The machine only chooses from your ticks. Kept for this session.</div>
+  <div class="rk" id="rack"></div>
+</details>
+
+<section class="card">
+  <div class="sh"><span class="st serif">The oracle speaks</span><span class="muted">Click a word to roll only that word. Lock what you love.</span></div>
+  <div class="words" id="words"></div>
+  <div class="row">
+    <button class="btn big" id="rollAll">🎲 Roll everything</button>
+    <button class="btn" id="reseed" title="Same words, the dice choose again">↻ Same words, new journey</button>
+    <div class="grow"></div>
+    <span class="muted small">Length</span>
+    <div class="seg" id="len"><button data-m="20">20 min</button><button data-m="40">40 min</button><button data-m="70">70 min</button></div>
+  </div>
+</section>
+
+<section class="card" id="map">
+  <div class="sh"><span class="st serif">The journey</span><span class="muted" id="arcName"></span></div>
+  <div id="svg"></div>
+  <div class="facts" id="facts"></div>
+</section>
+
+<section class="chs" id="chs"></section>
+
+<section class="card" style="align-items:center;text-align:center">
+  <button class="btn big" disabled>▶ Make the journey</button>
+  <div class="muted small">The sound arrives in phase 2. For now: does the map feel right?</div>
+</section>
+<footer>© 2026 Divine Monday</footer>
+</div>
+
+<script>const JW = {"W1":["Silent","Velvet","Cosmic","Hollow","Distant","Quiet","Secret","Hidden","Gentle","Tender","Dusty","Misty","Foggy","Hazy","Smoky","Dreamy","Sleepy","Lonely","Ancient","Faded","Fragile","Frozen","Silky","Satin","Woolen","Feathered","Mossy","Sandy","Salty","Sunken","Drowned","Buried","Forgotten","Haunted","Sacred","Holy","Divine","Pagan","Mystic","Mythic","Lunar","Solar","Stellar","Astral","Celestial","Orbital","Nocturnal","Twilight","Moonlit","Starlit","Candlelit","Lamplit","Shadowed","Veiled","Masked","Muted","Whispered","Soft","Warm","Cold","Cool","Icy","Frosty","Humid","Tropical","Arctic","Polar","Desert","Coastal","Oceanic","Tidal","Rainy","Stormy","Windy","Cloudy","Sunny","Shady","Dim","Pale","Hazed","Ghostly","Spectral","Phantom","Elusive","Endless","Infinite","Eternal","Timeless","Ageless","Vintage","Antique","Rustic","Wooden","Paper","Canvas","Leather","Linen","Cotton","Porcelain","Marble","Granite","Stone","Concrete","Rusted","Tarnished","Weathered","Worn","Broken","Cracked","Shattered","Scattered","Tangled","Woven","Knotted","Folded","Crumpled","Polished","Lacquered","Gilded","Plated","Enameled","Frosted","Clouded","Blurred","Grainy","Noisy","Static","Analog","Vinyl","Tape","Hollowed","Echoing","Resonant","Sonic","Tonal","Modal","Harmonic","Melodic","Lyrical","Poetic","Romantic","Wistful","Nostalgic","Melancholy","Somber","Solemn","Serene","Tranquil","Placid","Calm","Still","Peaceful","Mellow","Lazy","Idle","Hypnotic","Floating","Weightless","Airy","Ethereal","Bodiless","Formless","Shapeless","Nameless","Faceless","Wordless","Soundless","Restless","Sleepless","Homeless","Careless","Fearless","Reckless","Lawless","Boundless","Bottomless","Starless","Sunless","Moonless","Tideless","Windless","Painless","Gracious","Graceful","Elegant","Noble","Royal","Regal","Imperial","Majestic","Grand","Humble","Modest","Simple","Pure","Clean","Clear","Bright","Luminous","Radiant","Glowing","Shining","Gleaming","Glimmering","Shimmering","Sparkling","Twinkling","Flickering","Fading","Waning","Waxing","Rising","Setting","Falling","Drifting","Wandering","Lost","Found","Chosen","Blessed","Cursed","Wicked","Gothic","Baroque","Rococo","Victorian","Futurist","Retro","Modern","Atomic","Quantum","Digital","Virtual","Synthetic","Plastic","Chrome","Mirrored","Liquid","Molten","Smoldering","Ashen","Charred","Gossamer","Lucid","Sunlit","Ornate","Velveteen","Opaline","Wintry","Dreamlike"],"W2":["Kinetic","Fluid","Linear","Rapid","Swift","Quick","Fast","Slow","Steady","Stable","Shaky","Wobbly","Jittery","Nervous","Frantic","Manic","Hyper","Electric","Magnetic","Dynamic","Pulsing","Throbbing","Thumping","Pounding","Rolling","Spinning","Turning","Twisting","Swirling","Whirling","Looping","Cycling","Rotating","Orbiting","Bouncing","Jumping","Leaping","Skipping","Hopping","Dancing","Swinging","Swaying","Rocking","Shaking","Rattling","Stomping","Marching","Running","Racing","Rushing","Chasing","Hunting","Climbing","Soaring","Flying","Gliding","Sliding","Slipping","Rippling","Flowing","Streaming","Pouring","Flooding","Surging","Crashing","Breaking","Bursting","Exploding","Erupting","Igniting","Burning","Blazing","Flaming","Firing","Charging","Driving","Pushing","Pulling","Lifting","Dropping","Sinking","Diving","Plunging","Tumbling","Spiraling","Ascending","Descending","Accelerating","Bending","Stretching","Expanding","Shrinking","Unfolding","Opening","Closing","Breathing","Beating","Ticking","Clicking","Snapping","Popping","Cracking","Buzzing","Humming","Droning","Ringing","Chiming","Clanging","Booming","Roaring","Howling","Screaming","Shouting","Calling","Singing","Chanting","Grooving","Funky","Jazzy","Bluesy","Soulful","Punchy","Snappy","Crisp","Tight","Loose","Sloppy","Lean","Heavy","Light","Dense","Sparse","Thick","Thin","Wide","Narrow","Deep","Shallow","High","Low","Loud","Raw","Rough","Smooth","Sharp","Blunt","Hard","Tough","Solid","Brittle","Elastic","Rubber","Bouncy","Agile","Nimble","Lithe","Fleet","Brisk","Lively","Vivid","Vibrant","Wild","Feral","Savage","Fierce","Bold","Brave","Daring","Furious","Angry","Hungry","Thirsty","Greedy","Eager","Hasty","Urgent","Pressing","Relentless","Tireless","Unstoppable","Overdriven","Distorted","Saturated","Compressed","Amplified","Boosted","Pumped","Juiced","Wired","Charged","Loaded","Primed","Locked","Synced","Phased","Shifted","Displaced","Detuned","Pitched","Bent","Warped","Skewed","Tilted","Angled","Crooked","Zigzag","Jagged","Staggered","Stuttered","Stammered","Glitched","Fractured","Splintered","Shredded","Chopped","Sliced","Diced","Cut","Spliced","Mixed","Blended","Fused","Merged","Bonded","Linked","Chained","Coupled","Paired","Doubled","Tripled","Layered","Stacked","Piled","Packed","Crowded","Swarming","Teeming","Bustling","Hustling","Busy","Awake","Alert","Alive","Living","Pulsating","Radiating","Vibrating","Oscillating","Resonating","Modulating","Alternating","Repeating","Recurring","Returning","Reversing","Inverted","Flipped","Rotated","Translated","Scaled","Stretched","Quantized","Shuffled","Syncopated","Offbeat","Upbeat","Downbeat","Backbeat","Polyrhythmic","Strutting","Swaggering","Prowling","Stalking","Creeping","Crawling","Lurking","Sneaking","Rambling","Roaming","Roving","Travelling","Journeying","Voyaging","Sailing","Cruising","Coasting","Freewheeling","Barreling","Hurtling","Careening","Rocketing","Launching","Blasting","Thundering","Rumbling","Grinding","Churning","Pumping","Hammering","Drilling"],"W3":["Crimson","Scarlet","Ruby","Cherry","Rose","Coral","Salmon","Peach","Apricot","Amber","Honey","Golden","Gold","Saffron","Mustard","Lemon","Lime","Olive","Moss","Jade","Emerald","Mint","Sage","Forest","Pine","Teal","Cyan","Aqua","Turquoise","Azure","Cobalt","Sapphire","Navy","Indigo","Ultramarine","Violet","Purple","Lilac","Lavender","Mauve","Plum","Orchid","Magenta","Fuchsia","Pink","Blush","Ivory","Cream","Pearl","Silver","Platinum","Steel","Iron","Copper","Bronze","Brass","Rust","Ochre","Umber","Sienna","Sepia","Tan","Beige","Khaki","Taupe","Ash","Smoke","Charcoal","Graphite","Onyx","Obsidian","Ebony","Jet","Ink","Black","White","Grey","Gray","Snow","Chalk","Bone","Milk","Neon","Ultraviolet","Infrared","Fluorescent","Pastel","Matte","Glossy","Metallic","Iridescent","Opal","Prism","Spectrum","Rainbow","Holographic","Sunset","Sunrise","Dusk","Dawn","Midnight","Noon","Evening","Morning","Autumn","Winter","Summer","Spring","Harvest","Ember","Flame","Fire","Ice","Frost","Storm","Thunder","Lightning","Rain","Cloud","Mist","Fog","Haze","Shadow","Dark","Hot","Burnt","Smoked","Toasted","Roasted","Baked","Sunburnt","Rosewood","Mahogany","Walnut","Cedar","Oak","Birch","Bamboo","Coffee","Cocoa","Chocolate","Caramel","Vanilla","Cinnamon","Ginger","Pepper","Paprika","Tangerine","Orange","Citrus","Grape","Berry","Wine","Burgundy","Claret","Maroon","Garnet","Topaz","Citrine","Quartz","Diamond","Crystal","Glass","Amethyst","Tourmaline","Malachite","Lapis","Celadon","Vermilion","Carmine","Cadmium","Cinnabar","Woad","Henna","Kohl","Tar","Oil","Petrol","Velour","Suede","Denim","Tweed","Silk","Lace","Gauze","Acid","Toxic","Radioactive","Nuclear","Plasma","Laser","Tropic","Jungle","Savanna","Tundra","Ocean","Sea","River","Lake","Harbor","Island","Coastline","Canyon","Valley","Mountain","Alpine","Glacier","Volcanic","Lava","Magma","Sulfur","Mercury","Nickel","Zinc","Tin","Lead","Titanium","Uranium","Moonstone","Sunstone","Bloodstone","Firestone","Starstone","Skyline","Highland","Lowland","Northern","Southern","Eastern","Western","Inner","Outer","Upper","Lower","First","Last","Second","Third","Final","Early","Late","Lucky","Dear","Sweet","Bitter","Sour","Spicy","Free","Lone","Twin","Double","Single","Half","Full","Empty","Open","Closed"],"W4":["Echo","Grid","Mirror","Window","Door","Gate","Bridge","Tower","Wall","Arch","Dome","Pillar","Column","Stair","Ladder","Corridor","Hallway","Tunnel","Cave","Chamber","Vault","Cellar","Attic","Balcony","Terrace","Garden","Courtyard","Plaza","Square","Circle","Spiral","Helix","Cube","Sphere","Cone","Pyramid","Lens","Frame","Panel","Tile","Brick","Block","Beam","Wire","Cable","Chain","Rope","Thread","Ribbon","Strip","Band","Ring","Loop","Knot","Web","Net","Mesh","Lattice","Matrix","Array","Pattern","Mosaic","Collage","Fresco","Portrait","Sketch","Outline","Silhouette","Contour","Profile","Shape","Figure","Form","Body","Shell","Husk","Seed","Root","Branch","Leaf","Petal","Stem","Thorn","Vine","Tree","Field","Meadow","Hill","Peak","Ridge","Cliff","Shore","Beach","Dune","Reef","Wave","Tide","Current","Stream","Creek","Brook","Pond","Lagoon","Bay","Gulf","Strait","Channel","Canal","Harbour","Pier","Dock","Lighthouse","Beacon","Lantern","Candle","Torch","Flare","Spark","Star","Comet","Meteor","Planet","Moon","Sun","Galaxy","Nebula","Orbit","Satellite","Rocket","Station","Engine","Motor","Turbine","Piston","Gear","Wheel","Lever","Pulley","Hinge","Valve","Pipe","Tube","Hose","Pump","Tank","Barrel","Drum","Bell","Gong","Cymbal","Horn","Flute","Harp","Lyre","Organ","Piano","Violin","Cello","Guitar","Banjo","Bass","Synth","Sampler","Sequencer","Oscillator","Filter","Mixer","Speaker","Amplifier","Radio","Antenna","Receiver","Transmitter","Dial","Switch","Button","Knob","Fader","Slider","Meter","Gauge","Clock","Watch","Compass","Map","Atlas","Globe","Chart","Diagram","Blueprint","Model","Sculpture","Statue","Monument","Temple","Shrine","Altar","Chapel","Cathedral","Palace","Castle","Fortress","Citadel","Market","Bazaar","Arcade","Gallery","Museum","Library","Archive","Theater","Cinema","Studio","Stage","Arena","Stadium","Circus","Carnival","Parade","Motel","Hotel","Diner","Cafe","Bar","Club","Lounge","Ballroom","Disco","Garage","Warehouse","Factory","Foundry","Workshop","Mill","Farm","Ranch","Prairie","Oasis","Mirage","Horizon","Highway","Avenue","Boulevard","Street","Alley","Lane","Road","Path","Trail","Track","Rail","Railway","Platform","Terminal","Airport","Runway","Hangar","Cockpit","Cabin","Capsule","Pod","Module","Unit","Cell","Atom","Molecule","Fossil","Relic","Totem","Mask","Crown","Throne","Sword","Shield","Arrow","Anchor","Sail","Mast","Hull","Raft","Canoe","Ship","Boat","Ferry","Submarine","Train","Tram","Bus","Taxi","Bicycle","Skateboard","Kite","Balloon","Feather","Wing","Claw","Fang","Tail","Eye","Hand","Heart","Vein"],"W5":["Drift","Phase","Flux","Pulse","Signal","Frequency","Wavelength","Amplitude","Resonance","Harmony","Melody","Rhythm","Tempo","Groove","Swing","Shuffle","Cadence","Chord","Scale","Mode","Key","Tone","Timbre","Noise","Silence","Feedback","Delay","Reverb","Chorus","Flanger","Tremolo","Vibrato","Sustain","Decay","Release","Attack","Envelope","Gain","Drive","Fuzz","Overtone","Undertone","Fundamental","Interval","Octave","Unison","Dissonance","Tension","Balance","Symmetry","Gravity","Momentum","Inertia","Velocity","Motion","Friction","Pressure","Density","Entropy","Energy","Power","Force","Charge","Voltage","Circuit","Logic","Code","Algorithm","Protocol","Sequence","Series","Cycle","Iteration","Recursion","Fractal","Chaos","Order","System","Network","Structure","Process","Function","Variable","Constant","Equation","Formula","Theorem","Paradox","Theory","Hypothesis","Dimension","Plane","Vector","Axis","Angle","Curve","Arc","Line","Point","Vertex","Node","Edge","Border","Boundary","Limit","Threshold","Margin","Distance","Depth","Height","Width","Length","Volume","Mass","Weight","Measure","Ratio","Proportion","Fraction","Digit","Number","Zero","Infinity","Origin","Genesis","Exodus","Omen","Oracle","Prophecy","Destiny","Fate","Fortune","Chance","Luck","Hazard","Risk","Promise","Oath","Vow","Pact","Treaty","Accord","Truce","Rebellion","Revolution","Evolution","Mutation","Transition","Transformation","Metamorphosis","Rebirth","Renaissance","Revival","Awakening","Dream","Vision","Illusion","Memory","Reverie","Nostalgia","Longing","Desire","Passion","Devotion","Rapture","Bliss","Euphoria","Ecstasy","Trance","Hypnosis","Meditation","Prayer","Ritual","Ceremony","Mystery","Riddle","Enigma","Cipher","Glyph","Rune","Symbol","Sign","Token","Whisper","Rumor","Story","Legend","Myth","Fable","Saga","Chronicle","Anthem","Hymn","Ballad","Lullaby","Serenade","Requiem","Elegy","Ode","Sonnet","Verse","Refrain","Motif","Theme","Variation","Fugue","Canon","Prelude","Interlude","Overture","Finale","Encore","Coda","Epilogue","Prologue","Chapter","Episode","Moment","Instant","Season","Era","Epoch","Age","Century","Decade","Hour","Minute","Daybreak","Nightfall","Eclipse","Solstice","Equinox","Zenith","Apex","Summit","Abyss","Void","Vacuum","Ether","Aura","Halo","Spirit","Soul","Ghost","Shade","Specter","Presence","Absence","Departure","Arrival","Return","Escape","Exile","Journey","Voyage","Odyssey","Quest","Mission","Expedition","Pilgrimage","Passage","Crossing","Migration","Flight","Fall","Rise","Ascent","Descent","Collapse","Surrender","Victory","Glory","Honor","Grace","Mercy","Freedom","Liberty","Justice","Wisdom","Truth","Faith","Hope","Love","Joy","Fear","Rage","Grief","Sorrow","Comfort","Shelter","Refuge","Haven","Sanctuary","Paradise","Utopia","Nowhere","Elsewhere","Somewhere","Anywhere"]};
+if (typeof module !== "undefined") module.exports = JW;
+</script>
+<script>// Divine Journey Machine: the planner (phase 1, no sound yet).
+// Five Oracle words become five chapters. Every choice is made here, from the words and the seed,
+// so phase 2 only has to turn this plan into notes.
+const JP = {};
+
+// ---------- seeded random ----------
+JP.rng = (seed) => { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; };
+JP.hash = (s) => { let h = 2166136261; for (const c of String(s)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const clamp = (x, a = -1, b = 1) => Math.max(a, Math.min(b, x));
+const pickW = (r, items, w) => { const tot = w.reduce((a, b) => a + Math.max(0, b), 0); let x = r() * tot; for (let i = 0; i < items.length; i++) { x -= Math.max(0, w[i]); if (x <= 0) return items[i]; } return items[items.length - 1]; };
+
+// ---------- the character of a word ----------
+// dims: light, speed, warm, weight, tension, world   (each -1 .. 1, world 0 .. 1)
+JP.DIMS = ['light', 'speed', 'warm', 'weight', 'tension', 'world'];
+const LEX = [
+  ['light', -0.9, /shadow|midnight|dark|black|obsidian|onyx|abyss|void|night|noct|haunt|ghost|buried|drown|sunk|ash|char|tar$|ink|ebony|^jet|storm|thunder|fear|rage|grief|sorrow|exile|collapse|eclipse|phantom|spect|curse|wicked|gothic|moonless|starless|sunless|dim|shade|dusk|smoke|graphite|coal|cellar|cave|tunnel|vault|requiem|elegy|absence|lurk|creep/i],
+  ['light', 0.9, /sun|gold|bright|radiant|shin|glow|gleam|spark|dawn|morning|noon|summer|lumin|joy|bliss|euphor|glory|halo|paradise|crystal|diamond|pearl|white|snow|ivory|celest|stell|star|holy|blessed|divine|glimmer|shimmer|twinkl|lemon|cream|milk|chalk|rainbow|prism|beacon|lighthouse|lantern|candle|hope|grace|heaven|daybreak|zenith|apex|ascen|rise|rising/i],
+  ['speed', 0.9, /rapid|swift|quick|fast|racing|rush|frantic|manic|hyper|electric|kinetic|bounc|jump|leap|run|chas|hunt|rocket|blast|explod|burst|erupt|charg|driv|pump|hammer|drill|surg|crash|break|glitch|stutter|accelerat|hurtl|careen|barrel|launch|thunder|skip|hop|danc|spin|whirl|swirl|frenz|urgent|hast|brisk|lively|nimble|agile|fleet|train|taxi|rail|runway|motor|engine|turbine|piston|velocity|momentum|tempo|pulse|ticking|clicking/i],
+  ['speed', -0.9, /slow|still|calm|serene|tranquil|placid|lazy|idle|sleep|dream|float|drift|weightless|meditat|prayer|lullaby|requiem|elegy|mist|fog|haze|silent|quiet|tender|gentle|soft|mellow|peace|frozen|ancient|timeless|eternal|ageless|stone|marble|monument|statue|fossil|relic|shrine|chapel|cathedral|lagoon|pond|lake|harbor|harbour|haven|sanctuary|shelter|refuge|reverie|nostalgia|memory|longing|sorrow|grief|patient|steady|linger|sunken|sinking|descen/i],
+  ['warm', 0.9, /warm|honey|amber|golden|gold|copper|bronze|brass|saffron|cinnamon|ginger|coffee|cocoa|caramel|ember|flame|fire|sun|tropic|desert|savanna|jungle|soul|funk|groov|swing|heart|love|passion|devotion|carnival|bazaar|market|danc|spic|sweet|velvet|silk|satin|wool|cotton|linen|leather|wood|cedar|oak|walnut|mahogany|rose|cherry|peach|apricot|coral|salmon|wine|claret|burgundy|henna|cafe|diner|lounge|ballroom|disco|club|bar$|hearth|candle|lamp|blues|jazz|bluesy|jazzy|soulful|funky|comfort|joy/i],
+  ['warm', -0.9, /cold|icy|ice|frost|frozen|arctic|polar|glacier|winter|snow|steel|chrome|iron|digital|virtual|synthetic|plastic|quantum|atomic|code|algorithm|logic|grid|matrix|circuit|voltage|vacuum|glass|tundra|silver|platinum|titanium|nickel|zinc|tin|mercury|metallic|neon|laser|plasma|static|concrete|cube|module|unit|cell|terminal|station|satellite|antenna|transmitter|receiver|sequencer|oscillator|filter|protocol|function|variable|equation|formula|vector|axis|node|vertex|zero|cipher|mirror|chrome|clinical|lonely|empty|hollow|nowhere/i],
+  ['weight', 0.9, /heavy|dense|thick|deep|low|iron|stone|granite|concrete|lead$|mountain|fortress|citadel|castle|throne|cathedral|temple|monument|gravity|mass|weight|pound|thump|boom|roar|rumbl|grind|fierce|savage|furious|thunder|drum|gong|organ|bass|tank|barrel|anchor|hull|ship|submarine|train|foundry|factory|warehouse|mill|piston|hammer|volcan|lava|magma|abyss|titan|uranium|imperial|majestic|grand|royal|regal|crown|sword|shield|march|stomp|tribal|totem|odyssey|saga|anthem|glory|triumph|victory/i],
+  ['weight', -0.9, /light$|airy|ethereal|feather|wing|gossamer|lace|gauze|silk|petal|leaf|bubble|balloon|kite|cloud|mist|breath|whisper|thin|sparse|fragile|delicate|glass|crystal|snowflake|spark|twinkl|flute|harp|lyre|bell|chime|ribbon|thread|paper|pastel|blush|lilac|lavender|mint|pale|weightless|floating|float|drift|bodiless|formless/i],
+  ['tension', 0.9, /tension|dissonance|chaos|fear|threat|haunt|lurk|stalk|prowl|creep|crawl|sneak|risk|hazard|omen|riddle|enigma|mystery|paradox|toxic|radioactive|nuclear|abyss|void|rebellion|revolution|cipher|rage|angry|furious|savage|feral|wicked|curse|nervous|jitter|shaky|frantic|manic|urgent|pressing|relentless|distort|overdriven|glitch|fractur|splinter|shatter|crack|broken|jagged|sharp|thorn|fang|claw|sword|arrow|storm|thunder|lightning|eclipse|exile|escape|collapse|fall|descent|phantom|spectral|ghost|uncanny|labyrinth|maze|warning|siren|alarm|acid/i],
+  ['tension', -0.9, /calm|serene|tranquil|placid|peace|mellow|gentle|tender|soft|comfort|shelter|refuge|haven|sanctuary|paradise|utopia|bliss|grace|mercy|love|hope|faith|joy|harmony|balance|symmetry|lullaby|serenade|prayer|meditation|home|garden|meadow|lagoon|pond|oasis|sunrise|dawn|morning|honey|cream|velvet|cotton|linen|warm|cosy|cozy|sweet|lucky|dear|free|liberty|freedom|truce|accord|pact|promise|rebirth|revival|awakening/i],
+  ['world', 1, /tribal|ritual|ceremony|totem|mask|shrine|temple|altar|drum|gong|bazaar|market|savanna|jungle|desert|oasis|tropic|island|caravan|pilgrim|chant|spice|henna|kohl|saffron|bamboo|polyrhythm|carnival|parade|pagan|mystic|mythic|sacred|holy|ancient|rustic|sandy|coastal|oceanic|tidal|canoe|raft|hut|village|prairie|ranch|farm|harvest|mosaic|fresco|lyre|harp|flute|banjo|bell|cymbal|horn|ochre|umber|sienna|clay|cinnabar|vermilion|woad|lapis|jade|malachite|turquoise|coral|reef|lagoon|savage|feral|wild|dancing|swaying|chanting|singing|calling|hymn|ritual|legend|myth|fable|saga|pilgrimage|migration|journey|voyage|odyssey|quest|expedition|nomad|exodus|genesis|rune|glyph|oracle|prophecy|spirit|soul/i],
+];
+const WHEEL_BIAS = { W1: { light: 0.15 }, W2: { speed: 0.35, tension: 0.1 }, W3: { warm: 0.2 }, W4: { weight: 0.15, world: 0.1 }, W5: { tension: 0.05 } };
+JP.character = (word, wheel) => {
+  const w = String(word), lw = w.toLowerCase(), c = { light: 0, speed: 0, warm: 0, weight: 0, tension: 0, world: 0 };
+  // the sound of the word: bright vowels lift, dark vowels sink, hard consonants push, soft ones glide
+  const v = (lw.match(/[aeiouy]/g) || []), bright = v.filter((x) => 'iey'.includes(x)).length, dark = v.filter((x) => 'ou'.includes(x)).length;
+  const hard = (lw.match(/[ktpxzqcgbd]/g) || []).length, soft = (lw.match(/[lmnrswvhf]/g) || []).length;
+  c.light += 0.25 * (bright - dark) / Math.max(1, v.length);
+  c.speed += 0.3 * (hard - soft) / Math.max(1, hard + soft) - (lw.length > 8 ? 0.12 : 0);
+  c.weight += lw.length > 8 ? 0.15 : lw.length < 5 ? -0.12 : 0;
+  c.tension += /[kxzq]/.test(lw) ? 0.12 : 0;
+  // what the word means (strongest signal)
+  for (const [dim, val, re] of LEX) if (re.test(lw)) c[dim] += val;
+  for (const [dim, val] of Object.entries(WHEEL_BIAS[wheel] || {})) c[dim] += val * (dim === 'world' ? 1 : Math.sign(c[dim] || 1));
+  // a little personal colour per word, always the same for the same word
+  const r = JP.rng(JP.hash(w));
+  for (const d of JP.DIMS) c[d] = d === 'world' ? clamp(c[d] + r() * 0.35, 0, 1) : clamp(c[d] + (r() - 0.5) * 0.8);
+  return c;
+};
+
+// ---------- the machines and their arts ----------
+// vector order: light, speed, warm, weight, tension, world.  bpm = where the art feels at home.
+const A = (machine, name, v, bpm, extra = {}) => ({ machine, name, v: { light: v[0], speed: v[1], warm: v[2], weight: v[3], tension: v[4], world: v[5] }, bpm, ...extra });
+JP.MACHINES = {
+  studio: { name: 'Studio', icon: '🎛️', gift: 'timing, groove and stabs' },
+  percussion: { name: 'Percussion', icon: '🥁', gift: 'world rhythms and call and response' },
+  score: { name: 'Score', icon: '🎬', gift: 'tension that builds and lets go' },
+  symphony: { name: 'Symphony', icon: '🎻', gift: 'voice leading, phrasing and breath' },
+};
+JP.ARTS = [
+  A('studio', 'Techno', [-0.2, 0.6, -0.4, 0.5, 0.3, 0], 126), A('studio', 'Trip hop', [-0.5, -0.5, 0.1, 0.4, 0.3, 0], 88), A('studio', 'Hip hop', [0, -0.3, 0.4, 0.4, 0, 0.1], 90),
+  A('studio', 'New wave', [0.1, 0.5, -0.3, 0, 0.1, 0], 126), A('studio', 'Blues', [-0.2, -0.3, 0.7, 0.2, 0, 0], 92), A('studio', 'House', [0.4, 0.4, 0.5, 0.2, -0.3, 0], 124),
+  A('studio', 'Acid', [-0.1, 0.7, -0.2, 0.3, 0.6, 0], 130), A('studio', 'Trance', [0.7, 0.7, 0, 0.1, 0.1, 0], 136), A('studio', 'Eurodance', [0.8, 0.7, 0.3, 0, -0.4, 0], 132),
+  A('studio', 'Breakbeat', [0, 0.8, 0.1, 0.4, 0.3, 0], 140), A('studio', 'EBM', [-0.6, 0.5, -0.6, 0.6, 0.6, 0], 122), A('studio', 'Drum and bass', [-0.1, 1, -0.1, 0.5, 0.4, 0.1], 174),
+  A('studio', 'UK garage', [0.2, 0.6, 0.3, 0.2, 0, 0], 132), A('studio', 'Dub', [-0.3, -0.7, 0.4, 0.7, 0, 0.3], 74), A('studio', 'Synthwave', [0.3, 0, -0.1, 0.1, 0, 0], 100),
+  A('studio', 'Funk and disco', [0.6, 0.3, 0.9, 0.2, -0.4, 0.1], 112), A('studio', 'Dub techno', [-0.4, 0.3, -0.2, 0.5, 0.1, 0], 120), A('studio', 'Minimal techno', [-0.1, 0.4, -0.3, 0.1, 0.1, 0], 126),
+  A('studio', 'Ambient', [0.3, -1, 0, -0.6, -0.3, 0], 72), A('studio', 'Chillout', [0.5, -0.4, 0.5, -0.3, -0.5, 0.1], 96), A('studio', 'Club', [0.3, 0.5, 0.2, 0.3, 0, 0], 125),
+  A('studio', 'Divine Monday', [0, 0.5, 0.2, 0.4, 0.3, 0], 125), A('studio', 'Singer songwriter', [0.3, -0.4, 0.6, -0.3, -0.3, 0], 92),
+  A('percussion', 'West Africa', [0.4, 0.5, 0.9, 0.3, 0, 1], 120), A('percussion', 'Afro-Cuban', [0.5, 0.5, 0.9, 0.2, -0.1, 1], 110), A('percussion', 'Brazil', [0.8, 0.8, 0.9, 0.1, -0.2, 1], 128),
+  A('percussion', 'Middle East', [-0.1, 0.2, 0.6, 0.2, 0.3, 1], 100), A('percussion', 'India', [0.2, 0.3, 0.6, 0, 0.2, 1], 105), A('percussion', 'Japanese zen', [0.1, -0.8, -0.2, -0.3, -0.2, 0.9], 70),
+  A('percussion', 'Shamanic', [-0.5, -0.1, 0.3, 0.6, 0.4, 1], 95), A('percussion', 'Minimal house', [0.1, 0.4, 0.2, 0, -0.1, 0.4], 122), A('percussion', 'Taiko', [-0.2, 0.4, 0.1, 1, 0.6, 0.9], 110),
+  A('percussion', 'Marching', [0.2, 0.4, -0.1, 0.5, 0.2, 0.3], 116), A('percussion', 'Powwow', [0.1, 0.3, 0.5, 0.5, 0.2, 1], 104),
+  A('score', 'Playful', [0.7, 0.5, 0.5, -0.4, -0.4, 0], 116), A('score', 'Tense', [-0.4, 0.3, -0.3, 0.3, 0.9, 0], 100), A('score', 'Fearful', [-0.7, 0.2, -0.5, 0.3, 1, 0], 96),
+  A('score', 'Chase', [-0.2, 1, -0.2, 0.4, 0.7, 0], 150), A('score', 'Wonder', [0.7, -0.2, 0.3, -0.2, 0, 0], 90), A('score', 'Mysterious', [-0.5, -0.3, -0.1, 0, 0.6, 0.2], 84),
+  A('score', 'Tender', [0.4, -0.6, 0.7, -0.6, -0.5, 0], 76), A('score', 'Uncanny', [-0.6, -0.2, -0.6, 0, 0.8, 0], 88), A('score', 'Light', [0.9, 0.2, 0.3, -0.6, -0.6, 0], 108),
+  A('score', 'Euphoric', [0.9, 0.7, 0.5, 0.2, -0.3, 0], 128), A('score', 'Glory', [0.8, 0.3, 0.4, 0.8, -0.1, 0], 100), A('score', 'Dark', [-1, -0.2, -0.3, 0.7, 0.5, 0], 84),
+  A('score', 'Nostalgic', [0.1, -0.5, 0.6, -0.2, -0.2, 0], 84), A('score', 'Hope', [0.6, 0, 0.5, 0, -0.3, 0], 96), A('score', 'Triumph', [0.8, 0.5, 0.3, 0.9, 0, 0], 112),
+  A('score', 'Dreamy', [0.4, -0.8, 0.3, -0.5, -0.3, 0], 76), A('score', 'Serenity', [0.5, -0.9, 0.4, -0.4, -0.8, 0], 70), A('score', 'Sunrise', [1, -0.3, 0.5, 0, -0.5, 0], 84),
+  A('score', 'Heartbreak', [-0.4, -0.6, 0.4, 0, 0.2, 0], 72), A('score', 'Lonely', [-0.4, -0.7, -0.3, -0.4, 0, 0], 72),
+  A('symphony', 'Overture', [0.5, 0.5, 0.3, 0.6, 0.2, 0], 120), A('symphony', 'March', [0.3, 0.4, 0, 0.7, 0.2, 0], 116), A('symphony', 'Waltz', [0.6, 0.2, 0.6, -0.2, -0.2, 0], 150, { meter: 3 }),
+  A('symphony', 'Aria', [0.3, -0.6, 0.7, -0.3, -0.2, 0], 66), A('symphony', 'Fugue', [-0.1, 0.4, -0.2, 0.3, 0.5, 0], 100), A('symphony', 'Canon', [0.4, 0, 0.2, -0.1, 0, 0], 88),
+  A('symphony', 'Variations', [0.3, 0.2, 0.3, 0.1, 0, 0], 100), A('symphony', 'Rondo', [0.7, 0.6, 0.5, 0, -0.3, 0], 126), A('symphony', 'Sonata allegro', [0.4, 0.6, 0.2, 0.4, 0.3, 0], 132),
+  A('symphony', 'Minuet', [0.6, 0.1, 0.4, 0, -0.3, 0], 112, { meter: 3 }), A('symphony', 'Adagio', [0, -0.9, 0.5, 0.2, 0.1, 0], 60),
+];
+JP.dist = (a, b) => JP.DIMS.reduce((s, d) => s + (a[d] - b[d]) ** 2 * (d === 'world' ? 1.2 : 1), 0);
+
+// ---------- the rack ----------
+// range = the notes the instrument plays well; drums = a drum plugin (only plays drum roles)
+JP.RACK = {
+  beats: { name: 'Beats', icon: '🥁', items: ['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno', 'Kick 2', 'Kick 1'] },
+  perc: { name: 'Percussion', icon: '🪘', items: ['XO', 'Impact', 'Beatmaker', 'Tekno', 'PERRCS'] },
+  melody: { name: 'Melody', icon: '✦', items: ['Usynth', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Virtual Pianist Score', 'Presence', 'Diva'] },
+  chords: { name: 'Chords', icon: '❖', items: ['Usynth', 'Virtual Pianist Score', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Presence', 'Diva'] },
+  bass: { name: 'Bass', icon: '◢', items: ['SubCraft', 'Royal', 'Slap', 'Diva', 'Usynth'] },
+  orch: { name: 'Orchestra', icon: '🎻', items: ['STRIIIINGS', 'Berlin', 'BBC'] },
+};
+JP.PLAIN = 'Plain MIDI';
+JP.INSTR = {
+  'XO': { drums: 1 }, 'Impact': { drums: 1 }, 'EZdrummer': { drums: 1 }, 'Virtual Drummer': { drums: 1 }, 'Beatmaker': { drums: 1 }, 'Tekno': { drums: 1 }, 'Kick 2': { drums: 1, kickOnly: 1 }, 'Kick 1': { drums: 1, kickOnly: 1 }, 'PERRCS': { drums: 1 },
+  'Usynth': { range: [24, 108] }, 'Iron': { range: [40, 88] }, 'Silk': { range: [40, 88] }, 'Carbon': { range: [40, 88] }, 'Cinedream': { range: [40, 88] },
+  'Virtual Pianist Score': { range: [21, 108] }, 'Presence': { range: [21, 108] }, 'Diva': { range: [24, 108] }, 'SubCraft': { range: [24, 64] }, 'Royal': { range: [28, 67] }, 'Slap': { range: [28, 67] },
+  'STRIIIINGS': { range: [28, 96] }, 'Berlin': { range: [28, 100] }, 'BBC': { range: [28, 100] },
+};
+JP.ROLE_REG = { melody: [62, 86], chords: [50, 74], bass: [31, 55], orch: [40, 88], beats: null, perc: null };
+JP.ROLE_NAME = { beats: 'Beat', perc: 'Percussion', melody: 'Melody', chords: 'Chords', bass: 'Bass', orch: 'Orchestra' };
+JP.defaultRack = () => Object.fromEntries(Object.keys(JP.RACK).map((k) => [k, [JP.PLAIN]]));
+const fits = (inst, role) => { if (inst === JP.PLAIN) return true; const i = JP.INSTR[inst] || {}; const reg = JP.ROLE_REG[role];
+  if (!reg) return true; if (i.drums) return false; return i.range && i.range[0] <= reg[0] && i.range[1] >= reg[1]; };
+
+// which roles each leader brings to the stage, strongest first
+JP.ROLES = {
+  studio: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'],
+  percussion: ['perc', 'beats', 'bass', 'melody', 'chords', 'orch'],
+  score: ['orch', 'perc', 'bass', 'melody', 'beats', 'chords'],
+  symphony: ['orch', 'melody', 'bass', 'chords', 'perc', 'beats'],
+};
+const PREFER = { orch: { symphony: ['Berlin', 'BBC'], score: ['STRIIIINGS'] }, perc: { score: ['PERRCS'], percussion: ['XO', 'Beatmaker', 'Impact'] }, beats: { studio: ['XO', 'Tekno', 'Impact'] } };
+
+// ---------- arcs, openings, endings ----------
+JP.ARCS = [
+  { id: 'wave', name: 'One great wave', f: (t) => (t < 0.65 ? 0.2 + 0.8 * Math.sin(Math.PI / 2 * t / 0.65) : 0.2 + 0.8 * Math.cos(Math.PI / 2 * (t - 0.65) / 0.35)) },
+  { id: 'three', name: 'Three waves', f: (t) => 0.45 + 0.4 * Math.sin(t * Math.PI * 5 - 1.3) * (0.7 + 0.3 * t) },
+  { id: 'dawn', name: 'Dark start, light summit', f: (t) => 0.15 + 0.8 * Math.pow(t, 1.4) - (t > 0.9 ? (t - 0.9) * 3 : 0) },
+  { id: 'summit', name: 'Begins on the summit', f: (t) => 0.95 - 0.6 * t + 0.35 * Math.sin(t * Math.PI * 2.2) * t },
+  { id: 'open', name: 'Open ending', f: (t) => 0.25 + 0.7 * t + 0.1 * Math.sin(t * 9) },
+  { id: 'valley', name: 'Valley', f: (t) => 0.9 - 1.3 * Math.sin(Math.PI * t) * 0.55 },
+  { id: 'plateau', name: 'High plateau', f: (t) => (t < 0.2 ? 0.3 + 3 * t : t > 0.8 ? 0.9 - 3 * (t - 0.8) : 0.9) },
+  { id: 'twin', name: 'Two summits, the second higher', f: (t) => 0.25 + 0.5 * Math.exp(-((t - 0.3) ** 2) / 0.012) + 0.7 * Math.exp(-((t - 0.75) ** 2) / 0.015) },
+];
+JP.OPENINGS = [
+  { id: 'awaken', name: 'Awakening', start: 0.08, desc: 'soft, from nothing to something', likes: { speed: -1, tension: -0.5 } },
+  { id: 'threat', name: 'Threat', start: 0.45, desc: 'dark, menacing drums', likes: { tension: 1, light: -1 } },
+  { id: 'midst', name: 'In the middle of it', start: 0.7, desc: 'straight into a swinging groove', likes: { speed: 1, warm: 0.8 } },
+  { id: 'motif', name: 'The motif alone', start: 0.12, desc: 'bare, like a question', likes: { weight: -1, speed: -0.4 } },
+  { id: 'bang', name: 'A bang', start: 0.95, desc: 'straight onto the summit', likes: { weight: 1, speed: 0.8 } },
+];
+JP.ENDINGS = [
+  { id: 'sunrise', name: 'Sunrise', desc: 'bright and open', likes: { light: 1, tension: -0.5 } },
+  { id: 'home', name: 'Homecoming', desc: 'the motif bare again, like the start', likes: { warm: 1, weight: -0.4 } },
+  { id: 'fade', name: 'Fading', desc: 'layer by layer away', likes: { speed: -1, light: -0.3 } },
+  { id: 'abrupt', name: 'Abrupt', desc: 'a hard stop', likes: { speed: 1, tension: 1 } },
+];
+JP.TRANSITIONS = {
+  bassout: { name: 'Bass out and back', icon: '◢' }, filter: { name: 'Filter bridge', icon: '≈' }, motif: { name: 'Motif bridge', icon: '✦' },
+  cut: { name: 'Hard cut', icon: '|' }, riser: { name: 'Riser', icon: '↗' }, breath: { name: 'Breath', icon: '○' },
+};
+JP.FEELS = [
+  { id: 'straight', name: 'straight', ratio: 1 }, { id: 'half', name: 'halftime', ratio: 0.5 },
+  { id: 'triplet', name: 'triplet feel', ratio: 2 / 3 }, { id: 'double', name: 'double time', ratio: 2 },
+];
+JP.KEYS = ['C', 'D♭', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
+const likeScore = (likes, c) => Object.entries(likes).reduce((s, [d, w]) => s + w * c[d], 0);
+
+// arts that sit close to many words would win too often; this evens the chances out
+let POP = null;
+JP.popularity = (allWords) => { if (POP) return POP; if (!allWords) return JP.ARTS.map(() => 1);
+  const tot = JP.ARTS.map(() => 0);
+  for (const [wheel, list] of Object.entries(allWords)) for (const word of list) { const c = JP.character(word, wheel);
+    const e = JP.ARTS.map((a) => Math.exp(-JP.dist(c, a.v) * 1.5)), s = e.reduce((x, y) => x + y, 0); e.forEach((v, i) => { tot[i] += v / s; }); }
+  const mean = tot.reduce((x, y) => x + y, 0) / tot.length; POP = tot.map((t) => Math.pow(mean / t, 0.8)); return POP; };
+
+// ---------- the plan ----------
+// words: [{wheel, word}] x5; opts: {seed, minutes, rack, recent: [art names]}
+JP.plan = (words, opts = {}) => {
+  const seed = (opts.seed >>> 0) ^ JP.hash(words.map((w) => w.word).join('|'));
+  const r = JP.rng(seed), minutes = opts.minutes || 40, rack = opts.rack || JP.defaultRack(), recent = new Set(opts.recent || []);
+  const ch = words.map((w) => ({ word: w.word, wheel: w.wheel, c: JP.character(w.word, w.wheel) }));
+  const n = ch.length, avg = Object.fromEntries(JP.DIMS.map((d) => [d, ch.reduce((s, x) => s + x.c[d], 0) / n]));
+
+  // arc: the words choose its shape (with the dice)
+  const arcW = JP.ARCS.map((a) => { const e = [0.1, 0.3, 0.5, 0.7, 0.9].map(a.f); const pk = e.indexOf(Math.max(...e));
+    return 1 + 0.6 * clamp(avg.speed + avg.weight, 0, 2) * (a.id === 'summit' || a.id === 'plateau' ? 1 : 0) + 0.6 * clamp(-avg.light, 0, 1) * (a.id === 'dawn' ? 1 : 0) + 0.5 * clamp(avg.tension, 0, 1) * (a.id === 'three' || a.id === 'valley' ? 1 : 0) + (pk === 4 && ch[4].c.speed > 0 ? 0.4 : 0); });
+  const arc = pickW(r, JP.ARCS, arcW);
+  const opening = pickW(r, JP.OPENINGS, JP.OPENINGS.map((o) => Math.exp(1.4 * likeScore(o.likes, ch[0].c))));
+  const ending = pickW(r, JP.ENDINGS, JP.ENDINGS.map((o) => Math.exp(1.4 * likeScore(o.likes, ch[n - 1].c))));
+
+  // chapter lengths, never equal
+  const lw = ch.map(() => 0.7 + r() * 0.7), lt = lw.reduce((a, b) => a + b, 0);
+  let t0 = 0; ch.forEach((x, i) => { x.share = lw[i] / lt; x.t0 = t0; t0 += x.share; x.t1 = t0; });
+
+  // energy per chapter from the arc; the opening sets the very first moment
+  const E = (t) => clamp(arc.f(t), 0.05, 1);
+  ch.forEach((x, i) => { x.eStart = i === 0 ? opening.start : E(x.t0); x.eEnd = E(x.t1); x.energy = (x.eStart + 2 * E((x.t0 + x.t1) / 2) + x.eEnd) / 4; });
+  if (ending.id === 'fade' || ending.id === 'home') ch[n - 1].eEnd = 0.08; if (ending.id === 'abrupt') ch[n - 1].eEnd = Math.max(0.8, ch[n - 1].eEnd);
+  if (ending.id === 'sunrise') ch[n - 1].eEnd = Math.max(0.45, ch[n - 1].eEnd);
+
+  // leaders: each word picks its art from the pots; no art twice in one journey, recent journeys weigh less
+  const used = new Set(), leadCount = {};
+  ch.forEach((x, i) => {
+    const cv = { ...x.c, speed: clamp(x.c.speed * 0.7 + (x.energy - 0.5) * 0.8), weight: clamp(x.c.weight * 0.8 + (x.energy - 0.5) * 0.4) };
+    if (i === 0 && opening.id === 'threat') { cv.tension = 1; cv.light = -0.8; }
+    if (i === 0 && opening.id === 'midst') { cv.speed = Math.max(cv.speed, 0.4); cv.warm = Math.max(cv.warm, 0.5); }
+    // a word with a strong character chooses sharply; a quiet word leaves more to the dice
+    const mag = Math.sqrt(JP.DIMS.reduce((s2, d) => s2 + x.c[d] ** 2, 0)), k = 0.35 + 2.4 * Math.min(1, mag / 1.1);
+    const pop = JP.popularity(opts.allWords), w = JP.ARTS.map((a, ai) => used.has(a.name) ? 0 : Math.exp(-JP.dist(cv, a.v) * k) * pop[ai] * (recent.has(a.name) ? 0.35 : 1) * (leadCount[a.machine] ? 0.5 ** leadCount[a.machine] : 1) * (0.6 + r() * 0.8));
+    x.lead = pickW(r, JP.ARTS, w); used.add(x.lead.name); leadCount[x.lead.machine] = (leadCount[x.lead.machine] || 0) + 1;
+    // one or two guests from other machines: the cross-over
+    const gn = x.energy > 0.55 && r() < 0.6 ? 2 : 1, gm = new Set([x.lead.machine]); x.guests = [];
+    for (let g = 0; g < gn; g++) { const gw = JP.ARTS.map((a) => gm.has(a.machine) || used.has(a.name) ? 0 : Math.exp(-JP.dist(cv, a.v) * 1.5) * (0.5 + r()));
+      if (gw.every((v) => v <= 0)) break; const gA = pickW(r, JP.ARTS, gw); x.guests.push(gA); gm.add(gA.machine); used.add(gA.name); }
+  });
+
+  // an ode to every machine: each one leads or guests at least once
+  for (const m of Object.keys(JP.MACHINES)) {
+    if (ch.some((x) => x.lead.machine === m || x.guests.some((g) => g.machine === m))) continue;
+    let bestS = null;
+    ch.forEach((x, i) => JP.ARTS.forEach((a) => { if (a.machine !== m || used.has(a.name)) return; const d = JP.dist(x.c, a.v); if (!bestS || d < bestS.d) bestS = { d, i, a }; }));
+    if (!bestS) continue; const x = ch[bestS.i];
+    if (x.guests.length < 2) x.guests.push(bestS.a); else { used.delete(x.guests[1].name); x.guests[1] = bestS.a; }
+    used.add(bestS.a.name);
+  }
+
+  // one tempo for the whole journey; each chapter finds its own feel on top of it
+  let best = null;
+  for (let b = 80; b <= 140; b++) { let cost = 0; for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id === 'straight' ? 0 : 0.02)));
+    cost += r() * 0.04; if (!best || cost < best.cost) best = { b, cost }; }
+  const bpm = best.b;
+  ch.forEach((x) => { x.feel = JP.FEELS.reduce((a, f) => (Math.abs(bpm * f.ratio - x.lead.bpm) < Math.abs(bpm * a.ratio - x.lead.bpm) ? f : a)); x.feelsLike = Math.round(bpm * x.feel.ratio); });
+
+  // bars: every chapter a whole number of 8-bar phrases
+  const totalBars = minutes * bpm / 4;
+  ch.forEach((x) => { x.bars = Math.max(16, Math.round(totalBars * x.share / 8) * 8); x.minutes = x.bars * 4 / bpm; });
+
+  // breaths: one, sometimes two, never next to each other, mostly after something big
+  const nb = r() < 0.4 ? 2 : 1, spots = [];
+  for (let i = 1; i < n; i++) spots.push({ at: i, kind: 'between', w: 0.5 + ch[i - 1].energy });
+  ch.forEach((x, i) => { if (i > 0 && i < n - 1) spots.push({ at: i, kind: 'inside', w: 0.4 + x.energy * 0.6 }); });
+  const breaths = [];
+  for (let k = 0; k < nb; k++) { const free = spots.filter((s) => !breaths.some((b) => Math.abs(b.at - s.at) < 2)); if (!free.length) break;
+    const s = pickW(r, free, free.map((f) => f.w)); breaths.push({ at: s.at, kind: s.kind, bar: s.kind === 'inside' ? Math.round(ch[s.at].bars * (0.4 + r() * 0.3) / 8) * 8 : 0 }); }
+  ch.forEach((x, i) => { x.breathInside = breaths.find((b) => b.kind === 'inside' && b.at === i) || null; });
+
+  // transitions between chapters
+  ch.forEach((x, i) => { if (i === n - 1) return; const y = ch[i + 1], d = JP.dist(x.c, y.c), rise = y.eStart - x.eEnd;
+    const breathHere = breaths.some((b) => b.kind === 'between' && b.at === i + 1);
+    const w = { bassout: 1 + (d < 1.5 ? 0.8 : 0), filter: d < 1.2 ? 1.6 : 0.6, motif: 0.8 + (x.feel.id !== y.feel.id ? 0.8 : 0), cut: d > 2.2 ? 1.6 : 0.3, riser: rise > 0.2 ? 2 : 0.3, breath: 0 };
+    x.out = breathHere ? 'breath' : pickW(r, Object.keys(w), Object.values(w)); x.overlap = x.out === 'cut' || x.out === 'breath' ? 0 : x.out === 'riser' ? 4 : 8; });
+
+  // keys: only to neighbours that sound beautiful, with one golden step up at the summit sometimes
+  const top = ch.reduce((a, x, i) => (x.energy > ch[a].energy ? i : a), 0);
+  let tonic = JP.hash(words[0].word) % 12, minor = ch[0].c.light < 0.1;
+  ch.forEach((x, i) => {
+    if (i > 0) { const prev = ch[i - 1], big = prev.out === 'breath' || prev.out === 'cut' || prev.out === 'motif' || prev.out === 'riser';
+      const wantMinor = x.c.light < 0.1; let move = 'stay';
+      if (wantMinor !== minor) move = 'relative'; else if (big && r() < 0.7) move = pickW(r, ['up5', 'down5'], [1, 1]);
+      if (i === top && r() < 0.3) move = 'golden';
+      if (move === 'relative') { tonic = (tonic + (minor ? 3 : 9)) % 12; minor = !minor; } else if (move === 'up5') tonic = (tonic + 7) % 12; else if (move === 'down5') tonic = (tonic + 5) % 12; else if (move === 'golden') tonic = (tonic + 2) % 12;
+      x.keyMove = move; } else x.keyMove = 'start';
+    x.key = JP.KEYS[tonic] + (minor ? ' minor' : ' major'); x.tonic = tonic; x.minor = minor;
+  });
+
+  // layers: how many play, from the energy
+  ch.forEach((x) => { x.layers = Math.max(1, Math.round(1 + x.energy * 5)); x.layersStart = Math.max(1, Math.round(1 + x.eStart * 5)); x.layersEnd = Math.max(0, Math.round(x.eEnd * 6)); });
+
+  // who plays what: roles from the leader, players only from your rack
+  const pick = (role, x) => { const own = rack[role] || [JP.PLAIN]; const pref = (PREFER[role] || {})[x.lead.machine] || [];
+    return pickW(r, own, own.map((p) => (p === JP.PLAIN && own.length > 1 ? 0.4 : pref.includes(p) ? 3 : 1))); };
+  ch.forEach((x) => { const roles = JP.ROLES[x.lead.machine].slice(0, Math.min(6, Math.max(2, x.layers)));
+    x.players = roles.map((role) => ({ role, player: pick(role, x), swapped: false })); });
+
+  // swaps: one or two per journey, always on a chapter edge, and only where the instrument fits the role
+  const swaps = []; const nsw = r() < 0.5 ? 2 : 1;
+  for (let k = 0; k < nsw; k++) {
+    const cands = [];
+    ch.forEach((x, i) => { if (i === 0 || swaps.some((s) => s.at === i)) return;
+      x.players.forEach((p, pi) => { for (const [el, list] of Object.entries(rack)) { if (el === p.role) continue;
+        for (const inst of list) { if (inst === JP.PLAIN || inst === p.player) continue;
+          const ok = fits(inst, p.role) || ((p.role === 'beats' || p.role === 'perc') && !(JP.INSTR[inst] || {}).drums && (JP.INSTR[inst] || {}).range && JP.INSTR[inst].range[1] - JP.INSTR[inst].range[0] >= 48);
+          if (ok) cands.push({ at: i, pi, from: el, inst, role: p.role }); } } }); });
+    if (!cands.length) break; const s = cands[Math.floor(r() * cands.length)]; swaps.push(s);
+    const p = ch[s.at].players[s.pi]; p.player = s.inst; p.swapped = s.from;
+  }
+
+  // the motif: four to six notes that travel through every chapter in a new costume
+  const len = 4 + Math.floor(r() * 3), steps = [0], rh = [];
+  for (let k = 1; k < len; k++) { const lp = r() < 0.25; steps.push(clamp(steps[k - 1] + (lp ? (r() < 0.5 ? -1 : 1) * (2 + Math.floor(r() * 3)) : (r() < 0.5 ? -1 : 1)), -4, 7)); }
+  for (let k = 0; k < len; k++) rh.push(pickW(r, [0.5, 1, 1.5, 2], [2, 3, 1, 1]));
+  rh[len - 1] = Math.max(rh[len - 1], 1.5);
+  const motif = { degrees: steps, rhythm: rh };
+  ch.forEach((x, i) => { const c = [];
+    if ((i === 0 && (opening.id === 'motif' || opening.id === 'awaken')) || (i === n - 1 && ending.id === 'home')) c.push('bare');
+    if (x.feel.id === 'double' || x.c.speed > 0.5) c.push('quicker'); if (x.feel.id === 'half' || x.c.speed < -0.5) c.push('slower');
+    if (x.minor) c.push('minor'); else c.push('major'); if (x.c.light < -0.4) c.push('low'); if (x.c.light > 0.5) c.push('high');
+    if (x.c.tension > 0.5) c.push('upside down'); if (x.energy > 0.75) c.push('grand'); if (x.breathInside || x.energy < 0.25) c.push('half, a memory');
+    x.costume = c; });
+
+  return { seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+};
+
+if (typeof module !== 'undefined') module.exports = JP;
+</script>
+<script>
+const $ = (s) => document.querySelector(s);
+const WHEELS = [['W1', 'Mood'], ['W2', 'Motion'], ['W3', 'Colour'], ['W4', 'Place'], ['W5', 'Idea']];
+const COL = ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
+const HEX = ['#E7B65C', '#4FB3A9', '#D9668A', '#9B87E0', '#6FA8DC'];
+const ss = { get(k, d) { try { const v = sessionStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* this session keeps nothing; fine */ } } };
+const ls = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* fine */ } } };
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const rnd = (a) => a[Math.floor(Math.random() * a.length)];
+
+const S = {
+  rack: ss.get('journey-rack', null) || JP.defaultRack(),
+  words: WHEELS.map(([w]) => ({ wheel: w, word: rnd(JW[w]) })),
+  locks: [false, false, false, false, false],
+  minutes: ss.get('journey-min', 40),
+  seed: (Math.random() * 4294967296) >>> 0,
+  plan: null,
+};
+
+// ---------- rack ----------
+function rackSummary() { const n = Object.values(S.rack).reduce((s, l) => s + l.filter((x) => x !== JP.PLAIN).length, 0); $('#rackSum').textContent = n ? n + ' instruments ticked' : 'only plain MIDI so far, tick your plugins here'; }
+function drawRack() {
+  const el = $('#rack'); el.innerHTML = '';
+  for (const [k, def] of Object.entries(JP.RACK)) {
+    const lab = document.createElement('div'); lab.className = 'el'; lab.textContent = def.icon + ' ' + def.name;
+    const chips = document.createElement('div'); chips.className = 'chips';
+    [JP.PLAIN, ...def.items].forEach((it) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (it === JP.PLAIN ? ' plain' : ''); b.textContent = it;
+      b.setAttribute('aria-pressed', S.rack[k].includes(it) ? 'true' : 'false');
+      b.onclick = () => { const on = S.rack[k].includes(it); if (on && S.rack[k].length === 1) return; S.rack[k] = on ? S.rack[k].filter((x) => x !== it) : [...S.rack[k], it];
+        ss.set('journey-rack', S.rack); drawRack(); replan(); };
+      chips.append(b); });
+    el.append(lab, chips);
+  }
+  rackSummary();
+}
+
+// ---------- words ----------
+function drawWords() {
+  const el = $('#words'); el.innerHTML = '';
+  S.words.forEach((w, i) => {
+    const box = document.createElement('div'); box.className = 'w'; box.style.setProperty('--wc', COL[i]);
+    const l = document.createElement('div'); l.className = 'wl'; l.style.color = HEX[i]; l.textContent = (i + 1) + ' · ' + WHEELS[i][1];
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'wb serif'; b.textContent = w.word; b.title = 'Roll this word again';
+    b.onclick = () => { if (S.locks[i]) return; rollOne(i); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin'); setTimeout(() => { b.textContent = S.words[i].word; }, 200); replan(); };
+    const lk = document.createElement('button'); lk.type = 'button'; lk.className = 'lock'; lk.setAttribute('aria-pressed', S.locks[i] ? 'true' : 'false'); lk.textContent = S.locks[i] ? '🔒 locked' : '🔓';
+    lk.onclick = () => { S.locks[i] = !S.locks[i]; drawWords(); };
+    box.append(l, b, lk); el.append(box);
+  });
+}
+function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 0; while (w === S.words[i].word && t++ < 5) w = rnd(list); S.words[i] = { wheel: S.words[i].wheel, word: w }; }
+
+// ---------- plan + map ----------
+function replan() {
+  const recent = ls.get('journey-recent', []);
+  S.plan = JP.plan(S.words, { seed: S.seed, minutes: S.minutes, rack: S.rack, recent, allWords: JW });
+  drawMap(); drawChapters();
+}
+function remember() { // after a journey is made (phase 2) this list makes the next one choose differently
+  const r = ls.get('journey-recent', []); const add = S.plan.chapters.map((c) => c.lead.name); ls.set('journey-recent', [...add, ...r].slice(0, 30)); }
+
+function curve(p) {
+  // energy over time, with the opening, the ending and the breaths drawn in
+  const pts = [], N = 220, ch = p.chapters;
+  for (let k = 0; k <= N; k++) { const t = k / N; let e = Math.max(0.05, Math.min(1, p.arc.f(t)));
+    if (t < ch[0].t1 * 0.35) { const u = t / (ch[0].t1 * 0.35); e = p.opening.start * (1 - u) + e * u; }
+    const last = ch[ch.length - 1]; if (t > last.t0 + (last.t1 - last.t0) * 0.6) { const u = (t - (last.t0 + (last.t1 - last.t0) * 0.6)) / ((last.t1 - last.t0) * 0.4); e = e * (1 - u) + last.eEnd * u; }
+    for (const b of p.breaths) { const c = b.kind === 'between' ? ch[b.at].t0 : ch[b.at].t0 + (ch[b.at].t1 - ch[b.at].t0) * (b.bar / ch[b.at].bars); const d = Math.abs(t - c); if (d < 0.025) e = Math.min(e, 0.04 + d * 8); }
+    pts.push([t, e]); }
+  if (p.ending.id === 'abrupt') pts.push([1, 0]);
+  return pts;
+}
+function drawMap() {
+  const p = S.plan, W = 1000, H = 296, top = 56, bot = 222, ch = p.chapters;
+  const X = (t) => 10 + t * (W - 20), Y = (e) => bot - e * (bot - top - 18);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Energy of the journey over time">`;
+  ch.forEach((c, i) => { s += `<rect x="${X(c.t0)}" y="${top - 46}" width="${X(c.t1) - X(c.t0)}" height="${bot - top + 46}" fill="${HEX[i]}" opacity=".07"/>`;
+    s += `<rect x="${X(c.t0)}" y="${top - 46}" width="${X(c.t1) - X(c.t0)}" height="3" fill="${HEX[i]}"/>`;
+    const cx = (X(c.t0) + X(c.t1)) / 2;
+    s += `<text x="${cx}" y="${top - 22}" text-anchor="middle" fill="${HEX[i]}" font-size="19" font-family="Georgia,serif">${esc(c.word)}</text>`;
+    s += `<text x="${cx}" y="${top - 3}" text-anchor="middle" fill="#9AA3B2" font-size="12.5">${JP.MACHINES[c.lead.machine].icon} ${esc(c.lead.name)}${c.guests.map((g) => ' ' + JP.MACHINES[g.machine].icon).join('')}</text>`;
+    s += `<text x="${cx}" y="${bot + 22}" text-anchor="middle" fill="#9AA3B2" font-size="12">${esc(c.key)} · ${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}</text>`;
+    s += `<text x="${cx}" y="${bot + 40}" text-anchor="middle" fill="#6B7486" font-size="11.5">${c.bars} bars · ${c.minutes.toFixed(1)} min</text>`;
+    // the motif, in this chapter's costume
+    const m = p.motif, sc = c.costume.includes('quicker') ? 0.6 : c.costume.includes('slower') ? 1.5 : 1, half = c.costume.includes('half, a memory');
+    const tot = m.rhythm.reduce((a, b) => a + b, 0) * sc, mx = cx - Math.min(tot * 9, (X(c.t1) - X(c.t0)) / 2 - 8);
+    let acc = 0; m.degrees.forEach((d, k) => { if (half && k >= Math.ceil(m.degrees.length / 2)) return; const dd = c.costume.includes('upside down') ? -d : d;
+      s += `<circle cx="${mx + acc * 9}" cy="${bot - 6 - (dd + 4) * 2.2 - (c.costume.includes('high') ? 6 : 0) + (c.costume.includes('low') ? 6 : 0)}" r="${c.costume.includes('grand') ? 3.4 : 2.4}" fill="${HEX[i]}" opacity=".9"/>`; acc += m.rhythm[k] * sc; });
+  });
+  const pts = curve(p), path = pts.map(([t, e], k) => (k ? 'L' : 'M') + X(t).toFixed(1) + ' ' + Y(e).toFixed(1)).join(' ');
+  s += `<path d="${path} L ${X(1)} ${bot} L ${X(0)} ${bot} Z" fill="url(#g)" opacity=".35"/><defs><linearGradient id="g" x1="0" x2="1">${HEX.map((h, i) => `<stop offset="${(ch[i] ? (ch[i].t0 + ch[i].t1) / 2 : 0)}" stop-color="${h}"/>`).join('')}</linearGradient></defs>`;
+  s += `<path d="${path}" fill="none" stroke="#EDE6D8" stroke-width="2.4" stroke-linejoin="round"/>`;
+  // transitions and breaths
+  ch.forEach((c, i) => { if (i === ch.length - 1) return; const x = X(c.t1), tr = JP.TRANSITIONS[c.out];
+    s += `<line x1="${x}" y1="${top - 6}" x2="${x}" y2="${bot}" stroke="#3A4560" stroke-dasharray="3 4"/>`;
+    s += `<circle cx="${x}" cy="${top + 10}" r="12" fill="#0B0E14" stroke="#556080"/><text x="${x}" y="${top + 15}" text-anchor="middle" fill="#EDE6D8" font-size="13">${tr.icon}</text>`; });
+  p.breaths.filter((b) => b.kind === 'inside').forEach((b) => { const c = ch[b.at], x = X(c.t0 + (c.t1 - c.t0) * b.bar / c.bars);
+    s += `<circle cx="${x}" cy="${Y(0.04)}" r="9" fill="none" stroke="#EDE6D8" stroke-width="1.5"/><text x="${x}" y="${Y(0.04) - 14}" text-anchor="middle" fill="#EDE6D8" font-size="11">breath</text>`; });
+  s += `<text x="${X(0) + 2}" y="${bot + 62}" fill="#9AA3B2" font-size="12">▸ opens: ${esc(p.opening.name.toLowerCase())}</text>`;
+  s += `<text x="${X(1) - 2}" y="${bot + 62}" text-anchor="end" fill="#9AA3B2" font-size="12">ends: ${esc(p.ending.name.toLowerCase())} ◂</text>`;
+  s += '</svg>';
+  $('#svg').innerHTML = s;
+  $('#arcName').textContent = p.arc.name;
+  const mins = p.chapters.reduce((a, c) => a + c.minutes, 0);
+  $('#facts').innerHTML = `<span>One tempo <b>${p.bpm} bpm</b></span><span>Length <b>${Math.round(mins)} min</b> · ${p.totalBars} bars</span>`
+    + `<span>Opens <b>${esc(p.opening.name)}</b>, ${esc(p.opening.desc)}</span><span>Ends <b>${esc(p.ending.name)}</b>, ${esc(p.ending.desc)}</span>`
+    + `<span>Breaths <b>${p.breaths.length}</b></span><span>Swaps <b>${p.swaps.length}</b></span><span>Motif <b>${p.motif.degrees.length} notes</b></span>`;
+}
+
+const DIMN = { light: 'light', speed: 'speed', warm: 'warmth', weight: 'weight', tension: 'tension', world: 'world' };
+function drawChapters() {
+  const p = S.plan, el = $('#chs'); el.innerHTML = '';
+  p.chapters.forEach((c, i) => {
+    const d = document.createElement('article'); d.className = 'ch'; d.style.setProperty('--wc', COL[i]);
+    const bars = JP.DIMS.map((k) => { const v = c.c[k], lo = k === 'world' ? 0 : -1, h = (v - lo) / (1 - lo);
+      return `<div class="bar"><i><b style="bottom:0;height:${Math.round(h * 100)}%"></b></i>${DIMN[k]}</div>`; }).join('');
+    const pl = c.players.map((x) => `<div class="pl"><span>${JP.RACK[x.role].icon} ${JP.ROLE_NAME[x.role]}</span><span>${esc(x.player)}${x.swapped ? ` <span class="sw">⇄ from your ${JP.RACK[x.swapped].name.toLowerCase()} rack</span>` : ''}</span></div>`).join('');
+    const out = i < p.chapters.length - 1 ? `Into the next: <b>${JP.TRANSITIONS[c.out].icon} ${JP.TRANSITIONS[c.out].name}</b>${c.overlap ? `, ${c.overlap} bars overlap` : ''}` : `The end: <b>${esc(p.ending.name)}</b>`;
+    const br = c.breathInside ? `<div class="sw">○ a breath at bar ${c.breathInside.bar}</div>` : '';
+    d.innerHTML = `<h3 class="serif" style="color:${HEX[i]}">${esc(c.word)} <small>${i + 1} · ${WHEELS[i][1].toLowerCase()}</small></h3>
+      <div class="bars">${bars}</div>
+      <dl class="kv"><dt>Leader</dt><dd>${JP.MACHINES[c.lead.machine].icon} <b>${esc(c.lead.name)}</b> <span class="muted small">from ${JP.MACHINES[c.lead.machine].name}</span></dd>
+      <dt>Guests</dt><dd>${c.guests.map((g) => `${JP.MACHINES[g.machine].icon} ${esc(g.name)}`).join(' · ') || 'none'}</dd>
+      <dt>Feel</dt><dd>${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}, feels like ${c.feelsLike} bpm</dd>
+      <dt>Key</dt><dd>${esc(c.key)}${c.keyMove === 'golden' ? ' <span class="sw">✦ golden step up</span>' : ''}</dd>
+      <dt>Length</dt><dd>${c.bars} bars · ${c.minutes.toFixed(1)} min</dd>
+      <dt>Layers</dt><dd>${c.layersStart} → ${c.layers} → ${c.layersEnd}</dd></dl>
+      <div class="players">${pl}</div>${br}
+      <div class="cos">${c.costume.map((x) => `<span>✦ ${esc(x)}</span>`).join('')}</div>
+      <div class="out">${out}</div>`;
+    el.append(d);
+  });
+}
+
+// ---------- controls ----------
+$('#rollAll').onclick = () => { S.words.forEach((w, i) => { if (!S.locks[i]) rollOne(i); }); S.seed = (Math.random() * 4294967296) >>> 0; drawWords(); replan(); };
+$('#reseed').onclick = () => { S.seed = (Math.random() * 4294967296) >>> 0; replan(); };
+function drawLen() { document.querySelectorAll('#len button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.m === S.minutes ? 'true' : 'false')); }
+document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.minutes = +b.dataset.m; ss.set('journey-min', S.minutes); drawLen(); replan(); }; });
+if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
+drawRack(); drawWords(); drawLen(); replan();
+</script>
+</body></html>
