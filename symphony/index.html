@@ -668,7 +668,12 @@ Y.feelArc = function (cats, main, combos) { // cats: 'fast' | 'slow' | 'dance' p
   const n = cats.length, res = new Array(n).fill(null), used = new Set([main]);
   const take = pref => { let f = combos.find(c => !used.has(c) && pref.includes(c)) || combos.find(c => !used.has(c)); if (f) used.add(f); return f; };
   res[0] = main;
-  if (n > 1) res[n - 1] = take(BOLD) || (BOLD.includes(main) ? main : combos.find(c => BOLD.includes(c)) || main);
+  if (n > 1) {
+    const bold = combos.find(c => !used.has(c) && BOLD.includes(c));
+    if (bold) { used.add(bold); res[n - 1] = bold; }
+    else if (BOLD.includes(main)) res[n - 1] = main;
+    else res[n - 1] = take([]) || main;
+  }
   for (let i = 1; i < n - 1; i++) if (cats[i] === 'slow') res[i] = take(SOFT) || combos.find(c => SOFT.includes(c)) || main;
   for (let i = 1; i < n - 1; i++) if (!res[i]) res[i] = take([]) || main;
   return res;
