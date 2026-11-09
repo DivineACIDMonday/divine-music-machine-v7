@@ -1956,7 +1956,7 @@ Y.planSuite = function (chain, K, era) {
   });
   return out;
 };
-function mergeParts(parts, titles) {
+function mergeParts(parts, titles, labels) {
   const first = parts[0], master = first.tempo;
   const tracks = {}, markers = [], secs = [];
   let off = first.OFF;
@@ -1971,7 +1971,7 @@ function mergeParts(parts, titles) {
     markers.push({ t: off, text: titles[i] });
     m.markers.forEach(x => markers.push({ t: sh(x.t), text: x.text }));
     const end = sh(m.end);
-    secs.push({ label: (i + 1) + '. ' + FORMS[m.form].name.replace(' form', '').replace('Theme and v', 'V'), t0: off, t1: end, key: m.keyName, tempo: m.tempo });
+    secs.push({ label: (FEELINGS[m.feel] ? FEELINGS[m.feel].icon + ' ' : '') + (labels ? labels[i] : (i + 1) + '. ' + FORMS[m.form].name.replace(' form', '').replace('Theme and v', 'V')), t0: off, t1: end, key: m.keyName, tempo: m.tempo });
     off = end + Math.round(PPQ * 2);
   });
   const ord = INST.map(i => i.id).filter(id => tracks[id]);
@@ -2005,7 +2005,10 @@ Y.generate = function (o) {
     compose(Object.assign({}, o, { form: 'rondo', key: mk(3, K), seed: base + 4, tempo: Math.round(t * 1.08 * tm(3)), feel: mf(3), title: 'Symphony IV. Finale' })),
   ];
   mv.forEach((m, i) => { m.movement = i + 1; });
-  return { movements: mv };
+  const short = ['I. Allegro', 'II. Andante', sch ? 'III. Scherzo' : 'III. Menuetto', 'IV. Finale'];
+  const res = mergeParts(mv, mv.map((m, i) => short[i] + ' in ' + m.keyName), short);
+  res.title = 'Symphony in ' + keyName(K);
+  return { movements: [res] };
 };
 
 /* ================= checks (used by the tests and the page) ================= */
