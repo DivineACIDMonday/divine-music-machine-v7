@@ -75,7 +75,8 @@ details.rack summary::-webkit-details-marker{display:none}
 .ctl{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0}
 select.pk{background:#0F131C;color:var(--tx);border:1px solid var(--line);border-radius:7px;padding:4px 6px;font:inherit;font-size:13.5px;min-height:32px;max-width:190px}
 select.pk.mine{border-color:var(--gold);color:var(--gold)}
-.dz{background:transparent;border:1px solid var(--line);border-radius:7px;cursor:pointer;min-height:32px;min-width:32px;padding:0 6px;font-size:14px}
+.die{width:15px;height:15px;vertical-align:-2px}
+.dz{color:var(--gold);background:transparent;border:1px solid var(--line);border-radius:7px;cursor:pointer;min-height:32px;min-width:32px;padding:0 6px;font-size:14px}
 .dz:hover{border-color:var(--gold)}
 .undo{margin-left:auto;background:transparent;border:1px solid var(--line);border-radius:7px;color:var(--mu);font:13px system-ui,sans-serif;padding:3px 9px;cursor:pointer}
 .kv dd{display:flex;align-items:center}
@@ -101,7 +102,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
   <div class="sh"><span class="st serif">The oracle speaks</span><span class="muted">Click a word to roll only that word. Lock what you love.</span></div>
   <div class="words" id="words"></div>
   <div class="row">
-    <button class="btn big" id="rollAll">🎲 Roll everything</button>
+    <button class="btn big" id="rollAll"><svg class="die" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="5" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="11" cy="11" r="1.2" fill="currentColor"/></svg> Roll everything</button>
     <button class="btn" id="reseed" title="Same words, the dice choose again">↻ Same words, new journey</button>
     <div class="grow"></div>
     <span class="muted small">Length</span>
@@ -177,10 +178,10 @@ JP.character = (word, wheel) => {
 // vector order: light, speed, warm, weight, tension, world.  bpm = where the art feels at home.
 const A = (machine, name, v, bpm, extra = {}) => ({ machine, name, v: { light: v[0], speed: v[1], warm: v[2], weight: v[3], tension: v[4], world: v[5] }, bpm, ...extra });
 JP.MACHINES = {
-  studio: { name: 'Studio', icon: '🎛️', gift: 'timing, groove and stabs' },
-  percussion: { name: 'Percussion', icon: '🥁', gift: 'world rhythms and call and response' },
-  score: { name: 'Score', icon: '🎬', gift: 'tension that builds and lets go' },
-  symphony: { name: 'Symphony', icon: '🎻', gift: 'voice leading, phrasing and breath' },
+  studio: { name: 'Studio', icon: '', gift: 'timing, groove and stabs' },
+  percussion: { name: 'Percussion', icon: '', gift: 'world rhythms and call and response' },
+  score: { name: 'Score', icon: '', gift: 'tension that builds and lets go' },
+  symphony: { name: 'Symphony', icon: '', gift: 'voice leading, phrasing and breath' },
 };
 JP.ARTS = [
   A('studio', 'Techno', [-0.2, 0.6, -0.4, 0.5, 0.3, 0], 126), A('studio', 'Trip hop', [-0.5, -0.5, 0.1, 0.4, 0.3, 0], 88), A('studio', 'Hip hop', [0, -0.3, 0.4, 0.4, 0, 0.1], 90),
@@ -212,12 +213,12 @@ JP.dist = (a, b) => JP.DIMS.reduce((s, d) => s + (a[d] - b[d]) ** 2 * (d === 'wo
 // ---------- the rack ----------
 // range = the notes the instrument plays well; drums = a drum plugin (only plays drum roles)
 JP.RACK = {
-  beats: { name: 'Beats', icon: '🥁', items: ['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno', 'Kick 2', 'Kick 1'] },
-  perc: { name: 'Percussion', icon: '🪘', items: ['XO', 'Impact', 'Beatmaker', 'Tekno', 'PERRCS'] },
-  melody: { name: 'Melody', icon: '✦', items: ['Usynth', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Virtual Pianist Score', 'Presence', 'Diva'] },
-  chords: { name: 'Chords', icon: '❖', items: ['Usynth', 'Virtual Pianist Score', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Presence', 'Diva'] },
-  bass: { name: 'Bass', icon: '◢', items: ['SubCraft', 'Royal', 'Slap', 'Diva', 'Usynth'] },
-  orch: { name: 'Orchestra', icon: '🎻', items: ['STRIIIINGS', 'Berlin', 'BBC'] },
+  beats: { name: 'Beats', icon: '', items: ['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno', 'Kick 2', 'Kick 1'] },
+  perc: { name: 'Percussion', icon: '', items: ['XO', 'Impact', 'Beatmaker', 'Tekno', 'PERRCS'] },
+  melody: { name: 'Melody', icon: '', items: ['Usynth', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Virtual Pianist Score', 'Presence', 'Diva'] },
+  chords: { name: 'Chords', icon: '', items: ['Usynth', 'Virtual Pianist Score', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Presence', 'Diva'] },
+  bass: { name: 'Bass', icon: '', items: ['SubCraft', 'Royal', 'Slap', 'Diva', 'Usynth'] },
+  orch: { name: 'Orchestra', icon: '', items: ['STRIIIINGS', 'Berlin', 'BBC'] },
 };
 JP.PLAIN = 'Plain MIDI';
 JP.INSTR = {
@@ -273,7 +274,7 @@ JP.ENDINGS = [
   { id: 'abrupt', name: 'Abrupt', desc: 'a hard stop', likes: { speed: 1, tension: 1 } },
 ];
 JP.TRANSITIONS = {
-  bassout: { name: 'Bass out and back', icon: '◢' }, filter: { name: 'Filter bridge', icon: '≈' }, motif: { name: 'Motif bridge', icon: '✦' },
+  bassout: { name: 'Bass out and back', icon: '◢' }, filter: { name: 'Filter bridge', icon: '≈' }, motif: { name: 'Motif bridge', icon: '◇' },
   cut: { name: 'Hard cut', icon: '|' }, riser: { name: 'Riser', icon: '↗' }, breath: { name: 'Breath', icon: '○' },
 };
 JP.FEELS = [
@@ -462,7 +463,7 @@ function rackSummary() { const n = Object.values(S.rack).reduce((s, l) => s + l.
 function drawRack() {
   const el = $('#rack'); el.innerHTML = '';
   for (const [k, def] of Object.entries(JP.RACK)) {
-    const lab = document.createElement('div'); lab.className = 'el'; lab.textContent = def.icon + ' ' + def.name;
+    const lab = document.createElement('div'); lab.className = 'el'; lab.textContent = def.name;
     const chips = document.createElement('div'); chips.className = 'chips';
     [JP.PLAIN, ...def.items].forEach((it) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (it === JP.PLAIN ? ' plain' : ''); b.textContent = it;
       b.setAttribute('aria-pressed', S.rack[k].includes(it) ? 'true' : 'false');
@@ -482,7 +483,7 @@ function drawWords() {
     const l = document.createElement('div'); l.className = 'wl'; l.style.color = HEX[i]; l.textContent = (i + 1) + ' · ' + WHEELS[i][1];
     const b = document.createElement('button'); b.type = 'button'; b.className = 'wb serif'; b.textContent = w.word; b.title = 'Roll this word again';
     b.onclick = () => { if (S.locks[i]) return; rollOne(i); S.ov[i] = {}; b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin'); setTimeout(() => { b.textContent = S.words[i].word; }, 200); replan(); };
-    const lk = document.createElement('button'); lk.type = 'button'; lk.className = 'lock'; lk.setAttribute('aria-pressed', S.locks[i] ? 'true' : 'false'); lk.textContent = S.locks[i] ? '🔒 locked' : '🔓';
+    const lk = document.createElement('button'); lk.type = 'button'; lk.className = 'lock'; lk.setAttribute('aria-pressed', S.locks[i] ? 'true' : 'false'); lk.textContent = S.locks[i] ? 'locked' : 'lock';
     lk.onclick = () => { S.locks[i] = !S.locks[i]; drawWords(); };
     box.append(l, b, lk); el.append(box);
   });
@@ -517,7 +518,7 @@ function drawMap() {
     s += `<rect x="${X(c.t0)}" y="${top - 46}" width="${X(c.t1) - X(c.t0)}" height="3" fill="${HEX[i]}"/>`;
     const cx = (X(c.t0) + X(c.t1)) / 2;
     s += `<text x="${cx}" y="${top - 22}" text-anchor="middle" fill="${HEX[i]}" font-size="19" font-family="Georgia,serif">${esc(c.word)}</text>`;
-    s += `<text x="${cx}" y="${top - 3}" text-anchor="middle" fill="#9AA3B2" font-size="12.5">${JP.MACHINES[c.lead.machine].icon} ${esc(c.lead.name)}${c.guests.map((g) => ' ' + JP.MACHINES[g.machine].icon).join('')}</text>`;
+    s += `<text x="${cx}" y="${top - 3}" text-anchor="middle" fill="#9AA3B2" font-size="12.5">${esc(c.lead.name)}${c.guests.length ? ' +' + c.guests.length : ''}</text>`;
     s += `<text x="${cx}" y="${bot + 22}" text-anchor="middle" fill="#9AA3B2" font-size="12">${esc(c.key)} · ${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}</text>`;
     s += `<text x="${cx}" y="${bot + 40}" text-anchor="middle" fill="#6B7486" font-size="11.5">${c.bars} bars · ${c.minutes.toFixed(1)} min</text>`;
     // the motif, in this chapter's costume
@@ -534,7 +535,7 @@ function drawMap() {
     s += `<line x1="${x}" y1="${top - 6}" x2="${x}" y2="${bot}" stroke="#3A4560" stroke-dasharray="3 4"/>`;
     s += `<circle cx="${x}" cy="${top + 10}" r="12" fill="#0B0E14" stroke="#556080"/><text x="${x}" y="${top + 15}" text-anchor="middle" fill="#EDE6D8" font-size="13">${tr.icon}</text>`; });
   p.breaths.filter((b) => b.kind === 'inside').forEach((b) => { const c = ch[b.at], x = X(c.t0 + (c.t1 - c.t0) * b.bar / c.bars);
-    s += `<circle cx="${x}" cy="${Y(0.04)}" r="9" fill="none" stroke="#EDE6D8" stroke-width="1.5"/><text x="${x}" y="${Y(0.04) - 14}" text-anchor="middle" fill="#EDE6D8" font-size="11">breath</text>`; });
+    s += `<circle cx="${x}" cy="${Y(0.04)}" r="9" fill="none" stroke="#EDE6D8" stroke-width="1.5"/><text x="${x + 14}" y="${Y(0.04) + 4}" fill="#EDE6D8" font-size="11">breath</text>`; });
   s += `<text x="${X(0) + 2}" y="${bot + 62}" fill="#9AA3B2" font-size="12">▸ opens: ${esc(p.opening.name.toLowerCase())}</text>`;
   s += `<text x="${X(1) - 2}" y="${bot + 62}" text-anchor="end" fill="#9AA3B2" font-size="12">ends: ${esc(p.ending.name.toLowerCase())} ◂</text>`;
   s += '</svg>';
@@ -557,26 +558,26 @@ function drawChapters() {
     const playing = Object.fromEntries(c.players.map((x) => [x.role, x]));
     const pl = JP.ROLE_ORDER.map((role) => { const x = playing[role], cur = x ? x.player : 'off';
       const opts = [{ v: 'off', t: '· off ·' }, ...JP.roleOptions(role).map((v) => ({ v, t: (S.rack[role].includes(v) ? '✓ ' : '') + v }))];
-      return `<div class="pl"><span>${JP.RACK[role].icon} ${JP.ROLE_NAME[role]}</span><span class="ctl">${sel(i, 'p:' + role, opts, cur, o.players && role in o.players)}${dice(i, 'p:' + role)}${x && x.swapped ? ` <span class="sw">⇄ from your ${JP.RACK[x.swapped].name.toLowerCase()} rack</span>` : ''}</span></div>`; }).join('');
+      return `<div class="pl"><span>${JP.ROLE_NAME[role]}</span><span class="ctl">${sel(i, 'p:' + role, opts, cur, o.players && role in o.players)}${dice(i, 'p:' + role)}${x && x.swapped ? ` <span class="sw">⇄ from your ${JP.RACK[x.swapped].name.toLowerCase()} rack</span>` : ''}</span></div>`; }).join('');
     const out = i < p.chapters.length - 1 ? `Into the next: <b>${JP.TRANSITIONS[c.out].icon} ${JP.TRANSITIONS[c.out].name}</b>${c.overlap ? `, ${c.overlap} bars overlap` : ''}` : `The end: <b>${esc(p.ending.name)}</b>`;
     const br = c.breathInside ? `<div class="sw">○ a breath at bar ${c.breathInside.bar}</div>` : '';
-    const artOpts = (skip) => Object.entries(JP.MACHINES).filter(([m]) => m !== skip).map(([m, M]) => ({ group: M.icon + ' ' + M.name, items: JP.ARTS.filter((a) => a.machine === m).map((a) => ({ v: a.name, t: a.name })) }));
+    const artOpts = (skip) => Object.entries(JP.MACHINES).filter(([m]) => m !== skip).map(([m, M]) => ({ group: M.name, items: JP.ARTS.filter((a) => a.machine === m).map((a) => ({ v: a.name, t: a.name })) }));
     const leadSel = sel(i, 'lead', artOpts(null), c.lead.name, !!o.lead);
     const gSel = (k) => sel(i, 'g' + (k + 1), [{ v: 'none', t: '· none ·' }, ...artOpts(c.lead.machine)], c.guests[k] ? c.guests[k].name : 'none', ('g' + (k + 1)) in o);
     const feelSel = sel(i, 'feel', JP.FEELS.map((f) => ({ v: f.id, t: f.name + ' (' + Math.round(p.bpm * f.ratio) + ')' })), c.feel.id, !!o.feel);
     const keySel = sel(i, 'key', JP.KEYS.flatMap((k) => [k + ' major', k + ' minor']).map((v) => ({ v, t: v })), c.key, !!o.key);
     const any = Object.keys(o).length > 0;
-    d.innerHTML = `<h3 class="serif" style="color:${HEX[i]}">${esc(c.word)} <small>${i + 1} · ${WHEELS[i][1].toLowerCase()}</small>${any ? `<button class="undo" data-i="${i}" title="Give this chapter back to the dice">↺ dice</button>` : ''}</h3>
+    d.innerHTML = `<h3 class="serif" style="color:${HEX[i]}">${esc(c.word)} <small>${i + 1} · ${WHEELS[i][1].toLowerCase()}</small>${any ? `<button class="undo" data-i="${i}" title="Give this chapter back to the dice">back to the dice</button>` : ''}</h3>
       <div class="bars">${bars}</div>
       <dl class="kv"><dt>Leader</dt><dd class="ctl">${leadSel}${dice(i, 'lead')}</dd>
       <dt>Guest 1</dt><dd class="ctl">${gSel(0)}${dice(i, 'g1')}</dd>
       <dt>Guest 2</dt><dd class="ctl">${gSel(1)}${dice(i, 'g2')}</dd>
       <dt>Feel</dt><dd class="ctl">${feelSel}${dice(i, 'feel')}</dd>
-      <dt>Key</dt><dd class="ctl">${keySel}${dice(i, 'key')}${c.keyMove === 'golden' ? ' <span class="sw">✦ golden</span>' : ''}</dd>
+      <dt>Key</dt><dd class="ctl">${keySel}${dice(i, 'key')}${c.keyMove === 'golden' ? ' <span class="sw">golden step</span>' : ''}</dd>
       <dt>Length</dt><dd>${c.bars} bars · ${c.minutes.toFixed(1)} min</dd>
       <dt>Layers</dt><dd>${c.layersStart} → ${c.layers} → ${c.layersEnd}</dd></dl>
       <div class="players">${pl}</div>${br}
-      <div class="cos">${c.costume.map((x) => `<span>✦ ${esc(x)}</span>`).join('')}</div>
+      <div class="cos">${c.costume.map((x) => `<span>${esc(x)}</span>`).join('')}</div>
       <div class="out">${out}</div>`;
     el.append(d);
   });
@@ -588,7 +589,8 @@ function sel(i, field, opts, cur, mine) {
   const body = opts.map((x) => (x.group ? `<optgroup label="${esc(x.group)}">${x.items.map(o).join('')}</optgroup>` : o(x))).join('');
   return `<select class="pk${mine ? ' mine' : ''}" data-i="${i}" data-f="${field}" aria-label="${esc(field)}">${body}</select>`;
 }
-const dice = (i, field) => `<button class="dz" data-i="${i}" data-f="${field}" title="Let the dice choose this one">🎲</button>`;
+const DIE = '<svg class="die" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="5" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="11" cy="11" r="1.2" fill="currentColor"/></svg>';
+const dice = (i, field) => `<button class="dz" data-i="${i}" data-f="${field}" title="Let the dice choose this one" aria-label="Roll">${DIE}</button>`;
 function setOv(i, field, v) { const o = S.ov[i];
   if (field.startsWith('p:')) { o.players = o.players || {}; o.players[field.slice(2)] = v; } else o[field] = v; replan(); }
 $('#chs').addEventListener('change', (e) => { const t = e.target; if (!t.matches('select.pk')) return; setOv(+t.dataset.i, t.dataset.f, t.value); });

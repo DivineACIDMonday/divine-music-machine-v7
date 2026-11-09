@@ -48,10 +48,10 @@ JP.character = (word, wheel) => {
 // vector order: light, speed, warm, weight, tension, world.  bpm = where the art feels at home.
 const A = (machine, name, v, bpm, extra = {}) => ({ machine, name, v: { light: v[0], speed: v[1], warm: v[2], weight: v[3], tension: v[4], world: v[5] }, bpm, ...extra });
 JP.MACHINES = {
-  studio: { name: 'Studio', icon: '🎛️', gift: 'timing, groove and stabs' },
-  percussion: { name: 'Percussion', icon: '🥁', gift: 'world rhythms and call and response' },
-  score: { name: 'Score', icon: '🎬', gift: 'tension that builds and lets go' },
-  symphony: { name: 'Symphony', icon: '🎻', gift: 'voice leading, phrasing and breath' },
+  studio: { name: 'Studio', icon: '', gift: 'timing, groove and stabs' },
+  percussion: { name: 'Percussion', icon: '', gift: 'world rhythms and call and response' },
+  score: { name: 'Score', icon: '', gift: 'tension that builds and lets go' },
+  symphony: { name: 'Symphony', icon: '', gift: 'voice leading, phrasing and breath' },
 };
 JP.ARTS = [
   A('studio', 'Techno', [-0.2, 0.6, -0.4, 0.5, 0.3, 0], 126), A('studio', 'Trip hop', [-0.5, -0.5, 0.1, 0.4, 0.3, 0], 88), A('studio', 'Hip hop', [0, -0.3, 0.4, 0.4, 0, 0.1], 90),
@@ -83,12 +83,12 @@ JP.dist = (a, b) => JP.DIMS.reduce((s, d) => s + (a[d] - b[d]) ** 2 * (d === 'wo
 // ---------- the rack ----------
 // range = the notes the instrument plays well; drums = a drum plugin (only plays drum roles)
 JP.RACK = {
-  beats: { name: 'Beats', icon: '🥁', items: ['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno', 'Kick 2', 'Kick 1'] },
-  perc: { name: 'Percussion', icon: '🪘', items: ['XO', 'Impact', 'Beatmaker', 'Tekno', 'PERRCS'] },
-  melody: { name: 'Melody', icon: '✦', items: ['Usynth', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Virtual Pianist Score', 'Presence', 'Diva'] },
-  chords: { name: 'Chords', icon: '❖', items: ['Usynth', 'Virtual Pianist Score', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Presence', 'Diva'] },
-  bass: { name: 'Bass', icon: '◢', items: ['SubCraft', 'Royal', 'Slap', 'Diva', 'Usynth'] },
-  orch: { name: 'Orchestra', icon: '🎻', items: ['STRIIIINGS', 'Berlin', 'BBC'] },
+  beats: { name: 'Beats', icon: '', items: ['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno', 'Kick 2', 'Kick 1'] },
+  perc: { name: 'Percussion', icon: '', items: ['XO', 'Impact', 'Beatmaker', 'Tekno', 'PERRCS'] },
+  melody: { name: 'Melody', icon: '', items: ['Usynth', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Virtual Pianist Score', 'Presence', 'Diva'] },
+  chords: { name: 'Chords', icon: '', items: ['Usynth', 'Virtual Pianist Score', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Presence', 'Diva'] },
+  bass: { name: 'Bass', icon: '', items: ['SubCraft', 'Royal', 'Slap', 'Diva', 'Usynth'] },
+  orch: { name: 'Orchestra', icon: '', items: ['STRIIIINGS', 'Berlin', 'BBC'] },
 };
 JP.PLAIN = 'Plain MIDI';
 JP.INSTR = {
@@ -144,7 +144,7 @@ JP.ENDINGS = [
   { id: 'abrupt', name: 'Abrupt', desc: 'a hard stop', likes: { speed: 1, tension: 1 } },
 ];
 JP.TRANSITIONS = {
-  bassout: { name: 'Bass out and back', icon: '◢' }, filter: { name: 'Filter bridge', icon: '≈' }, motif: { name: 'Motif bridge', icon: '✦' },
+  bassout: { name: 'Bass out and back', icon: '◢' }, filter: { name: 'Filter bridge', icon: '≈' }, motif: { name: 'Motif bridge', icon: '◇' },
   cut: { name: 'Hard cut', icon: '|' }, riser: { name: 'Riser', icon: '↗' }, breath: { name: 'Breath', icon: '○' },
 };
 JP.FEELS = [
