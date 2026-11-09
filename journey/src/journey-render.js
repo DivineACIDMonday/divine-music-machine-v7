@@ -343,6 +343,8 @@ JR.render = function (plan, ctx) {
     const k = plan.bpm / c.feelsLike, toJ = (ns) => ns.map((n) => Object.assign({}, n, { t: Math.round(n.t * k), d: Math.max(30, Math.round((n.d || 120) * k)) }));
     const rank = {}; let order = c.players.map((p) => p.role);
     if (i === 0 && (plan.opening.id === 'awaken' || plan.opening.id === 'motif')) { const soft = ['orch', 'chords', 'melody', 'bass']; order = order.filter((r) => soft.includes(r)).concat(order.filter((r) => !soft.includes(r))); }
+    // the melody is the voice of the chapter: it never waits at the back of the queue
+    if (order.indexOf('melody') > 2) { order = order.filter((r) => r !== 'melody'); order.splice(2, 0, 'melody'); }
     order.forEach((r, k) => { rank[r] = k; });
     const motifPlayer = (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: (plan.rack && plan.rack.melody && plan.rack.melody[0]) || JP_PLAIN }).player;
     for (const p of c.players.concat([{ role: 'motif', player: motifPlayer }])) {
