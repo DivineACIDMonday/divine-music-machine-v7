@@ -589,7 +589,22 @@ const VOICE = {
   br: { type: 'sawtooth', cut: 1800, att: .05, gain: .08 }, perc: { type: 'sine', cut: 900, att: .002, gain: .5 }, kb: { type: 'triangle', cut: 5000, att: .003, gain: .13 },
 };
 const PAN = { svn: -.4, svc: .35, eh: .05, bcl: -.1, cbsn: .3, shn: -.45, stpt: .15, stbn: .3, bells: .1, glock: -.3, vib: -.2, mar: .25, xyl: .2, vln1: -.55, vln2: -.25, vla: .2, vc: .45, cb: .65, picc: -.2, fl: -.15, ob: .1, cl: -.05, bsn: .2, hn: -.4, tpt: .1, tbn: .35, btbn: .45, tba: .55, timp: 0, pno: -.6 };
+let NOISE = null;
+function noiseHit(n, when) {
+  if (!NOISE) { const len = AC.sampleRate * 2, b = AC.createBuffer(1, len, AC.sampleRate), d = b.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1; NOISE = b; }
+  const src = AC.createBufferSource(), bp = AC.createBiquadFilter(), g = AC.createGain();
+  src.buffer = NOISE;
+  const kind = n.id === 'drums' ? (n.m < 48 ? 'bd' : n.m < 60 ? 'sn' : 'tom') : (n.m < 48 ? 'cym' : n.m < 60 ? 'tam' : 'tri');
+  const P = { bd: [70, 1.2, .9, .35], sn: [1800, .8, .5, .18], tom: [180, 1.5, .6, .3], cym: [7000, .4, .35, 1.6], tam: [400, 2, .4, 3], tri: [6000, 12, .25, 1.2] }[kind];
+  bp.type = 'bandpass'; bp.frequency.value = P[0]; bp.Q.value = P[1];
+  const pk = P[2] * Math.pow(n.v / 127, 1.3);
+  g.gain.setValueAtTime(pk, when); g.gain.exponentialRampToValueAtTime(.0005, when + P[3]);
+  src.connect(bp); bp.connect(g); g.connect(master);
+  src.start(when, Math.random()); src.stop(when + P[3] + .05);
+  if (kind === 'bd' || kind === 'tom') { const o = AC.createOscillator(), og = AC.createGain(); o.frequency.setValueAtTime(kind === 'bd' ? 90 : 160, when); o.frequency.exponentialRampToValueAtTime(kind === 'bd' ? 45 : 90, when + .2); og.gain.setValueAtTime(pk * .8, when); og.gain.exponentialRampToValueAtTime(.0005, when + P[3]); o.connect(og); og.connect(master); o.start(when); o.stop(when + P[3] + .05); }
+}
 function noteOn(n, when) {
+  if (n.id === 'drums' || n.id === 'metals') return noiseHit(n, when);
   const f = fam(n.id), V = VOICE[f], dur = Math.max(.06, n.d);
   const g = AC.createGain(), lp = AC.createBiquadFilter(), p = AC.createStereoPanner ? AC.createStereoPanner() : null;
   const hz = 440 * Math.pow(2, (n.m - 69) / 12);
