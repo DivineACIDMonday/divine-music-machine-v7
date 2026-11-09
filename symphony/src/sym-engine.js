@@ -383,6 +383,16 @@ const FEELINGS = {
   solemn: { name: 'Solemn', icon: '👑', blurb: 'Ceremony and dignity. Slow, full chords, brass like an organ.', mode: 'M', keys: ['C', 'Bb', 'D'], era: 'baroque', forms: ['fugue', 'march', 'overture'], im: 1, ia: .05, da: .05, tempo: .85, rub: .8, lead: 'str', tex: { brisk: 'continuo', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'ob', 'bsn', 'hn', 'tpt', 'tbn', 'timp', 'pno'] },
 };
 Y.FEELINGS = FEELINGS;
+const SOFT = ['tender', 'melancholy', 'dreamy', 'mysterious'], BOLD = ['heroic', 'joyful', 'stormy', 'solemn'];
+Y.feelArc = function (cats, main, combos) { // cats: 'fast' | 'slow' | 'dance' per part
+  const n = cats.length, res = new Array(n).fill(null), used = new Set([main]);
+  const take = pref => { let f = combos.find(c => !used.has(c) && pref.includes(c)) || combos.find(c => !used.has(c)); if (f) used.add(f); return f; };
+  res[0] = main;
+  if (n > 1) res[n - 1] = take(BOLD) || (BOLD.includes(main) ? main : combos.find(c => BOLD.includes(c)) || main);
+  for (let i = 1; i < n - 1; i++) if (cats[i] === 'slow') res[i] = take(SOFT) || combos.find(c => SOFT.includes(c)) || main;
+  for (let i = 1; i < n - 1; i++) if (!res[i]) res[i] = take([]) || main;
+  return res;
+};
 
 /* ================= the composer ================= */
 function Comp(x) {
@@ -1548,6 +1558,7 @@ function compose(o) {
   res.tempo = x.tempo; res.meter = meter; res.key = K; res.era = era; res.form = form;
   res.title = (o.title || FORMS[form].name) + ' in ' + keyName(K);
   res.keyName = keyName(K);
+  res.feel = o.feel || null;
   res._c = c;
   return res;
 }
@@ -1672,11 +1683,15 @@ Y.generate = function (o) {
   const KII = K.m === 'M' ? relKey(K, 3, 'M') : relKey(K, 5, 'M');
   const base = o.seed >>> 0;
   const t = o.tempo || 132;
+  const mf = i => (o.mvFeels && o.mvFeels[i]) || o.feel;
+  const mk = (i, key) => { const fe = FEELINGS[mf(i)]; if (!fe || fe.mode === key.m) return key; if (i === 3) return mkKey(K.L, K.t, fe.mode); return fe.mode === 'm' ? relKey(key, 5, 'm') : relKey(key, 2, 'M'); };
+  const tm = i => FEELINGS[mf(i)] ? FEELINGS[mf(i)].tempo / (FEELINGS[o.feel] ? FEELINGS[o.feel].tempo : 1) : 1;
+  const sch = o.era === 'romantic' || o.era === 'impressionist';
   const mv = [
-    compose(Object.assign({}, o, { form: 'sonata', key: K, seed: base + 1, tempo: t, title: 'Symphony I. Allegro' })),
-    compose(Object.assign({}, o, { form: o.len >= 3 ? 'variations' : 'aria', key: KII, seed: base + 2, tempo: o.len >= 3 ? Math.round(t * .62) : Math.round(t * .5), title: 'Symphony II. Andante' })),
-    compose(Object.assign({}, o, { form: 'minuet', key: K, seed: base + 3, scherzo: o.era === 'romantic' || o.era === 'impressionist', tempo: o.era === 'romantic' || o.era === 'impressionist' ? 160 : Math.round(t * .9), title: o.era === 'romantic' || o.era === 'impressionist' ? 'Symphony III. Scherzo' : 'Symphony III. Menuetto' })),
-    compose(Object.assign({}, o, { form: 'rondo', key: K, seed: base + 4, tempo: Math.round(t * 1.08), title: 'Symphony IV. Finale' })),
+    compose(Object.assign({}, o, { form: 'sonata', key: mk(0, K), seed: base + 1, tempo: Math.round(t * tm(0)), feel: mf(0), title: 'Symphony I. Allegro' })),
+    compose(Object.assign({}, o, { form: o.len >= 3 ? 'variations' : 'aria', key: mk(1, KII), seed: base + 2, tempo: Math.round((o.len >= 3 ? t * .62 : t * .5) * tm(1)), feel: mf(1), title: 'Symphony II. Andante' })),
+    compose(Object.assign({}, o, { form: 'minuet', key: mk(2, K), seed: base + 3, scherzo: sch, tempo: Math.round((sch ? 160 : t * .9) * tm(2)), feel: mf(2), title: sch ? 'Symphony III. Scherzo' : 'Symphony III. Menuetto' })),
+    compose(Object.assign({}, o, { form: 'rondo', key: mk(3, K), seed: base + 4, tempo: Math.round(t * 1.08 * tm(3)), feel: mf(3), title: 'Symphony IV. Finale' })),
   ];
   mv.forEach((m, i) => { m.movement = i + 1; });
   return { movements: mv };
