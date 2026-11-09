@@ -7771,14 +7771,14 @@ JR.colour = (c, role, player) => {
   const x = c.c, pick = (pairs) => pairs.filter(([ok]) => ok).map(([, w]) => w).slice(0, 2);
   const orchP = player === 'Berlin' || player === 'BBC' || player === 'STRIIIINGS';
   const tone = pick([[x.light < -0.3, 'dark'], [x.light > 0.35, 'bright'], [x.tension > 0.45, 'gritty'], [x.warm > 0.35, 'warm'], [x.warm < -0.35, 'cold'], [x.weight > 0.35, 'heavy'], [x.weight < -0.35, 'airy']]);
-  const t = tone.length ? tone.join(' ') + ' ' : (x.light >= 0 ? 'soft ' : 'deep ');
+  const t = tone.length ? tone.join(' ') + ' ' : (x.light >= 0 ? 'gentle ' : 'deep ');
   const fast = x.speed > 0.3 || c.feel.id === 'double', slow = x.speed < -0.3 || c.feel.id === 'half';
   if (orchP && role !== 'beats' && role !== 'perc') return t + (fast ? 'short, spiccato' : slow ? 'long legato, slow attack' : 'long sustain');
   switch (role) {
     case 'beats': return t + (x.warm > 0.35 ? 'vintage kit' : x.warm < -0.35 ? 'electronic kit' : 'tight kit');
     case 'perc': return t + 'hand percussion, ' + (c.lead.machine === 'percussion' ? c.lead.name : 'light shakers and bells');
     case 'bass': return x.weight > 0.3 ? t + 'deep sub' : x.tension > 0.4 ? t + 'growling saw bass' : x.warm > 0.3 ? t + 'round warm bass' : t + 'clean sub bass';
-    case 'chords': return t + (slow ? 'slow pad' : fast ? 'short stab' : 'soft keys');
+    case 'chords': return t + (slow ? 'slow pad' : fast ? 'short stab' : 'electric piano');
     case 'melody': return x.tension > 0.45 ? t + 'saw lead with grit' : x.light > 0.4 ? t + 'bell lead' : fast ? t + 'pluck' : t + 'smooth lead';
     case 'motif': return t + 'clear lead that cuts through';
     case 'orch': return t + 'strings, long';
