@@ -100,6 +100,13 @@ JP.INSTR = {
 JP.ROLE_REG = { melody: [62, 86], chords: [50, 74], bass: [31, 55], orch: [40, 88], beats: null, perc: null };
 JP.ROLE_NAME = { beats: 'Beat', perc: 'Percussion', melody: 'Melody', chords: 'Chords', bass: 'Bass', orch: 'Orchestra' };
 JP.defaultRack = () => Object.fromEntries(Object.keys(JP.RACK).map((k) => [k, [JP.PLAIN]]));
+JP.ROLE_ORDER = ['beats', 'perc', 'bass', 'chords', 'melody', 'orch'];
+// every instrument that can play a role: its own pot first, then the ones that fit from the other pots
+JP.roleOptions = (role) => { const out = [JP.PLAIN, ...JP.RACK[role].items];
+  for (const inst of Object.keys(JP.INSTR)) { if (out.includes(inst)) continue; const i = JP.INSTR[inst];
+    if (role === 'beats' || role === 'perc') { if (i.drums ? !i.kickOnly : i.range && i.range[1] - i.range[0] >= 48) out.push(inst); }
+    else if (fits(inst, role)) out.push(inst); }
+  return out; };
 const fits = (inst, role) => { if (inst === JP.PLAIN) return true; const i = JP.INSTR[inst] || {}; const reg = JP.ROLE_REG[role];
   if (!reg) return true; if (i.drums) return false; return i.range && i.range[0] <= reg[0] && i.range[1] >= reg[1]; };
 
@@ -159,6 +166,7 @@ JP.popularity = (allWords) => { if (POP) return POP; if (!allWords) return JP.AR
 // words: [{wheel, word}] x5; opts: {seed, minutes, rack, recent: [art names]}
 JP.plan = (words, opts = {}) => {
   const seed = (opts.seed >>> 0) ^ JP.hash(words.map((w) => w.word).join('|'));
+  const ov = opts.ov || [];
   const r = JP.rng(seed), minutes = opts.minutes || 40, rack = opts.rack || JP.defaultRack(), recent = new Set(opts.recent || []);
   const ch = words.map((w) => ({ word: w.word, wheel: w.wheel, c: JP.character(w.word, w.wheel) }));
   const n = ch.length, avg = Object.fromEntries(JP.DIMS.map((d) => [d, ch.reduce((s, x) => s + x.c[d], 0) / n]));
@@ -189,7 +197,8 @@ JP.plan = (words, opts = {}) => {
     // a word with a strong character chooses sharply; a quiet word leaves more to the dice
     const mag = Math.sqrt(JP.DIMS.reduce((s2, d) => s2 + x.c[d] ** 2, 0)), k = 0.35 + 2.4 * Math.min(1, mag / 1.1);
     const pop = JP.popularity(opts.allWords), w = JP.ARTS.map((a, ai) => used.has(a.name) ? 0 : Math.exp(-JP.dist(cv, a.v) * k) * pop[ai] * (recent.has(a.name) ? 0.35 : 1) * (leadCount[a.machine] ? 0.5 ** leadCount[a.machine] : 1) * (0.6 + r() * 0.8));
-    x.lead = pickW(r, JP.ARTS, w); used.add(x.lead.name); leadCount[x.lead.machine] = (leadCount[x.lead.machine] || 0) + 1;
+    const ovL = ov[i] && ov[i].lead && JP.ARTS.find((a) => a.name === ov[i].lead);
+    x.lead = ovL || pickW(r, JP.ARTS, w); used.add(x.lead.name); leadCount[x.lead.machine] = (leadCount[x.lead.machine] || 0) + 1;
     // one or two guests from other machines: the cross-over
     const gn = x.energy > 0.55 && r() < 0.6 ? 2 : 1, gm = new Set([x.lead.machine]); x.guests = [];
     for (let g = 0; g < gn; g++) { const gw = JP.ARTS.map((a) => gm.has(a.machine) || used.has(a.name) ? 0 : Math.exp(-JP.dist(cv, a.v) * 1.5) * (0.5 + r()));
@@ -206,12 +215,18 @@ JP.plan = (words, opts = {}) => {
     used.add(bestS.a.name);
   }
 
+  // your own choices for the guests win over the dice
+  ch.forEach((x, i) => { const o = ov[i] || {}; ['g1', 'g2'].forEach((g, gi) => { if (!(g in o)) return;
+    const a = o[g] === 'none' ? null : JP.ARTS.find((t) => t.name === o[g]); const rest = x.guests.filter((_, k) => k !== gi);
+    x.guests = gi === 0 ? [a, ...rest.slice(0, 1)] : [x.guests[0], a]; x.guests = x.guests.filter(Boolean); }); });
+
   // one tempo for the whole journey; each chapter finds its own feel on top of it
   let best = null;
   for (let b = 80; b <= 140; b++) { let cost = 0; for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id === 'straight' ? 0 : 0.02)));
     cost += r() * 0.04; if (!best || cost < best.cost) best = { b, cost }; }
   const bpm = best.b;
-  ch.forEach((x) => { x.feel = JP.FEELS.reduce((a, f) => (Math.abs(bpm * f.ratio - x.lead.bpm) < Math.abs(bpm * a.ratio - x.lead.bpm) ? f : a)); x.feelsLike = Math.round(bpm * x.feel.ratio); });
+  ch.forEach((x, i) => { x.feel = JP.FEELS.reduce((a, f) => (Math.abs(bpm * f.ratio - x.lead.bpm) < Math.abs(bpm * a.ratio - x.lead.bpm) ? f : a));
+    if (ov[i] && ov[i].feel) x.feel = JP.FEELS.find((f) => f.id === ov[i].feel) || x.feel; x.feelsLike = Math.round(bpm * x.feel.ratio); });
 
   // bars: every chapter a whole number of 8-bar phrases
   const totalBars = minutes * bpm / 4;
@@ -242,6 +257,7 @@ JP.plan = (words, opts = {}) => {
       if (i === top && r() < 0.3) move = 'golden';
       if (move === 'relative') { tonic = (tonic + (minor ? 3 : 9)) % 12; minor = !minor; } else if (move === 'up5') tonic = (tonic + 7) % 12; else if (move === 'down5') tonic = (tonic + 5) % 12; else if (move === 'golden') tonic = (tonic + 2) % 12;
       x.keyMove = move; } else x.keyMove = 'start';
+    if (ov[i] && ov[i].key) { const [kn, km] = ov[i].key.split(' '); const kt = JP.KEYS.indexOf(kn); if (kt >= 0) { tonic = kt; minor = km === 'minor'; x.keyMove = 'yours'; } }
     x.key = JP.KEYS[tonic] + (minor ? ' minor' : ' major'); x.tonic = tonic; x.minor = minor;
   });
 
@@ -266,6 +282,13 @@ JP.plan = (words, opts = {}) => {
     if (!cands.length) break; const s = cands[Math.floor(r() * cands.length)]; swaps.push(s);
     const p = ch[s.at].players[s.pi]; p.player = s.inst; p.swapped = s.from;
   }
+
+  // your own players win over the dice; 'off' takes a layer out
+  ch.forEach((x, i) => { const o = (ov[i] || {}).players || {};
+    for (const [role, inst] of Object.entries(o)) { const at = x.players.findIndex((p) => p.role === role);
+      if (inst === 'off') { if (at >= 0) x.players.splice(at, 1); continue; }
+      const p = { role, player: inst, swapped: false, yours: true }; if (at >= 0) x.players[at] = p; else x.players.push(p); }
+    x.players.sort((a, b) => JP.ROLE_ORDER.indexOf(a.role) - JP.ROLE_ORDER.indexOf(b.role)); });
 
   // the motif: four to six notes that travel through every chapter in a new costume
   const len = 4 + Math.floor(r() * 3), steps = [0], rh = [];

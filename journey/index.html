@@ -68,10 +68,17 @@ details.rack summary::-webkit-details-marker{display:none}
 .bar i{display:block;width:100%;height:30px;background:#0F131C;border-radius:4px;position:relative;overflow:hidden}
 .bar i b{position:absolute;left:0;right:0;background:var(--wc);opacity:.85}
 .players{display:flex;flex-direction:column;gap:3px;font-size:14px}
-.pl{display:flex;gap:8px}.pl span:first-child{color:var(--mu);min-width:84px}
+.pl{display:flex;gap:8px}.pl{align-items:center}.pl > span:first-child{color:var(--mu);min-width:96px}
 .sw{color:var(--gold);font-size:12.5px}
 .cos{display:flex;flex-wrap:wrap;gap:5px}
 .cos span{font:12px ui-monospace,Menlo,monospace;background:#0F131C;border:1px solid var(--line);border-radius:6px;padding:2px 7px;color:#D9D2C4}
+.ctl{display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-width:0}
+select.pk{background:#0F131C;color:var(--tx);border:1px solid var(--line);border-radius:7px;padding:4px 6px;font:inherit;font-size:13.5px;min-height:32px;max-width:190px}
+select.pk.mine{border-color:var(--gold);color:var(--gold)}
+.dz{background:transparent;border:1px solid var(--line);border-radius:7px;cursor:pointer;min-height:32px;min-width:32px;padding:0 6px;font-size:14px}
+.dz:hover{border-color:var(--gold)}
+.undo{margin-left:auto;background:transparent;border:1px solid var(--line);border-radius:7px;color:var(--mu);font:13px system-ui,sans-serif;padding:3px 9px;cursor:pointer}
+.kv dd{display:flex;align-items:center}
 .out{font-size:13.5px;color:var(--mu);border-top:1px dashed var(--line);padding-top:8px}
 footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 @media (max-width:760px){.words{grid-template-columns:repeat(2,1fr)}.w:last-child{grid-column:1/-1}.rk{grid-template-columns:1fr}.rk .el{padding-top:0}.wb{font-size:19px}}
@@ -222,6 +229,13 @@ JP.INSTR = {
 JP.ROLE_REG = { melody: [62, 86], chords: [50, 74], bass: [31, 55], orch: [40, 88], beats: null, perc: null };
 JP.ROLE_NAME = { beats: 'Beat', perc: 'Percussion', melody: 'Melody', chords: 'Chords', bass: 'Bass', orch: 'Orchestra' };
 JP.defaultRack = () => Object.fromEntries(Object.keys(JP.RACK).map((k) => [k, [JP.PLAIN]]));
+JP.ROLE_ORDER = ['beats', 'perc', 'bass', 'chords', 'melody', 'orch'];
+// every instrument that can play a role: its own pot first, then the ones that fit from the other pots
+JP.roleOptions = (role) => { const out = [JP.PLAIN, ...JP.RACK[role].items];
+  for (const inst of Object.keys(JP.INSTR)) { if (out.includes(inst)) continue; const i = JP.INSTR[inst];
+    if (role === 'beats' || role === 'perc') { if (i.drums ? !i.kickOnly : i.range && i.range[1] - i.range[0] >= 48) out.push(inst); }
+    else if (fits(inst, role)) out.push(inst); }
+  return out; };
 const fits = (inst, role) => { if (inst === JP.PLAIN) return true; const i = JP.INSTR[inst] || {}; const reg = JP.ROLE_REG[role];
   if (!reg) return true; if (i.drums) return false; return i.range && i.range[0] <= reg[0] && i.range[1] >= reg[1]; };
 
@@ -281,6 +295,7 @@ JP.popularity = (allWords) => { if (POP) return POP; if (!allWords) return JP.AR
 // words: [{wheel, word}] x5; opts: {seed, minutes, rack, recent: [art names]}
 JP.plan = (words, opts = {}) => {
   const seed = (opts.seed >>> 0) ^ JP.hash(words.map((w) => w.word).join('|'));
+  const ov = opts.ov || [];
   const r = JP.rng(seed), minutes = opts.minutes || 40, rack = opts.rack || JP.defaultRack(), recent = new Set(opts.recent || []);
   const ch = words.map((w) => ({ word: w.word, wheel: w.wheel, c: JP.character(w.word, w.wheel) }));
   const n = ch.length, avg = Object.fromEntries(JP.DIMS.map((d) => [d, ch.reduce((s, x) => s + x.c[d], 0) / n]));
@@ -311,7 +326,8 @@ JP.plan = (words, opts = {}) => {
     // a word with a strong character chooses sharply; a quiet word leaves more to the dice
     const mag = Math.sqrt(JP.DIMS.reduce((s2, d) => s2 + x.c[d] ** 2, 0)), k = 0.35 + 2.4 * Math.min(1, mag / 1.1);
     const pop = JP.popularity(opts.allWords), w = JP.ARTS.map((a, ai) => used.has(a.name) ? 0 : Math.exp(-JP.dist(cv, a.v) * k) * pop[ai] * (recent.has(a.name) ? 0.35 : 1) * (leadCount[a.machine] ? 0.5 ** leadCount[a.machine] : 1) * (0.6 + r() * 0.8));
-    x.lead = pickW(r, JP.ARTS, w); used.add(x.lead.name); leadCount[x.lead.machine] = (leadCount[x.lead.machine] || 0) + 1;
+    const ovL = ov[i] && ov[i].lead && JP.ARTS.find((a) => a.name === ov[i].lead);
+    x.lead = ovL || pickW(r, JP.ARTS, w); used.add(x.lead.name); leadCount[x.lead.machine] = (leadCount[x.lead.machine] || 0) + 1;
     // one or two guests from other machines: the cross-over
     const gn = x.energy > 0.55 && r() < 0.6 ? 2 : 1, gm = new Set([x.lead.machine]); x.guests = [];
     for (let g = 0; g < gn; g++) { const gw = JP.ARTS.map((a) => gm.has(a.machine) || used.has(a.name) ? 0 : Math.exp(-JP.dist(cv, a.v) * 1.5) * (0.5 + r()));
@@ -328,12 +344,18 @@ JP.plan = (words, opts = {}) => {
     used.add(bestS.a.name);
   }
 
+  // your own choices for the guests win over the dice
+  ch.forEach((x, i) => { const o = ov[i] || {}; ['g1', 'g2'].forEach((g, gi) => { if (!(g in o)) return;
+    const a = o[g] === 'none' ? null : JP.ARTS.find((t) => t.name === o[g]); const rest = x.guests.filter((_, k) => k !== gi);
+    x.guests = gi === 0 ? [a, ...rest.slice(0, 1)] : [x.guests[0], a]; x.guests = x.guests.filter(Boolean); }); });
+
   // one tempo for the whole journey; each chapter finds its own feel on top of it
   let best = null;
   for (let b = 80; b <= 140; b++) { let cost = 0; for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id === 'straight' ? 0 : 0.02)));
     cost += r() * 0.04; if (!best || cost < best.cost) best = { b, cost }; }
   const bpm = best.b;
-  ch.forEach((x) => { x.feel = JP.FEELS.reduce((a, f) => (Math.abs(bpm * f.ratio - x.lead.bpm) < Math.abs(bpm * a.ratio - x.lead.bpm) ? f : a)); x.feelsLike = Math.round(bpm * x.feel.ratio); });
+  ch.forEach((x, i) => { x.feel = JP.FEELS.reduce((a, f) => (Math.abs(bpm * f.ratio - x.lead.bpm) < Math.abs(bpm * a.ratio - x.lead.bpm) ? f : a));
+    if (ov[i] && ov[i].feel) x.feel = JP.FEELS.find((f) => f.id === ov[i].feel) || x.feel; x.feelsLike = Math.round(bpm * x.feel.ratio); });
 
   // bars: every chapter a whole number of 8-bar phrases
   const totalBars = minutes * bpm / 4;
@@ -364,6 +386,7 @@ JP.plan = (words, opts = {}) => {
       if (i === top && r() < 0.3) move = 'golden';
       if (move === 'relative') { tonic = (tonic + (minor ? 3 : 9)) % 12; minor = !minor; } else if (move === 'up5') tonic = (tonic + 7) % 12; else if (move === 'down5') tonic = (tonic + 5) % 12; else if (move === 'golden') tonic = (tonic + 2) % 12;
       x.keyMove = move; } else x.keyMove = 'start';
+    if (ov[i] && ov[i].key) { const [kn, km] = ov[i].key.split(' '); const kt = JP.KEYS.indexOf(kn); if (kt >= 0) { tonic = kt; minor = km === 'minor'; x.keyMove = 'yours'; } }
     x.key = JP.KEYS[tonic] + (minor ? ' minor' : ' major'); x.tonic = tonic; x.minor = minor;
   });
 
@@ -388,6 +411,13 @@ JP.plan = (words, opts = {}) => {
     if (!cands.length) break; const s = cands[Math.floor(r() * cands.length)]; swaps.push(s);
     const p = ch[s.at].players[s.pi]; p.player = s.inst; p.swapped = s.from;
   }
+
+  // your own players win over the dice; 'off' takes a layer out
+  ch.forEach((x, i) => { const o = (ov[i] || {}).players || {};
+    for (const [role, inst] of Object.entries(o)) { const at = x.players.findIndex((p) => p.role === role);
+      if (inst === 'off') { if (at >= 0) x.players.splice(at, 1); continue; }
+      const p = { role, player: inst, swapped: false, yours: true }; if (at >= 0) x.players[at] = p; else x.players.push(p); }
+    x.players.sort((a, b) => JP.ROLE_ORDER.indexOf(a.role) - JP.ROLE_ORDER.indexOf(b.role)); });
 
   // the motif: four to six notes that travel through every chapter in a new costume
   const len = 4 + Math.floor(r() * 3), steps = [0], rh = [];
@@ -424,6 +454,7 @@ const S = {
   minutes: ss.get('journey-min', 40),
   seed: (Math.random() * 4294967296) >>> 0,
   plan: null,
+  ov: [{}, {}, {}, {}, {}],
 };
 
 // ---------- rack ----------
@@ -450,7 +481,7 @@ function drawWords() {
     const box = document.createElement('div'); box.className = 'w'; box.style.setProperty('--wc', COL[i]);
     const l = document.createElement('div'); l.className = 'wl'; l.style.color = HEX[i]; l.textContent = (i + 1) + ' · ' + WHEELS[i][1];
     const b = document.createElement('button'); b.type = 'button'; b.className = 'wb serif'; b.textContent = w.word; b.title = 'Roll this word again';
-    b.onclick = () => { if (S.locks[i]) return; rollOne(i); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin'); setTimeout(() => { b.textContent = S.words[i].word; }, 200); replan(); };
+    b.onclick = () => { if (S.locks[i]) return; rollOne(i); S.ov[i] = {}; b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin'); setTimeout(() => { b.textContent = S.words[i].word; }, 200); replan(); };
     const lk = document.createElement('button'); lk.type = 'button'; lk.className = 'lock'; lk.setAttribute('aria-pressed', S.locks[i] ? 'true' : 'false'); lk.textContent = S.locks[i] ? '🔒 locked' : '🔓';
     lk.onclick = () => { S.locks[i] = !S.locks[i]; drawWords(); };
     box.append(l, b, lk); el.append(box);
@@ -461,7 +492,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 // ---------- plan + map ----------
 function replan() {
   const recent = ls.get('journey-recent', []);
-  S.plan = JP.plan(S.words, { seed: S.seed, minutes: S.minutes, rack: S.rack, recent, allWords: JW });
+  S.plan = JP.plan(S.words, { seed: S.seed, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
   drawMap(); drawChapters();
 }
 function remember() { // after a journey is made (phase 2) this list makes the next one choose differently
@@ -522,15 +553,26 @@ function drawChapters() {
     const d = document.createElement('article'); d.className = 'ch'; d.style.setProperty('--wc', COL[i]);
     const bars = JP.DIMS.map((k) => { const v = c.c[k], lo = k === 'world' ? 0 : -1, h = (v - lo) / (1 - lo);
       return `<div class="bar"><i><b style="bottom:0;height:${Math.round(h * 100)}%"></b></i>${DIMN[k]}</div>`; }).join('');
-    const pl = c.players.map((x) => `<div class="pl"><span>${JP.RACK[x.role].icon} ${JP.ROLE_NAME[x.role]}</span><span>${esc(x.player)}${x.swapped ? ` <span class="sw">⇄ from your ${JP.RACK[x.swapped].name.toLowerCase()} rack</span>` : ''}</span></div>`).join('');
+    const o = S.ov[i];
+    const playing = Object.fromEntries(c.players.map((x) => [x.role, x]));
+    const pl = JP.ROLE_ORDER.map((role) => { const x = playing[role], cur = x ? x.player : 'off';
+      const opts = [{ v: 'off', t: '· off ·' }, ...JP.roleOptions(role).map((v) => ({ v, t: (S.rack[role].includes(v) ? '✓ ' : '') + v }))];
+      return `<div class="pl"><span>${JP.RACK[role].icon} ${JP.ROLE_NAME[role]}</span><span class="ctl">${sel(i, 'p:' + role, opts, cur, o.players && role in o.players)}${dice(i, 'p:' + role)}${x && x.swapped ? ` <span class="sw">⇄ from your ${JP.RACK[x.swapped].name.toLowerCase()} rack</span>` : ''}</span></div>`; }).join('');
     const out = i < p.chapters.length - 1 ? `Into the next: <b>${JP.TRANSITIONS[c.out].icon} ${JP.TRANSITIONS[c.out].name}</b>${c.overlap ? `, ${c.overlap} bars overlap` : ''}` : `The end: <b>${esc(p.ending.name)}</b>`;
     const br = c.breathInside ? `<div class="sw">○ a breath at bar ${c.breathInside.bar}</div>` : '';
-    d.innerHTML = `<h3 class="serif" style="color:${HEX[i]}">${esc(c.word)} <small>${i + 1} · ${WHEELS[i][1].toLowerCase()}</small></h3>
+    const artOpts = (skip) => Object.entries(JP.MACHINES).filter(([m]) => m !== skip).map(([m, M]) => ({ group: M.icon + ' ' + M.name, items: JP.ARTS.filter((a) => a.machine === m).map((a) => ({ v: a.name, t: a.name })) }));
+    const leadSel = sel(i, 'lead', artOpts(null), c.lead.name, !!o.lead);
+    const gSel = (k) => sel(i, 'g' + (k + 1), [{ v: 'none', t: '· none ·' }, ...artOpts(c.lead.machine)], c.guests[k] ? c.guests[k].name : 'none', ('g' + (k + 1)) in o);
+    const feelSel = sel(i, 'feel', JP.FEELS.map((f) => ({ v: f.id, t: f.name + ' (' + Math.round(p.bpm * f.ratio) + ')' })), c.feel.id, !!o.feel);
+    const keySel = sel(i, 'key', JP.KEYS.flatMap((k) => [k + ' major', k + ' minor']).map((v) => ({ v, t: v })), c.key, !!o.key);
+    const any = Object.keys(o).length > 0;
+    d.innerHTML = `<h3 class="serif" style="color:${HEX[i]}">${esc(c.word)} <small>${i + 1} · ${WHEELS[i][1].toLowerCase()}</small>${any ? `<button class="undo" data-i="${i}" title="Give this chapter back to the dice">↺ dice</button>` : ''}</h3>
       <div class="bars">${bars}</div>
-      <dl class="kv"><dt>Leader</dt><dd>${JP.MACHINES[c.lead.machine].icon} <b>${esc(c.lead.name)}</b> <span class="muted small">from ${JP.MACHINES[c.lead.machine].name}</span></dd>
-      <dt>Guests</dt><dd>${c.guests.map((g) => `${JP.MACHINES[g.machine].icon} ${esc(g.name)}`).join(' · ') || 'none'}</dd>
-      <dt>Feel</dt><dd>${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}, feels like ${c.feelsLike} bpm</dd>
-      <dt>Key</dt><dd>${esc(c.key)}${c.keyMove === 'golden' ? ' <span class="sw">✦ golden step up</span>' : ''}</dd>
+      <dl class="kv"><dt>Leader</dt><dd class="ctl">${leadSel}${dice(i, 'lead')}</dd>
+      <dt>Guest 1</dt><dd class="ctl">${gSel(0)}${dice(i, 'g1')}</dd>
+      <dt>Guest 2</dt><dd class="ctl">${gSel(1)}${dice(i, 'g2')}</dd>
+      <dt>Feel</dt><dd class="ctl">${feelSel}${dice(i, 'feel')}</dd>
+      <dt>Key</dt><dd class="ctl">${keySel}${dice(i, 'key')}${c.keyMove === 'golden' ? ' <span class="sw">✦ golden</span>' : ''}</dd>
       <dt>Length</dt><dd>${c.bars} bars · ${c.minutes.toFixed(1)} min</dd>
       <dt>Layers</dt><dd>${c.layersStart} → ${c.layers} → ${c.layersEnd}</dd></dl>
       <div class="players">${pl}</div>${br}
@@ -540,8 +582,25 @@ function drawChapters() {
   });
 }
 
+// ---------- your own choices on the map ----------
+function sel(i, field, opts, cur, mine) {
+  const o = (x) => `<option value="${esc(x.v)}"${x.v === cur ? ' selected' : ''}>${esc(x.t)}</option>`;
+  const body = opts.map((x) => (x.group ? `<optgroup label="${esc(x.group)}">${x.items.map(o).join('')}</optgroup>` : o(x))).join('');
+  return `<select class="pk${mine ? ' mine' : ''}" data-i="${i}" data-f="${field}" aria-label="${esc(field)}">${body}</select>`;
+}
+const dice = (i, field) => `<button class="dz" data-i="${i}" data-f="${field}" title="Let the dice choose this one">🎲</button>`;
+function setOv(i, field, v) { const o = S.ov[i];
+  if (field.startsWith('p:')) { o.players = o.players || {}; o.players[field.slice(2)] = v; } else o[field] = v; replan(); }
+$('#chs').addEventListener('change', (e) => { const t = e.target; if (!t.matches('select.pk')) return; setOv(+t.dataset.i, t.dataset.f, t.value); });
+$('#chs').addEventListener('click', (e) => {
+  const u = e.target.closest('.undo'); if (u) { S.ov[+u.dataset.i] = {}; replan(); return; }
+  const b = e.target.closest('.dz'); if (!b) return; const s = b.parentElement.querySelector('select.pk');
+  const vals = [...s.options].map((x) => x.value).filter((v) => v !== s.value && v !== 'off' && v !== 'none' && (!b.dataset.f.startsWith('p:') || v !== JP.PLAIN || Math.random() < 0.15));
+  if (vals.length) setOv(+b.dataset.i, b.dataset.f, vals[Math.floor(Math.random() * vals.length)]);
+});
+
 // ---------- controls ----------
-$('#rollAll').onclick = () => { S.words.forEach((w, i) => { if (!S.locks[i]) rollOne(i); }); S.seed = (Math.random() * 4294967296) >>> 0; drawWords(); replan(); };
+$('#rollAll').onclick = () => { S.words.forEach((w, i) => { if (!S.locks[i]) { rollOne(i); S.ov[i] = {}; } }); S.seed = (Math.random() * 4294967296) >>> 0; drawWords(); replan(); };
 $('#reseed').onclick = () => { S.seed = (Math.random() * 4294967296) >>> 0; replan(); };
 function drawLen() { document.querySelectorAll('#len button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.m === S.minutes ? 'true' : 'false')); }
 document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.minutes = +b.dataset.m; ss.set('journey-min', S.minutes); drawLen(); replan(); }; });
