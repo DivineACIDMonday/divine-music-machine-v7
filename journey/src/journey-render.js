@@ -163,10 +163,10 @@ function speak(ctx, role, player, content, c) {
     if (player === 'PERRCS' && content.score) { const s = content.score; const k = role === 'perc' ? 'perA' : 'perB'; one('PERRCS, Style ' + s.cats[k], s.r[k].notes, s.r[k].ccs); return tr; }
     if (player === 'Kick 1' || player === 'Kick 2') { const ns = role === 'beats' ? lanes.filter((n) => n.lane <= 1).map((n) => ({ t: n.t, d: n.d, v: n.v, p: 36 })) : voices.filter((n) => KICKS.has(n.voice)).map((n) => ({ t: n.t, d: 120, v: n.v, p: 36 })); one(player + ' (kick only)', ns); return tr; }
     if (drumPlugin || player === JP_PLAIN || player === 'PERRCS') {
-      if (role === 'beats') { const key = PK[player] || 'gm'; one(player === JP_PLAIN ? 'Beat (GM drums)' : 'Beat for ' + player, E.applyMask(song, 'beat', lanes, key, { mode: 'instrument' })); return tr; }
+      if (role === 'beats') { const key = PK[player] || 'gm'; one(player === JP_PLAIN ? 'Beat, standard drum notes' : 'Beat for ' + player, E.applyMask(song, 'beat', lanes, key, { mode: 'instrument' })); return tr; }
       const style = content.percKey, sl = style === 'taiko' ? TAIKO_SLOTS : style === 'marching' ? MARCH_SLOTS : PERC_SLOTS, k = PK[player];
       const noteOf = (v) => { if (player === 'Tekno') return TEKNO_PERC[v] || 43; if (PERC_KEYS[k]) { const i = sl.findIndex((s) => s.includes(v)); return PERC_KEYS[k][Math.max(0, i)]; } return ctx.P.VOICES[v] ? ctx.P.VOICES[v].gm : 60; };
-      one(player === JP_PLAIN ? 'Percussion (GM)' : 'Percussion for ' + player, voices.map((n) => ({ t: n.t, d: 120, v: n.v, p: noteOf(n.voice) }))); return tr;
+      one(player === JP_PLAIN ? 'Percussion, standard drum notes' : 'Percussion for ' + player, voices.map((n) => ({ t: n.t, d: 120, v: n.v, p: noteOf(n.voice) }))); return tr;
     }
     // a pitched instrument plays the drums: every drum becomes a tone of the key
     const pitched = pitchDrums(role === 'beats' ? lanes : voices, c, role === 'beats');

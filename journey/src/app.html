@@ -318,7 +318,7 @@ function rackCard(p, res) {
     L.push((i + 1) + '. ' + c.word.toUpperCase() + '   bars ' + b0 + ' to ' + b1 + '   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + ' (feels like ' + c.feelsLike + ' bpm)');
     L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
     const seen = new Set(); res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = t.role + t.player; if (seen.has(k)) return; seen.add(k);
-      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + HINT(t.player)); });
+      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
     if (i < p.chapters.length - 1) L.push('   Into the next: ' + JP.TRANSITIONS[c.out].name + (c.overlap ? ', ' + c.overlap + ' bars overlap' : ''));
     L.push(''); });
   L.push('Drop every file on bar 1. Everything already sits in its place.', '', '(c) 2026 Divine Monday');
