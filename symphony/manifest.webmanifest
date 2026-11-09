@@ -1,7 +1,7 @@
 {
  "name": "Divine Symphony Machine",
  "short_name": "DM Symphony",
- "description": "Pick an era, a form and your orchestra, get classical MIDI for BBC Symphony Orchestra Discover. No AI inside.",
+ "description": "Pick a feeling, an era and a form, and get a whole symphony as MIDI. No AI inside.",
  "id": "/divine-music-machine-v7/symphony/",
  "start_url": "./",
  "scope": "./",
