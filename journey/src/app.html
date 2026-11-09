@@ -363,7 +363,7 @@ function rackCard(p, res) {
     L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
     const seen = new Set(); res.tracks.filter((t) => t.chapter === i).forEach((t) => { const st = (t.name.match(/(Strings [AB] )?for STRIIIINGS, Style (.*)$|PERRCS, Style (.*)$/) || []); const sty = st[2] || st[3] || '';
       const k = t.role + t.player + sty; if (seen.has(k)) return; seen.add(k);
-      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
+      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + 'Sound: ' + t.colour + '. ' + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
     if (i < p.chapters.length - 1) L.push('   Into the next: ' + JP.TRANSITIONS[c.out].name + (c.overlap ? ', ' + c.overlap + ' bars overlap' : ''));
     L.push(''); });
   L.push('Drop every file on bar 1. Everything already sits in its place.', '', '(c) 2026 Divine Monday');
@@ -373,7 +373,7 @@ function makeJourney() {
   const p = S.plan, ctx = { E: window.DMM, P: window.PercMotor, S: window.SCORE, Y: window.SYM, JP };
   const res = JR.render(p, ctx), title = 'Divine Journey ' + S.words.map((w) => w.word).join(' '), meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: res.markers };
   const base = 'DM_Journey_' + safe(S.words.map((w) => w.word).join('_')) + '_' + p.bpm + 'bpm', files = [];
-  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(S.fixed ? JR.fix(res.tracks, S.rack, window.SYM) : res.tracks, meta) });
+  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(S.fixed ? JR.fix(res.tracks, S.rack, window.SYM).map((t) => Object.assign(t, { name: t.name + ' . ' + p.bpm + ' bpm' })) : res.tracks, meta) });
   p.chapters.forEach((c, i) => { const dir = base + '/' + String(i + 1).padStart(2, '0') + '_' + safe(c.word) + '/';
     const by = {}; res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: (i + 1) + ' ' + c.word + ' ' + k })) }); });

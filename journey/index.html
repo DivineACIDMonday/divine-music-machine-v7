@@ -7737,7 +7737,7 @@ JR.render = function (plan, ctx) {
       for (const t of tracks) { const notes = shape(plan, i, p.role, rank[p.role] || 0, toJ(t.notes), tl);
         if (!notes.length) continue;
         const cc = (t.cc || []).filter((e) => e.t * k < c.bars * BAR).map((e) => ({ t: Math.max(0, Math.round(e.t * k)) + tl[i].start, c: e.c, v: e.v }));
-        all.push({ chapter: i, word: c.word, role: p.role, player: p.player, name: (i + 1) + ' ' + c.word + ' . ' + t.name, notes, cc }); }
+        all.push({ chapter: i, word: c.word, role: p.role, player: p.player, name: (i + 1) + ' ' + c.word + ' . ' + t.name + ' . ' + plan.bpm + ' bpm . ' + JR.colour(c, p.role, p.player), plain: t.name, colour: JR.colour(c, p.role, p.player), notes, cc }); }
     }
   });
   listen(all, plan, tl);
@@ -7765,7 +7765,26 @@ JR.writeMidi = function (tracks, meta) {
   return new Uint8Array(head.concat(...chunks));
 };
 // ---------- fixed tracks: the same track list every time, so a DAW template keeps working ----------
-JR.norm = (name) => name.replace(/^\d+ .*? \. /, '').replace(/, Style .*$/, '');
+JR.norm = (name) => name.replace(/^\d+ .*? \. /, '').replace(/ \. \d+ bpm \. .*$/, '').replace(/, Style .*$/, '');
+// what sounds best here: a colour for the sound, from the chapter's character and the role
+JR.colour = (c, role, player) => {
+  const x = c.c, pick = (pairs) => pairs.filter(([ok]) => ok).map(([, w]) => w).slice(0, 2);
+  const orchP = player === 'Berlin' || player === 'BBC' || player === 'STRIIIINGS';
+  const tone = pick([[x.light < -0.3, 'dark'], [x.light > 0.35, 'bright'], [x.tension > 0.45, 'gritty'], [x.warm > 0.35, 'warm'], [x.warm < -0.35, 'cold'], [x.weight > 0.35, 'heavy'], [x.weight < -0.35, 'airy']]);
+  const t = tone.length ? tone.join(' ') + ' ' : (x.light >= 0 ? 'soft ' : 'deep ');
+  const fast = x.speed > 0.3 || c.feel.id === 'double', slow = x.speed < -0.3 || c.feel.id === 'half';
+  if (orchP && role !== 'beats' && role !== 'perc') return t + (fast ? 'short, spiccato' : slow ? 'long legato, slow attack' : 'long sustain');
+  switch (role) {
+    case 'beats': return t + (x.warm > 0.35 ? 'vintage kit' : x.warm < -0.35 ? 'electronic kit' : 'tight kit');
+    case 'perc': return t + 'hand percussion, ' + (c.lead.machine === 'percussion' ? c.lead.name : 'light shakers and bells');
+    case 'bass': return x.weight > 0.3 ? t + 'deep sub' : x.tension > 0.4 ? t + 'growling saw bass' : x.warm > 0.3 ? t + 'round warm bass' : t + 'clean sub bass';
+    case 'chords': return t + (slow ? 'slow pad' : fast ? 'short stab' : 'soft keys');
+    case 'melody': return x.tension > 0.45 ? t + 'saw lead with grit' : x.light > 0.4 ? t + 'bell lead' : fast ? t + 'pluck' : t + 'smooth lead';
+    case 'motif': return t + 'clear lead that cuts through';
+    case 'orch': return t + 'strings, long';
+  }
+  return t.trim();
+};
 JR.skeleton = (rack, Y) => {
   const P = (r) => (rack[r] && rack[r][0]) || JP_PLAIN, out = [];
   const UJ = (lab, p) => (PK[p] ? lab + ' for ' + p + ' (Instrument mode)' : p === JP_PLAIN ? lab : lab + ' for ' + p);
@@ -7999,7 +8018,7 @@ function rackCard(p, res) {
     L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
     const seen = new Set(); res.tracks.filter((t) => t.chapter === i).forEach((t) => { const st = (t.name.match(/(Strings [AB] )?for STRIIIINGS, Style (.*)$|PERRCS, Style (.*)$/) || []); const sty = st[2] || st[3] || '';
       const k = t.role + t.player + sty; if (seen.has(k)) return; seen.add(k);
-      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
+      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + 'Sound: ' + t.colour + '. ' + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
     if (i < p.chapters.length - 1) L.push('   Into the next: ' + JP.TRANSITIONS[c.out].name + (c.overlap ? ', ' + c.overlap + ' bars overlap' : ''));
     L.push(''); });
   L.push('Drop every file on bar 1. Everything already sits in its place.', '', '(c) 2026 Divine Monday');
@@ -8009,7 +8028,7 @@ function makeJourney() {
   const p = S.plan, ctx = { E: window.DMM, P: window.PercMotor, S: window.SCORE, Y: window.SYM, JP };
   const res = JR.render(p, ctx), title = 'Divine Journey ' + S.words.map((w) => w.word).join(' '), meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: res.markers };
   const base = 'DM_Journey_' + safe(S.words.map((w) => w.word).join('_')) + '_' + p.bpm + 'bpm', files = [];
-  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(S.fixed ? JR.fix(res.tracks, S.rack, window.SYM) : res.tracks, meta) });
+  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(S.fixed ? JR.fix(res.tracks, S.rack, window.SYM).map((t) => Object.assign(t, { name: t.name + ' . ' + p.bpm + ' bpm' })) : res.tracks, meta) });
   p.chapters.forEach((c, i) => { const dir = base + '/' + String(i + 1).padStart(2, '0') + '_' + safe(c.word) + '/';
     const by = {}; res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: (i + 1) + ' ' + c.word + ' ' + k })) }); });

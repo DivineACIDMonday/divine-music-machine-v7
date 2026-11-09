@@ -363,7 +363,7 @@ JR.render = function (plan, ctx) {
       for (const t of tracks) { const notes = shape(plan, i, p.role, rank[p.role] || 0, toJ(t.notes), tl);
         if (!notes.length) continue;
         const cc = (t.cc || []).filter((e) => e.t * k < c.bars * BAR).map((e) => ({ t: Math.max(0, Math.round(e.t * k)) + tl[i].start, c: e.c, v: e.v }));
-        all.push({ chapter: i, word: c.word, role: p.role, player: p.player, name: (i + 1) + ' ' + c.word + ' . ' + t.name, notes, cc }); }
+        all.push({ chapter: i, word: c.word, role: p.role, player: p.player, name: (i + 1) + ' ' + c.word + ' . ' + t.name + ' . ' + plan.bpm + ' bpm . ' + JR.colour(c, p.role, p.player), plain: t.name, colour: JR.colour(c, p.role, p.player), notes, cc }); }
     }
   });
   listen(all, plan, tl);
@@ -391,7 +391,26 @@ JR.writeMidi = function (tracks, meta) {
   return new Uint8Array(head.concat(...chunks));
 };
 // ---------- fixed tracks: the same track list every time, so a DAW template keeps working ----------
-JR.norm = (name) => name.replace(/^\d+ .*? \. /, '').replace(/, Style .*$/, '');
+JR.norm = (name) => name.replace(/^\d+ .*? \. /, '').replace(/ \. \d+ bpm \. .*$/, '').replace(/, Style .*$/, '');
+// what sounds best here: a colour for the sound, from the chapter's character and the role
+JR.colour = (c, role, player) => {
+  const x = c.c, pick = (pairs) => pairs.filter(([ok]) => ok).map(([, w]) => w).slice(0, 2);
+  const orchP = player === 'Berlin' || player === 'BBC' || player === 'STRIIIINGS';
+  const tone = pick([[x.light < -0.3, 'dark'], [x.light > 0.35, 'bright'], [x.tension > 0.45, 'gritty'], [x.warm > 0.35, 'warm'], [x.warm < -0.35, 'cold'], [x.weight > 0.35, 'heavy'], [x.weight < -0.35, 'airy']]);
+  const t = tone.length ? tone.join(' ') + ' ' : (x.light >= 0 ? 'soft ' : 'deep ');
+  const fast = x.speed > 0.3 || c.feel.id === 'double', slow = x.speed < -0.3 || c.feel.id === 'half';
+  if (orchP && role !== 'beats' && role !== 'perc') return t + (fast ? 'short, spiccato' : slow ? 'long legato, slow attack' : 'long sustain');
+  switch (role) {
+    case 'beats': return t + (x.warm > 0.35 ? 'vintage kit' : x.warm < -0.35 ? 'electronic kit' : 'tight kit');
+    case 'perc': return t + 'hand percussion, ' + (c.lead.machine === 'percussion' ? c.lead.name : 'light shakers and bells');
+    case 'bass': return x.weight > 0.3 ? t + 'deep sub' : x.tension > 0.4 ? t + 'growling saw bass' : x.warm > 0.3 ? t + 'round warm bass' : t + 'clean sub bass';
+    case 'chords': return t + (slow ? 'slow pad' : fast ? 'short stab' : 'soft keys');
+    case 'melody': return x.tension > 0.45 ? t + 'saw lead with grit' : x.light > 0.4 ? t + 'bell lead' : fast ? t + 'pluck' : t + 'smooth lead';
+    case 'motif': return t + 'clear lead that cuts through';
+    case 'orch': return t + 'strings, long';
+  }
+  return t.trim();
+};
 JR.skeleton = (rack, Y) => {
   const P = (r) => (rack[r] && rack[r][0]) || JP_PLAIN, out = [];
   const UJ = (lab, p) => (PK[p] ? lab + ' for ' + p + ' (Instrument mode)' : p === JP_PLAIN ? lab : lab + ' for ' + p);
