@@ -1711,6 +1711,7 @@ function writeMidi(res, ids, opt) {
   return new Uint8Array(all);
 }
 Y.writeMidi = writeMidi;
+Y.toBerlin = toBerlin;
 
 /* ================= main ================= */
 function compose(o) {

@@ -108,7 +108,7 @@ JP.roleOptions = (role) => { const out = [JP.PLAIN, ...JP.RACK[role].items];
     else if (fits(inst, role)) out.push(inst); }
   return out; };
 const fits = (inst, role) => { if (inst === JP.PLAIN) return true; const i = JP.INSTR[inst] || {}; const reg = JP.ROLE_REG[role];
-  if (!reg) return true; if (i.drums) return false; return i.range && i.range[0] <= reg[0] && i.range[1] >= reg[1]; };
+  if (!reg) return !!i.drums; if (i.drums) return false; return i.range && i.range[0] <= reg[0] && i.range[1] >= reg[1]; };
 
 // which roles each leader brings to the stage, strongest first
 JP.ROLES = {
@@ -287,8 +287,7 @@ JP.plan = (words, opts = {}) => {
   ch.forEach((x, i) => { const o = (ov[i] || {}).players || {};
     for (const [role, inst] of Object.entries(o)) { const at = x.players.findIndex((p) => p.role === role);
       if (inst === 'off') { if (at >= 0) x.players.splice(at, 1); continue; }
-      const p = { role, player: inst, swapped: false, yours: true }; if (at >= 0) x.players[at] = p; else x.players.push(p); }
-    x.players.sort((a, b) => JP.ROLE_ORDER.indexOf(a.role) - JP.ROLE_ORDER.indexOf(b.role)); });
+      const p = { role, player: inst, swapped: false, yours: true }; if (at >= 0) x.players[at] = p; else x.players.push(p); } });
 
   // the motif: four to six notes that travel through every chapter in a new costume
   const len = 4 + Math.floor(r() * 3), steps = [0], rh = [];

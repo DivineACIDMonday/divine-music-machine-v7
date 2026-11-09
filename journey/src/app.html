@@ -87,7 +87,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 <div id="app">
 <header>
   <div class="logo serif">Divine <i>Journey</i> Machine</div>
-  <span class="tag">phase 1 · the map</span>
+  <span class="tag">beta</span>
   <div class="grow"></div>
   <a class="back" href="/">← all machines</a>
 </header>
@@ -119,14 +119,16 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 <section class="chs" id="chs"></section>
 
 <section class="card" style="align-items:center;text-align:center">
-  <button class="btn big" disabled>▶ Make the journey</button>
-  <div class="muted small">The sound arrives in phase 2. For now: does the map feel right?</div>
+  <button class="btn big" id="make">Make the journey</button>
+  <div class="muted small" id="makeMsg">One zip: the whole journey as one MIDI file, a folder per chapter with a file per layer, and a rack card that tells you which plugin goes on which track.</div>
 </section>
 <footer>© 2026 Divine Monday</footer>
 </div>
 
 <script>/*WORDS*/</script>
 <script>/*PLAN*/</script>
+<script>/*ENGINES*/</script>
+<script>/*RENDER*/</script>
 <script>
 const $ = (s) => document.querySelector(s);
 const WHEELS = [['W1', 'Mood'], ['W2', 'Motion'], ['W3', 'Colour'], ['W4', 'Place'], ['W5', 'Idea']];
@@ -289,6 +291,55 @@ $('#chs').addEventListener('click', (e) => {
   const vals = [...s.options].map((x) => x.value).filter((v) => v !== s.value && v !== 'off' && v !== 'none' && (!b.dataset.f.startsWith('p:') || v !== JP.PLAIN || Math.random() < 0.15));
   if (vals.length) setOv(+b.dataset.i, b.dataset.f, vals[Math.floor(Math.random() * vals.length)]);
 });
+
+// ---------- make the journey: MIDI files, a folder per chapter, the rack card, one zip ----------
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const u16 = (v) => [v & 255, (v >>> 8) & 255], u32 = (v) => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  files.forEach((f) => { const nm = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const loc = [].concat(u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(sz), u32(sz), u16(nm.length), u16(0));
+    parts.push(new Uint8Array(loc), nm, f.data);
+    cen.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(sz), u32(sz), u16(nm.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), nm);
+    off += loc.length + nm.length + sz; });
+  const cs = cen.reduce((a, b) => a + b.length, 0);
+  const end = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cs), u32(off), u16(0)));
+  return new Blob(parts.concat(cen, [end]), { type: 'application/zip' });
+}
+const safe = (t) => String(t).replace(/♭/g, 'b').replace(/♯/g, '#').normalize('NFKD').replace(/[^\w#.+ -]/g, '').replace(/\s+/g, '_');
+const HINT = (player) => ({ 'Plain MIDI': 'any instrument you like', 'XO': 'your kit on pads 1 to 8', 'Impact': 'your kit on pads 1 to 8', 'Tekno': 'one kit, notes as Tekno maps them', 'EZdrummer': 'any kit, General MIDI map',
+  'Virtual Drummer': 'any drummer', 'Beatmaker': 'Instrument mode', 'Kick 1': 'kick only', 'Kick 2': 'kick only', 'PERRCS': 'set the Style named in the track, Latch off, Sync on Note',
+  'STRIIIINGS': 'set the Style named in the track, Latch off, Sync on Note', 'Berlin': 'one patch per track, the name tells which; CC70 switches articulations', 'BBC': 'one instrument per track, the name tells which; key switches are in the file',
+  'Presence': 'any preset', 'Diva': 'any preset' }[player] || 'switch the plugin to Instrument mode');
+function rackCard(p, res) {
+  const L = ['DIVINE JOURNEY MACHINE . RACK CARD', '', S.words.map((w) => w.word).join(' . ') + '   ' + p.bpm + ' bpm, one tempo for the whole journey', 'Arc: ' + p.arc.name + '. Opens: ' + p.opening.name + '. Ends: ' + p.ending.name + '.', ''];
+  p.chapters.forEach((c, i) => { const b0 = Math.round(res.timeline[i].start / JR.BAR) + 1, b1 = b0 + c.bars - 1;
+    L.push((i + 1) + '. ' + c.word.toUpperCase() + '   bars ' + b0 + ' to ' + b1 + '   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + ' (feels like ' + c.feelsLike + ' bpm)');
+    L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
+    const seen = new Set(); res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = t.role + t.player; if (seen.has(k)) return; seen.add(k);
+      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + HINT(t.player)); });
+    if (i < p.chapters.length - 1) L.push('   Into the next: ' + JP.TRANSITIONS[c.out].name + (c.overlap ? ', ' + c.overlap + ' bars overlap' : ''));
+    L.push(''); });
+  L.push('Drop every file on bar 1. Everything already sits in its place.', '', '(c) 2026 Divine Monday');
+  return new TextEncoder().encode(L.join('\r\n'));
+}
+function makeJourney() {
+  const p = S.plan, ctx = { E: window.DMM, P: window.PercMotor, S: window.SCORE, Y: window.SYM, JP };
+  const res = JR.render(p, ctx), title = 'Divine Journey ' + S.words.map((w) => w.word).join(' '), meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: res.markers };
+  const base = 'DM_Journey_' + safe(S.words.map((w) => w.word).join('_')) + '_' + p.bpm + 'bpm', files = [];
+  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(res.tracks, meta) });
+  p.chapters.forEach((c, i) => { const dir = base + '/' + String(i + 1).padStart(2, '0') + '_' + safe(c.word) + '/';
+    const by = {}; res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
+    for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: (i + 1) + ' ' + c.word + ' ' + k })) }); });
+  files.push({ name: base + '/Rack_Card.txt', data: rackCard(p, res) });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(zip(files)); a.download = base + '.zip'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  remember();
+  return { files: files.length, tracks: res.tracks.length };
+}
+$('#make').onclick = () => { const b = $('#make'), m = $('#makeMsg'); b.disabled = true; b.textContent = 'The orchestra is tuning...';
+  setTimeout(() => { try { const r = makeJourney(); m.textContent = r.tracks + ' tracks in ' + r.files + ' files. Have a good journey.'; } catch (e) { m.textContent = 'Something went wrong: ' + e.message; console.error(e); }
+    b.disabled = false; b.textContent = 'Make the journey'; }, 30); };
 
 // ---------- controls ----------
 $('#rollAll').onclick = () => { S.words.forEach((w, i) => { if (!S.locks[i]) { rollOne(i); S.ov[i] = {}; } }); S.seed = (Math.random() * 4294967296) >>> 0; drawWords(); replan(); };
