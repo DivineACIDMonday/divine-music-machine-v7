@@ -182,6 +182,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
   <div class="sh"><span class="num serif">5</span><span class="st serif">Get it</span><span class="muted">One MIDI track per BBC instrument, with keyswitches, CC1 dynamics and CC11 expression.</span></div>
   <div class="go">
     <button class="btn gold" id="compose">Compose</button>
+    <button class="btn" id="surprise" title="Random feeling, era, key, orchestra and form, then compose">🎲 Surprise me</button>
     <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span>
     <span class="muted" id="status"></span>
   </div>
@@ -268,6 +269,38 @@ function drawFeels() {
     };
     box.appendChild(b);
   });
+}
+function surprise() {
+  const R = a => a[Math.floor(Math.random() * a.length)];
+  const fid = Math.random() < .85 ? R(Object.keys(Y.FEELINGS)) : null, fe = Y.FEELINGS[fid];
+  S.feel = fid; store.set('feel', fid);
+  S.era = fe && Math.random() < .7 ? fe.era : R(Object.keys(Y.ERAS)); store.set('era', S.era);
+  S.inst = new Set(fe && fe.preset && S.era === fe.era ? fe.preset : Y.PRESETS[S.era]); store.set('inst', [...S.inst]);
+  S.key = fe ? R(fe.keys) : R(KEYS)[0]; store.set('key', S.key); $('key').value = S.key;
+  const q = Math.random();
+  if (q < .35) S.form = 'symphony';
+  else if (q < .7) {
+    S.form = 'suite'; S.chain = [];
+    const n = 3 + Math.floor(Math.random() * 3);
+    const dark = fe && fe.mode === 'm';
+    for (let i = 0; i < n; i++) {
+      const adv = Y.advise(S.chain, S.feel), best = adv[0].stars;
+      let opts = adv.filter(a => a.stars >= Math.max(2, best - 1));
+      const fresh = opts.filter(a => !S.chain.some(c => c.form === a.form)); if (fresh.length) opts = fresh;
+      if (i === n - 1) { const fin = opts.filter(a => Y.CAT[a.form] === 'fast'); if (fin.length) opts = fin; }
+      const form = R(opts).form;
+      let feel = S.feel;
+      if (Y.CAT[form] === 'slow' && i > 0) feel = dark ? 'melancholy' : 'tender';
+      if (i === n - 1 && dark && Math.random() < .6) feel = R(['heroic', 'joyful']);
+      S.chain.push({ form, seed: newSeed(), lock: false, feel });
+    }
+    saveChain(); S.firstSuite = true;
+  } else S.form = fe ? R(fe.forms) : R(Y.SUITE_FORMS);
+  store.set('form', S.form);
+  S.seed = newSeed(); S.keep = false; $('keep').checked = false;
+  S.tempo = null; drawFeels(); drawEras(); drawForms(); syncOpts(); drawHall();
+  S.first = true; compose();
+  setTimeout(() => $('s4').scrollIntoView({ behavior: 'smooth' }), 400);
 }
 function drawEras() {
   $('eras').innerHTML = '';
@@ -550,6 +583,7 @@ function stop() {
 }
 $('play').onclick = play;
 $('compose').onclick = compose;
+$('surprise').onclick = surprise;
 drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); drawHall();
 })();
 </script>
