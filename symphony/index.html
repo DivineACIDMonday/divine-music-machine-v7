@@ -112,7 +112,10 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 .feel{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--tx);font:inherit;cursor:pointer;min-height:44px}
 .feel:hover{border-color:#5A464C}
 .feel[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#2C2124}
-.feel .ic{font-size:26px;line-height:1}
+.feel .ic{flex:0 0 auto;width:38px;height:26px;margin-top:2px}
+.fic{display:inline-block;vertical-align:middle;fill:none;stroke:var(--gold);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.chip .fic,.btn .fic{width:24px;height:15px;margin-right:6px}
+.arc .fic{width:44px;height:28px}
 .feel b{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif;font-size:18px}
 .feel small{display:block;color:var(--mu);font-size:13px}
 .fits{font:12px system-ui;color:#1A1208;background:var(--gold);border-radius:5px;padding:1px 6px;align-self:flex-start}
@@ -661,14 +664,14 @@ Y.FORMS = FORMS;
 
 /* ================= feelings ================= */
 const FEELINGS = {
-  heroic: { name: 'Heroic', icon: '🦁', blurb: 'Brave, proud, a victory. Horns and trumpets lead.', mode: 'M', keys: ['Eb', 'D', 'C'], era: 'romantic', forms: ['overture', 'march', 'sonata'], im: 1.04, ia: .05, da: .06, tempo: 1.04, rub: 1, lead: 'solo:hn', tex: { brisk: 'repeated8', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'tbn', 'btbn', 'tba', 'timp'] , leads: ['shn', 'hn'], bfo: ['shn', 'stpt', 'bells', 'cbsn', 'drums', 'metals'] },
-  tender: { name: 'Tender', icon: '🕊', blurb: 'Warm and close, like a love letter. A singing oboe over soft strings.', mode: 'M', keys: ['F', 'A', 'G'], era: 'classical', forms: ['aria', 'variations', 'minuet'], im: .75, ia: 0, da: -.15, tempo: .9, rub: 1.3, lead: 'solo:ob', tex: { brisk: 'alberti', lyr: 'arpeggio' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 , leads: ['svn', 'ob'], bfo: ['svn', 'eh'] },
-  mysterious: { name: 'Mysterious', icon: '🌫', blurb: 'Shadows and questions. Low strings tremble, a clarinet wanders.', mode: 'm', keys: ['d', 'c', 'f#'], era: 'romantic', forms: ['fugue', 'canon', 'sonata'], im: .85, ia: 0, da: -.12, tempo: .9, rub: 1.2, lead: 'solo:cl', tex: { brisk: 'tremolo', lyr: 'sustain' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'cl', 'bsn', 'hn', 'tbn', 'timp'], soft: 1 , leads: ['bcl', 'cl'], bfo: ['bcl', 'cbsn', 'vib', 'metals'] },
-  joyful: { name: 'Joyful', icon: '☀', blurb: 'Sunny and quick, a smile in sound. Bright strings and chattering winds.', mode: 'M', keys: ['G', 'D', 'A'], era: 'classical', forms: ['rondo', 'waltz', 'minuet'], im: 1, ia: .05, da: .05, tempo: 1.08, rub: .8, lead: 'solo:fl', tex: { brisk: 'repeated8', lyr: 'beats' }, preset: null , leads: ['fl'], bfo: ['glock', 'xyl', 'mar', 'metals'] },
-  melancholy: { name: 'Melancholy', icon: '🌧', blurb: 'Longing and rain on the window. A cello sings, minor colours everywhere.', mode: 'm', keys: ['g', 'e', 'b'], era: 'romantic', forms: ['aria', 'variations', 'canon'], im: .8, ia: 0, da: -.1, tempo: .88, rub: 1.4, lead: 'solo:vc', tex: { brisk: 'syncop', lyr: 'arpeggio' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 , leads: ['svc', 'eh', 'vc'], bfo: ['eh', 'svc', 'bcl'] },
-  stormy: { name: 'Stormy', icon: '⚡', blurb: 'Wind, waves, a chase. Tremolo strings, hammering timpani.', mode: 'm', keys: ['c', 'd', 'f'], era: 'romantic', forms: ['sonata', 'overture', 'fugue'], im: 1.06, ia: .06, da: .07, tempo: 1.1, rub: .9, lead: 'str', tex: { brisk: 'tremolo', lyr: 'syncop' }, flav: 'dark', preset: null , leads: [], bfo: ['cbsn', 'bcl', 'stbn', 'drums', 'metals'] },
-  dreamy: { name: 'Dreamy', icon: '💭', blurb: 'Floating, half asleep, soft light. Flute, piano and colour chords.', mode: 'M', keys: ['F', 'Ab', 'E'], era: 'impressionist', forms: ['aria', 'waltz', 'canon'], im: .7, ia: 0, da: -.15, tempo: .86, rub: 1.4, lead: 'solo:fl', tex: { brisk: 'arpeggio', lyr: 'sustain' }, flav: 'color', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'hn', 'pno'], soft: 1 , leads: ['fl', 'svn'], bfo: ['vib', 'glock', 'svn'] },
-  solemn: { name: 'Solemn', icon: '👑', blurb: 'Ceremony and dignity. Slow, full chords, brass like an organ.', mode: 'M', keys: ['C', 'Bb', 'D'], era: 'baroque', forms: ['fugue', 'march', 'overture'], im: 1, ia: .05, da: .05, tempo: .85, rub: .8, lead: 'str', tex: { brisk: 'continuo', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'ob', 'bsn', 'hn', 'tpt', 'tbn', 'timp', 'pno'] , leads: [], bfo: ['bells', 'stbn', 'cbsn', 'drums', 'metals'] },
+  heroic: { name: 'Heroic', blurb: 'Brave, proud, a victory. Horns and trumpets lead.', mode: 'M', keys: ['Eb', 'D', 'C'], era: 'romantic', forms: ['overture', 'march', 'sonata'], im: 1.04, ia: .05, da: .06, tempo: 1.04, rub: 1, lead: 'solo:hn', tex: { brisk: 'repeated8', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'tbn', 'btbn', 'tba', 'timp'] , leads: ['shn', 'hn'], bfo: ['shn', 'stpt', 'bells', 'cbsn', 'drums', 'metals'] },
+  tender: { name: 'Tender', blurb: 'Warm and close, like a love letter. A singing oboe over soft strings.', mode: 'M', keys: ['F', 'A', 'G'], era: 'classical', forms: ['aria', 'variations', 'minuet'], im: .75, ia: 0, da: -.15, tempo: .9, rub: 1.3, lead: 'solo:ob', tex: { brisk: 'alberti', lyr: 'arpeggio' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 , leads: ['svn', 'ob'], bfo: ['svn', 'eh'] },
+  mysterious: { name: 'Mysterious', blurb: 'Shadows and questions. Low strings tremble, a clarinet wanders.', mode: 'm', keys: ['d', 'c', 'f#'], era: 'romantic', forms: ['fugue', 'canon', 'sonata'], im: .85, ia: 0, da: -.12, tempo: .9, rub: 1.2, lead: 'solo:cl', tex: { brisk: 'tremolo', lyr: 'sustain' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'cl', 'bsn', 'hn', 'tbn', 'timp'], soft: 1 , leads: ['bcl', 'cl'], bfo: ['bcl', 'cbsn', 'vib', 'metals'] },
+  joyful: { name: 'Joyful', blurb: 'Sunny and quick, a smile in sound. Bright strings and chattering winds.', mode: 'M', keys: ['G', 'D', 'A'], era: 'classical', forms: ['rondo', 'waltz', 'minuet'], im: 1, ia: .05, da: .05, tempo: 1.08, rub: .8, lead: 'solo:fl', tex: { brisk: 'repeated8', lyr: 'beats' }, preset: null , leads: ['fl'], bfo: ['glock', 'xyl', 'mar', 'metals'] },
+  melancholy: { name: 'Melancholy', blurb: 'Longing and rain on the window. A cello sings, minor colours everywhere.', mode: 'm', keys: ['g', 'e', 'b'], era: 'romantic', forms: ['aria', 'variations', 'canon'], im: .8, ia: 0, da: -.1, tempo: .88, rub: 1.4, lead: 'solo:vc', tex: { brisk: 'syncop', lyr: 'arpeggio' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 , leads: ['svc', 'eh', 'vc'], bfo: ['eh', 'svc', 'bcl'] },
+  stormy: { name: 'Stormy', blurb: 'Wind, waves, a chase. Tremolo strings, hammering timpani.', mode: 'm', keys: ['c', 'd', 'f'], era: 'romantic', forms: ['sonata', 'overture', 'fugue'], im: 1.06, ia: .06, da: .07, tempo: 1.1, rub: .9, lead: 'str', tex: { brisk: 'tremolo', lyr: 'syncop' }, flav: 'dark', preset: null , leads: [], bfo: ['cbsn', 'bcl', 'stbn', 'drums', 'metals'] },
+  dreamy: { name: 'Dreamy', blurb: 'Floating, half asleep, soft light. Flute, piano and colour chords.', mode: 'M', keys: ['F', 'Ab', 'E'], era: 'impressionist', forms: ['aria', 'waltz', 'canon'], im: .7, ia: 0, da: -.15, tempo: .86, rub: 1.4, lead: 'solo:fl', tex: { brisk: 'arpeggio', lyr: 'sustain' }, flav: 'color', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'hn', 'pno'], soft: 1 , leads: ['fl', 'svn'], bfo: ['vib', 'glock', 'svn'] },
+  solemn: { name: 'Solemn', blurb: 'Ceremony and dignity. Slow, full chords, brass like an organ.', mode: 'M', keys: ['C', 'Bb', 'D'], era: 'baroque', forms: ['fugue', 'march', 'overture'], im: 1, ia: .05, da: .05, tempo: .85, rub: .8, lead: 'str', tex: { brisk: 'continuo', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'ob', 'bsn', 'hn', 'tpt', 'tbn', 'timp', 'pno'] , leads: [], bfo: ['bells', 'stbn', 'cbsn', 'drums', 'metals'] },
 };
 Y.FEELINGS = FEELINGS;
 const SOFT = ['tender', 'melancholy', 'dreamy', 'mysterious'], BOLD = ['heroic', 'joyful', 'stormy', 'solemn'];
@@ -2105,7 +2108,7 @@ function mergeParts(parts, titles, labels) {
     markers.push({ t: off, text: titles[i] });
     m.markers.forEach(x => markers.push({ t: sh(x.t), text: x.text }));
     const end = sh(m.end);
-    secs.push({ label: (FEELINGS[m.feel] ? FEELINGS[m.feel].icon + ' ' : '') + (labels ? labels[i] : (i + 1) + '. ' + FORMS[m.form].name.replace(' form', '').replace('Theme and v', 'V')), t0: off, t1: end, key: m.keyName, tempo: m.tempo });
+    secs.push({ label: (labels ? labels[i] : (i + 1) + '. ' + FORMS[m.form].name.replace(' form', '').replace('Theme and v', 'V')), t0: off, t1: end, key: m.keyName, tempo: m.tempo });
     off = end + Math.round(4 * master / 60 * PPQ);
   });
   const ord = INST.map(i => i.id).filter(id => tracks[id]);
@@ -2214,13 +2217,26 @@ const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'
 let RES = null, MV = 0;
 
 /* eras */
+/* feeling shapes: a drawn gold line per feeling, like the tension line */
+const FEEL_PATH = {
+  heroic: 'M2 17H9V12H16V7H23V3H30',
+  tender: 'M2 15C10 3 22 3 30 15',
+  mysterious: 'M2 14C6 9 9 19 13 14S20 9 23 15S28 17 30 12',
+  joyful: 'M2 10Q5 3 8 10T14 10T20 10T26 10T30 9',
+  melancholy: 'M2 4C12 5 18 10 30 17',
+  stormy: 'M2 12L7 4L11 16L16 3L20 17L25 5L30 14',
+  dreamy: 'M2 10C8 2 12 2 16 10S24 18 30 10',
+  solemn: 'M4 17V6H28V17M10 17V10M16 17V10M22 17V10',
+  free: 'M2 10H30'
+};
+const fic = (k, cls) => '<svg class="fic' + (cls ? ' ' + cls : '') + '" viewBox="0 0 32 20" aria-hidden="true"><path d="' + FEEL_PATH[k || 'free'] + '"' + (k ? '' : ' stroke-dasharray="1 5"') + '/></svg>';
 const eraIcons = { baroque: '𝄞', classical: '♩', romantic: '♪', impressionist: '≈' };
 function drawFeels() {
   const box = $('feels'); box.innerHTML = '';
-  const list = Object.entries(Y.FEELINGS).concat([[null, { name: 'Free choice', icon: '🎼', blurb: 'No feeling preset. You choose everything yourself.' }]]);
+  const list = Object.entries(Y.FEELINGS).concat([[null, { name: 'Free choice', blurb: 'No feeling preset. You choose everything yourself.' }]]);
   list.forEach(([id, fe]) => {
     const b = document.createElement('button'); b.className = 'feel'; b.setAttribute('aria-pressed', S.feel === id);
-    b.innerHTML = '<span class="ic">' + fe.icon + '</span><span><b>' + fe.name + '</b><small>' + fe.blurb + '</small></span>';
+    b.innerHTML = fic(id, 'ic') + '<span><b>' + fe.name + '</b><small>' + fe.blurb + '</small></span>';
     b.onclick = () => {
       S.feel = id; store.set('feel', id); S.mvFeels = null;
       if (id) {
@@ -2241,11 +2257,11 @@ function drawSM() {
   const F = Y.FEELINGS, chip = (box, label, on, fn, dis) => { const b = document.createElement('button'); b.className = 'chip'; b.innerHTML = label; b.setAttribute('aria-pressed', !!on); if (dis) b.disabled = true; b.onclick = fn; $(box).appendChild(b); };
   ['smType', 'smMain', 'smMix'].forEach(id => $(id).innerHTML = '');
   [['symphony', 'Symphony (4 movements)'], ['suite', 'Suite (3 to 5 parts)'], ['dice', '🎲 You choose']].forEach(([v, l]) => chip('smType', l, SM.type === v, () => { SM.type = v; drawSM(); }));
-  Object.entries(F).forEach(([k, f]) => chip('smMain', f.icon + ' ' + f.name, SM.main === k, () => { SM.main = k; SM.mix = SM.mix.filter(x => x !== k); drawSM(); }));
+  Object.entries(F).forEach(([k, f]) => chip('smMain', fic(k) + f.name, SM.main === k, () => { SM.main = k; SM.mix = SM.mix.filter(x => x !== k); drawSM(); }));
   chip('smMain', '🎲 You choose', SM.main === 'dice', () => { SM.main = 'dice'; drawSM(); });
-  Object.entries(F).forEach(([k, f]) => chip('smMix', f.icon + ' ' + f.name, SM.mix.includes(k), () => { if (SM.mix.includes(k)) SM.mix = SM.mix.filter(x => x !== k); else if (SM.mix.length < 3) SM.mix.push(k); drawSM(); }, k === SM.main || (!SM.mix.includes(k) && SM.mix.length >= 3)));
-  const ic = k => k === 'dice' ? '🎲' : F[k].icon;
-  $('smArc').textContent = [SM.main].concat(SM.mix).map(ic).join(' → ') + (SM.type === 'symphony' ? '   in 4 movements' : SM.type === 'suite' ? '   in a suite' : '');
+  Object.entries(F).forEach(([k, f]) => chip('smMix', fic(k) + f.name, SM.mix.includes(k), () => { if (SM.mix.includes(k)) SM.mix = SM.mix.filter(x => x !== k); else if (SM.mix.length < 3) SM.mix.push(k); drawSM(); }, k === SM.main || (!SM.mix.includes(k) && SM.mix.length >= 3)));
+  const ic = k => k === 'dice' ? '🎲' : fic(k);
+  $('smArc').innerHTML = [SM.main].concat(SM.mix).map(ic).join(' → ') + (SM.type === 'symphony' ? '   in 4 movements' : SM.type === 'suite' ? '   in a suite' : '');
 }
 function surprise(choice) {
   const R = a => a[Math.floor(Math.random() * a.length)];
@@ -2331,7 +2347,7 @@ function drawSuite() {
     d.innerHTML = '<span><b>' + (i + 1) + '. ' + SHORTN[c.form] + (p && p.scherzo ? ' (scherzo)' : '') + '</b><br><span class="pk">' + (p ? Y.keyName(p.key) + ' · ' + p.tempo : '') + '</span></span>';
     const mk = (txt, title, fn, cls) => { const b = document.createElement('button'); b.textContent = txt; b.title = title; b.setAttribute('aria-label', title); if (cls) b.className = cls; b.onclick = fn; d.appendChild(b); };
     const sel = document.createElement('select'); sel.title = 'Feeling of this part'; sel.setAttribute('aria-label', 'Feeling of this part');
-    sel.innerHTML = '<option value="">🎼</option>' + Object.entries(Y.FEELINGS).map(([k, v]) => '<option value="' + k + '"' + (c.feel === k ? ' selected' : '') + '>' + v.icon + ' ' + v.name + '</option>').join('');
+    sel.innerHTML = '<option value="">Feeling</option>' + Object.entries(Y.FEELINGS).map(([k, v]) => '<option value="' + k + '"' + (c.feel === k ? ' selected' : '') + '>' + v.name + '</option>').join('');
     sel.onchange = () => { c.feel = sel.value || null; saveChain(); drawSuite(); };
     d.appendChild(sel);
     mk('🔒', c.lock ? 'Locked: keeps this part' : 'Lock this part', () => { c.lock = !c.lock; saveChain(); drawSuite(); }, c.lock ? 'on' : '');
@@ -2452,7 +2468,7 @@ function fileBase(m) { return ('Divine Symphony ' + m.title + ' ' + m.tempo + ' 
 function showResult() {
   $('result').classList.add('on');
   const tabs = $('mvTabs'); tabs.innerHTML = '';
-  if (RES.movements.length > 1) RES.movements.forEach((m, i) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = (Y.FEELINGS[m.feel] ? Y.FEELINGS[m.feel].icon + ' ' : '') + m.title.replace('Symphony ', ''); b.setAttribute('aria-pressed', i === MV); if (i === MV) b.style.borderColor = 'var(--gold)'; b.onclick = () => { stop(); MV = i; showResult(); }; tabs.appendChild(b); });
+  if (RES.movements.length > 1) RES.movements.forEach((m, i) => { const b = document.createElement('button'); b.className = 'btn'; b.innerHTML = (Y.FEELINGS[m.feel] ? fic(m.feel) : '') + m.title.replace('Symphony ', ''); b.setAttribute('aria-pressed', i === MV); if (i === MV) b.style.borderColor = 'var(--gold)'; b.onclick = () => { stop(); MV = i; showResult(); }; tabs.appendChild(b); });
   const m = cur();
   const strip = $('strip'); strip.querySelectorAll('div').forEach(d => d.remove());
   const total = m.end, labels = {}; let k = 0;
