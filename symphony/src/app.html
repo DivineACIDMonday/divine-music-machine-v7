@@ -145,6 +145,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 </header>
 
 <section class="hero">
+  <span class="opt" style="width:100%">Your orchestra <span class="seg" id="lib"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span>
   <button class="btn gold big" id="surpriseTop">🎲 Surprise me</button>
   <span class="muted">One click: the machine picks feeling, era, key, orchestra and form, and composes. Or choose everything yourself below.</span>
 </section>
@@ -188,7 +189,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
       <div class="presets" id="presets"></div>
       <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Timpani</span><span><i style="background:var(--kb)"></i>Piano</span></div>
       <div class="count" id="count"></div>
-      <label class="opt"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
+      <label class="opt" id="bfoW"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
       <div id="bfoBox" class="hide"><div class="muted small" style="margin-bottom:6px">Only in Berlin Free Orchestra. Feelings pick fitting ones for you.</div><div class="chips" id="bfoChips"></div></div>
       <div class="muted small">The era preset is chosen for you when you pick an era. Change anything you like after that.</div>
     </div>
@@ -365,7 +366,15 @@ function drawForms() {
   });
 }
 const KEYS = [['C', 'C major'], ['G', 'G major'], ['D', 'D major'], ['A', 'A major'], ['E', 'E major'], ['F', 'F major'], ['Bb', 'B♭ major'], ['Eb', 'E♭ major'], ['Ab', 'A♭ major'], ['a', 'A minor'], ['e', 'E minor'], ['b', 'B minor'], ['d', 'D minor'], ['g', 'G minor'], ['c', 'C minor'], ['f', 'F minor'], ['f#', 'F♯ minor']];
-function syncTarget() { [...$('target').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.target)); $('how').classList.toggle('hide', S.target !== 'bbc'); $('howAny').classList.toggle('hide', S.target !== 'any'); $('howBer').classList.toggle('hide', S.target !== 'berlin'); }
+function setTarget(v) {
+  S.target = v; store.set('target', v);
+  const fe = Y.FEELINGS[S.feel];
+  if (v === 'berlin' && !S.bfo) { S.bfo = true; if (fe) fe.bfo.forEach(id => S.inst.add(id)); }
+  if (v === 'bbc' && S.bfo) { S.bfo = false; Y.EXTRAS.forEach(id => S.inst.delete(id)); }
+  store.set('bfo', S.bfo); store.set('inst', [...S.inst]);
+  syncTarget(); drawHall(); if (RES) showResult();
+}
+function syncTarget() { ['target', 'lib'].forEach(id => [...$(id).children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.target))); $('bfoW').classList.toggle('hide', S.target === 'bbc'); $('how').classList.toggle('hide', S.target !== 'bbc'); $('howAny').classList.toggle('hide', S.target !== 'any'); $('howBer').classList.toggle('hide', S.target !== 'berlin'); }
 const PLAIN = () => ({ plain: S.target === 'any', target: S.target });
 const TNAME = t => S.target === 'berlin' && Y.BFO[t.id] ? Y.BFO[t.id].name : t.name;
 const SHORTN = { sonata: 'Sonata', rondo: 'Rondo', overture: 'Overture', fugue: 'Fugue', aria: 'Aria', canon: 'Canon', variations: 'Variations', minuet: 'Minuet', waltz: 'Waltz', march: 'March' };
@@ -427,7 +436,7 @@ function initOpts() {
   $('solo').onchange = e => { S.solo = e.target.value; };
   $('keep').onchange = e => { S.keep = e.target.checked; };
   $('seed').addEventListener('input', () => { S.keep = true; $('keep').checked = true; });
-  [...$('target').children].forEach(b => b.onclick = () => { S.target = b.dataset.v; store.set('target', S.target); syncTarget(); if (RES) showResult(); });
+  ['target', 'lib'].forEach(id => [...$(id).children].forEach(b => b.onclick = () => setTarget(b.dataset.v)));
   syncTarget();
   syncOpts();
 }
