@@ -272,7 +272,7 @@ function shape(plan, i, role, rank, notes, tl) {
       if (c.breathInside && bar >= c.breathInside.bar && bar < c.breathInside.bar + 2) continue;
       // the way out
       if (i < n - 1) {
-        if (c.out === 'breath' && bar >= c.bars - 2) continue;
+        if (c.out === 'breath' && bar >= c.bars - 1 && !HARM.has(role)) continue; // the breath: one bar where the rhythm, bass and melody let go
         if (c.out === 'motif' && bar >= c.bars - 4 && rank > 0) continue;
         if (w.out && bar >= c.bars - w.out) { const p = (fb - (c.bars - w.out)) / w.out;
           if (role === 'melody' || role === 'bass') continue;                         // the old melody and bass leave as the window opens
@@ -326,7 +326,7 @@ function listen(all, plan, tl) {
     // over small gaps and only breathes at the end of a phrase (every 8 bars)
     const stops = []; // moments nothing may ring into
     if (c.breathInside) stops.push(s0 + c.breathInside.bar * BAR);
-    if (i < plan.chapters.length - 1) { if (c.out === 'breath') stops.push(s0 + (c.bars - 2) * BAR); if (w.out) stops.push(s0 + (c.bars - (w.keyOut ? w.out / 2 : 0)) * BAR); if (c.out === 'motif') stops.push(s0 + (c.bars - 4) * BAR); }
+    if (i < plan.chapters.length - 1) { if (c.out === 'breath') stops.push(s0 + (c.bars - 1) * BAR); if (w.out) stops.push(s0 + (c.bars - (w.keyOut ? w.out / 2 : 0)) * BAR); if (c.out === 'motif') stops.push(s0 + (c.bars - 4) * BAR); }
     stops.push(s0 + c.bars * BAR);
     const nextStop = (t) => stops.filter((x) => x > t).reduce((a, b) => Math.min(a, b), Infinity);
     T.forEach((t) => {
@@ -340,6 +340,11 @@ function listen(all, plan, tl) {
         if (sing && gap < 2 * PPQ) { const phraseEnd = Math.floor((nx - s0) / (8 * BAR)) !== Math.floor((n.t - s0) / (8 * BAR)); if (!phraseEnd) to = nx - 30; }
         n.d = Math.max(n.d, Math.min(to, nextStop(n.t)) - n.t); });
     });
+    // a breath between two songs is never empty: the last chord hangs, soft, through the silent bar into the next song
+    if (i < plan.chapters.length - 1 && c.out === 'breath') { const g = s0 + (c.bars - 1) * BAR, end = s0 + c.bars * BAR;
+      T.filter((t) => HARM.has(t.role)).forEach((t) => { const ns = t.notes.filter((n) => !n.ks && n.t < g && n.t >= g - 4 * BAR); if (!ns.length) return;
+        const last = Math.max(...ns.map((n) => n.t)); t.notes = t.notes.filter((n) => n.ks || n.t < g || n.t >= end);
+        ns.filter((n) => n.t === last).forEach((n) => { n.d = end - n.t - 10; n.v = Math.max(20, Math.round(n.v * 0.7)); }); }); }
     // the shared breath: the last two beats before every 32nd bar, everyone lets go together (not in a handover, not at the very start or end)
     for (let b = 32; b < c.bars - Math.max(16, w.out); b += 32) { if (b < Math.max(16, w.inn + 8)) continue;
       const g0 = s0 + b * BAR - 2 * PPQ, g1 = s0 + b * BAR;
@@ -347,6 +352,28 @@ function listen(all, plan, tl) {
         t.notes = t.notes.filter((n) => n.ks || !(n.t >= g0 && n.t < g1));
         if (t.role !== 'beats' && t.role !== 'perc') t.notes.forEach((n) => { if (!n.ks && n.t < g0 && n.t + n.d > g0) n.d = Math.max(60, g0 - n.t); }); });
     }
+  });
+}
+
+// ---------- no empty seams: between two songs at most the one bar of a breath is silent ----------
+// any longer hole near a boundary is filled by the motif of the chapter it belongs to, its last tone held to the end of the hole
+function bridgeSilence(all, plan, tl) {
+  const spans = all.flatMap((t) => t.notes.filter((n) => !n.ks).map((n) => [n.t, n.t + n.d])).sort((a, b) => a[0] - b[0]);
+  const sounding = (t) => spans.some(([a, b]) => a <= t && b > t);
+  plan.chapters.forEach((c, i) => { if (i === 0) return;
+    const b = tl[i].start, pv = plan.chapters[i - 1], allowed = pv.out === 'breath' ? BAR + PPQ : PPQ * 2;
+    for (let t = b - 4 * BAR; t < b + 6 * BAR; t += PPQ / 4) { if (sounding(t)) continue;
+      let u = t; while (u < b + 10 * BAR && !sounding(u)) u += PPQ / 4;
+      if (u - t > allowed) { // fill from where the silence may end
+        const from = pv.out === 'breath' && t < b ? Math.max(t, b) : t + PPQ; if (u - from < PPQ) { t = u; continue; }
+        const half = b + (pv.overlap || 0) * BAR / 2, k = from < half ? i - 1 : i, ch = plan.chapters[k], cap = k === i - 1 ? Math.min(u, half) : u, mo = motifNotes(plan, ch), f = plan.bpm / ch.feelsLike;
+        let tr = all.find((x) => x.chapter === k && x.role === 'motif');
+        if (!tr) { tr = { chapter: k, word: ch.word, role: 'motif', player: 'Plain MIDI', name: (k + 1) + ' ' + ch.word + ' . Motif . ' + plan.bpm + ' bpm . ' + JR.colour(ch, 'motif', 'Plain MIDI'), notes: [], cc: [] }; all.push(tr); }
+        const add = mo.notes.map((n) => ({ t: from + Math.round(n.t * f), d: Math.round(n.d * f), p: n.p, v: Math.round(n.v * 0.8) })).filter((n) => n.t < cap);
+        add.forEach((n) => { n.d = Math.min(n.d, cap - n.t - 10); });
+        if (add.length) { const last = add[add.length - 1]; last.d = Math.max(last.d, cap - last.t - 20); add.forEach((n) => { tr.notes.push(n); spans.push([n.t, n.t + n.d]); }); }
+      }
+      t = u; }
   });
 }
 
@@ -386,6 +413,7 @@ JR.render = function (plan, ctx) {
     }
   });
   listen(all, plan, tl);
+  bridgeSilence(all, plan, tl);
   // the ending: abrupt stops everything on one last hit
   if (plan.ending.id === 'abrupt') { const last = tl[tl.length - 1], end = last.start + last.len; all.forEach((t) => { t.notes = t.notes.filter((n) => n.t < end - BAR || n.t === end - BAR); t.notes.forEach((n) => { if (n.t + n.d > end) n.d = end - n.t; }); }); }
   const totalTicks = tl[tl.length - 1].start + tl[tl.length - 1].len;
