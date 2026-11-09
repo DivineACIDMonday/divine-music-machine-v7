@@ -308,7 +308,7 @@ function listen(all, plan, tl) {
     const T = all.filter((t) => t.chapter === i), s0 = tl[i].start, w = win(plan, i), byRole = (r) => T.filter((t) => t.role === r);
     const barOf = (t) => Math.floor((t - s0) / BAR);
     // where the voices are: motif statements and melody, per bar
-    const motifSpans = []; byRole('motif').forEach((t) => t.notes.forEach((n) => motifSpans.push([n.t - PPQ, n.t + n.d + PPQ / 2])));
+    const motifSpans = []; byRole('motif').forEach((t) => t.notes.forEach((n) => motifSpans.push([n.t - PPQ / 4, n.t + n.d])));
     const sings = new Set(), melLow = {};
     byRole('melody').forEach((t) => { t.notes = t.notes.filter((n) => !motifSpans.some(([a, b]) => n.t < b && n.t + n.d > a)); });
     byRole('melody').concat(byRole('motif')).forEach((t) => t.notes.forEach((n) => { if (n.ks) return; const b = barOf(n.t); sings.add(b); if (t.role === 'melody') melLow[b] = Math.min(melLow[b] == null ? 999 : melLow[b], n.p); }));
@@ -320,6 +320,25 @@ function listen(all, plan, tl) {
         if (t.role === 'chords' && melLow[b] != null && n.p >= melLow[b] - 1 && n.p - 12 >= 40) n.p -= 12; // under the melody, never on top of it
         if (support && sings.has(b)) n.v = Math.max(1, Math.round(n.v * 0.84));
         if (support && (full[b] || 0) >= 6) n.v = Math.max(1, Math.round(n.v * 0.9)); });
+    });
+    // silence at the right moments, flow everywhere else:
+    // the harmony is a bed that holds until the next chord (never into a breath, a handover or the end), the melody sings legato
+    // over small gaps and only breathes at the end of a phrase (every 8 bars)
+    const stops = []; // moments nothing may ring into
+    if (c.breathInside) stops.push(s0 + c.breathInside.bar * BAR);
+    if (i < plan.chapters.length - 1) { if (c.out === 'breath') stops.push(s0 + (c.bars - 2) * BAR); if (w.out) stops.push(s0 + (c.bars - (w.keyOut ? w.out / 2 : 0)) * BAR); if (c.out === 'motif') stops.push(s0 + (c.bars - 4) * BAR); }
+    stops.push(s0 + c.bars * BAR);
+    const nextStop = (t) => stops.filter((x) => x > t).reduce((a, b) => Math.min(a, b), Infinity);
+    T.forEach((t) => {
+      const bed = t.role === 'chords' || t.role === 'orch', sing = t.role === 'melody';
+      if (!bed && !sing) return;
+      const ns = t.notes.filter((n) => !n.ks).sort((a, b) => a.t - b.t), on = [...new Set(ns.map((n) => n.t))];
+      ns.forEach((n) => { const k = on.findIndex((x) => x > n.t); const nx = k < 0 ? Infinity : on[k], gap = nx - (n.t + n.d);
+        if (gap <= 0) return;
+        let to = n.t + n.d;
+        if (bed && n.d >= 2 * PPQ && nx - n.t <= 2 * BAR) to = nx - 20; // held chords become a bed; short stabs stay stabs
+        if (sing && gap < 2 * PPQ) { const phraseEnd = Math.floor((nx - s0) / (8 * BAR)) !== Math.floor((n.t - s0) / (8 * BAR)); if (!phraseEnd) to = nx - 30; }
+        n.d = Math.max(n.d, Math.min(to, nextStop(n.t)) - n.t); });
     });
     // the shared breath: the last two beats before every 32nd bar, everyone lets go together (not in a handover, not at the very start or end)
     for (let b = 32; b < c.bars - Math.max(16, w.out); b += 32) { if (b < Math.max(16, w.inn + 8)) continue;
