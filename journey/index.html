@@ -7625,8 +7625,9 @@ function handRhythm(list, plan, i, isKick, isBack) {
   const c = plan.chapters[i], w = win(plan, i), k = c.feelsLike / plan.bpm, cb = (jb) => jb * BAR * k;
   const W0 = cb(c.bars - w.out), Wh = cb(c.bars - w.out / 2), I1 = cb(w.inn), Ih = cb(w.inn / 2);
   return list.filter((n) => { if (n.roll) return true;
-    if (w.out && n.t >= W0) { if (w.feelOut) return false; if ((isKick(n) || isBack(n)) && n.t >= Wh) return false; }
-    if (w.inn && n.t < I1) { if (w.feelIn) return false; if ((isKick(n) || isBack(n)) && n.t < Ih) return false; }
+    // a different feel never overlaps: the old groove plays to the middle of the window, the new one takes over right there, no hole
+    if (w.out && n.t >= W0) { if (w.feelOut ? n.t >= Wh : (isKick(n) || isBack(n)) && n.t >= Wh) return false; }
+    if (w.inn && n.t < I1) { if (w.feelIn ? n.t < Ih : (isKick(n) || isBack(n)) && n.t < Ih) return false; }
     return true; });
 }
 
@@ -7641,7 +7642,8 @@ function shape(plan, i, role, rank, notes, tl) {
     if (role === 'motif' && ((w.out && w.keyOut && fb >= c.bars - w.out / 2) || (w.inn && w.keyIn && fb < w.inn / 2))) continue; // the motif speaks the key that sounds
     if (role !== 'motif' && !x.ks) {
       // layers: each role has a rank; it plays when the energy carries that many layers
-      if (!plays(plan, i, rank, Math.floor(x.t * k / BAR), cbars)) continue;
+      const seam = (w.out && bar >= c.bars - w.out - 2) || (w.inn && bar < w.inn + 2), rhythm = role === 'beats' || role === 'perc';
+      if (!(seam && rhythm) && !plays(plan, i, rank, Math.floor(x.t * k / BAR), cbars)) continue; // the groove never drops out at a seam
       // a breath inside the chapter: two bars where only the motif sounds
       if (c.breathInside && bar >= c.breathInside.bar && bar < c.breathInside.bar + 2) continue;
       // the way out
