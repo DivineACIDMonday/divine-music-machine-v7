@@ -98,6 +98,8 @@ svg.hall{width:100%;height:auto;display:block;user-select:none}
 .check b{color:var(--ww)}
 footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 .hide{display:none!important}
+.hero{display:flex;flex-wrap:wrap;align-items:center;gap:14px;padding:4px 0}
+.btn.big{font-size:19px;padding:14px 26px;min-height:56px;border-radius:12px}
 .feels{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
 .feel{display:flex;gap:12px;align-items:flex-start;text-align:left;background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;color:var(--tx);font:inherit;cursor:pointer;min-height:44px}
 .feel:hover{border-color:#5A464C}
@@ -129,10 +131,15 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 <div id="app">
 <header>
   <div class="logo serif">Divine <i>Symphony</i> Machine</div>
-  <span class="tag">for BBC Symphony Orchestra Discover</span>
+  <span class="tag">for BBC Discover · Berlin Free · any synth</span>
   <span class="grow"></span>
   <a class="back" href="https://divineacidmonday.github.io/">All machines</a>
 </header>
+
+<section class="hero">
+  <button class="btn gold big" id="surpriseTop">🎲 Surprise me</button>
+  <span class="muted">One click: the machine picks feeling, era, key, orchestra and form, and composes. Or choose everything yourself below.</span>
+</section>
 
 <section class="step" id="s0">
   <div class="sh"><span class="num serif">1</span><span class="st serif">What should it feel like?</span><span class="muted">One tap sets era, key, form, orchestra and tempo for that feeling. Change anything after.</span></div>
@@ -584,6 +591,7 @@ function stop() {
 $('play').onclick = play;
 $('compose').onclick = compose;
 $('surprise').onclick = surprise;
+$('surpriseTop').onclick = surprise;
 drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); drawHall();
 })();
 </script>
