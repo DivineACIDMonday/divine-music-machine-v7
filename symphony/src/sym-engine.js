@@ -358,6 +358,7 @@ const FORMS = {
   canon: { name: 'Canon', meter: 4, tempo: 72, map: ['Ground', 'I', 'II', 'III'], blurb: 'Three voices chase the same melody over a repeating ground bass.' },
   fugue: { name: 'Fugue', meter: 4, tempo: 84, map: ['Expo', 'Ep', 'Mid', 'Str'], blurb: 'A subject passes through four voices with answer, countersubject, episodes and a pedal.' },
   symphony: { name: 'Symphony', meter: 4, tempo: 132, map: ['I', 'II', 'III', 'IV'], blurb: 'Four movements: sonata allegro, slow aria, minuet or scherzo, rondo finale.' },
+  suite: { name: 'Your own suite', meter: 4, tempo: 120, map: ['You', 'choose', '+'], blurb: 'Line up any forms you like. The Mozart Advisor tells you what follows well.' },
 };
 Y.FORMS = FORMS;
 
@@ -1481,7 +1482,106 @@ function compose(o) {
   res._c = c;
   return res;
 }
+/* ================= your own suite and the Mozart Advisor ================= */
+const CAT = { sonata: 'fast', rondo: 'fast', overture: 'fast', fugue: 'fast', aria: 'slow', canon: 'slow', variations: 'slow', minuet: 'dance', waltz: 'dance', march: 'dance' };
+Y.CAT = CAT;
+Y.SUITE_FORMS = Object.keys(CAT);
+Y.advise = function (chain) {
+  const n = chain.length, last = n ? chain[n - 1].form : null, lc = last ? CAT[last] : null;
+  const used = f => chain.filter(c => c.form === f).length;
+  return Y.SUITE_FORMS.map(f => {
+    const c = CAT[f]; let st = 1, why = '';
+    if (!n) {
+      if (f === 'sonata') { st = 3; why = 'The classic first movement: strong and serious.'; }
+      else if (f === 'overture') { st = 3; why = 'Raises the curtain on everything that follows.'; }
+      else if (f === 'fugue') { st = 2; why = 'A learned, grand opening.'; }
+      else if (c === 'dance') { st = 2; why = 'A light start, like a Baroque suite.'; }
+      else if (f === 'rondo') { st = 1; why = 'Usually the finale. Save it for the end.'; }
+      else { st = 1; why = 'A slow start is rare. Better after something lively.'; }
+    } else {
+      if (f === 'overture') { st = 0; why = 'An overture opens a work; it rarely follows anything.'; }
+      else if (lc === 'fast' && c === 'slow') { st = 3; why = 'Slow after fast: the heart of the work.'; }
+      else if (lc === 'fast' && c === 'dance') { st = 2; why = 'A dance after the drama gives air.'; }
+      else if (lc === 'fast' && c === 'fast') { st = 0; why = 'Two fast parts in a row tire the ear.'; }
+      else if (lc === 'slow' && c === 'dance') { st = 3; why = 'A dance lifts the mood after the slow part.'; }
+      else if (lc === 'slow' && f === 'rondo') { st = 3; why = 'A bright finale that brings you home.'; }
+      else if (lc === 'slow' && c === 'fast') { st = 2; why = 'Back to energy.'; }
+      else if (lc === 'slow' && c === 'slow') { st = 0; why = 'Two slow parts in a row lose the pulse.'; }
+      else if (lc === 'dance' && f === last) { st = 0; why = 'Mozart put a slow part between two of the same dance.'; }
+      else if (lc === 'dance' && f === 'rondo') { st = 3; why = 'The classic finale after the minuet.'; }
+      else if (lc === 'dance' && c === 'slow') { st = 3; why = 'A slow song between the dances, as in a serenade.'; }
+      else if (lc === 'dance' && c === 'fast') { st = 2; why = 'Energy after the dance.'; }
+      else if (lc === 'dance' && c === 'dance') { st = 1; why = 'A second, different dance can work. Contrast helps.'; }
+      if (f === 'sonata' && n >= 1 && st > 1) { st = 1; why = 'A second big sonata is heavy. A rondo is lighter.'; }
+      if (f === 'fugue' && n >= 1 && st >= 2) why = 'A fugue makes a grand, learned finale.';
+      if (used(f) >= 2 && st > 1) { st = 1; why = 'Already twice in your suite. Something new keeps it fresh.'; }
+    }
+    return { form: f, stars: st, why };
+  }).sort((a, b) => b.stars - a.stars);
+};
+Y.suiteHint = function (chain) {
+  if (!chain.length) return 'Start with a strong opening.';
+  const last = CAT[chain[chain.length - 1].form];
+  if (chain.length === 1) return 'Now something that contrasts with it.';
+  if (last === 'fast') return 'This ends with energy. A fine close.';
+  if (last === 'dance') return 'This ends with a dance. A rondo would close it in style.';
+  return 'This ends softly. Lovely, or add a lively finale.';
+};
+Y.planSuite = function (chain, K, era) {
+  const maj = K.m === 'M';
+  const slowKeys = maj ? [relKey(K, 3, 'M'), relKey(K, 5, 'm'), relKey(K, 4, 'M')] : [relKey(K, 5, 'M'), relKey(K, 2, 'M'), relKey(K, 3, 'm')];
+  let si = 0;
+  const out = [];
+  chain.forEach((c, i) => {
+    const cat = CAT[c.form], prev = out[i - 1];
+    if (prev && c.seed && prev.seed === c.seed && prev.form === c.form) { out.push(Object.assign({}, prev)); return; }
+    let key = K;
+    if (i > 0 && i < chain.length - 1) {
+      if (cat === 'slow') key = slowKeys[si++ % slowKeys.length];
+      else if (prev && prev.key === K && CAT[prev.form] === cat) key = maj ? relKey(K, 4, 'M') : relKey(K, 2, 'M');
+    }
+    let tempo = FORMS[c.form].tempo;
+    const scherzo = c.form === 'minuet' && (era === 'romantic' || era === 'impressionist') && i > 0;
+    if (scherzo) tempo = 160;
+    if (prev && prev.form === c.form) tempo = Math.round(tempo * (i % 2 ? .92 : 1.06));
+    if (i === chain.length - 1 && i > 0 && prev && prev.key !== K) key = K;
+    out.push({ form: c.form, key, tempo, scherzo, seed: c.seed });
+  });
+  return out;
+};
+function mergeParts(parts, titles) {
+  const first = parts[0], master = first.tempo;
+  const tracks = {}, markers = [], secs = [];
+  let off = first.OFF;
+  parts.forEach((m, i) => {
+    const k = master / m.tempo, sh = t => Math.round(off + Math.max(0, t - m.OFF) * k);
+    m.tracks.forEach(tr => {
+      const T = tracks[tr.id] = tracks[tr.id] || { id: tr.id, name: tr.name, notes: [], cc: [], ks: [], ksType: tr.ksType };
+      tr.notes.forEach(n => T.notes.push(Object.assign({}, n, { t: sh(n.t), dur: Math.max(20, Math.round(n.dur * k)) })));
+      tr.cc.forEach(e => T.cc.push(Object.assign({}, e, { t: sh(e.t) })));
+      tr.ks.forEach(e => T.ks.push(Object.assign({}, e, { t: Math.max(0, sh(e.t + 24) - 24) })));
+    });
+    markers.push({ t: off, text: titles[i] });
+    m.markers.forEach(x => markers.push({ t: sh(x.t), text: x.text }));
+    const end = sh(m.end);
+    secs.push({ label: (i + 1) + '. ' + FORMS[m.form].name.replace(' form', '').replace('Theme and v', 'V'), t0: off, t1: end, key: m.keyName, tempo: m.tempo });
+    off = end + Math.round(PPQ * 2);
+  });
+  const ord = INST.map(i => i.id).filter(id => tracks[id]);
+  return { tracks: ord.map(id => tracks[id]), end: off, OFF: first.OFF, markers, secs, tempo: master, meter: first.meter, key: first.key, keyName: first.keyName, era: first.era, form: 'suite', parts };
+}
+
 Y.generate = function (o) {
+  if (o.form === 'suite') {
+    const K = typeof o.key === 'string' ? keyFromName(o.key) : o.key;
+    const plan = Y.planSuite(o.chain || [], K, o.era);
+    if (!plan.length) throw new Error('Add at least one part to your suite.');
+    const titles = [];
+    const parts = plan.map((p, i) => { const t = (i + 1) + '. ' + FORMS[p.form].name + (p.scherzo ? ' (scherzo)' : ''); titles.push(t); return compose(Object.assign({}, o, { form: p.form, key: p.key, tempo: Math.round(p.tempo * (o.tempoMul || 1)), seed: p.seed, scherzo: p.scherzo, title: t })); });
+    const res = mergeParts(parts, titles.map((t, i) => t + ' in ' + parts[i].keyName));
+    res.title = 'Suite in ' + keyName(K);
+    return { movements: [res] };
+  }
   if (o.form !== 'symphony') return { movements: [compose(o)] };
   const K = typeof o.key === 'string' ? keyFromName(o.key) : o.key;
   const KII = K.m === 'M' ? relKey(K, 3, 'M') : relKey(K, 5, 'M');
@@ -1499,6 +1599,10 @@ Y.generate = function (o) {
 
 /* ================= checks (used by the tests and the page) ================= */
 Y.check = function (res) {
+  if (res.parts) {
+    const rs = res.parts.map(p => Y.check(p));
+    return { parallels: rs.reduce((a, r) => a + r.parallels, 0), range: rs.reduce((a, r) => a + r.range, 0), notes: rs.reduce((a, r) => a + r.notes, 0), finalTonic: rs[rs.length - 1].finalTonic, melEndsTonic: true };
+  }
   const c = res._c, rep = { parallels: 0, structural: 0, range: 0, finalTonic: false, notes: 0 };
   res.tracks.forEach(tr => { const inst = IM[tr.id]; tr.notes.forEach(n => { rep.notes++; if (n.m < inst.lo || n.m > inst.hi) rep.range++; }); });
   // structural voices at chord changes: melody, A, X, T, bass

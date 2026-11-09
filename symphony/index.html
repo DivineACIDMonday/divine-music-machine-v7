@@ -98,6 +98,22 @@ svg.hall{width:100%;height:auto;display:block;user-select:none}
 .check b{color:var(--ww)}
 footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 .hide{display:none!important}
+#suitePanel{display:flex;flex-direction:column;gap:12px;background:#171114;border:1px solid var(--line);border-radius:12px;padding:14px}
+.chain{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.part{display:flex;align-items:center;gap:6px;background:var(--card2);border:1px solid #5A464C;border-radius:10px;padding:6px 6px 6px 10px}
+.part b{font-weight:600}
+.part .pk{font:12px ui-monospace,Menlo,monospace;color:var(--gold)}
+.part button{background:transparent;border:0;color:var(--mu);cursor:pointer;font-size:15px;min-width:32px;min-height:32px;border-radius:6px}
+.part button:hover{background:#33262A;color:var(--tx)}
+.part button.on{color:var(--gold)}
+.arrow{color:var(--mu)}
+.adv{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.adv button{display:flex;gap:10px;align-items:flex-start;text-align:left;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 11px;color:var(--tx);font:inherit;cursor:pointer;min-height:44px}
+.adv button:hover{border-color:var(--gold)}
+.adv .stars{color:var(--gold);font-size:14px;min-width:40px;letter-spacing:1px}
+.adv .s0 .stars{color:#C9705A}
+.adv small{display:block;color:var(--mu);font-size:12.5px}
+.mozart{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 </style>
 </head>
 <body>
@@ -117,10 +133,16 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 <section class="step" id="s2">
   <div class="sh"><span class="num serif">2</span><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
   <div class="grid forms" id="forms"></div>
+  <div id="suitePanel" class="hide">
+    <div class="mozart"><b class="serif" style="font-size:18px">Your suite</b><span class="muted small">🔒 keeps a part when you compose again · ⧉ makes an exact copy · ✕ removes it</span></div>
+    <div class="chain" id="chain"></div>
+    <div class="mozart"><b class="serif" style="font-size:18px">🎩 Mozart Advisor</b><span class="muted small" id="hint"></span></div>
+    <div class="adv" id="adv"></div>
+  </div>
   <div class="opts">
     <label class="opt">Key <select id="key"></select></label>
     <span class="opt">Length <span class="seg" id="len"><button data-v="1">Short</button><button data-v="2">Medium</button><button data-v="3">Long</button></span></span>
-    <label class="opt">Tempo <input type="range" id="tempo" min="50" max="190" step="1"><b id="tempoV" class="small"></b></label>
+    <label class="opt" id="tempoW">Tempo <input type="range" id="tempo" min="50" max="190" step="1"><b id="tempoV" class="small"></b></label>
     <span class="opt">Rubato <span class="seg" id="rub"><button data-v="0">Off</button><button data-v="1">Era</button><button data-v="2">More</button></span></span>
     <label class="opt hide" id="soloW">Solo <select id="solo"></select></label>
     <label class="opt"><input type="checkbox" id="early" checked> Long notes 40 ms early</label>
@@ -547,6 +569,7 @@ const FORMS = {
   canon: { name: 'Canon', meter: 4, tempo: 72, map: ['Ground', 'I', 'II', 'III'], blurb: 'Three voices chase the same melody over a repeating ground bass.' },
   fugue: { name: 'Fugue', meter: 4, tempo: 84, map: ['Expo', 'Ep', 'Mid', 'Str'], blurb: 'A subject passes through four voices with answer, countersubject, episodes and a pedal.' },
   symphony: { name: 'Symphony', meter: 4, tempo: 132, map: ['I', 'II', 'III', 'IV'], blurb: 'Four movements: sonata allegro, slow aria, minuet or scherzo, rondo finale.' },
+  suite: { name: 'Your own suite', meter: 4, tempo: 120, map: ['You', 'choose', '+'], blurb: 'Line up any forms you like. The Mozart Advisor tells you what follows well.' },
 };
 Y.FORMS = FORMS;
 
@@ -1670,7 +1693,106 @@ function compose(o) {
   res._c = c;
   return res;
 }
+/* ================= your own suite and the Mozart Advisor ================= */
+const CAT = { sonata: 'fast', rondo: 'fast', overture: 'fast', fugue: 'fast', aria: 'slow', canon: 'slow', variations: 'slow', minuet: 'dance', waltz: 'dance', march: 'dance' };
+Y.CAT = CAT;
+Y.SUITE_FORMS = Object.keys(CAT);
+Y.advise = function (chain) {
+  const n = chain.length, last = n ? chain[n - 1].form : null, lc = last ? CAT[last] : null;
+  const used = f => chain.filter(c => c.form === f).length;
+  return Y.SUITE_FORMS.map(f => {
+    const c = CAT[f]; let st = 1, why = '';
+    if (!n) {
+      if (f === 'sonata') { st = 3; why = 'The classic first movement: strong and serious.'; }
+      else if (f === 'overture') { st = 3; why = 'Raises the curtain on everything that follows.'; }
+      else if (f === 'fugue') { st = 2; why = 'A learned, grand opening.'; }
+      else if (c === 'dance') { st = 2; why = 'A light start, like a Baroque suite.'; }
+      else if (f === 'rondo') { st = 1; why = 'Usually the finale. Save it for the end.'; }
+      else { st = 1; why = 'A slow start is rare. Better after something lively.'; }
+    } else {
+      if (f === 'overture') { st = 0; why = 'An overture opens a work; it rarely follows anything.'; }
+      else if (lc === 'fast' && c === 'slow') { st = 3; why = 'Slow after fast: the heart of the work.'; }
+      else if (lc === 'fast' && c === 'dance') { st = 2; why = 'A dance after the drama gives air.'; }
+      else if (lc === 'fast' && c === 'fast') { st = 0; why = 'Two fast parts in a row tire the ear.'; }
+      else if (lc === 'slow' && c === 'dance') { st = 3; why = 'A dance lifts the mood after the slow part.'; }
+      else if (lc === 'slow' && f === 'rondo') { st = 3; why = 'A bright finale that brings you home.'; }
+      else if (lc === 'slow' && c === 'fast') { st = 2; why = 'Back to energy.'; }
+      else if (lc === 'slow' && c === 'slow') { st = 0; why = 'Two slow parts in a row lose the pulse.'; }
+      else if (lc === 'dance' && f === last) { st = 0; why = 'Mozart put a slow part between two of the same dance.'; }
+      else if (lc === 'dance' && f === 'rondo') { st = 3; why = 'The classic finale after the minuet.'; }
+      else if (lc === 'dance' && c === 'slow') { st = 3; why = 'A slow song between the dances, as in a serenade.'; }
+      else if (lc === 'dance' && c === 'fast') { st = 2; why = 'Energy after the dance.'; }
+      else if (lc === 'dance' && c === 'dance') { st = 1; why = 'A second, different dance can work. Contrast helps.'; }
+      if (f === 'sonata' && n >= 1 && st > 1) { st = 1; why = 'A second big sonata is heavy. A rondo is lighter.'; }
+      if (f === 'fugue' && n >= 1 && st >= 2) why = 'A fugue makes a grand, learned finale.';
+      if (used(f) >= 2 && st > 1) { st = 1; why = 'Already twice in your suite. Something new keeps it fresh.'; }
+    }
+    return { form: f, stars: st, why };
+  }).sort((a, b) => b.stars - a.stars);
+};
+Y.suiteHint = function (chain) {
+  if (!chain.length) return 'Start with a strong opening.';
+  const last = CAT[chain[chain.length - 1].form];
+  if (chain.length === 1) return 'Now something that contrasts with it.';
+  if (last === 'fast') return 'This ends with energy. A fine close.';
+  if (last === 'dance') return 'This ends with a dance. A rondo would close it in style.';
+  return 'This ends softly. Lovely, or add a lively finale.';
+};
+Y.planSuite = function (chain, K, era) {
+  const maj = K.m === 'M';
+  const slowKeys = maj ? [relKey(K, 3, 'M'), relKey(K, 5, 'm'), relKey(K, 4, 'M')] : [relKey(K, 5, 'M'), relKey(K, 2, 'M'), relKey(K, 3, 'm')];
+  let si = 0;
+  const out = [];
+  chain.forEach((c, i) => {
+    const cat = CAT[c.form], prev = out[i - 1];
+    if (prev && c.seed && prev.seed === c.seed && prev.form === c.form) { out.push(Object.assign({}, prev)); return; }
+    let key = K;
+    if (i > 0 && i < chain.length - 1) {
+      if (cat === 'slow') key = slowKeys[si++ % slowKeys.length];
+      else if (prev && prev.key === K && CAT[prev.form] === cat) key = maj ? relKey(K, 4, 'M') : relKey(K, 2, 'M');
+    }
+    let tempo = FORMS[c.form].tempo;
+    const scherzo = c.form === 'minuet' && (era === 'romantic' || era === 'impressionist') && i > 0;
+    if (scherzo) tempo = 160;
+    if (prev && prev.form === c.form) tempo = Math.round(tempo * (i % 2 ? .92 : 1.06));
+    if (i === chain.length - 1 && i > 0 && prev && prev.key !== K) key = K;
+    out.push({ form: c.form, key, tempo, scherzo, seed: c.seed });
+  });
+  return out;
+};
+function mergeParts(parts, titles) {
+  const first = parts[0], master = first.tempo;
+  const tracks = {}, markers = [], secs = [];
+  let off = first.OFF;
+  parts.forEach((m, i) => {
+    const k = master / m.tempo, sh = t => Math.round(off + Math.max(0, t - m.OFF) * k);
+    m.tracks.forEach(tr => {
+      const T = tracks[tr.id] = tracks[tr.id] || { id: tr.id, name: tr.name, notes: [], cc: [], ks: [], ksType: tr.ksType };
+      tr.notes.forEach(n => T.notes.push(Object.assign({}, n, { t: sh(n.t), dur: Math.max(20, Math.round(n.dur * k)) })));
+      tr.cc.forEach(e => T.cc.push(Object.assign({}, e, { t: sh(e.t) })));
+      tr.ks.forEach(e => T.ks.push(Object.assign({}, e, { t: Math.max(0, sh(e.t + 24) - 24) })));
+    });
+    markers.push({ t: off, text: titles[i] });
+    m.markers.forEach(x => markers.push({ t: sh(x.t), text: x.text }));
+    const end = sh(m.end);
+    secs.push({ label: (i + 1) + '. ' + FORMS[m.form].name.replace(' form', '').replace('Theme and v', 'V'), t0: off, t1: end, key: m.keyName, tempo: m.tempo });
+    off = end + Math.round(PPQ * 2);
+  });
+  const ord = INST.map(i => i.id).filter(id => tracks[id]);
+  return { tracks: ord.map(id => tracks[id]), end: off, OFF: first.OFF, markers, secs, tempo: master, meter: first.meter, key: first.key, keyName: first.keyName, era: first.era, form: 'suite', parts };
+}
+
 Y.generate = function (o) {
+  if (o.form === 'suite') {
+    const K = typeof o.key === 'string' ? keyFromName(o.key) : o.key;
+    const plan = Y.planSuite(o.chain || [], K, o.era);
+    if (!plan.length) throw new Error('Add at least one part to your suite.');
+    const titles = [];
+    const parts = plan.map((p, i) => { const t = (i + 1) + '. ' + FORMS[p.form].name + (p.scherzo ? ' (scherzo)' : ''); titles.push(t); return compose(Object.assign({}, o, { form: p.form, key: p.key, tempo: Math.round(p.tempo * (o.tempoMul || 1)), seed: p.seed, scherzo: p.scherzo, title: t })); });
+    const res = mergeParts(parts, titles.map((t, i) => t + ' in ' + parts[i].keyName));
+    res.title = 'Suite in ' + keyName(K);
+    return { movements: [res] };
+  }
   if (o.form !== 'symphony') return { movements: [compose(o)] };
   const K = typeof o.key === 'string' ? keyFromName(o.key) : o.key;
   const KII = K.m === 'M' ? relKey(K, 3, 'M') : relKey(K, 5, 'M');
@@ -1688,6 +1810,10 @@ Y.generate = function (o) {
 
 /* ================= checks (used by the tests and the page) ================= */
 Y.check = function (res) {
+  if (res.parts) {
+    const rs = res.parts.map(p => Y.check(p));
+    return { parallels: rs.reduce((a, r) => a + r.parallels, 0), range: rs.reduce((a, r) => a + r.range, 0), notes: rs.reduce((a, r) => a + r.notes, 0), finalTonic: rs[rs.length - 1].finalTonic, melEndsTonic: true };
+  }
   const c = res._c, rep = { parallels: 0, structural: 0, range: 0, finalTonic: false, notes: 0 };
   res.tracks.forEach(tr => { const inst = IM[tr.id]; tr.notes.forEach(n => { rep.notes++; if (n.m < inst.lo || n.m > inst.hi) rep.range++; }); });
   // structural voices at chord changes: melody, A, X, T, bass
@@ -1747,7 +1873,7 @@ const FAM = { str: 'var(--str)', ww: 'var(--ww)', br: 'var(--br)', perc: 'var(--
 const FAMHEX = { str: '#D9A84E', ww: '#8FC29C', br: '#E58256', perc: '#9CC7E3', kb: '#C8B2E8' };
 const IM = {}; Y.INST.forEach(i => IM[i.id] = i);
 const store = { get(k, d) { try { const v = localStorage.getItem('dsym.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('dsym.' + k, JSON.stringify(v)); } catch (e) {} } };
-const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), keep: false, first: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
+const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), chain: store.get('chain', []), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
 let RES = null, MV = 0;
 
 /* eras */
@@ -1757,7 +1883,7 @@ function drawEras() {
   Object.entries(Y.ERAS).forEach(([id, e]) => {
     const b = document.createElement('button'); b.className = 'pick'; b.setAttribute('aria-pressed', S.era === id);
     b.innerHTML = '<span class="yr">' + e.years + '</span><h3 class="serif">' + e.name + '</h3><p>' + e.blurb + '</p>';
-    b.onclick = () => { S.era = id; store.set('era', id); S.inst = new Set(Y.PRESETS[id]); store.set('inst', [...S.inst]); drawEras(); drawHall(); };
+    b.onclick = () => { S.era = id; store.set('era', id); S.inst = new Set(Y.PRESETS[id]); store.set('inst', [...S.inst]); drawEras(); drawHall(); drawSuite(); };
     $('eras').appendChild(b);
   });
 }
@@ -1774,7 +1900,40 @@ function drawForms() {
 const KEYS = [['C', 'C major'], ['G', 'G major'], ['D', 'D major'], ['A', 'A major'], ['E', 'E major'], ['F', 'F major'], ['Bb', 'B♭ major'], ['Eb', 'E♭ major'], ['Ab', 'A♭ major'], ['a', 'A minor'], ['e', 'E minor'], ['b', 'B minor'], ['d', 'D minor'], ['g', 'G minor'], ['c', 'C minor'], ['f', 'F minor'], ['f#', 'F♯ minor']];
 function syncTarget() { [...$('target').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.target)); $('how').classList.toggle('hide', S.target !== 'bbc'); $('howAny').classList.toggle('hide', S.target === 'bbc'); }
 const PLAIN = () => ({ plain: S.target === 'any' });
+const SHORTN = { sonata: 'Sonata', rondo: 'Rondo', overture: 'Overture', fugue: 'Fugue', aria: 'Aria', canon: 'Canon', variations: 'Variations', minuet: 'Minuet', waltz: 'Waltz', march: 'March' };
+const newSeed = () => Math.floor(Math.random() * 900000) + 1;
+function saveChain() { store.set('chain', S.chain); }
+function drawSuite() {
+  const on = S.form === 'suite';
+  $('suitePanel').classList.toggle('hide', !on); $('tempoW').classList.toggle('hide', on);
+  if (!on) return;
+  let plan = [];
+  try { plan = Y.planSuite(S.chain, Y.keyFromName(S.key), S.era); } catch (e) {}
+  const ch = $('chain'); ch.innerHTML = '';
+  if (!S.chain.length) ch.innerHTML = '<span class="muted">Empty. Pick a first part below.</span>';
+  S.chain.forEach((c, i) => {
+    if (i) { const a = document.createElement('span'); a.className = 'arrow'; a.textContent = '→'; ch.appendChild(a); }
+    const d = document.createElement('div'); d.className = 'part';
+    const p = plan[i];
+    d.innerHTML = '<span><b>' + (i + 1) + '. ' + SHORTN[c.form] + (p && p.scherzo ? ' (scherzo)' : '') + '</b><br><span class="pk">' + (p ? Y.keyName(p.key) + ' · ' + p.tempo : '') + '</span></span>';
+    const mk = (txt, title, fn, cls) => { const b = document.createElement('button'); b.textContent = txt; b.title = title; b.setAttribute('aria-label', title); if (cls) b.className = cls; b.onclick = fn; d.appendChild(b); };
+    mk('🔒', c.lock ? 'Locked: keeps this part' : 'Lock this part', () => { c.lock = !c.lock; saveChain(); drawSuite(); }, c.lock ? 'on' : '');
+    mk('⧉', 'Exact copy', () => { c.lock = true; S.chain.splice(i + 1, 0, { form: c.form, seed: c.seed, lock: true }); saveChain(); drawSuite(); });
+    mk('✕', 'Remove', () => { S.chain.splice(i, 1); saveChain(); drawSuite(); });
+    if (!c.lock) d.querySelector('button').style.opacity = .45;
+    ch.appendChild(d);
+  });
+  $('hint').textContent = Y.suiteHint(S.chain);
+  const adv = $('adv'); adv.innerHTML = '';
+  Y.advise(S.chain).forEach(a => {
+    const b = document.createElement('button'); b.className = 's' + a.stars;
+    b.innerHTML = '<span class="stars">' + (a.stars ? '★'.repeat(a.stars) : '⚠') + '</span><span><b>' + Y.FORMS[a.form].name + '</b><small>' + a.why + '</small></span>';
+    b.onclick = () => { S.chain.push({ form: a.form, seed: newSeed(), lock: false }); saveChain(); drawSuite(); };
+    adv.appendChild(b);
+  });
+}
 function syncOpts() {
+  drawSuite();
   const f = Y.FORMS[S.form];
   if (!S.tempo) S.tempo = f.tempo;
   $('tempo').value = S.tempo; $('tempoV').textContent = S.tempo + ' bpm';
@@ -1786,7 +1945,7 @@ function syncOpts() {
 }
 function initOpts() {
   $('key').innerHTML = KEYS.map(([v, n]) => '<option value="' + v + '"' + (v === S.key ? ' selected' : '') + '>' + n + '</option>').join('');
-  $('key').onchange = e => { S.key = e.target.value; store.set('key', S.key); };
+  $('key').onchange = e => { S.key = e.target.value; store.set('key', S.key); drawSuite(); };
   [...$('len').children].forEach(b => b.onclick = () => { S.len = +b.dataset.v; store.set('len', S.len); syncOpts(); });
   [...$('rub').children].forEach(b => b.onclick = () => { S.rub = +b.dataset.v; store.set('rub', S.rub); syncOpts(); });
   $('tempo').oninput = e => { S.tempo = +e.target.value; $('tempoV').textContent = S.tempo + ' bpm'; };
@@ -1848,16 +2007,18 @@ function drawPresets() {
 function compose() {
   stop();
   if (!S.inst.size) { $('status').textContent = 'Switch on at least one section first.'; return; }
-  if (!S.keep && !S.first) { S.seed = Math.floor(Math.random() * 900000) + 1; $('seed').value = S.seed; }
+  if (S.form === 'suite' && !S.chain.length) { $('status').textContent = 'Add at least one part to your suite first.'; return; }
+  if (!S.keep && !S.first) { S.seed = newSeed(); $('seed').value = S.seed; }
+  if (S.form === 'suite') { S.chain.forEach(c => { if (!c.seed || (!c.lock && !S.keep && !S.firstSuite)) c.seed = newSeed(); }); S.firstSuite = false; saveChain(); }
   S.first = false;
   $('status').textContent = 'Composing…'; $('compose').disabled = true;
   setTimeout(() => {
     try {
       const t0 = performance.now();
-      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], solo: S.solo === 'auto' ? null : S.solo });
+      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed })), solo: S.solo === 'auto' ? null : S.solo });
       MV = 0;
       $('status').textContent = 'Done in ' + Math.round(performance.now() - t0) + ' ms. Seed ' + S.seed + '.';
-      showResult();
+      showResult(); if (S.form === 'suite') drawSuite();
     } catch (e) { console.error(e); $('status').textContent = 'Something went wrong: ' + e.message; }
     $('compose').disabled = false;
   }, 30);
