@@ -7526,7 +7526,15 @@ function speak(ctx, role, player, content, c) {
   const label = JR_ROLE[role];
   if (player === JP_PLAIN) { one(label, src); return tr; }
   if (PK[player]) { const part = role === 'motif' ? 'melody' : role; one(label + ' for ' + player + ' (Instrument mode)', E.applyMask(song, part === 'orch' ? 'pad' : part, src, PK[player], { mode: 'instrument' })); return tr; }
-  // Berlin, BBC, STRIIIINGS, Presence, Diva on a single line: fold into a range that sounds
+  // Berlin and BBC on a single line: one named orchestra instrument, in its own range and language
+  if (player === 'Berlin' || player === 'BBC') {
+    const pick = role === 'bass' ? ['vc', 'Celli', 36, 60, 's'] : role === 'chords' ? ['vln2', 'Violins 2', 55, 81, 's'] : role === 'motif' ? (c.costume.includes('grand') || c.costume.includes('low') ? ['hn', 'Horns', 41, 72, 'w'] : ['ob', 'Oboe', 60, 86, 'w']) : c.c.light > 0.3 ? ['fl', 'Flute', 62, 93, 'w'] : ['vln1', 'Violins 1', 57, 93, 's'];
+    const t = { id: pick[0], name: pick[1], ksType: pick[4], notes: src.map((n) => ({ t: n.t, dur: n.d, m: fold(n.p, pick[2], pick[3]), v: n.v, art: 'long' })), cc: [{ t: 0, c: 1, v: 90 }, { t: 0, c: 11, v: 110 }], ks: [{ t: 0, m: 0 }] };
+    const out = player === 'Berlin' ? ctx.Y.toBerlin([t]) : [t];
+    for (const x of out) one(label + ' for ' + player + ', ' + x.name, (player === 'BBC' ? (x.ks || []).map((k) => ({ t: k.t, d: 12, p: k.m, v: 100, ks: 1 })) : []).concat(x.notes.map((n) => ({ t: n.t, d: n.dur, p: n.m, v: n.v }))), x.cc);
+    return tr;
+  }
+  // STRIIIINGS, Presence, Diva on a single line: fold into a range that sounds
   const rg = role === 'bass' ? [28, 55] : role === 'chords' ? [48, 79] : [55, 91];
   one(label + ' for ' + player, src.map((n) => Object.assign({}, n, { p: fold(n.p, rg[0], rg[1]) })), player === 'Berlin' || player === 'BBC' ? [{ t: 0, c: 1, v: 90 }, { t: 0, c: 11, v: 110 }] : []);
   return tr;
