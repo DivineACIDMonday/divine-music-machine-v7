@@ -52,7 +52,8 @@ function studioSong(E, genreName, c, contentBars, seed, F) {
   const g = GENRE_KEY[genreName] || 'house', song = E.newSong(g, { seed });
   song.bpm = F; song.bpmAuto = false; song.keyAuto = false; song.key = { root: c.tonic, scale: c.minor ? 'minor' : 'major' }; song.meter = '4/4';
   const secs = []; for (let b = 0, k = 0; b < contentBars; b += 8, k++) { const u = b / Math.max(1, contentBars), e = eAt(c, u);
-    secs.push({ id: 'j' + k, type: e < 0.35 ? 'verse' : e < 0.68 ? 'chorus' : 'drop', bars: Math.min(8, contentBars - b) }); }
+    const type = e < 0.35 ? ['intro', 'verse'][k % 2] : e < 0.68 ? ['verse', 'prechorus', 'chorus', 'chorus'][k % 4] : ['drop', 'drop', 'build', 'drop'][k % 4];
+    secs.push({ id: 'j' + k, type, bars: Math.min(8, contentBars - b) }); }
   song.sections = secs; return song;
 }
 
@@ -132,6 +133,10 @@ function chapterContent(ctx, plan, i) {
   }
   // the beat: always from the Studio engine (a rhythm never clashes with a harmony)
   out.beat = roles.has('beats') ? E.renderSong(song, 'beat') : [];
+  // the beat evolves: before a new 16 bars the kick rests for 2 bars, and every 4th block opens with 4 bars of hats and percussion only
+  out.beat = out.beat.filter((n) => { const bar = Math.floor(n.t / BAR), blk = Math.floor(bar / 16), inb = bar % 16;
+    if (blk % 2 === 1 && inb >= 14 && n.lane <= 1) return false;
+    if (blk % 4 === 2 && inb < 4 && n.lane <= 3) return false; return true; });
   // percussion: the Percussion Machine, in the style of this chapter
   const percArt = c.lead.machine === 'percussion' ? c.lead : c.guests.find((g) => g.machine === 'percussion') || nearest(JP, 'percussion', c.c);
   out.percStyle = percArt.name;
@@ -147,7 +152,7 @@ function chapterContent(ctx, plan, i) {
     sc = S.fromTrack(sc, { notes: harmonic.filter((n) => n.t < needContent), meter: 4, bpm: F }); sc.parts.percs.on = true; sc.parts.strings.on = true;
     const r = S.render(sc), cats = S.catsFor(sc); out.score = { r, cats, style: scoreArt.name }; }
   out.bass = bass; out.chords = chords; out.melody = melody;
-  out.orch = orch || orchestrate(chords, bass, c.energy > 0.6 ? melody : [], c);
+  out.orch = orch || orchestrate(chords, bass, c.energy > 0.6 && !roles.has('melody') ? melody : [], c);
   out.F = F; out.lenTicks = lenTicks;
   return out;
 }
@@ -202,6 +207,22 @@ function speak(ctx, role, player, content, c) {
 const JP_PLAIN = 'Plain MIDI';
 const JR_ROLE = { beats: 'Beat', perc: 'Percussion', bass: 'Bass', chords: 'Chords', melody: 'Melody', orch: 'Orchestra', motif: 'Motif' };
 
+// who plays in this bar: the energy sets how many layers, and the layers breathe in waves of 16 bars
+function plays(plan, i, rank, bar) {
+  const c = plan.chapters[i], n = plan.chapters.length, np = c.players.length, len = c.bars * BAR;
+  const ph = Math.floor(bar / 8) * 8; let L = Math.max(1, layersAt(c, ph * BAR / len));
+  const edge = (i === 0 && bar < 16) || (i === n - 1 && bar >= c.bars - 16);
+  if (!edge && eAt(c, ph / c.bars) > 0.15) L = Math.max(L, Math.min(3, np)); // a chapter is never just one dry layer for long
+  if (L === 1 && bar >= 16) L = 2;
+  L = Math.min(L, np);
+  if (rank >= L) return false;
+  // waves: every other 16 bars one layer rests, on a big moment a second one; never the leader (rank 0)
+  const blk = Math.floor(bar / 16), h = (blk * 2654435761 + i * 40503) >>> 0;
+  if (L >= 3 && blk % 2 === 1 && rank === 1 + (h % (L - 1))) return false;
+  if (L >= 5 && blk % 4 === 3 && rank === 1 + ((h >>> 8) % (L - 1))) return false;
+  return true;
+}
+
 // ---------- shaping in journey time: layers, breaths, transitions, the ending ----------
 function shape(plan, i, role, rank, notes, tl) {
   const c = plan.chapters[i], n = plan.chapters.length, len = c.bars * BAR, prev = plan.chapters[i - 1], o = [];
@@ -210,7 +231,7 @@ function shape(plan, i, role, rank, notes, tl) {
     if (x.t < -PPQ / 2 || x.t >= len) continue; if (x.t < 0) x = Object.assign({}, x, { t: 0 }); const bar = Math.floor(x.t / BAR), u = x.t / len;
     if (role !== 'motif') {
       // layers: each role has a rank; it plays when the energy carries that many layers (checked per 8 bars, so layers enter on phrases)
-      const ph = Math.floor(bar / 8) * 8, L = layersAt(c, ph * BAR / len); if (!x.ks && rank >= Math.max(1, L)) continue;
+      if (!x.ks && !plays(plan, i, rank, bar)) continue;
       // a breath inside the chapter: two bars where only the motif sounds
       if (c.breathInside && bar >= c.breathInside.bar && bar < c.breathInside.bar + 2) continue;
       // the way out of this chapter
@@ -241,14 +262,16 @@ JR.render = function (plan, ctx) {
   plan.chapters.forEach((c, i) => {
     const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle];
     if (i < plan.chapters.length - 1 && c.out === 'riser' && content.beat.length) content.beat = content.beat.concat(riserRoll(c, i, tl).map((n) => ({ t: Math.round(n.t * c.feelsLike / plan.bpm), d: n.d, lane: n.lane, v: n.v })));
-    // the motif: at the start of the chapter, at every 32 bars, in a breath and before a motif bridge
+    // the motif: at the start of the chapter, at every 16 bars, in a breath and before a motif bridge
     const mo = motifNotes(plan, c, c.feelsLike), motif = []; const put = (bar) => mo.notes.forEach((n) => motif.push(Object.assign({}, n, { t: n.t + Math.round(bar * BAR * c.feelsLike / plan.bpm) })));
-    for (let b = 0; b < c.bars - 4; b += 32) put(b);
+    for (let b = 0; b < c.bars - 4; b += 16) put(b);
     if (c.breathInside) put(c.breathInside.bar); if (i < plan.chapters.length - 1 && (c.out === 'motif' || c.out === 'breath')) put(c.bars - 4);
     content.motif = motif;
     // content time to journey time: the chapter was written at its own feel tempo
     const k = plan.bpm / c.feelsLike, toJ = (ns) => ns.map((n) => Object.assign({}, n, { t: Math.round(n.t * k), d: Math.max(30, Math.round((n.d || 120) * k)) }));
-    const rank = {}; c.players.forEach((p, r) => { rank[p.role] = r; });
+    const rank = {}; let order = c.players.map((p) => p.role);
+    if (i === 0 && (plan.opening.id === 'awaken' || plan.opening.id === 'motif')) { const soft = ['orch', 'chords', 'melody', 'bass']; order = order.filter((r) => soft.includes(r)).concat(order.filter((r) => !soft.includes(r))); }
+    order.forEach((r, k) => { rank[r] = k; });
     const motifPlayer = (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: (plan.rack && plan.rack.melody && plan.rack.melody[0]) || JP_PLAIN }).player;
     for (const p of c.players.concat([{ role: 'motif', player: motifPlayer }])) {
       const tracks = speak(ctx, p.role, p.player, content, c);

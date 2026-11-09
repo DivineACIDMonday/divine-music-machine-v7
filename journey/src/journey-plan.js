@@ -222,9 +222,9 @@ JP.plan = (words, opts = {}) => {
 
   // one tempo for the whole journey; each chapter finds its own feel on top of it
   let best = null;
-  for (let b = 80; b <= 140; b++) { let cost = 0; for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id === 'straight' ? 0 : 0.02)));
+  for (let b = 96; b <= 130; b++) { let cost = Math.abs(b - 120) / 300; // a journey walks best around 120 for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id === 'straight' ? 0 : 0.02)));
     cost += r() * 0.04; if (!best || cost < best.cost) best = { b, cost }; }
-  const bpm = best.b;
+  const bpm = opts.bpm || best.b;
   ch.forEach((x, i) => { x.feel = JP.FEELS.reduce((a, f) => (Math.abs(bpm * f.ratio - x.lead.bpm) < Math.abs(bpm * a.ratio - x.lead.bpm) ? f : a));
     if (ov[i] && ov[i].feel) x.feel = JP.FEELS.find((f) => f.id === ov[i].feel) || x.feel; x.feelsLike = Math.round(bpm * x.feel.ratio); });
 
@@ -269,6 +269,10 @@ JP.plan = (words, opts = {}) => {
     return pickW(r, own, own.map((p) => (p === JP.PLAIN && own.length > 1 ? 0.4 : pref.includes(p) ? 3 : 1))); };
   ch.forEach((x) => { const roles = JP.ROLES[x.lead.machine].slice(0, Math.min(6, Math.max(2, x.layers)));
     x.players = roles.map((role) => ({ role, player: pick(role, x), swapped: false })); });
+
+  // an awakening needs something soft to wake up with: chords join the first chapter if it has no harmony yet
+  if ((opening.id === 'awaken' || opening.id === 'motif') && !ch[0].players.some((p) => p.role === 'chords' || p.role === 'orch'))
+    ch[0].players.push({ role: 'chords', player: pick('chords', ch[0]), swapped: false });
 
   // swaps: one or two per journey, always on a chapter edge, and only where the instrument fits the role
   const swaps = []; const nsw = r() < 0.5 ? 2 : 1;

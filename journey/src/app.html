@@ -124,6 +124,8 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
     <button class="btn big" id="rollAll"><svg class="die" viewBox="0 0 16 16" aria-hidden="true"><rect x="1.5" y="1.5" width="13" height="13" rx="3" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="5" cy="5" r="1.2" fill="currentColor"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/><circle cx="11" cy="11" r="1.2" fill="currentColor"/></svg> Roll everything</button>
     <button class="btn" id="reseed" title="Same words, the dice choose again">↻ Same words, new journey</button>
     <div class="grow"></div>
+    <span class="muted small">Tempo</span>
+    <select class="pk" id="tempo" aria-label="Tempo"><option value="0">auto</option></select>
     <span class="muted small">Length</span>
     <div class="seg" id="len"><button data-m="20">20 min</button><button data-m="40">40 min</button><button data-m="70">70 min</button></div>
   </div>
@@ -171,6 +173,7 @@ const S = {
   words: WHEELS.map(([w]) => ({ wheel: w, word: rnd(JW[w]) })),
   locks: [false, false, false, false, false],
   minutes: ss.get('journey-min', 40),
+  bpm: ss.get('journey-bpm', 0),
   seed: (Math.random() * 4294967296) >>> 0,
   plan: null,
   ov: [{}, {}, {}, {}, {}],
@@ -213,7 +216,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 // ---------- plan + map ----------
 function replan() {
   const recent = ls.get('journey-recent', []);
-  S.plan = JP.plan(S.words, { seed: S.seed, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
+  S.plan = JP.plan(S.words, { seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
   stopPlay(); PV = null;
   drawMap(); drawChapters();
 }
@@ -434,6 +437,8 @@ $('#rollAll').onclick = () => { S.words.forEach((w, i) => { if (!S.locks[i]) { r
 $('#reseed').onclick = () => { S.seed = (Math.random() * 4294967296) >>> 0; replan(); };
 function drawLen() { document.querySelectorAll('#len button').forEach((b) => b.setAttribute('aria-pressed', +b.dataset.m === S.minutes ? 'true' : 'false')); }
 document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.minutes = +b.dataset.m; ss.set('journey-min', S.minutes); drawLen(); replan(); }; });
+(() => { const t = $('#tempo'); for (let b = 90; b <= 140; b += 2) t.add(new Option(b + ' bpm', b)); t.value = String(S.bpm || 0);
+  t.onchange = () => { S.bpm = +t.value; ss.set('journey-bpm', S.bpm); replan(); }; })();
 if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
 drawRack(); drawWords(); drawLen(); replan();
 </script>
