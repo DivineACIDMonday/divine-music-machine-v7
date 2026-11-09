@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Pick an era, a form and your orchestra, get classical MIDI with keyswitches and dynamics. Made especially for Spitfire BBC Symphony Orchestra Discover. By Divine Monday.">
+<meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
+<meta name="theme-color" content="#130E11">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Divine Monday">
+<meta property="og:title" content="Divine Symphony Machine">
+<meta property="og:description" content="Pick an era, a form and your orchestra, get classical MIDI with keyswitches and dynamics. Made especially for Spitfire BBC Symphony Orchestra Discover.">
+<meta property="og:url" content="https://divineacidmonday.github.io/divine-music-machine-v7/symphony/">
+<meta property="og:image" content="https://divineacidmonday.github.io/divine-music-machine-v7/og/og-symphony.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Divine Symphony Machine">
+<meta name="twitter:image" content="https://divineacidmonday.github.io/divine-music-machine-v7/og/og-symphony.png">
+<!--PWA--><link rel="manifest" href="manifest.webmanifest"><link rel="apple-touch-icon" href="/divine-music-machine-v7/icons/symphony-180.png"><meta name="mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-capable" content="yes"><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"><meta name="apple-mobile-web-app-title" content="DM Symphony"><link rel="icon" type="image/png" sizes="192x192" href="/divine-music-machine-v7/icons/symphony-192.png"><script>if ('serviceWorker' in navigator && /\.github\.io$/.test(location.hostname)) navigator.serviceWorker.register('sw.js').catch(function () {});</script><!--/PWA-->
+<title>Divine Symphony Machine</title>
+<style>
+:root{color-scheme:dark;--bg:#130E11;--card:#1D1619;--card2:#251C20;--line:#3B2D32;--tx:#F2EADD;--mu:#AE9E90;--gold:#D9A84E;--wine:#9A3346;--str:#D9A84E;--ww:#8FC29C;--br:#E58256;--perc:#9CC7E3;--kb:#C8B2E8}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#2A1A20 0,var(--bg) 60%) fixed,var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.serif{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:6px 0}
+.logo{font-size:28px;font-weight:700;letter-spacing:.3px;line-height:1.1}
+.logo i{color:var(--gold)}
+.tag{font:12px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--mu);border:1px solid var(--line);border-radius:6px;padding:4px 7px}
+.grow{flex:1 1 20px}
+a{color:var(--gold)}
+.back{color:var(--mu);text-decoration:none;font-size:14px}
+.back:hover{color:var(--tx)}
+.step{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.sh{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.num{font-size:30px;color:var(--gold);line-height:1}
+.st{font-size:21px;font-style:italic}
+.muted{color:var(--mu);font-size:14px}
+.small{font-size:13px}
+.grid{display:grid;gap:10px}
+.eras{grid-template-columns:repeat(auto-fill,minmax(220px,1fr))}
+.forms{grid-template-columns:repeat(auto-fill,minmax(200px,1fr))}
+.pick{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-align:left;cursor:pointer;color:var(--tx);font:inherit;display:flex;flex-direction:column;gap:6px;min-height:44px;transition:border-color .15s,transform .15s}
+.pick:hover{border-color:#5A464C}
+.pick[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#2C2124}
+.pick h3{margin:0;font-size:19px;font-weight:600}
+.pick .yr{font:12px ui-monospace,Menlo,monospace;color:var(--gold)}
+.pick p{margin:0;color:var(--mu);font-size:13.5px}
+.map{display:flex;gap:3px;flex-wrap:wrap}
+.map span{font:11px ui-monospace,Menlo,monospace;padding:2px 6px;border-radius:4px;background:#33262A;color:#E6D7C3}
+.map span.k{background:#4A3420;color:#F5D79A}
+.opts{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;padding-top:4px;border-top:1px dashed var(--line)}
+.opt{display:flex;align-items:center;gap:8px;font-size:14px;color:var(--mu)}
+select,input[type=number]{background:#120D10;color:var(--tx);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font:inherit;min-height:40px}
+input[type=range]{accent-color:var(--gold);width:140px}
+input[type=checkbox]{accent-color:var(--gold);width:18px;height:18px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--mu);padding:8px 12px;font:inherit;cursor:pointer;min-height:40px}
+.seg button[aria-pressed=true]{background:#3A2A22;color:var(--gold)}
+.btn{background:#2A2024;border:1px solid var(--line);color:var(--tx);border-radius:9px;padding:9px 14px;font:inherit;cursor:pointer;min-height:42px}
+.btn:hover{border-color:#6A545A}
+.btn.gold{background:var(--gold);border-color:var(--gold);color:#1A1208;font-weight:700}
+.btn.gold:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:default}
+.orch{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:16px;align-items:start}
+@media (max-width:860px){.orch{grid-template-columns:1fr}}
+svg.hall{width:100%;height:auto;display:block;user-select:none}
+.seat{cursor:pointer;transition:opacity .15s}
+.seat path{stroke:#130E11;stroke-width:2}
+.seat text{font:600 12px system-ui,sans-serif;fill:#1A1208;pointer-events:none}
+.seat.off path{fill:#2B2226!important}
+.seat.off text{fill:#7C6B62}
+.seat:focus-visible path{stroke:var(--tx)}
+.presets{display:flex;flex-wrap:wrap;gap:8px}
+.legend{display:flex;flex-wrap:wrap;gap:10px;font-size:13px;color:var(--mu)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.count{font-size:14px;color:var(--mu)}
+.go{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.strip{display:flex;height:34px;border-radius:8px;overflow:hidden;border:1px solid var(--line);position:relative;background:#120D10}
+.strip div{display:flex;align-items:center;justify-content:center;font:12px system-ui;color:#1A1208;white-space:nowrap;overflow:hidden;border-right:1px solid #130E11;padding:0 4px}
+.strip .head{position:absolute;top:0;bottom:0;width:2px;background:#fff;left:0;opacity:0;pointer-events:none}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tracks{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px}
+.trk{display:flex;align-items:center;gap:10px;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.trk b{font-weight:600}
+.trk .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.trk .info{flex:1;min-width:0}
+.trk .info div{font-size:12px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.trk button{min-height:36px;padding:6px 10px}
+.how{background:#171114;border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+.how ol{margin:6px 0 0 18px;padding:0}
+.how li{margin:3px 0}
+.kbd{font:12px ui-monospace,Menlo,monospace;background:#2A2024;border:1px solid var(--line);border-radius:5px;padding:1px 5px}
+.result{display:none;flex-direction:column;gap:12px}
+.result.on{display:flex}
+.check{font-size:13px;color:var(--mu)}
+.check b{color:var(--ww)}
+footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
+.hide{display:none!important}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <div class="logo serif">Divine <i>Symphony</i> Machine</div>
+  <span class="tag">for BBC Symphony Orchestra Discover</span>
+  <span class="grow"></span>
+  <a class="back" href="https://divineacidmonday.github.io/">All machines</a>
+</header>
+
+<section class="step" id="s1">
+  <div class="sh"><span class="num serif">1</span><span class="st serif">Choose an era</span><span class="muted">The era sets harmony, ornaments, orchestra and how freely the time breathes.</span></div>
+  <div class="grid eras" id="eras"></div>
+</section>
+
+<section class="step" id="s2">
+  <div class="sh"><span class="num serif">2</span><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
+  <div class="grid forms" id="forms"></div>
+  <div class="opts">
+    <label class="opt">Key <select id="key"></select></label>
+    <span class="opt">Length <span class="seg" id="len"><button data-v="1">Short</button><button data-v="2">Medium</button><button data-v="3">Long</button></span></span>
+    <label class="opt">Tempo <input type="range" id="tempo" min="50" max="190" step="1"><b id="tempoV" class="small"></b></label>
+    <span class="opt">Rubato <span class="seg" id="rub"><button data-v="0">Off</button><button data-v="1">Era</button><button data-v="2">More</button></span></span>
+    <label class="opt hide" id="soloW">Solo <select id="solo"></select></label>
+    <label class="opt"><input type="checkbox" id="early" checked> Long notes 40 ms early</label>
+    <label class="opt">Seed <input type="number" id="seed" min="1" max="999999" style="width:110px"><button class="btn" id="dice" title="New seed" aria-label="New seed">🎲</button></label>
+  </div>
+</section>
+
+<section class="step" id="s3">
+  <div class="sh"><span class="num serif">3</span><span class="st serif">Seat your orchestra</span><span class="muted">Tap a section to switch it on or off. Each one becomes its own MIDI track.</span></div>
+  <div class="orch">
+    <svg class="hall" id="hall" viewBox="0 0 640 380" role="group" aria-label="Orchestra seating"></svg>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="presets" id="presets"></div>
+      <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Timpani</span><span><i style="background:var(--kb)"></i>Piano</span></div>
+      <div class="count" id="count"></div>
+      <div class="muted small">The era preset is chosen for you when you pick an era. Change anything you like after that.</div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="s4">
+  <div class="sh"><span class="num serif">4</span><span class="st serif">Get it</span><span class="muted">One MIDI track per BBC instrument, with keyswitches, CC1 dynamics and CC11 expression.</span></div>
+  <div class="go">
+    <button class="btn gold" id="compose">Compose</button>
+    <span class="muted" id="status"></span>
+  </div>
+  <div class="result" id="result">
+    <div class="tabs" id="mvTabs"></div>
+    <div class="strip" id="strip"><span class="head" id="head"></span></div>
+    <div class="go">
+      <button class="btn" id="play">▶ Listen</button>
+      <span class="muted small" id="ptime">A rough sketch with simple synths. The real sound comes from BBC Discover.</span>
+      <span class="grow"></span>
+      <button class="btn gold" id="dlAll">Download full MIDI</button>
+      <button class="btn" id="dlZip">Download all tracks (zip)</button>
+    </div>
+    <div class="check" id="check"></div>
+    <div class="tracks" id="tracks"></div>
+    <div class="how">
+      <b class="serif" style="font-size:17px">Into your DAW with BBC Discover</b>
+      <ol>
+        <li>Drag the full MIDI file into your song. Every instrument lands on its own track.</li>
+        <li>On each track, load BBC Symphony Orchestra Discover and pick the instrument with the same name.</li>
+        <li>Leave the keyswitches as they are: <span class="kbd">C-2</span> Long, <span class="kbd">C#-2</span> Spiccato or Short, <span class="kbd">D-2</span> Pizzicato, <span class="kbd">D#-2</span> Tremolo.</li>
+        <li>CC1 drives the dynamics and CC11 the expression. They are already written in.</li>
+        <li>The first bar is empty on purpose, so the keyswitches and the early long notes have room.</li>
+        <li>Rubato is baked into the note timing. Keep the tempo of your song at the tempo shown here.</li>
+        <li>Any other sound works too: drag your own plugin onto a track and ignore the low keyswitch notes.</li>
+      </ol>
+    </div>
+  </div>
+</section>
+<footer>© 2026 Divine Monday. All rights reserved. Pure rules of harmony and counterpoint, no samples and no AI inside. BBC Symphony Orchestra Discover is a product of Spitfire Audio; this app is not affiliated with them.</footer>
+</div>
+<script>
+/*ENGINE*/
+</script>
+<script>
+(function () {
+'use strict';
+const Y = window.SYM;
+const $ = id => document.getElementById(id);
+const FAM = { str: 'var(--str)', ww: 'var(--ww)', br: 'var(--br)', perc: 'var(--perc)', kb: 'var(--kb)' };
+const FAMHEX = { str: '#D9A84E', ww: '#8FC29C', br: '#E58256', perc: '#9CC7E3', kb: '#C8B2E8' };
+const IM = {}; Y.INST.forEach(i => IM[i.id] = i);
+const store = { get(k, d) { try { const v = localStorage.getItem('dsym.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('dsym.' + k, JSON.stringify(v)); } catch (e) {} } };
+const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
+let RES = null, MV = 0;
+
+/* eras */
+const eraIcons = { baroque: '𝄞', classical: '♩', romantic: '♪', impressionist: '≈' };
+function drawEras() {
+  $('eras').innerHTML = '';
+  Object.entries(Y.ERAS).forEach(([id, e]) => {
+    const b = document.createElement('button'); b.className = 'pick'; b.setAttribute('aria-pressed', S.era === id);
+    b.innerHTML = '<span class="yr">' + e.years + '</span><h3 class="serif">' + e.name + '</h3><p>' + e.blurb + '</p>';
+    b.onclick = () => { S.era = id; store.set('era', id); S.inst = new Set(Y.PRESETS[id]); store.set('inst', [...S.inst]); drawEras(); drawHall(); };
+    $('eras').appendChild(b);
+  });
+}
+/* forms */
+function drawForms() {
+  $('forms').innerHTML = '';
+  Object.entries(Y.FORMS).forEach(([id, f]) => {
+    const b = document.createElement('button'); b.className = 'pick'; b.setAttribute('aria-pressed', S.form === id);
+    b.innerHTML = '<h3 class="serif">' + f.name + '</h3><div class="map">' + f.map.map((m, i) => '<span class="' + (i === 0 ? 'k' : '') + '">' + m + '</span>').join('') + '</div><p>' + f.blurb + '</p><span class="yr">' + (f.meter === 3 ? '3/4' : '4/4') + ' · ' + f.tempo + ' bpm</span>';
+    b.onclick = () => { S.form = id; store.set('form', id); S.tempo = null; drawForms(); syncOpts(); };
+    $('forms').appendChild(b);
+  });
+}
+const KEYS = [['C', 'C major'], ['G', 'G major'], ['D', 'D major'], ['A', 'A major'], ['E', 'E major'], ['F', 'F major'], ['Bb', 'B♭ major'], ['Eb', 'E♭ major'], ['Ab', 'A♭ major'], ['a', 'A minor'], ['e', 'E minor'], ['b', 'B minor'], ['d', 'D minor'], ['g', 'G minor'], ['c', 'C minor'], ['f', 'F minor'], ['f#', 'F♯ minor']];
+function syncOpts() {
+  const f = Y.FORMS[S.form];
+  if (!S.tempo) S.tempo = f.tempo;
+  $('tempo').value = S.tempo; $('tempoV').textContent = S.tempo + ' bpm';
+  $('soloW').classList.toggle('hide', S.form !== 'aria');
+  [...$('len').children].forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === S.len));
+  [...$('rub').children].forEach(b => b.setAttribute('aria-pressed', +b.dataset.v === S.rub));
+  $('seed').value = S.seed; $('early').checked = S.early;
+  const so = $('solo'); so.innerHTML = '<option value="auto">Surprise me</option>' + ['ob', 'cl', 'fl', 'vc', 'hn', 'vln1', 'tpt'].map(i => '<option value="' + i + '"' + (S.solo === i ? ' selected' : '') + '>' + IM[i].name + '</option>').join('');
+}
+function initOpts() {
+  $('key').innerHTML = KEYS.map(([v, n]) => '<option value="' + v + '"' + (v === S.key ? ' selected' : '') + '>' + n + '</option>').join('');
+  $('key').onchange = e => { S.key = e.target.value; store.set('key', S.key); };
+  [...$('len').children].forEach(b => b.onclick = () => { S.len = +b.dataset.v; store.set('len', S.len); syncOpts(); });
+  [...$('rub').children].forEach(b => b.onclick = () => { S.rub = +b.dataset.v; store.set('rub', S.rub); syncOpts(); });
+  $('tempo').oninput = e => { S.tempo = +e.target.value; $('tempoV').textContent = S.tempo + ' bpm'; };
+  $('early').onchange = e => { S.early = e.target.checked; store.set('early', S.early); };
+  $('seed').onchange = e => { S.seed = Math.max(1, +e.target.value || 1); };
+  $('dice').onclick = () => { S.seed = Math.floor(Math.random() * 900000) + 1; $('seed').value = S.seed; };
+  $('solo').onchange = e => { S.solo = e.target.value; };
+  syncOpts();
+}
+/* hall */
+const RINGS = [
+  { r1: 70, r2: 130, ids: ['vln1', 'vln2', 'vla', 'vc', 'cb'], short: ['Vln 1', 'Vln 2', 'Violas', 'Celli', 'Basses'] },
+  { r1: 136, r2: 192, ids: ['picc', 'fl', 'ob', 'cl', 'bsn'], short: ['Picc', 'Flutes', 'Oboes', 'Clar', 'Bsn'] },
+  { r1: 198, r2: 254, ids: ['hn', 'tpt', 'tbn', 'btbn', 'tba'], short: ['Horns', 'Tpts', 'Tbns', 'B Tbn', 'Tuba'] },
+];
+const CX = 320, CY = 340;
+function pt(r, a) { const t = a * Math.PI / 180; return [CX + r * Math.cos(t), CY - r * Math.sin(t)]; }
+function sector(r1, r2, a1, a2) {
+  const [x1, y1] = pt(r2, a1), [x2, y2] = pt(r2, a2), [x3, y3] = pt(r1, a2), [x4, y4] = pt(r1, a1);
+  return 'M' + x1 + ' ' + y1 + ' A' + r2 + ' ' + r2 + ' 0 0 1 ' + x2 + ' ' + y2 + ' L' + x3 + ' ' + y3 + ' A' + r1 + ' ' + r1 + ' 0 0 0 ' + x4 + ' ' + y4 + ' Z';
+}
+function drawHall() {
+  const svg = $('hall'); let h = '';
+  h += '<path d="M40 ' + CY + ' L600 ' + CY + '" stroke="#3B2D32" stroke-width="2"/>';
+  h += '<circle cx="' + CX + '" cy="' + CY + '" r="16" fill="#2A2024" stroke="#5A464C"/><text x="' + CX + '" y="' + (CY + 34) + '" text-anchor="middle" fill="#AE9E90" font-size="12" font-family="system-ui">conductor</text>';
+  RINGS.forEach(ring => {
+    const n = ring.ids.length, step = 180 / n;
+    ring.ids.forEach((id, i) => {
+      const a1 = 180 - i * step - 1, a2 = 180 - (i + 1) * step + 1;
+      const [tx, ty] = pt((ring.r1 + ring.r2) / 2, (a1 + a2) / 2);
+      h += seat(id, sector(ring.r1, ring.r2, a1, a2), tx, ty, ring.short[i]);
+    });
+  });
+  h += seat('timp', 'M270 18 h100 a10 10 0 0 1 10 10 v26 a10 10 0 0 1 -10 10 h-100 a10 10 0 0 1 -10 -10 v-26 a10 10 0 0 1 10 -10 z', 320, 41, 'Timpani');
+  h += seat('pno', 'M22 40 h92 a10 10 0 0 1 10 10 v26 a10 10 0 0 1 -10 10 h-92 a10 10 0 0 1 -10 -10 v-26 a10 10 0 0 1 10 -10 z', 68, 63, 'Piano');
+  svg.innerHTML = h;
+  svg.querySelectorAll('.seat').forEach(g => {
+    const tog = () => { const id = g.dataset.id; if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); };
+    g.onclick = tog; g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } };
+  });
+  $('count').textContent = S.inst.size + ' of 17 sections on, ' + S.inst.size + ' MIDI tracks.';
+}
+function seat(id, d, tx, ty, label) {
+  const on = S.inst.has(id), col = FAMHEX[fam(id)];
+  return '<g class="seat' + (on ? '' : ' off') + '" data-id="' + id + '" tabindex="0" role="switch" aria-checked="' + on + '" aria-label="' + IM[id].name + '"><title>' + IM[id].name + '</title><path d="' + d + '" fill="' + col + '"/><text x="' + tx + '" y="' + (ty + 4) + '" text-anchor="middle">' + label + '</text></g>';
+}
+function fam(id) { const g = IM[id].grp; return g === 'str' ? 'str' : g === 'ww' ? 'ww' : g === 'br' ? 'br' : g === 'perc' ? 'perc' : 'kb'; }
+function drawPresets() {
+  const P = [['Era preset', null], ['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Strings only', 'strings'], ['Everything', 'all']];
+  $('presets').innerHTML = '';
+  P.forEach(([n, k]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.onclick = () => { S.inst = new Set(Y.PRESETS[k || S.era]); store.set('inst', [...S.inst]); drawHall(); }; $('presets').appendChild(b); });
+}
+
+/* compose */
+function compose() {
+  stop();
+  if (!S.inst.size) { $('status').textContent = 'Switch on at least one section first.'; return; }
+  $('status').textContent = 'Composing…'; $('compose').disabled = true;
+  setTimeout(() => {
+    try {
+      const t0 = performance.now();
+      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], solo: S.solo === 'auto' ? null : S.solo });
+      MV = 0;
+      $('status').textContent = 'Done in ' + Math.round(performance.now() - t0) + ' ms. Seed ' + S.seed + '.';
+      showResult();
+    } catch (e) { console.error(e); $('status').textContent = 'Something went wrong: ' + e.message; }
+    $('compose').disabled = false;
+  }, 30);
+}
+const SECCOL = ['#D9A84E', '#8FC29C', '#E58256', '#9CC7E3', '#C8B2E8', '#E3C77A', '#B7D6A0', '#E9A27E'];
+function cur() { return RES.movements[MV]; }
+function secs(m, ticks) { return ticks / 480 * 60 / m.tempo; }
+function fmt(s) { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+function fileBase(m) { return ('Divine Symphony ' + m.title + ' seed ' + S.seed).replace(/[^\w ♭♯.-]+/g, '').replace(/\s+/g, ' ').trim(); }
+function showResult() {
+  $('result').classList.add('on');
+  const tabs = $('mvTabs'); tabs.innerHTML = '';
+  if (RES.movements.length > 1) RES.movements.forEach((m, i) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = m.title.replace('Symphony ', ''); b.setAttribute('aria-pressed', i === MV); if (i === MV) b.style.borderColor = 'var(--gold)'; b.onclick = () => { stop(); MV = i; showResult(); }; tabs.appendChild(b); });
+  const m = cur();
+  const strip = $('strip'); strip.querySelectorAll('div').forEach(d => d.remove());
+  const total = m.end, labels = {}; let k = 0;
+  m.secs.forEach(s => { if (!(s.label in labels)) labels[s.label] = SECCOL[k++ % SECCOL.length]; const d = document.createElement('div'); d.style.flex = (s.t1 - s.t0) + ' 0 0'; d.style.background = labels[s.label]; d.textContent = s.label; d.title = s.label + ' · ' + fmt(secs(m, s.t0)); strip.insertBefore(d, $('head')); });
+  const ck = Y.check(m);
+  $('check').innerHTML = m.title + ' · ' + m.tempo + ' bpm · ' + fmt(secs(m, m.end)) + ' · ' + ck.notes + ' notes · parallel fifths and octaves: <b>' + ck.parallels + '</b> · out of range: <b>' + ck.range + '</b> · ends on the tonic: <b>' + (ck.finalTonic ? 'yes' : 'no') + '</b>';
+  $('ptime').textContent = 'A rough sketch with simple synths. The real sound comes from BBC Discover.';
+  const tr = $('tracks'); tr.innerHTML = '';
+  m.tracks.forEach(t => {
+    const used = new Set(t.ks.map(k => k.m));
+    const arts = t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
+    const d = document.createElement('div'); d.className = 'trk';
+    d.innerHTML = '<span class="dot" style="background:' + FAMHEX[fam(t.id)] + '"></span><div class="info"><b>' + t.name + '</b><div>' + t.notes.length + ' notes · ' + arts + '</div></div>';
+    const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'MIDI'; b.onclick = () => save(Y.writeMidi(m, [t.id]), fileBase(m) + ' - ' + t.name + '.mid', 'audio/midi');
+    d.appendChild(b); tr.appendChild(d);
+  });
+}
+function save(bytes, name, type) {
+  const url = URL.createObjectURL(new Blob([bytes], { type }));
+  const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+}
+/* zip (stored) */
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const u16 = v => [v & 255, (v >>> 8) & 255], u32 = v => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  files.forEach(f => {
+    const nm = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const loc = [].concat(u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(sz), u32(sz), u16(nm.length), u16(0));
+    parts.push(new Uint8Array(loc), nm, f.data);
+    cen.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(sz), u32(sz), u16(nm.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), nm);
+    off += loc.length + nm.length + sz;
+  });
+  const cs = cen.reduce((a, b) => a + b.length, 0);
+  const end = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cs), u32(off), u16(0)));
+  return new Blob(parts.concat(cen, [end]), { type: 'application/zip' });
+}
+$('dlAll').onclick = () => { if (!RES) return; const m = cur(); save(Y.writeMidi(m), fileBase(m) + '.mid', 'audio/midi'); };
+$('dlZip').onclick = () => {
+  if (!RES) return;
+  const files = [];
+  RES.movements.forEach((m, i) => {
+    const dir = RES.movements.length > 1 ? (i + 1) + ' ' + m.title.replace(/^Symphony /, '').replace(/[^\w .-]/g, '') + '/' : '';
+    files.push({ name: dir + 'Full score.mid', data: Y.writeMidi(m) });
+    m.tracks.forEach((t, j) => files.push({ name: dir + String(j + 1).padStart(2, '0') + ' ' + t.name + '.mid', data: Y.writeMidi(m, [t.id]) }));
+  });
+  const url = URL.createObjectURL(zip(files));
+  const a = document.createElement('a'); a.href = url; a.download = fileBase(RES.movements[0]).replace(/ I\. Allegro/, '') + '.zip'; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 4000);
+};
+
+/* preview synth */
+let AC = null, master = null, verb = null, timer = null, playing = false, t0 = 0, queue = [], qi = 0, raf = 0;
+function setupAudio() {
+  AC = new (window.AudioContext || window.webkitAudioContext)();
+  master = AC.createGain(); master.gain.value = .5;
+  const comp = AC.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4;
+  verb = AC.createConvolver();
+  const len = AC.sampleRate * 2.6, ir = AC.createBuffer(2, len, AC.sampleRate);
+  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  verb.buffer = ir;
+  const wet = AC.createGain(); wet.gain.value = .32;
+  master.connect(comp); master.connect(verb); verb.connect(wet); wet.connect(comp); comp.connect(AC.destination);
+}
+const VOICE = {
+  str: { type: 'sawtooth', cut: 2600, att: .09, gain: .09 }, ww: { type: 'triangle', cut: 3800, att: .04, gain: .14 },
+  br: { type: 'sawtooth', cut: 1800, att: .05, gain: .08 }, perc: { type: 'sine', cut: 900, att: .002, gain: .5 }, kb: { type: 'triangle', cut: 5000, att: .003, gain: .13 },
+};
+const PAN = { vln1: -.55, vln2: -.25, vla: .2, vc: .45, cb: .65, picc: -.2, fl: -.15, ob: .1, cl: -.05, bsn: .2, hn: -.4, tpt: .1, tbn: .35, btbn: .45, tba: .55, timp: 0, pno: -.6 };
+function noteOn(n, when) {
+  const f = fam(n.id), V = VOICE[f], dur = Math.max(.06, n.d);
+  const o = AC.createOscillator(), g = AC.createGain(), lp = AC.createBiquadFilter(), p = AC.createStereoPanner ? AC.createStereoPanner() : null;
+  o.type = V.type; o.frequency.value = 440 * Math.pow(2, (n.m - 69) / 12);
+  if (f === 'str' || f === 'br') o.detune.value = (Math.random() * 12 - 6);
+  lp.type = 'lowpass'; lp.frequency.value = V.cut * (0.6 + n.v / 160);
+  const pk = V.gain * Math.pow(n.v / 127, 1.4) * (n.art === 'pizz' ? 1.6 : 1);
+  const att = n.art === 'long' ? V.att : .006;
+  const rel = f === 'perc' ? .5 : n.art === 'pizz' ? .25 : .12;
+  g.gain.setValueAtTime(0, when);
+  g.gain.linearRampToValueAtTime(pk, when + att);
+  if (f === 'perc' || f === 'kb' || n.art === 'pizz') { g.gain.exponentialRampToValueAtTime(Math.max(.0004, pk * .05), when + (f === 'kb' ? 1.4 : .45)); }
+  else g.gain.setValueAtTime(pk, when + Math.max(att, dur - .02));
+  g.gain.linearRampToValueAtTime(0, when + dur + rel);
+  if (f === 'perc') { o.frequency.setValueAtTime(o.frequency.value * 1.5, when); o.frequency.exponentialRampToValueAtTime(o.frequency.value, when + .05); }
+  if (n.art === 'trem') { const l = AC.createOscillator(), lg = AC.createGain(); l.frequency.value = 11; lg.gain.value = pk * .5; l.connect(lg); lg.connect(g.gain); l.start(when); l.stop(when + dur + rel); }
+  o.connect(lp); lp.connect(g);
+  if (p) { p.pan.value = PAN[n.id] || 0; g.connect(p); p.connect(master); } else g.connect(master);
+  o.start(when); o.stop(when + dur + rel + .05);
+}
+function play() {
+  if (playing) { stop(); return; }
+  if (!RES) return;
+  if (!AC) setupAudio();
+  AC.resume();
+  const m = cur(), k = 60 / m.tempo / 480;
+  queue = [];
+  m.tracks.forEach(t => t.notes.forEach(n => queue.push({ id: t.id, t: (n.t - m.OFF) * k, d: n.dur * k, m: n.m, v: n.v, art: n.art })));
+  queue.sort((a, b) => a.t - b.t); qi = 0;
+  t0 = AC.currentTime + .15; playing = true; $('play').textContent = '■ Stop';
+  const tick = () => {
+    const now = AC.currentTime - t0, horizon = now + .5;
+    let budget = 220;
+    while (qi < queue.length && queue[qi].t < horizon && budget-- > 0) { const n = queue[qi++]; if (n.t >= now - .05) noteOn(n, t0 + Math.max(n.t, now)); }
+    if (qi >= queue.length && now > queue[queue.length - 1].t + 4) stop();
+  };
+  tick(); timer = setInterval(tick, 90);
+  const total = secs(m, m.end - m.OFF);
+  const anim = () => { if (!playing) return; const now = AC.currentTime - t0; const h = $('head'); h.style.opacity = 1; h.style.left = Math.min(100, Math.max(0, (now / k + m.OFF) / m.end * 100)) + '%'; $('ptime').textContent = fmt(Math.max(0, now)) + ' / ' + fmt(total); raf = requestAnimationFrame(anim); };
+  anim();
+}
+function stop() {
+  playing = false; clearInterval(timer); cancelAnimationFrame(raf);
+  if ($('play')) $('play').textContent = '▶ Listen';
+  if (master && AC) { const g = master.gain.value; master.gain.setValueAtTime(g, AC.currentTime); master.gain.linearRampToValueAtTime(0, AC.currentTime + .08); const old = master; setTimeout(() => { try { old.disconnect(); } catch (e) {} }, 200); master = null; AC.close(); AC = null; }
+  const h = $('head'); if (h) h.style.opacity = 0;
+}
+$('play').onclick = play;
+$('compose').onclick = compose;
+drawEras(); drawForms(); initOpts(); drawPresets(); drawHall();
+})();
+</script>
+</body></html>

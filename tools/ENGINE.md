@@ -24,3 +24,4 @@ Every app page carries a copy of it inline, so each page stays one self-containe
 - Studio UI: `tools/studio/app.html`, built by `tools/studio/build.py`.
 - Score Machine: `score/index.html` is its own source (own engine).
 - Percussion Machine: `divineacidmonday.github.io/percussion/src/` (app.html, perc-engine.js, build.py).
+- Symphony Machine: `symphony/src/` (app.html, sym-engine.js, build.py, test.js). Own engine, built for BBC Symphony Orchestra Discover. Edit the source, run `python3 symphony/src/build.py`, then `node symphony/src/test.js`.

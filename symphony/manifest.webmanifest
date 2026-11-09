@@ -1,0 +1,31 @@
+{
+ "name": "Divine Symphony Machine",
+ "short_name": "DM Symphony",
+ "description": "Pick an era, a form and your orchestra, get classical MIDI for BBC Symphony Orchestra Discover. No AI inside.",
+ "id": "/divine-music-machine-v7/symphony/",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#130E11",
+ "theme_color": "#130E11",
+ "icons": [
+  {
+   "src": "/divine-music-machine-v7/icons/symphony-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/divine-music-machine-v7/icons/symphony-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/divine-music-machine-v7/icons/symphony-maskable.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
