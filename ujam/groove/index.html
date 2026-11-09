@@ -1680,6 +1680,46 @@ E.freshSong = function (genre, opts) {
 // mystery and hypnosis, for the genres that live on it (trance most, the others milder)
 E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-recent-songs' : 'dmm-recent-songs'); // each app family remembers its own recent songs
 // the groove machine: only the beat, always yours; keep = an existing groove keeps its hits
+
+/* ---------- surprise me: a genre per layer, a feeling and a story ---------- */
+E.SONG_FEELS = {
+  energetic: { name: 'Energetic', icon: '⚡', scale: null, bpm: 1.05, raw: 0.5 },
+  dark: { name: 'Dark', icon: '🌑', scale: 'minor', bpm: 0.98, raw: 0.45 },
+  happy: { name: 'Happy', icon: '☀', scale: 'major', bpm: 1.03, raw: 0.4 },
+  dreamy: { name: 'Dreamy', icon: '💭', scale: 'major', bpm: 0.93, raw: 0.3 },
+  melancholy: { name: 'Melancholy', icon: '🌧', scale: 'minor', bpm: 0.94, raw: 0.3 },
+  hypnotic: { name: 'Hypnotic', icon: '🌀', scale: 'dorian', bpm: 1, raw: 0.25 },
+};
+E.SONG_STORIES = {
+  radio: { name: 'Radio', icon: '📻', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
+  club: { name: 'Club', icon: '🎧', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
+  burner: { name: 'Slow burner', icon: '🔥', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
+  journey: { name: 'Journey', icon: '🌙', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
+};
+E.surpriseSong = function (o) {
+  o = o || {};
+  const beatG = E.GENRES[o.beat] ? o.beat : 'house';
+  const song = E.freshSong(beatG, { name: o.name || 'Untitled' });
+  const mel = E.GENRES[o.melody] ? o.melody : beatG, acc = E.GENRES[o.acc] ? o.acc : beatG;
+  if (mel !== beatG || acc !== beatG) song.mix = { melody: mel, acc };
+  const F = E.SONG_FEELS[o.feel];
+  if (F) {
+    if (F.scale && beatG !== 'blues' && song.key.scale !== F.scale) song.key.scale = F.scale === 'dorian' && song.key.scale === 'major' ? 'mixolydian' : F.scale;
+    const g = E.GENRES[beatG];
+    if (g.bpm && beatG !== 'divine') song.bpm = clamp(Math.round(song.bpm * F.bpm), g.bpm[0], g.bpm[1]);
+    if (F.raw != null) song.raw = F.raw;
+  }
+  const S = E.SONG_STORIES[o.story];
+  if (S && song.L) {
+    const U = song.L, half = U === 12;
+    song.sections = S.secs.map(([t, k], i) => ({ id: 's' + i + '_' + hash(song.seed, 'story', i, t), type: t, bars: (half ? Math.max(1, Math.round(k / 2)) : k) * U }));
+  }
+  if (o.keep && o.keep.parts && o.keep.parts.beat) { // your beat stays: same genre, same ideas, your own material
+    song.parts.beat = JSON.parse(JSON.stringify(o.keep.parts.beat));
+    for (const t of Object.keys(song.mat)) if (o.keep.mat && o.keep.mat[t] && o.keep.mat[t].beat) song.mat[t].beat = JSON.parse(JSON.stringify(o.keep.mat[t].beat));
+  }
+  return song;
+};
 E.makeGroove = function (song, keep) {
   song.dgm = true; if (!song.laneFeel) song.laneFeel = E.LANE_FEEL0();
   for (const p of E.PARTS) if (p !== 'beat') song.parts[p].mode = 'off';
@@ -2013,6 +2053,9 @@ function dedupeMono(notes) {
 // returns concrete loop material for every part for a section type, honouring leaders
 E.resolveType = function (song, type) {
   const out = {}, ctx = {};
+  // style mix: each layer may speak another genre (beat, melody with answer, accompaniment with chords, pad and bass); no mix, no change
+  const LAYER = { beat: 'beat', melody: 'melody', answer: 'melody', chords: 'acc', pad: 'acc', bass: 'acc' };
+  const G = (part) => { const g = song.mix && song.mix[LAYER[part]]; return g && g !== song.genre && E.GENRES[g] ? Object.assign({}, song, { genre: g }) : song; };
   const P = song.parts;
   const autos = {}, quiet = {}; // autos: untouched copies (keep the machine's habits); quiet: copies that do not lead yet
   const userOf = (part) => { if (P[part].mode !== 'yours') return null; const u = E.userSource(song, part, type); if (u && u.auto) { autos[part] = true; if (!u.lead) quiet[part] = true; } return u ? E.deriveUser(song, part, u, type) : null; };
@@ -2025,44 +2068,44 @@ E.resolveType = function (song, type) {
     // fill empty chord bars with the machine's chord for that bar, marked f: 1
     if (chu && P.chords.repeat !== false && chu.bars.some(Boolean) && chu.bars.some((c) => !c)) {
       // a genre progression, turned so it continues from your first chord
-      const gen = E.genChords(song, type, {}, seedOf('chords')).bars;
+      const gen = E.genChords(G('chords'), type, {}, seedOf('chords')).bars;
       const first = chu.bars.findIndex(Boolean), mine = chu.bars[first];
       let k = gen.findIndex((c) => c && c.root === mine.root); if (k < 0) k = first;
       const at = (b) => gen[((b - first + k) % gen.length + gen.length) % gen.length];
       out.chords = Object.assign({}, chu, { bars: chu.bars.map((c, b) => c || (at(b) ? Object.assign({}, at(b), { f: 1 }) : null)) });
     }
   }
-  else if (P.chords.mode !== 'off') out.chords = E.genChords(song, type, ctx, seedOf('chords'));
+  else if (P.chords.mode !== 'off') out.chords = E.genChords(G('chords'), type, ctx, seedOf('chords'));
   else out.chords = null;
-  ctx.chords = out.chords && !E.isEmpty('chords', out.chords) ? out.chords : E.genChords(song, type, ctx, seedOf('chords'));
+  ctx.chords = out.chords && !E.isEmpty('chords', out.chords) ? out.chords : E.genChords(G('chords'), type, ctx, seedOf('chords'));
   // your bass and melody: empty bars repeat your first bar, along the chords
   const rep = (part, d) => (d && P[part].repeat !== false && !autos[part] ? E.fillBars(song, part, d, ctx.chords) : d); // an untouched copy is complete already
   const basF = rep('bass', bas), melF = rep('melody', mel);
   ctx.bassUser = quiet.bass ? null : basF; ctx.melodyUser = quiet.melody ? null : melF;
   // beat
   if (P.beat.mode === 'yours' && (bea || song.dgm)) out.beat = bea || E.emptyMat('beat', song); // the groove machine: a section you never touched is empty, the machine only suggests
-  else if (P.beat.mode !== 'off') { const core = E.genBeat(song, 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !quiet.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(song, core, type, seedOf('beat')); }
+  else if (P.beat.mode !== 'off') { const core = E.genBeat(G('beat'), 'chorus', ctx, hash(P.beat.seed, song.genre, song.meter, basF && !quiet.bass ? JSON.stringify(basF.notes.map((n) => n.s)) : '')); out.beat = E.typeBeatFromCore(G('beat'), core, type, seedOf('beat')); }
   else out.beat = null;
   ctx.beat = out.beat;
   // bass
   if (P.bass.mode === 'yours' && basF) out.bass = basF;
-  else if (P.bass.mode !== 'off') out.bass = E.genBass(song, type, ctx, seedOf('bass'));
+  else if (P.bass.mode !== 'off') out.bass = E.genBass(G('bass'), type, ctx, seedOf('bass'));
   else out.bass = null;
   // pad: long chord tones; yours or the machine's
   const padU = userOf('pad'), padF = rep('pad', padU);
   if (P.pad.mode === 'yours' && padF) out.pad = padF;
-  else if (P.pad.mode !== 'off') out.pad = E.genPad(song, type, ctx, seedOf('pad'));
+  else if (P.pad.mode !== 'off') out.pad = E.genPad(G('pad'), type, ctx, seedOf('pad'));
   else out.pad = null;
   // melody
   if (P.melody.mode === 'yours' && melF) out.melody = melF;
-  else if (P.melody.mode !== 'off') out.melody = E.genMelody(song, type, ctx, seedOf('melody'));
+  else if (P.melody.mode !== 'off') out.melody = E.genMelody(G('melody'), type, ctx, seedOf('melody'));
   else out.melody = null;
   // answer: replies to the melody as it sounds here
   ctx.melodyOut = out.melody;
   if (E.callResponse(song) && out.melody && out.melody.notes && P.melody.mode !== 'yours') { const N2 = E.meter(song).steps; ctx.melodyOut = Object.assign({}, out.melody, { notes: out.melody.notes.filter((n) => Math.floor(n.s / N2) % 2 === 0) }); } // call and answer: the answer hears the melody's empty bars
   const ansU = userOf('answer'), ansF = rep('answer', ansU);
   if (P.answer.mode === 'yours' && ansF) out.answer = ansF;
-  else if (P.answer.mode !== 'off') out.answer = E.genAnswer(song, type, ctx, seedOf('answer'));
+  else if (P.answer.mode !== 'off') out.answer = E.genAnswer(G('answer'), type, ctx, seedOf('answer'));
   else out.answer = null;
   out.ctxChords = ctx.chords;
   return out;

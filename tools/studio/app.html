@@ -129,7 +129,7 @@ function toast(msg, act) { const old = $('.toast'); if (old) old.remove(); clear
 /* ---------- making a song ---------- */
 function makeSong(genre, opts) {
   stopAll(); opts = opts || {};
-  const sg = D.freshSong(genre, { name: 'Untitled' });
+  const sg = opts.sg || D.freshSong(genre, { name: 'Untitled' });
   if (opts.diy) { // DIY: every part starts empty; the genre only decides the shadows
     sg.diy = true; sg.noShadows = !!opts.noShadows; if (opts.noShadows) sg.bpm = 120;
     const types = [...new Set(sg.sections.map((x) => x.type))];
@@ -137,7 +137,7 @@ function makeSong(genre, opts) {
   }
   sg.raw = VARIATION.gentle; sg.studioVar = 'gentle'; for (const p of PARTS) { const k = store.get(KP + 'plug-' + p, null); if (k && D.pluginsFor(p).includes(k)) sg.parts[p].plugin = k; }
   st.song = sg; st.hist = []; st.fut = []; st.sec = 0;
-  count((opts.diy ? 'diy/' : 'new/') + (opts.noShadows ? 'none' : genre)); save(); closeStart(); render();
+  count((opts.diy ? 'diy/' : opts.sg ? 'surprise/' : 'new/') + (opts.noShadows ? 'none' : genre)); save(); closeStart(); closeSurprise(); render();
 }
 function newSongSame() { const sg = song(); const parts = PARTS.filter((p) => sg.parts[p].mode === 'machine'); if (!parts.length) { toast('Every part is DIY or off, so the dice leave them as they are.'); return; } change(() => { sg.beatGen = 2; sg.curVersion = null; for (const p of parts) sg.parts[p].seed = D.newSeed(); }); toast('New ideas for every Machine part. DIY parts stayed.', { label: 'Undo', fn: undo }); }
 function newStructure() { change(() => { song().sections = D.randomStructure(song(), D.newSeed()); st.sec = 0; }); toast('New structure: ' + song().sections.length + ' sections, ' + D.totalBars(song()) + ' bars.', { label: 'Undo', fn: undo }); }
@@ -322,6 +322,7 @@ function renderTop() {
     has ? h('div', { class: 'tname', role: 'group', 'aria-label': 'Track name' }, h('input', { type: 'text', value: song().name || 'Untitled', maxlength: 60, 'aria-label': 'Track name', onchange: (e) => setName(e.target.value), onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); } }), h('button', { 'aria-label': 'Random track name', title: 'Roll a name', onclick: () => setName(randomName()) }, '⚄')) : null,
     has ? h('div', { class: 'bpm', role: 'group', 'aria-label': 'Tempo' }, h('button', { 'aria-label': 'Slower', onclick: () => setBpm(song().bpm - 1) }, '−'), h('input', { type: 'number', min: 50, max: 220, value: song().bpm, 'aria-label': 'Tempo in bpm', onchange: (e) => setBpm(+e.target.value) }), h('span', null, 'bpm'), h('button', { 'aria-label': 'Faster', onclick: () => setBpm(song().bpm + 1) }, '+')) : null,
     h('button', { class: 'ib', onclick: () => openStart(), title: 'Start a new song in any genre' }, 'New song'),
+    h('button', { class: 'ib', onclick: () => openSurprise(), title: 'Surprise me: genre, feeling and story', 'aria-label': 'Surprise me' }, '🎲'),
     h('button', { class: 'ib', 'aria-label': 'New ideas for every Machine part', title: 'New ideas for every Machine part', onclick: newSongSame, disabled: !has || null }, '⚄'),
     h('button', { class: 'ib', 'aria-label': 'Undo', onclick: undo, disabled: !st.hist.length || null }, '↶'),
     h('button', { class: 'ib', 'aria-label': 'Redo', onclick: redo, disabled: !st.fut.length || null }, '↷'),
@@ -816,12 +817,55 @@ function showTip() {
   document.body.append(el);
 }
 /* ---------- the start: pick a genre ---------- */
+/* ---------- surprise me: a genre per layer, a feeling and a story ---------- */
+const SP = { beat: 'dice', mix: false, melody: 'dice', acc: 'dice', feel: 'dice', story: 'dice', keep: false };
+function closeSurprise() { const o = $('#surprise'); if (o) o.remove(); }
+function openSurprise() {
+  closeStart(); closeSurprise();
+  const G = D.GENRE_ALL, pickG = (v) => v === 'dice' ? G[Math.floor(Math.random() * G.length)] : v;
+  const chip = (on, label, fn, title) => h('button', { class: 'ib', style: 'margin:3px;' + (on ? 'outline:2px solid var(--acc,#e0b04a);' : ''), 'aria-pressed': on ? 'true' : 'false', title: title || null, onclick: fn }, label);
+  const sel = (key, label) => h('label', { style: 'display:flex;align-items:center;gap:8px;margin:4px 0' }, h('span', { style: 'min-width:190px' }, label),
+    h('select', { 'aria-label': label, style: 'min-width:200px', onchange: (e) => { SP[key] = e.target.value; } }, [h('option', { value: 'dice', selected: SP[key] === 'dice' || null }, '🎲 You choose')].concat(G.map((g) => h('option', { value: g, selected: SP[key] === g || null }, D.GENRES[g].name)))));
+  const draw = () => {
+    closeSurprise();
+    const has = !!song(), F = D.SONG_FEELS, S = D.SONG_STORIES;
+    document.body.append(h('div', { class: 'start', id: 'surprise' }, h('div', { class: 'box', role: 'dialog', 'aria-label': 'Surprise me' },
+      h('h1', { style: 'margin:0;font-size:28px' }, '🎲 Surprise me'),
+      h('p', { style: 'margin:6px 0 10px;color:var(--soft)' }, 'Three questions, one click: a whole ' + (GROOVE ? 'beat' : 'song') + ' with a story.'),
+      h('h3', { style: 'margin:10px 0 4px' }, '1. Genre'),
+      sel('beat', GROOVE ? 'Beat' : (SP.mix ? 'Beat' : 'Genre')),
+      GROOVE ? null : h('label', { style: 'display:flex;align-items:center;gap:8px;margin:6px 0' }, h('input', { type: 'checkbox', checked: SP.mix || null, onchange: (e) => { SP.mix = e.target.checked; draw(); } }), 'Mix styles: a genre per layer'),
+      !GROOVE && SP.mix ? sel('melody', 'Melody') : null,
+      !GROOVE && SP.mix ? sel('acc', 'Chords, pad and bass') : null,
+      h('h3', { style: 'margin:12px 0 4px' }, '2. Feeling'),
+      h('div', null, Object.keys(F).map((k) => chip(SP.feel === k, F[k].icon + ' ' + F[k].name, () => { SP.feel = k; draw(); })).concat([chip(SP.feel === 'dice', '🎲', () => { SP.feel = 'dice'; draw(); }, 'You choose')])),
+      h('h3', { style: 'margin:12px 0 4px' }, '3. Story'),
+      h('div', null, Object.keys(S).map((k) => chip(SP.story === k, S[k].icon + ' ' + S[k].name, () => { SP.story = k; draw(); }, S[k].blurb)).concat([chip(SP.story === 'dice', '🎲', () => { SP.story = 'dice'; draw(); }, 'You choose')])),
+      has ? h('label', { style: 'display:flex;align-items:center;gap:8px;margin:12px 0 0' }, h('input', { type: 'checkbox', checked: SP.keep || null, onchange: (e) => { SP.keep = e.target.checked; } }), '🔒 Keep my beat') : null,
+      h('div', { style: 'display:flex;gap:10px;margin-top:16px;flex-wrap:wrap' },
+        h('button', { class: 'ib', style: 'font-size:18px;padding:10px 22px;font-weight:700', onclick: go }, '✨ Make it'),
+        h('button', { class: 'ib', onclick: () => { closeSurprise(); if (!song()) openStart(); } }, has ? 'Back to my song' : 'Back'))
+    )));
+  };
+  const go = () => {
+    const old = song(), R = (a) => a[Math.floor(Math.random() * a.length)];
+    let beat = pickG(SP.beat);
+    if (SP.keep && old) beat = (old.mix && old.mix.beat) || old.genre;
+    const melody = !GROOVE && SP.mix ? pickG(SP.melody) : beat, acc = !GROOVE && SP.mix ? pickG(SP.acc) : beat;
+    const feel = SP.feel === 'dice' ? R(Object.keys(D.SONG_FEELS)) : SP.feel, story = SP.story === 'dice' ? R(Object.keys(D.SONG_STORIES)) : SP.story;
+    const sg = D.surpriseSong({ beat, melody, acc, feel, story, keep: SP.keep && old ? old : null });
+    makeSong(beat, { sg });
+    toast(D.SONG_FEELS[feel].icon + ' ' + D.GENRES[beat].name + (melody !== beat ? ' + ' + D.GENRES[melody].name + ' melody' : '') + (acc !== beat ? ' + ' + D.GENRES[acc].name + ' chords' : '') + ', ' + D.SONG_STORIES[story].name.toLowerCase() + ' story');
+  };
+  draw();
+}
 function openStart() {
   closeStart(); const last = store.get(KP + 'session', null);
   document.body.append(h('div', { class: 'start', id: 'start' }, h('div', { class: 'box', role: 'dialog', 'aria-label': 'Pick a genre' },
     h('h1', { style: 'margin:0;font-size:28px' }, APP_NAME),
     h('p', { style: 'margin:6px 0 0;color:var(--soft)' }, GROOVE ? 'Pick a genre. The machine makes a whole beat; you shape it.' : 'Pick a genre. The machine makes a whole song; you shape it.'),
     song() ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: closeStart }, '← Back to my song') : last && last.song ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: () => { st.song = last.song; D.ensureTypes && D.ensureTypes(st.song); st.sec = last.sec || 0; clampSec(); closeStart(); render(); } }, 'Continue where you left off') : null,
+    h('button', { class: 'ib', id: 'g_surprise', style: 'margin-top:12px;font-size:17px;padding:10px 18px;font-weight:700', onclick: openSurprise }, '🎲 Surprise me'),
     h('div', { class: 'gcards' }, [h('button', { class: 'gc diy', id: 'g_diy', onclick: openShadowPick }, 'DIY: start empty', h('small', null, GROOVE ? 'An empty beat; you tap it in' : 'Every part empty; you make it'))].concat(D.GENRE_ALL.map((g) => { const G = D.GENRES[g]; return h('button', { class: 'gc', id: 'g_' + g, onclick: () => makeSong(g) }, G.name, h('small', null, (G.bpm ? G.bpm[0] + ' to ' + G.bpm[1] + ' bpm' : ''))); }))))));
 }
 // DIY, step two: which genre shows its ideas as grey shadows, or none at all
