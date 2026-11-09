@@ -193,7 +193,7 @@ function speak(ctx, role, player, content, c) {
   if (PK[player]) { const part = role === 'motif' ? 'melody' : role; one(label + ' for ' + player + ' (Instrument mode)', E.applyMask(song, part === 'orch' ? 'pad' : part, src, PK[player], { mode: 'instrument' })); return tr; }
   // Berlin and BBC on a single line: one named orchestra instrument, in its own range and language
   if (player === 'Berlin' || player === 'BBC') {
-    const pick = role === 'bass' ? ['vc', 'Celli', 36, 60, 's'] : role === 'chords' ? ['vln2', 'Violins 2', 55, 81, 's'] : role === 'motif' ? (c.costume.includes('grand') || c.costume.includes('low') ? ['hn', 'Horns', 41, 72, 'w'] : ['ob', 'Oboe', 60, 86, 'w']) : c.c.light > 0.3 ? ['fl', 'Flute', 62, 93, 'w'] : ['vln1', 'Violins 1', 57, 93, 's'];
+    const pick = role === 'bass' ? ['vc', 'Celli', 36, 60, 's'] : role === 'chords' ? ['vln2', 'Violins 2', 55, 81, 's'] : role === 'motif' ? (!ctx.fixed && (c.costume.includes('grand') || c.costume.includes('low')) ? ['hn', 'Horns', 41, 72, 'w'] : ['ob', 'Oboe', 60, 86, 'w']) : !ctx.fixed && c.c.light > 0.3 ? ['fl', 'Flute', 62, 93, 'w'] : ['vln1', 'Violins 1', 57, 93, 's'];
     const t = { id: pick[0], name: pick[1], ksType: pick[4], notes: src.map((n) => ({ t: n.t, dur: n.d, m: fold(n.p, pick[2], pick[3]), v: n.v, art: 'long' })), cc: [{ t: 0, c: 1, v: 90 }, { t: 0, c: 11, v: 110 }], ks: [{ t: 0, m: 0 }] };
     const out = player === 'Berlin' ? ctx.Y.toBerlin([t]) : [t];
     for (const x of out) one(label + ' for ' + player + ', ' + x.name, (player === 'BBC' ? (x.ks || []).map((k) => ({ t: k.t, d: 12, p: k.m, v: 100, ks: 1 })) : []).concat(x.notes.map((n) => ({ t: n.t, d: n.dur, p: n.m, v: n.v }))), x.cc);
@@ -257,7 +257,7 @@ function riserRoll(c, i, tl) { const out = [], end = c.bars * BAR, start = end -
 
 // ---------- the whole journey ----------
 JR.render = function (plan, ctx) {
-  keys(ctx.E, ctx.P, ctx.S);
+  keys(ctx.E, ctx.P, ctx.S); ctx.fixed = !!plan.fixed;
   const tl = JR.timeline(plan), all = [];
   plan.chapters.forEach((c, i) => {
     const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle];
@@ -303,6 +303,36 @@ JR.writeMidi = function (tracks, meta) {
     chunks.push(chunk(ev)); });
   const head = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, (chunks.length >> 8) & 255, chunks.length & 255, (PPQ >> 8) & 255, PPQ & 255];
   return new Uint8Array(head.concat(...chunks));
+};
+// ---------- fixed tracks: the same track list every time, so a DAW template keeps working ----------
+JR.norm = (name) => name.replace(/^\d+ .*? \. /, '').replace(/, Style .*$/, '');
+JR.skeleton = (rack, Y) => {
+  const P = (r) => (rack[r] && rack[r][0]) || JP_PLAIN, out = [];
+  const UJ = (lab, p) => (PK[p] ? lab + ' for ' + p + ' (Instrument mode)' : p === JP_PLAIN ? lab : lab + ' for ' + p);
+  const single = { bass: ['vc', 'Celli'], chords: ['vln2', 'Violins 2'], melody: ['vln1', 'Violins 1'], motif: ['ob', 'Oboe'] };
+  const berlinName = (id) => Y.toBerlin([{ id, name: id, notes: [{ t: 0, dur: 10, m: 60, v: 80, art: 'long' }], cc: [], ks: [] }])[0].name;
+  const line = (role, p) => { const lab = JR_ROLE[role];
+    if (p === 'Berlin' || p === 'BBC') { const [id, nm] = single[role] || single.chords; return lab + ' for ' + p + ', ' + (p === 'Berlin' ? berlinName(id) : nm); }
+    return UJ(lab, p); };
+  for (const role of ['beats', 'perc', 'bass', 'chords', 'melody', 'motif', 'orch']) {
+    const p = role === 'motif' ? P('melody') : P(role), lab = JR_ROLE[role];
+    if (role === 'beats' || role === 'perc') {
+      if (p === JP_PLAIN) out.push({ role, name: lab + ', standard drum notes' }); else if (p === 'PERRCS') out.push({ role, name: 'PERRCS' });
+      else if (p === 'Kick 1' || p === 'Kick 2') out.push({ role, name: p + ' (kick only)' }); else if (['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno'].includes(p)) out.push({ role, name: lab + ' for ' + p });
+      else out.push({ role, name: line(role, p) }); continue; }
+    if (role === 'orch') {
+      if (p === 'STRIIIINGS') { out.push({ role, name: 'Strings A for STRIIIINGS' }, { role, name: 'Strings B for STRIIIINGS' }); continue; }
+      if (p === 'Berlin') { Object.keys(Y.BFO).forEach((id) => out.push({ role, name: Y.BFO[id].name + ' for Berlin' })); continue; }
+      Y.INST.forEach((x) => out.push({ role, name: x.name + (p === 'BBC' ? ' for BBC' : '') })); continue; }
+    out.push({ role, name: line(role, p) });
+  }
+  return out;
+};
+JR.fix = (tracks, rack, Y) => {
+  const sk = JR.skeleton(rack, Y).map((x) => ({ role: x.role, name: x.name, notes: [], cc: [] })), by = {};
+  sk.forEach((x) => { by[x.name] = x; });
+  for (const t of tracks) { const k = JR.norm(t.name); let d = by[k]; if (!d) { d = by[k] = { role: t.role, name: k, notes: [], cc: [] }; sk.push(d); } d.notes = d.notes.concat(t.notes); d.cc = d.cc.concat(t.cc || []); }
+  return sk;
 };
 JR.PPQ = PPQ; JR.BAR = BAR;
 })();

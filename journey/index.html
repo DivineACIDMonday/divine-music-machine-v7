@@ -47,6 +47,7 @@ details.rack summary{cursor:pointer;list-style:none;display:flex;align-items:bas
 details.rack summary::-webkit-details-marker{display:none}
 .rk{display:grid;grid-template-columns:130px 1fr;gap:8px 12px;align-items:start;margin-top:12px}
 .rk .el{color:var(--mu);font-size:14px;padding-top:7px}
+.fixed{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:14px;color:var(--mu);cursor:pointer}.fixed b{color:var(--tx)}.fixed input{margin-top:3px;accent-color:#E7B65C;width:17px;height:17px;flex:none}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{background:#0F131C;border:1px solid var(--line);border-radius:999px;padding:6px 11px;cursor:pointer;font-size:13.5px;color:var(--mu);min-height:34px}
 .chip[aria-pressed=true]{border-color:var(--gold);color:var(--tx);background:#221D12}
@@ -114,6 +115,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 <details class="card rack" id="rackBox">
   <summary><span class="st serif">Your rack</span><span class="muted" id="rackSum"></span></summary>
   <div class="muted small" style="margin-top:6px">Tick the instruments you want to use. The machine only chooses from your ticks. Kept for this session.</div>
+  <label class="fixed"><input type="checkbox" id="fixed"> <span><b>Same tracks every time.</b> One track per instrument in the whole journey file, always in the same order, so your DAW template keeps working. The machine uses the first plugin you ticked per element.</span></label>
   <div class="rk" id="rack"></div>
 </details>
 
@@ -424,7 +426,7 @@ JP.plan = (words, opts = {}) => {
   ch.forEach((x) => { x.layers = Math.max(1, Math.round(1 + x.energy * 5)); x.layersStart = Math.max(1, Math.round(1 + x.eStart * 5)); x.layersEnd = Math.max(0, Math.round(x.eEnd * 6)); });
 
   // who plays what: roles from the leader, players only from your rack
-  const pick = (role, x) => { const own = rack[role] || [JP.PLAIN]; const pref = (PREFER[role] || {})[x.lead.machine] || [];
+  const pick = (role, x) => { const own = rack[role] || [JP.PLAIN]; if (opts.fixed) return own[0]; const pref = (PREFER[role] || {})[x.lead.machine] || [];
     return pickW(r, own, own.map((p) => (p === JP.PLAIN && own.length > 1 ? 0.4 : pref.includes(p) ? 3 : 1))); };
   ch.forEach((x) => { const roles = JP.ROLES[x.lead.machine].slice(0, Math.min(6, Math.max(2, x.layers)));
     x.players = roles.map((role) => ({ role, player: pick(role, x), swapped: false })); });
@@ -434,7 +436,7 @@ JP.plan = (words, opts = {}) => {
     ch[0].players.push({ role: 'chords', player: pick('chords', ch[0]), swapped: false });
 
   // swaps: one or two per journey, always on a chapter edge, and only where the instrument fits the role
-  const swaps = []; const nsw = r() < 0.5 ? 2 : 1;
+  const swaps = []; const nsw = opts.fixed ? 0 : r() < 0.5 ? 2 : 1;
   for (let k = 0; k < nsw; k++) {
     const cands = [];
     ch.forEach((x, i) => { if (i === 0 || swaps.some((s) => s.at === i)) return;
@@ -465,7 +467,7 @@ JP.plan = (words, opts = {}) => {
     if (x.c.tension > 0.5) c.push('upside down'); if (x.energy > 0.75) c.push('grand'); if (x.breathInside || x.energy < 0.25) c.push('half, a memory');
     x.costume = c; });
 
-  return { rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+  return { fixed: !!opts.fixed, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 
 if (typeof module !== 'undefined') module.exports = JP;
@@ -7539,7 +7541,7 @@ function speak(ctx, role, player, content, c) {
   if (PK[player]) { const part = role === 'motif' ? 'melody' : role; one(label + ' for ' + player + ' (Instrument mode)', E.applyMask(song, part === 'orch' ? 'pad' : part, src, PK[player], { mode: 'instrument' })); return tr; }
   // Berlin and BBC on a single line: one named orchestra instrument, in its own range and language
   if (player === 'Berlin' || player === 'BBC') {
-    const pick = role === 'bass' ? ['vc', 'Celli', 36, 60, 's'] : role === 'chords' ? ['vln2', 'Violins 2', 55, 81, 's'] : role === 'motif' ? (c.costume.includes('grand') || c.costume.includes('low') ? ['hn', 'Horns', 41, 72, 'w'] : ['ob', 'Oboe', 60, 86, 'w']) : c.c.light > 0.3 ? ['fl', 'Flute', 62, 93, 'w'] : ['vln1', 'Violins 1', 57, 93, 's'];
+    const pick = role === 'bass' ? ['vc', 'Celli', 36, 60, 's'] : role === 'chords' ? ['vln2', 'Violins 2', 55, 81, 's'] : role === 'motif' ? (!ctx.fixed && (c.costume.includes('grand') || c.costume.includes('low')) ? ['hn', 'Horns', 41, 72, 'w'] : ['ob', 'Oboe', 60, 86, 'w']) : !ctx.fixed && c.c.light > 0.3 ? ['fl', 'Flute', 62, 93, 'w'] : ['vln1', 'Violins 1', 57, 93, 's'];
     const t = { id: pick[0], name: pick[1], ksType: pick[4], notes: src.map((n) => ({ t: n.t, dur: n.d, m: fold(n.p, pick[2], pick[3]), v: n.v, art: 'long' })), cc: [{ t: 0, c: 1, v: 90 }, { t: 0, c: 11, v: 110 }], ks: [{ t: 0, m: 0 }] };
     const out = player === 'Berlin' ? ctx.Y.toBerlin([t]) : [t];
     for (const x of out) one(label + ' for ' + player + ', ' + x.name, (player === 'BBC' ? (x.ks || []).map((k) => ({ t: k.t, d: 12, p: k.m, v: 100, ks: 1 })) : []).concat(x.notes.map((n) => ({ t: n.t, d: n.dur, p: n.m, v: n.v }))), x.cc);
@@ -7603,7 +7605,7 @@ function riserRoll(c, i, tl) { const out = [], end = c.bars * BAR, start = end -
 
 // ---------- the whole journey ----------
 JR.render = function (plan, ctx) {
-  keys(ctx.E, ctx.P, ctx.S);
+  keys(ctx.E, ctx.P, ctx.S); ctx.fixed = !!plan.fixed;
   const tl = JR.timeline(plan), all = [];
   plan.chapters.forEach((c, i) => {
     const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle];
@@ -7650,6 +7652,36 @@ JR.writeMidi = function (tracks, meta) {
   const head = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, (chunks.length >> 8) & 255, chunks.length & 255, (PPQ >> 8) & 255, PPQ & 255];
   return new Uint8Array(head.concat(...chunks));
 };
+// ---------- fixed tracks: the same track list every time, so a DAW template keeps working ----------
+JR.norm = (name) => name.replace(/^\d+ .*? \. /, '').replace(/, Style .*$/, '');
+JR.skeleton = (rack, Y) => {
+  const P = (r) => (rack[r] && rack[r][0]) || JP_PLAIN, out = [];
+  const UJ = (lab, p) => (PK[p] ? lab + ' for ' + p + ' (Instrument mode)' : p === JP_PLAIN ? lab : lab + ' for ' + p);
+  const single = { bass: ['vc', 'Celli'], chords: ['vln2', 'Violins 2'], melody: ['vln1', 'Violins 1'], motif: ['ob', 'Oboe'] };
+  const berlinName = (id) => Y.toBerlin([{ id, name: id, notes: [{ t: 0, dur: 10, m: 60, v: 80, art: 'long' }], cc: [], ks: [] }])[0].name;
+  const line = (role, p) => { const lab = JR_ROLE[role];
+    if (p === 'Berlin' || p === 'BBC') { const [id, nm] = single[role] || single.chords; return lab + ' for ' + p + ', ' + (p === 'Berlin' ? berlinName(id) : nm); }
+    return UJ(lab, p); };
+  for (const role of ['beats', 'perc', 'bass', 'chords', 'melody', 'motif', 'orch']) {
+    const p = role === 'motif' ? P('melody') : P(role), lab = JR_ROLE[role];
+    if (role === 'beats' || role === 'perc') {
+      if (p === JP_PLAIN) out.push({ role, name: lab + ', standard drum notes' }); else if (p === 'PERRCS') out.push({ role, name: 'PERRCS' });
+      else if (p === 'Kick 1' || p === 'Kick 2') out.push({ role, name: p + ' (kick only)' }); else if (['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno'].includes(p)) out.push({ role, name: lab + ' for ' + p });
+      else out.push({ role, name: line(role, p) }); continue; }
+    if (role === 'orch') {
+      if (p === 'STRIIIINGS') { out.push({ role, name: 'Strings A for STRIIIINGS' }, { role, name: 'Strings B for STRIIIINGS' }); continue; }
+      if (p === 'Berlin') { Object.keys(Y.BFO).forEach((id) => out.push({ role, name: Y.BFO[id].name + ' for Berlin' })); continue; }
+      Y.INST.forEach((x) => out.push({ role, name: x.name + (p === 'BBC' ? ' for BBC' : '') })); continue; }
+    out.push({ role, name: line(role, p) });
+  }
+  return out;
+};
+JR.fix = (tracks, rack, Y) => {
+  const sk = JR.skeleton(rack, Y).map((x) => ({ role: x.role, name: x.name, notes: [], cc: [] })), by = {};
+  sk.forEach((x) => { by[x.name] = x; });
+  for (const t of tracks) { const k = JR.norm(t.name); let d = by[k]; if (!d) { d = by[k] = { role: t.role, name: k, notes: [], cc: [] }; sk.push(d); } d.notes = d.notes.concat(t.notes); d.cc = d.cc.concat(t.cc || []); }
+  return sk;
+};
 JR.PPQ = PPQ; JR.BAR = BAR;
 })();
 if (typeof module !== 'undefined') module.exports = JR;
@@ -7670,6 +7702,7 @@ const S = {
   locks: [false, false, false, false, false],
   minutes: ss.get('journey-min', 40),
   bpm: ss.get('journey-bpm', 0),
+  fixed: ss.get('journey-fixed', true),
   seed: (Math.random() * 4294967296) >>> 0,
   plan: null,
   ov: [{}, {}, {}, {}, {}],
@@ -7712,7 +7745,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 // ---------- plan + map ----------
 function replan() {
   const recent = ls.get('journey-recent', []);
-  S.plan = JP.plan(S.words, { seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
+  S.plan = JP.plan(S.words, { fixed: S.fixed, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
   stopPlay(); PV = null;
   drawMap(); drawChapters();
 }
@@ -7847,8 +7880,9 @@ function rackCard(p, res) {
   p.chapters.forEach((c, i) => { const b0 = Math.round(res.timeline[i].start / JR.BAR) + 1, b1 = b0 + c.bars - 1;
     L.push((i + 1) + '. ' + c.word.toUpperCase() + '   bars ' + b0 + ' to ' + b1 + '   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + ' (feels like ' + c.feelsLike + ' bpm)');
     L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
-    const seen = new Set(); res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = t.role + t.player; if (seen.has(k)) return; seen.add(k);
-      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
+    const seen = new Set(); res.tracks.filter((t) => t.chapter === i).forEach((t) => { const st = (t.name.match(/(Strings [AB] )?for STRIIIINGS, Style (.*)$|PERRCS, Style (.*)$/) || []); const sty = st[2] || st[3] || '';
+      const k = t.role + t.player + sty; if (seen.has(k)) return; seen.add(k);
+      L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
     if (i < p.chapters.length - 1) L.push('   Into the next: ' + JP.TRANSITIONS[c.out].name + (c.overlap ? ', ' + c.overlap + ' bars overlap' : ''));
     L.push(''); });
   L.push('Drop every file on bar 1. Everything already sits in its place.', '', '(c) 2026 Divine Monday');
@@ -7858,7 +7892,7 @@ function makeJourney() {
   const p = S.plan, ctx = { E: window.DMM, P: window.PercMotor, S: window.SCORE, Y: window.SYM, JP };
   const res = JR.render(p, ctx), title = 'Divine Journey ' + S.words.map((w) => w.word).join(' '), meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: res.markers };
   const base = 'DM_Journey_' + safe(S.words.map((w) => w.word).join('_')) + '_' + p.bpm + 'bpm', files = [];
-  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(res.tracks, meta) });
+  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(S.fixed ? JR.fix(res.tracks, S.rack, window.SYM) : res.tracks, meta) });
   p.chapters.forEach((c, i) => { const dir = base + '/' + String(i + 1).padStart(2, '0') + '_' + safe(c.word) + '/';
     const by = {}; res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: (i + 1) + ' ' + c.word + ' ' + k })) }); });
@@ -7935,6 +7969,7 @@ function drawLen() { document.querySelectorAll('#len button').forEach((b) => b.s
 document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.minutes = +b.dataset.m; ss.set('journey-min', S.minutes); drawLen(); replan(); }; });
 (() => { const t = $('#tempo'); for (let b = 90; b <= 134; b += 2) t.add(new Option(b + ' bpm', b)); t.value = String(S.bpm || 0);
   t.onchange = () => { S.bpm = +t.value; ss.set('journey-bpm', S.bpm); replan(); }; })();
+$('#fixed').checked = S.fixed; $('#fixed').onchange = (e) => { S.fixed = e.target.checked; ss.set('journey-fixed', S.fixed); replan(); };
 if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
 drawRack(); drawWords(); drawLen(); replan();
 </script>

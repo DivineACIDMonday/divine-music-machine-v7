@@ -265,7 +265,7 @@ JP.plan = (words, opts = {}) => {
   ch.forEach((x) => { x.layers = Math.max(1, Math.round(1 + x.energy * 5)); x.layersStart = Math.max(1, Math.round(1 + x.eStart * 5)); x.layersEnd = Math.max(0, Math.round(x.eEnd * 6)); });
 
   // who plays what: roles from the leader, players only from your rack
-  const pick = (role, x) => { const own = rack[role] || [JP.PLAIN]; const pref = (PREFER[role] || {})[x.lead.machine] || [];
+  const pick = (role, x) => { const own = rack[role] || [JP.PLAIN]; if (opts.fixed) return own[0]; const pref = (PREFER[role] || {})[x.lead.machine] || [];
     return pickW(r, own, own.map((p) => (p === JP.PLAIN && own.length > 1 ? 0.4 : pref.includes(p) ? 3 : 1))); };
   ch.forEach((x) => { const roles = JP.ROLES[x.lead.machine].slice(0, Math.min(6, Math.max(2, x.layers)));
     x.players = roles.map((role) => ({ role, player: pick(role, x), swapped: false })); });
@@ -275,7 +275,7 @@ JP.plan = (words, opts = {}) => {
     ch[0].players.push({ role: 'chords', player: pick('chords', ch[0]), swapped: false });
 
   // swaps: one or two per journey, always on a chapter edge, and only where the instrument fits the role
-  const swaps = []; const nsw = r() < 0.5 ? 2 : 1;
+  const swaps = []; const nsw = opts.fixed ? 0 : r() < 0.5 ? 2 : 1;
   for (let k = 0; k < nsw; k++) {
     const cands = [];
     ch.forEach((x, i) => { if (i === 0 || swaps.some((s) => s.at === i)) return;
@@ -306,7 +306,7 @@ JP.plan = (words, opts = {}) => {
     if (x.c.tension > 0.5) c.push('upside down'); if (x.energy > 0.75) c.push('grand'); if (x.breathInside || x.energy < 0.25) c.push('half, a memory');
     x.costume = c; });
 
-  return { rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+  return { fixed: !!opts.fixed, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 
 if (typeof module !== 'undefined') module.exports = JP;
