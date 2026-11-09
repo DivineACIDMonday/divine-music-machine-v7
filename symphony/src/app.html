@@ -188,6 +188,8 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
       <div class="presets" id="presets"></div>
       <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Timpani</span><span><i style="background:var(--kb)"></i>Piano</span></div>
       <div class="count" id="count"></div>
+      <label class="opt"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
+      <div id="bfoBox" class="hide"><div class="muted small" style="margin-bottom:6px">Only in Berlin Free Orchestra. Feelings pick fitting ones for you.</div><div class="chips" id="bfoChips"></div></div>
       <div class="muted small">The era preset is chosen for you when you pick an era. Change anything you like after that.</div>
     </div>
   </div>
@@ -271,7 +273,7 @@ const FAM = { str: 'var(--str)', ww: 'var(--ww)', br: 'var(--br)', perc: 'var(--
 const FAMHEX = { str: '#D9A84E', ww: '#8FC29C', br: '#E58256', perc: '#9CC7E3', kb: '#C8B2E8' };
 const IM = {}; Y.INST.forEach(i => IM[i.id] = i);
 const store = { get(k, d) { try { const v = localStorage.getItem('dsym.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('dsym.' + k, JSON.stringify(v)); } catch (e) {} } };
-const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), chain: store.get('chain', []), feel: store.get('feel', null), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
+const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), chain: store.get('chain', []), bfo: store.get('bfo', false), feel: store.get('feel', null), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
 let RES = null, MV = 0;
 
 /* eras */
@@ -286,7 +288,7 @@ function drawFeels() {
       S.feel = id; store.set('feel', id); S.mvFeels = null;
       if (id) {
         S.era = fe.era; store.set('era', S.era);
-        S.inst = new Set(fe.preset || Y.PRESETS[fe.era]); store.set('inst', [...S.inst]);
+        S.inst = new Set((fe.preset || Y.PRESETS[fe.era]).concat(S.bfo ? fe.bfo : [])); store.set('inst', [...S.inst]);
         S.key = fe.keys[0]; store.set('key', S.key); $('key').value = S.key;
         if (S.form !== 'suite' && !fe.forms.includes(S.form)) { S.form = fe.forms[0]; store.set('form', S.form); }
       }
@@ -316,7 +318,7 @@ function surprise(choice) {
   const mix = choice.mix.filter(k => k !== fid);
   S.feel = fid; store.set('feel', fid);
   S.era = Math.random() < .7 ? fe.era : R(Object.keys(Y.ERAS)); store.set('era', S.era);
-  S.inst = new Set(fe.preset && S.era === fe.era ? fe.preset : Y.PRESETS[S.era]); store.set('inst', [...S.inst]);
+  S.inst = new Set((fe.preset && S.era === fe.era ? fe.preset : Y.PRESETS[S.era]).concat(S.bfo ? fe.bfo : [])); store.set('inst', [...S.inst]);
   S.key = R(fe.keys); store.set('key', S.key); $('key').value = S.key;
   S.mvFeels = null;
   if (type === 'symphony') {
@@ -460,17 +462,21 @@ function drawHall() {
     const tog = () => { const id = g.dataset.id; if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); };
     g.onclick = tog; g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } };
   });
-  $('count').textContent = S.inst.size + ' of 17 sections on, ' + S.inst.size + ' MIDI tracks.';
+  $('count').textContent = S.inst.size + ' sections on, so ' + S.inst.size + ' MIDI tracks.';
+  $('bfoOn').checked = S.bfo; $('bfoBox').classList.toggle('hide', !S.bfo);
+  const bc = $('bfoChips'); bc.innerHTML = '';
+  Y.EXTRAS.forEach(id => { const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', S.inst.has(id)); b.innerHTML = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + FAMHEX[fam(id)] + ';margin-right:6px"></span>' + IM[id].name; b.onclick = () => { if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); }; bc.appendChild(b); });
 }
 function seat(id, d, tx, ty, label) {
   const on = S.inst.has(id), col = FAMHEX[fam(id)];
   return '<g class="seat' + (on ? '' : ' off') + '" data-id="' + id + '" tabindex="0" role="switch" aria-checked="' + on + '" aria-label="' + IM[id].name + '"><title>' + IM[id].name + '</title><path d="' + d + '" fill="' + col + '"/><text x="' + tx + '" y="' + (ty + 4) + '" text-anchor="middle">' + label + '</text></g>';
 }
 function fam(id) { const g = IM[id].grp; return g === 'str' ? 'str' : g === 'ww' ? 'ww' : g === 'br' ? 'br' : g === 'perc' ? 'perc' : 'kb'; }
+function initBfo() { $('bfoOn').onchange = e => { S.bfo = e.target.checked; store.set('bfo', S.bfo); if (!S.bfo) Y.EXTRAS.forEach(id => S.inst.delete(id)); else { const fe = Y.FEELINGS[S.feel]; if (fe) fe.bfo.forEach(id => S.inst.add(id)); } store.set('inst', [...S.inst]); drawHall(); }; }
 function drawPresets() {
-  const P = [['Era preset', null], ['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Strings only', 'strings'], ['Everything', 'all']];
+  const P = [['Era preset', null], ['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Strings only', 'strings'], ['Everything', 'all'], ['Berlin Free: all 34', 'berlin']];
   $('presets').innerHTML = '';
-  P.forEach(([n, k]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.onclick = () => { S.inst = new Set(Y.PRESETS[k || S.era]); store.set('inst', [...S.inst]); drawHall(); }; $('presets').appendChild(b); });
+  P.forEach(([n, k]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.onclick = () => { if (k === 'berlin') { S.bfo = true; store.set('bfo', true); } S.inst = new Set(Y.PRESETS[k || S.era]); store.set('inst', [...S.inst]); drawHall(); }; $('presets').appendChild(b); });
 }
 
 /* compose */
@@ -513,7 +519,7 @@ function showResult() {
   m.tracks.forEach(t => {
     if (S.target === 'berlin' && t.id === 'btbn' && m.tracks.some(x => x.id === 'tbn')) return;
     const used = new Set(t.ks.map(k => k.m));
-    const arts = S.target === 'any' ? 'plain MIDI' : S.target === 'berlin' ? (Y.BFO[t.id] && Y.BFO[t.id].n ? 'articulations on CC70' : 'no articulation switch') + (t.id === 'tbn' ? ', bass trombone included' : '') : t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
+    const arts = IM[t.id].x && S.target === 'bbc' ? 'Berlin Free only' : S.target === 'any' ? 'plain MIDI' : S.target === 'berlin' ? (Y.BFO[t.id] && Y.BFO[t.id].n ? 'articulations on CC70' : 'no articulation switch') + (t.id === 'tbn' ? ', bass trombone included' : '') : t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
     const d = document.createElement('div'); d.className = 'trk';
     d.innerHTML = '<span class="dot" style="background:' + FAMHEX[fam(t.id)] + '"></span><div class="info"><b>' + TNAME(t) + '</b><div>' + t.notes.length + ' notes · ' + arts + '</div></div>';
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'MIDI'; b.onclick = () => save(Y.writeMidi(m, [t.id], PLAIN()), fileBase(m) + ' - ' + TNAME(t) + '.mid', 'audio/midi');
@@ -629,7 +635,7 @@ $('smX').onclick = closeSM;
 $('sm').onclick = e => { if (e.target.id === 'sm') closeSM(); };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSM(); });
 $('smGo').onclick = () => { closeSM(); surprise({ type: SM.type, main: SM.main, mix: SM.mix.slice() }); };
-drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); drawHall();
+drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); initBfo(); drawHall();
 })();
 </script>
 </body></html>

@@ -325,22 +325,36 @@ const INST = [
   { id: 'picc', name: 'Piccolo', grp: 'ww', lo: 74, hi: 102, ks: 'w' },
   { id: 'fl', name: 'Flutes', grp: 'ww', lo: 60, hi: 96, ks: 'w' },
   { id: 'ob', name: 'Oboes', grp: 'ww', lo: 58, hi: 89, ks: 'w' },
+  { id: 'eh', name: 'English Horn', grp: 'ww', lo: 53, hi: 83, ks: 'w', x: 1, short: 'E Horn' },
   { id: 'cl', name: 'Clarinets', grp: 'ww', lo: 50, hi: 91, ks: 'w' },
+  { id: 'bcl', name: 'Bass Clarinet', grp: 'ww', lo: 34, hi: 73, ks: 'w', x: 1, short: 'B Clar' },
   { id: 'bsn', name: 'Bassoons', grp: 'ww', lo: 34, hi: 72, ks: 'w' },
+  { id: 'cbsn', name: 'Contrabassoon', grp: 'ww', lo: 22, hi: 59, ks: 'w', x: 1, short: 'C Bsn' },
   { id: 'hn', name: 'Horns', grp: 'br', lo: 41, hi: 77, ks: 'w' },
+  { id: 'shn', name: 'Solo Horn', grp: 'br', lo: 41, hi: 77, ks: 'w', x: 1, short: 'S Horn' },
   { id: 'tpt', name: 'Trumpets', grp: 'br', lo: 55, hi: 82, ks: 'w' },
+  { id: 'stpt', name: 'Solo Trumpet', grp: 'br', lo: 55, hi: 82, ks: 'w', x: 1, short: 'S Tpt' },
   { id: 'tbn', name: 'Tenor Trombones', grp: 'br', lo: 40, hi: 72, ks: 'w' },
+  { id: 'stbn', name: 'Solo Trombone', grp: 'br', lo: 40, hi: 70, ks: 'w', x: 1, short: 'S Tbn' },
   { id: 'btbn', name: 'Bass Trombones', grp: 'br', lo: 34, hi: 65, ks: 'w' },
   { id: 'tba', name: 'Tuba', grp: 'br', lo: 29, hi: 58, ks: 'w' },
   { id: 'timp', name: 'Timpani', grp: 'perc', lo: 40, hi: 57, ks: null },
+  { id: 'bells', name: 'Tubular Bells', grp: 'perc', lo: 53, hi: 77, ks: null, x: 1, short: 'Bells' },
+  { id: 'glock', name: 'Glockenspiel', grp: 'perc', lo: 65, hi: 101, ks: null, x: 1, short: 'Glock' },
+  { id: 'vib', name: 'Vibraphone', grp: 'perc', lo: 53, hi: 89, ks: null, x: 1, short: 'Vibes' },
+  { id: 'mar', name: 'Marimba', grp: 'perc', lo: 36, hi: 96, ks: null, x: 1, short: 'Marimba' },
+  { id: 'xyl', name: 'Xylophone', grp: 'perc', lo: 65, hi: 108, ks: null, x: 1, short: 'Xylo' },
   { id: 'pno', name: 'Piano', grp: 'kb', lo: 21, hi: 108, ks: null },
   { id: 'vln1', name: 'Violins 1', grp: 'str', lo: 55, hi: 100, ks: 's' },
   { id: 'vln2', name: 'Violins 2', grp: 'str', lo: 55, hi: 93, ks: 's' },
   { id: 'vla', name: 'Violas', grp: 'str', lo: 48, hi: 86, ks: 's' },
   { id: 'vc', name: 'Celli', grp: 'str', lo: 36, hi: 74, ks: 's' },
   { id: 'cb', name: 'Basses', grp: 'str', lo: 28, hi: 62, ks: 'b' },
+  { id: 'svn', name: 'Solo Violin', grp: 'str', lo: 55, hi: 98, ks: 's', x: 1, short: 'S Vln' },
+  { id: 'svc', name: 'Solo Cello', grp: 'str', lo: 36, hi: 81, ks: 's', x: 1, short: 'S Cello' },
 ];
 const IM = {}; INST.forEach(i => IM[i.id] = i);
+Y.EXTRAS = INST.filter(i => i.x).map(i => i.id);
 Y.INST = INST;
 /* keyswitches of BBC SO Discover: strings Long C-2, Spiccato C#-2, Pizzicato D-2, Tremolo D#-2 (Basses no tremolo); winds and brass Long C-2, Short C#-2 */
 const KS = { s: { long: 0, short: 1, pizz: 2, trem: 3 }, b: { long: 0, short: 1, pizz: 2, trem: 0 }, w: { long: 0, short: 1, pizz: 1, trem: 0 } };
@@ -352,7 +366,8 @@ const PRESETS = {
   romantic: INST.filter(i => i.id !== 'pno').map(i => i.id),
   impressionist: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'pno'],
   strings: ['vln1', 'vln2', 'vla', 'vc', 'cb'],
-  all: INST.map(i => i.id),
+  all: INST.filter(i => !i.x).map(i => i.id),
+  berlin: INST.map(i => i.id).filter(id => id !== 'pno' && id !== 'btbn').concat(['pno']),
 };
 Y.PRESETS = PRESETS;
 const FORMS = {
@@ -373,14 +388,14 @@ Y.FORMS = FORMS;
 
 /* ================= feelings ================= */
 const FEELINGS = {
-  heroic: { name: 'Heroic', icon: '🦁', blurb: 'Brave, proud, a victory. Horns and trumpets lead.', mode: 'M', keys: ['Eb', 'D', 'C'], era: 'romantic', forms: ['overture', 'march', 'sonata'], im: 1.1, ia: .1, da: .1, tempo: 1.04, rub: 1, lead: 'solo:hn', tex: { brisk: 'repeated8', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'tbn', 'btbn', 'tba', 'timp'] },
-  tender: { name: 'Tender', icon: '🕊', blurb: 'Warm and close, like a love letter. A singing oboe over soft strings.', mode: 'M', keys: ['F', 'A', 'G'], era: 'classical', forms: ['aria', 'variations', 'minuet'], im: .75, ia: 0, da: -.15, tempo: .9, rub: 1.3, lead: 'solo:ob', tex: { brisk: 'alberti', lyr: 'arpeggio' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 },
-  mysterious: { name: 'Mysterious', icon: '🌫', blurb: 'Shadows and questions. Low strings tremble, a clarinet wanders.', mode: 'm', keys: ['d', 'c', 'f#'], era: 'romantic', forms: ['fugue', 'canon', 'sonata'], im: .85, ia: 0, da: -.12, tempo: .9, rub: 1.2, lead: 'solo:cl', tex: { brisk: 'tremolo', lyr: 'sustain' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'cl', 'bsn', 'hn', 'tbn', 'timp'], soft: 1 },
-  joyful: { name: 'Joyful', icon: '☀', blurb: 'Sunny and quick, a smile in sound. Bright strings and chattering winds.', mode: 'M', keys: ['G', 'D', 'A'], era: 'classical', forms: ['rondo', 'waltz', 'minuet'], im: 1, ia: .05, da: .05, tempo: 1.08, rub: .8, lead: 'solo:fl', tex: { brisk: 'repeated8', lyr: 'beats' }, preset: null },
-  melancholy: { name: 'Melancholy', icon: '🌧', blurb: 'Longing and rain on the window. A cello sings, minor colours everywhere.', mode: 'm', keys: ['g', 'e', 'b'], era: 'romantic', forms: ['aria', 'variations', 'canon'], im: .8, ia: 0, da: -.1, tempo: .88, rub: 1.4, lead: 'solo:vc', tex: { brisk: 'syncop', lyr: 'arpeggio' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 },
-  stormy: { name: 'Stormy', icon: '⚡', blurb: 'Wind, waves, a chase. Tremolo strings, hammering timpani.', mode: 'm', keys: ['c', 'd', 'f'], era: 'romantic', forms: ['sonata', 'overture', 'fugue'], im: 1.15, ia: .12, da: .12, tempo: 1.1, rub: .9, lead: 'str', tex: { brisk: 'tremolo', lyr: 'syncop' }, flav: 'dark', preset: null },
-  dreamy: { name: 'Dreamy', icon: '💭', blurb: 'Floating, half asleep, soft light. Flute, piano and colour chords.', mode: 'M', keys: ['F', 'Ab', 'E'], era: 'impressionist', forms: ['aria', 'waltz', 'canon'], im: .7, ia: 0, da: -.15, tempo: .86, rub: 1.4, lead: 'solo:fl', tex: { brisk: 'arpeggio', lyr: 'sustain' }, flav: 'color', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'hn', 'pno'], soft: 1 },
-  solemn: { name: 'Solemn', icon: '👑', blurb: 'Ceremony and dignity. Slow, full chords, brass like an organ.', mode: 'M', keys: ['C', 'Bb', 'D'], era: 'baroque', forms: ['fugue', 'march', 'overture'], im: 1, ia: .05, da: .05, tempo: .85, rub: .8, lead: 'str', tex: { brisk: 'continuo', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'ob', 'bsn', 'hn', 'tpt', 'tbn', 'timp', 'pno'] },
+  heroic: { name: 'Heroic', icon: '🦁', blurb: 'Brave, proud, a victory. Horns and trumpets lead.', mode: 'M', keys: ['Eb', 'D', 'C'], era: 'romantic', forms: ['overture', 'march', 'sonata'], im: 1.1, ia: .1, da: .1, tempo: 1.04, rub: 1, lead: 'solo:hn', tex: { brisk: 'repeated8', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'tbn', 'btbn', 'tba', 'timp'] , leads: ['shn', 'hn'], bfo: ['shn', 'stpt', 'bells', 'cbsn'] },
+  tender: { name: 'Tender', icon: '🕊', blurb: 'Warm and close, like a love letter. A singing oboe over soft strings.', mode: 'M', keys: ['F', 'A', 'G'], era: 'classical', forms: ['aria', 'variations', 'minuet'], im: .75, ia: 0, da: -.15, tempo: .9, rub: 1.3, lead: 'solo:ob', tex: { brisk: 'alberti', lyr: 'arpeggio' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 , leads: ['svn', 'ob'], bfo: ['svn', 'eh'] },
+  mysterious: { name: 'Mysterious', icon: '🌫', blurb: 'Shadows and questions. Low strings tremble, a clarinet wanders.', mode: 'm', keys: ['d', 'c', 'f#'], era: 'romantic', forms: ['fugue', 'canon', 'sonata'], im: .85, ia: 0, da: -.12, tempo: .9, rub: 1.2, lead: 'solo:cl', tex: { brisk: 'tremolo', lyr: 'sustain' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'cl', 'bsn', 'hn', 'tbn', 'timp'], soft: 1 , leads: ['bcl', 'cl'], bfo: ['bcl', 'cbsn', 'vib'] },
+  joyful: { name: 'Joyful', icon: '☀', blurb: 'Sunny and quick, a smile in sound. Bright strings and chattering winds.', mode: 'M', keys: ['G', 'D', 'A'], era: 'classical', forms: ['rondo', 'waltz', 'minuet'], im: 1, ia: .05, da: .05, tempo: 1.08, rub: .8, lead: 'solo:fl', tex: { brisk: 'repeated8', lyr: 'beats' }, preset: null , leads: ['fl'], bfo: ['glock', 'xyl', 'mar'] },
+  melancholy: { name: 'Melancholy', icon: '🌧', blurb: 'Longing and rain on the window. A cello sings, minor colours everywhere.', mode: 'm', keys: ['g', 'e', 'b'], era: 'romantic', forms: ['aria', 'variations', 'canon'], im: .8, ia: 0, da: -.1, tempo: .88, rub: 1.4, lead: 'solo:vc', tex: { brisk: 'syncop', lyr: 'arpeggio' }, flav: 'dark', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn'], soft: 1 , leads: ['svc', 'eh', 'vc'], bfo: ['eh', 'svc', 'bcl'] },
+  stormy: { name: 'Stormy', icon: '⚡', blurb: 'Wind, waves, a chase. Tremolo strings, hammering timpani.', mode: 'm', keys: ['c', 'd', 'f'], era: 'romantic', forms: ['sonata', 'overture', 'fugue'], im: 1.15, ia: .12, da: .12, tempo: 1.1, rub: .9, lead: 'str', tex: { brisk: 'tremolo', lyr: 'syncop' }, flav: 'dark', preset: null , leads: [], bfo: ['cbsn', 'bcl', 'stbn'] },
+  dreamy: { name: 'Dreamy', icon: '💭', blurb: 'Floating, half asleep, soft light. Flute, piano and colour chords.', mode: 'M', keys: ['F', 'Ab', 'E'], era: 'impressionist', forms: ['aria', 'waltz', 'canon'], im: .7, ia: 0, da: -.15, tempo: .86, rub: 1.4, lead: 'solo:fl', tex: { brisk: 'arpeggio', lyr: 'sustain' }, flav: 'color', preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'hn', 'pno'], soft: 1 , leads: ['fl', 'svn'], bfo: ['vib', 'glock', 'svn'] },
+  solemn: { name: 'Solemn', icon: '👑', blurb: 'Ceremony and dignity. Slow, full chords, brass like an organ.', mode: 'M', keys: ['C', 'Bb', 'D'], era: 'baroque', forms: ['fugue', 'march', 'overture'], im: 1, ia: .05, da: .05, tempo: .85, rub: .8, lead: 'str', tex: { brisk: 'continuo', lyr: 'block' }, preset: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'ob', 'bsn', 'hn', 'tpt', 'tbn', 'timp', 'pno'] , leads: [], bfo: ['bells', 'stbn', 'cbsn'] },
 };
 Y.FEELINGS = FEELINGS;
 const SOFT = ['tender', 'melancholy', 'dreamy', 'mysterious'], BOLD = ['heroic', 'joyful', 'stormy', 'solemn'];
@@ -446,7 +461,7 @@ function P(c, x, s) {
     if (!s._fi) { s.inten = clamp(s.inten * fe.im + fe.ia, .12, 1); s._fi = 1; }
     if (!s._fd) { s.dyn = clamp(s.dyn + fe.da, .12, 1); s._fd = 1; }
     if (!s.tex && !s.poly && x.era !== 'baroque' || (!s.tex && fe.tex && x.era === 'baroque' && fe.tex[ch === 'lyr' || ch === 'slow' ? 'lyr' : 'brisk'] === 'continuo')) { const t = fe.tex[ch === 'lyr' || ch === 'slow' ? 'lyr' : 'brisk']; if (t && ch !== 'waltz' && ch !== 'march') s.tex = t; }
-    if (!s.lead && (ch === 'lyr' || ch === 'slow') && fe.lead && fe.lead !== 'str' && x.E.has(fe.lead.slice(5)) && !s.final) s.lead = fe.lead;
+    if (!s.lead && (ch === 'lyr' || ch === 'slow') && !s.final) { const ld = (fe.leads || []).find(i => x.E.has(i)); if (ld) s.lead = 'solo:' + ld; }
   }
   if (!s.tex) s.tex = defTex(x, ch, s.inten);
   if (!s.btex) s.btex = defBtex(x, ch, s.inten);
@@ -602,7 +617,7 @@ F.waltz = (c, x) => {
 };
 F.aria = (c, x) => {
   const K = x.K, KB = K.m === 'M' ? relKey(K, 5, 'm') : relKey(K, 2, 'M');
-  const solos = ['ob', 'cl', 'fl', 'vc', 'hn'].filter(i => x.E.has(i));
+  const solos = ['svn', 'svc', 'eh', 'shn', 'ob', 'cl', 'fl', 'vc', 'hn'].filter(i => x.E.has(i));
   const solo = x.solo && x.E.has(x.solo) ? x.solo : solos.length ? pick(x.r, solos) : 'vln1';
   const tex = x.era === 'baroque' ? 'continuo' : x.era === 'classical' ? 'alberti' : 'arpeggio';
   const R = P(c, x, { key: K, tpl: TP(x, 'close'), mel: { type: 'close', id: 'RIT', char: 'lyr' }, inten: .45, dyn: .45, tex, sec: 'Ritornello', label: 'Ritornello' });
@@ -1184,7 +1199,7 @@ function bassNotes(btex, ev, m, meter, walk) {
   }
   return out;
 }
-const MPREF = { vln1: [0, 12, -12], vln2: [0, -12, 12], fl: [0, 12], ob: [0, -12], cl: [0, -12], hn: [-12, -24, 0], tpt: [0, -12], vc: [-12, -24], vla: [-12, 0], bsn: [-12, -24], pno: [0], tbn: [-12, -24], picc: [12, 24] };
+const MPREF = { svn: [0, 12, -12], svc: [-12, -24, 0], eh: [-12, 0], bcl: [-12, -24], shn: [-12, -24, 0], stpt: [0, -12], stbn: [-12, -24], vln1: [0, 12, -12], vln2: [0, -12, 12], fl: [0, 12], ob: [0, -12], cl: [0, -12], hn: [-12, -24, 0], tpt: [0, -12], vc: [-12, -24], vla: [-12, 0], bsn: [-12, -24], pno: [0], tbn: [-12, -24], picc: [12, 24] };
 function orchPlan(c, ph) {
   const x = c.x, E = x.E, era = x.era, I = ph.inten;
   const has = id => E.has(id), use = new Set();
@@ -1209,6 +1224,7 @@ function orchPlan(c, ph) {
   if (I >= .25 || era === 'baroque') addB('cb', [-12, 0]);
   if (era === 'baroque' || I >= .55) addB('bsn', [0, -12, 12]);
   if (I >= .82 && era !== 'baroque') { addB('tba', [-12, 0]); addB('btbn', [0, -12]); }
+  if (I >= .55 && era !== 'baroque') addB('cbsn', [-12, 0, -24]);
   if (ph.ctrLine) { const cid = ['hn', 'vc', 'vla', 'bsn'].find(id => has(id) && !use.has(id) && (id !== 'vc' || has('cb'))); if (cid) { if (cid === 'vc') P.bass = P.bass.filter(b => b.id !== 'vc'); P.ctr.push({ id: cid, pref: [0, -12, 12] }); use.add(cid); } }
   const tex = ph.tex;
   const slow = x.tempo < 96 || ph.char === 'slow' || (ph.stretch || 1) > 1;
@@ -1224,6 +1240,8 @@ function orchPlan(c, ph) {
   if (I >= .7) { addI('fl', ['A'], 'block', [12, 0]); addI('ob', ['A', 'X'], 'block'); }
   if (I >= .8 && era !== 'baroque') addI('tbn', ['X', 'T'], tex === 'march' ? 'march' : 'block');
   if (ph.fan && era === 'baroque' && I >= .6) addI('tbn', ['X', 'T'], 'block');
+  if (I >= .3 && I < .85 && (era === 'romantic' || era === 'impressionist')) addI('bcl', ['T'], 'block', [-12, 0]);
+  if (I >= .65) addI('stbn', ['T'], tex === 'march' ? 'march' : 'block');
   P.tpt = has('tpt') && !use.has('tpt') && (I >= .8 || (ph.fan && I >= .6) || ph.final && I >= .8);
   P.timp = has('timp') && (I >= .72 || (ph.final && I >= .6));
   if (has('pno') && !use.has('pno')) P.pno = era === 'baroque' ? 'continuo' : era === 'classical' ? (I > .8 ? 'block' : 'alberti') : 'arpeggio';
@@ -1243,6 +1261,7 @@ function polyPlan(c, ph) {
   if (I >= .5 || era === 'baroque') take(vb, [['bsn', [0, -12, 12]]]);
   if (I >= .55) take(v1, [['ob', [0, -12]], ['fl', [12, 0]]]);
   if (I >= .65) { take(v2, [['cl', [0, -12]], ['ob', [0, -12]]]); take(v3, [['hn', [0, -12]], ['cl', [0, 12]]]); }
+  if (I >= .6) take(vb, [['cbsn', [-12, 0]]]);
   if (I >= .8) { take(v1, [['fl', [12, 0]]]); if (era !== 'baroque') take(vb, [['tba', [-12, 0]], ['btbn', [0, -12]]]); take(v3, [['tbn', [0, -12]]]); }
   return { vm, poly: 1, timp: E.has('timp') && (I >= .8 || ph.final), tpt: E.has('tpt') && (I >= .85 || ph.final) && !used.has('tpt') };
 }
@@ -1342,7 +1361,21 @@ function render(c) {
         texNotes(tx === 'alberti' ? 'alberti' : tx === 'arpeggio' ? 'arpeggio' : tx === 'block' ? 'beats' : tx, ev, ev.V, c.meter, true).forEach(n => put('pno', n, 'pno', ph));
       });
     }
+    colours(ph, evs, mel, P);
     if (ph.final) finalRoll(ph);
+  }
+  function colours(ph, evs, mel, P) {
+    const fk = x.feelId, I = ph.inten, has = id => x.E.has(id) && !P.mel.some(m => m.id === id);
+    const brisk = ph.char === 'brisk' || ph.char === 'motor' || ph.char === 'dance' || ph.char === 'waltz' || ph.char === 'march';
+    const dark = x.feel && x.feel.mode === 'm' && fk !== 'heroic';
+    const sparkle = !dark && (fk === 'joyful' || fk === 'dreamy' || fk === 'heroic' || x.era === 'impressionist' || (ph.final && ph.key.m === 'M') || (I >= .85 && ph.key.m === 'M'));
+    if (has('glock') && sparkle && I >= .4) placeLine('glock', mel.filter(n => (n.t - ph.t0) % PPQ === 0 && n.dur >= PPQ / 2).map(n => Object.assign({}, n, { dur: PPQ / 2, art: 'short' })), [12, 24, 0], 'col', ph);
+    if (has('xyl') && brisk && (fk === 'joyful' || fk === 'stormy' || I >= .75)) placeLine('xyl', mel.filter(n => n.dur <= PPQ / 2).map(n => Object.assign({}, n, { art: 'short' })), [12, 0], 'col', ph);
+    if (has('vib') && (fk === 'dreamy' || fk === 'mysterious' || x.era === 'impressionist') && I < .8) evs.forEach(ev => { if (ev.V) texNotes('arpeggio', ev, ev.V, c.meter, false).forEach(n => { const m = fold(n.m + 12, IM.vib); if (m != null) put('vib', Object.assign({}, n, { m }), 'col', ph); }); });
+    if (has('mar') && (fk === 'joyful' || ph.char === 'waltz' || ph.char === 'dance') && I >= .35 && I < .9) evs.forEach(ev => { if (ev.V) texNotes(ph.char === 'waltz' ? 'oompah' : 'beats', ev, ev.V, c.meter, false).forEach(n => { if (n.voice !== 'A' && n.voice !== 'X') return; const m = fold(n.m, IM.mar); if (m != null) put('mar', Object.assign({}, n, { m, art: 'short' }), 'col', ph); }); });
+    if (has('bells') && (ph.final || ((fk === 'solemn' || fk === 'heroic') && (ph.sec === 'Coda' || ph.sec === 'Finale' || I >= .9)))) {
+      for (let b = 0; b < ph.nb; b += ph.final ? 1 : 2) { const t = ph.t0 + b * c.bar, ev = evAt(c.events, t); [ev.ch.root, ev.ch.T[2].pc].forEach((pc, k) => { let m = 53; while (mod(m, 12) !== pc) m++; if (!k || ph.final) put('bells', { t, dur: c.bar, m, art: 'long' }, 'col', ph); }); }
+    }
   }
   function finalRoll(ph) {
     if (!x.E.has('timp') || ph.inten < .6) return;
@@ -1360,7 +1393,7 @@ function render(c) {
 }
 
 /* ================= performance: dynamics, rubato, keyswitches ================= */
-const ROLEOFF = { mel: 0, dbl: -.04, inner: -.13, pad: -.12, bass: -.06, ctr: -.06, brass: -.1, timp: -.02, pno: -.08 };
+const ROLEOFF = { col: -.1, mel: 0, dbl: -.04, inner: -.13, pad: -.12, bass: -.06, ctr: -.06, brass: -.1, timp: -.02, pno: -.08 };
 function perform(c, parts) {
   const x = c.x, era = ERAS[x.era], r = mkRng(x.seed * 3 + 99);
   const OFF = c.bar;
@@ -1487,6 +1520,19 @@ const BFO = {
   tbn: { name: 'Trombones a3', n: 2, map: [1, 1], lo: 34, hi: 72 },
   tba: { name: 'Solo Tuba', n: 2, map: [1, 1], lo: 27, hi: 63 },
   timp: { name: 'Timpani', n: 0, lo: 48, hi: 60 },
+  svn: { name: 'Solo Violin', n: 3, map: [0, 2, 2, 0], lo: 55, hi: 98 },
+  svc: { name: 'Solo Cello', n: 3, map: [0, 2, 2, 0], lo: 36, hi: 84 },
+  eh: { name: 'Solo English Horn', n: 2, map: [0, 1], lo: 53, hi: 83 },
+  bcl: { name: 'Solo Bass Clarinet', n: 2, map: [0, 1], lo: 34, hi: 73 },
+  cbsn: { name: 'Solo Contrabassoon', n: 2, map: [0, 1], lo: 22, hi: 59 },
+  shn: { name: 'Solo French Horn', n: 2, map: [0, 1], lo: 34, hi: 77 },
+  stpt: { name: 'Solo Trumpet', n: 2, map: [0, 1], lo: 54, hi: 84 },
+  stbn: { name: 'Solo Trombone', n: 2, map: [0, 1], lo: 34, hi: 70 },
+  bells: { name: 'Tubular bells', n: 0, lo: 53, hi: 77 },
+  glock: { name: 'Glockenspiel', n: 0, lo: 65, hi: 101 },
+  vib: { name: 'Vibraphone', n: 0, lo: 53, hi: 89 },
+  mar: { name: 'Marimba', n: 0, lo: 36, hi: 96 },
+  xyl: { name: 'Xylophone', n: 0, lo: 65, hi: 108 },
   pno: { name: 'Harp', n: 0, lo: 24, hi: 103 },
 };
 Y.BFO = BFO;
@@ -1542,7 +1588,7 @@ function compose(o) {
   if (!['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'pno', 'tpt', 'tbn', 'picc'].some(i => E.has(i))) E.add('vln1');
   const meter = o.meter || FORMS[form].meter;
   const seed = (o.seed >>> 0) || 1;
-  const x = { era, form, K, E, meter, tempo: o.tempo || FORMS[form].tempo, len: clamp(o.len || 2, 1, 3), seed, r: mkRng(seed), rubato: o.rubato == null ? 1 : o.rubato, early: o.early == null ? 40 : o.early, scherzo: o.scherzo, solo: o.solo, feel: FEELINGS[o.feel] || null };
+  const x = { era, form, K, E, meter, tempo: o.tempo || FORMS[form].tempo, len: clamp(o.len || 2, 1, 3), seed, r: mkRng(seed), rubato: o.rubato == null ? 1 : o.rubato, early: o.early == null ? 40 : o.early, scherzo: o.scherzo, solo: o.solo, feel: FEELINGS[o.feel] || null, feelId: FEELINGS[o.feel] ? o.feel : null };
   const c = new Comp(x);
   const st = ERAS[era];
   c.style = { melLo: st.melLo, melHi: st.melHi, melC: st.melC, appog: st.appog, avoid: st.avoid ? new Set(st.avoid) : null, bLo: 36, bHi: 57, bC: 46 };
