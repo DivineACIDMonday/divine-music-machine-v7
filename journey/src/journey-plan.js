@@ -302,7 +302,7 @@ JP.plan = (words, opts = {}) => {
     if (x.c.tension > 0.5) c.push('upside down'); if (x.energy > 0.75) c.push('grand'); if (x.breathInside || x.energy < 0.25) c.push('half, a memory');
     x.costume = c; });
 
-  return { seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+  return { rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 
 if (typeof module !== 'undefined') module.exports = JP;

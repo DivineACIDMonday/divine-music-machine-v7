@@ -432,7 +432,7 @@ JP.plan = (words, opts = {}) => {
     if (x.c.tension > 0.5) c.push('upside down'); if (x.energy > 0.75) c.push('grand'); if (x.breathInside || x.energy < 0.25) c.push('half, a memory');
     x.costume = c; });
 
-  return { seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+  return { rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 
 if (typeof module !== 'undefined') module.exports = JP;
@@ -7554,7 +7554,7 @@ JR.render = function (plan, ctx) {
     // content time to journey time: the chapter was written at its own feel tempo
     const k = plan.bpm / c.feelsLike, toJ = (ns) => ns.map((n) => Object.assign({}, n, { t: Math.round(n.t * k), d: Math.max(30, Math.round((n.d || 120) * k)) }));
     const rank = {}; c.players.forEach((p, r) => { rank[p.role] = r; });
-    const motifPlayer = (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: JP_PLAIN }).player;
+    const motifPlayer = (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: (plan.rack && plan.rack.melody && plan.rack.melody[0]) || JP_PLAIN }).player;
     for (const p of c.players.concat([{ role: 'motif', player: motifPlayer }])) {
       const tracks = speak(ctx, p.role, p.player, content, c);
       for (const t of tracks) { const notes = shape(plan, i, p.role, rank[p.role] || 0, toJ(t.notes), tl);
@@ -7619,7 +7619,9 @@ function drawRack() {
     const chips = document.createElement('div'); chips.className = 'chips';
     [JP.PLAIN, ...def.items].forEach((it) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (it === JP.PLAIN ? ' plain' : ''); b.textContent = it;
       b.setAttribute('aria-pressed', S.rack[k].includes(it) ? 'true' : 'false');
-      b.onclick = () => { const on = S.rack[k].includes(it); if (on && S.rack[k].length === 1) return; S.rack[k] = on ? S.rack[k].filter((x) => x !== it) : [...S.rack[k], it];
+      b.onclick = () => { const on = S.rack[k].includes(it);
+        if (on) { S.rack[k] = S.rack[k].filter((x) => x !== it); if (!S.rack[k].length) S.rack[k] = [JP.PLAIN]; } // never empty: plain MIDI comes back
+        else S.rack[k] = S.rack[k].length === 1 && S.rack[k][0] === JP.PLAIN ? [it] : [...S.rack[k], it]; // your first plugin replaces plain MIDI
         ss.set('journey-rack', S.rack); drawRack(); replan(); };
       chips.append(b); });
     el.append(lab, chips);

@@ -241,7 +241,7 @@ JR.render = function (plan, ctx) {
     // content time to journey time: the chapter was written at its own feel tempo
     const k = plan.bpm / c.feelsLike, toJ = (ns) => ns.map((n) => Object.assign({}, n, { t: Math.round(n.t * k), d: Math.max(30, Math.round((n.d || 120) * k)) }));
     const rank = {}; c.players.forEach((p, r) => { rank[p.role] = r; });
-    const motifPlayer = (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: JP_PLAIN }).player;
+    const motifPlayer = (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: (plan.rack && plan.rack.melody && plan.rack.melody[0]) || JP_PLAIN }).player;
     for (const p of c.players.concat([{ role: 'motif', player: motifPlayer }])) {
       const tracks = speak(ctx, p.role, p.player, content, c);
       for (const t of tracks) { const notes = shape(plan, i, p.role, rank[p.role] || 0, toJ(t.notes), tl);

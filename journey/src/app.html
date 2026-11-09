@@ -158,7 +158,9 @@ function drawRack() {
     const chips = document.createElement('div'); chips.className = 'chips';
     [JP.PLAIN, ...def.items].forEach((it) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (it === JP.PLAIN ? ' plain' : ''); b.textContent = it;
       b.setAttribute('aria-pressed', S.rack[k].includes(it) ? 'true' : 'false');
-      b.onclick = () => { const on = S.rack[k].includes(it); if (on && S.rack[k].length === 1) return; S.rack[k] = on ? S.rack[k].filter((x) => x !== it) : [...S.rack[k], it];
+      b.onclick = () => { const on = S.rack[k].includes(it);
+        if (on) { S.rack[k] = S.rack[k].filter((x) => x !== it); if (!S.rack[k].length) S.rack[k] = [JP.PLAIN]; } // never empty: plain MIDI comes back
+        else S.rack[k] = S.rack[k].length === 1 && S.rack[k][0] === JP.PLAIN ? [it] : [...S.rack[k], it]; // your first plugin replaces plain MIDI
         ss.set('journey-rack', S.rack); drawRack(); replan(); };
       chips.append(b); });
     el.append(lab, chips);
