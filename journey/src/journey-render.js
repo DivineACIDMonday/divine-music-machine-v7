@@ -182,8 +182,29 @@ function pitchDrums(notes, c, isLane) {
 }
 
 // ---------- one chapter: every role as notes in content time ----------
+// a chapter with several of your records: every record writes the whole chapter in the same key, feel and tempo,
+// then the chapter plays them one after the other, phrase-whole, like a DJ inside one story
 function chapterContent(ctx, plan, i) {
-  const { E, P, S, Y, JP } = ctx, c = plan.chapters[i], B = plan.bpm, F = c.feelsLike, seed = H(plan.seed, i, c.word);
+  const c = plan.chapters[i];
+  if (!c.records || c.records.length < 2) return chapterContentOne(ctx, plan, i, c, H(plan.seed, i, c.word));
+  const k = c.feelsLike / plan.bpm, P = Math.ceil(Math.ceil(c.bars * k) / 8), m = c.records.length, S = [0];
+  for (let q = 1; q < m; q++) S.push(Math.round(q * P / m) * 8 * BAR); S.push(1e12);
+  const parts = c.records.map((rc, q) => chapterContentOne(ctx, plan, i, Object.assign({}, c, { lead: rc.lead, guests: rc.guests, beatArt: rc.beatArt }), H(plan.seed, i, c.word, q)));
+  const inS = (q) => (n) => n.t >= S[q] && n.t < S[q + 1], out = Object.assign({}, parts[0]);
+  for (const key of ['beat', 'perc', 'bass', 'chords', 'melody']) out[key] = parts.flatMap((pt, q) => pt[key].filter(inS(q)).map((n) => (key === 'perc' ? Object.assign({}, n, { pk: PERC_KEY[pt.percStyle] }) : n))
+    .filter((n) => !(key === 'melody' && q > 0 && n.t < S[q] + 8 * BAR))); // the new record's melody waits one phrase: first its groove and harmony
+  // the seam: a fill on the old record, a crash on the new one
+  for (let q = 1; q < m; q++) { if (!out.beat.length) break; for (let s2 = 0; s2 < 8; s2++) out.beat.push({ t: S[q] - 2 * PPQ + s2 * PPQ / 4, d: 40, lane: s2 % 3 === 2 ? 6 : 2, roll: 1, v: 48 + s2 * 9 }); out.beat.push({ t: S[q], d: 240, lane: 7, v: 108, roll: 1 }); }
+  const orch = {}; parts.forEach((pt, q) => (pt.orch || []).forEach((t) => { const o = orch[t.id] || (orch[t.id] = Object.assign({}, t, { notes: [], cc: [], ks: [] }));
+    o.notes = o.notes.concat(t.notes.filter(inS(q))); o.cc = o.cc.concat((t.cc || []).filter((e) => (q === 0 && e.t < S[1]) || inS(q)(e))); o.ks = o.ks.concat((t.ks || []).filter((e) => (q === 0 && e.t < S[1]) || inS(q)(e))); }));
+  out.orch = Object.values(orch);
+  const sc = parts.find((pt) => pt.score); if (sc) { const r0 = sc.score.r, r = {}; for (const key of Object.keys(r0)) { r[key] = Object.assign({}, r0[key], { notes: parts.flatMap((pt, q) => (pt.score ? pt.score.r[key].notes.filter(inS(q)) : [])) }); } out.score = Object.assign({}, sc.score, { r }); }
+  out.perc.sort((a, b) => a.t - b.t);
+  out.segs = c.records.map((rc, q) => ({ t: S[q], name: rc.name })); out.percStyles = parts.map((pt) => pt.percStyle);
+  return out;
+}
+function chapterContentOne(ctx, plan, i, c, seed) {
+  const { E, P, S, Y, JP } = ctx, B = plan.bpm, F = c.feelsLike;
   const lenTicks = c.bars * BAR, needContent = Math.ceil(lenTicks * F / B) + BAR, contentBars = Math.ceil(needContent / BAR);
   const roles = new Set(c.players.map((p) => p.role)), out = { tracks: {} };
   const symLead = c.lead.machine === 'symphony';
@@ -205,8 +226,9 @@ function chapterContent(ctx, plan, i) {
     melody = E.renderSong(song, 'melody').concat(E.renderSong(song, 'answer'));
     harmonic = chords.concat(pad, bass);
   }
-  // the beat: always from the Studio engine (a rhythm never clashes with a harmony)
-  out.beat = roles.has('beats') ? E.renderSong(song, 'beat') : [];
+  // the beat: always from the Studio engine (a rhythm never clashes with a harmony); a record with two Studio styles takes the beat of the second
+  const beatSong = c.beatArt ? studioSong(E, c.beatArt.name, c, contentBars, H(seed, 'b2'), F) : song; out.beatSong = beatSong;
+  out.beat = roles.has('beats') ? E.renderSong(beatSong, 'beat') : [];
   // the engine leaves some sections without drums (an intro, a prechorus); where the journey wants a groove, the groove of
   // the nearest bar that has one carries on, so a song never waits half its length for its beat
   if (out.beat.length) { const by = {}; out.beat.forEach((n) => { const b = Math.floor(n.t / BAR); (by[b] = by[b] || []).push(n); });
@@ -259,10 +281,10 @@ function speak(ctx, role, player, content, c) {
     if (player === 'PERRCS' && content.score) { const s = content.score; const k = role === 'perc' ? 'perA' : 'perB'; one('PERRCS, Style ' + s.cats[k], s.r[k].notes, s.r[k].ccs); return tr; }
     if (player === 'Kick 1' || player === 'Kick 2') { const ns = role === 'beats' ? lanes.filter((n) => n.lane <= 1).map((n) => ({ t: n.t, d: n.d, v: n.v, p: 36 })) : voices.filter((n) => KICKS.has(n.voice)).map((n) => ({ t: n.t, d: 120, v: n.v, p: 36 })); one(player + ' (kick only)', ns); return tr; }
     if (drumPlugin || player === JP_PLAIN || player === 'PERRCS') {
-      if (role === 'beats') { const key = PK[player] || 'gm'; one(player === JP_PLAIN ? 'Beat, standard drum notes' : 'Beat for ' + player, E.applyMask(song, 'beat', lanes, key, { mode: 'instrument' })); return tr; }
-      const style = content.percKey, sl = style === 'taiko' ? TAIKO_SLOTS : style === 'marching' ? MARCH_SLOTS : PERC_SLOTS, k = PK[player];
-      const noteOf = (v) => { if (player === 'Tekno') return TEKNO_PERC[v] || 43; if (PERC_KEYS[k]) { const i = sl.findIndex((s) => s.includes(v)); return PERC_KEYS[k][Math.max(0, i)]; } return ctx.P.VOICES[v] ? ctx.P.VOICES[v].gm : 60; };
-      one(player === JP_PLAIN ? 'Percussion, standard drum notes' : 'Percussion for ' + player, voices.map((n) => ({ t: n.t, d: 120, v: n.v, p: noteOf(n.voice) }))); return tr;
+      if (role === 'beats') { const key = PK[player] || 'gm'; one(player === JP_PLAIN ? 'Beat, standard drum notes' : 'Beat for ' + player, E.applyMask(content.beatSong || song, 'beat', lanes, key, { mode: 'instrument' })); return tr; }
+      const slOf = (style) => (style === 'taiko' ? TAIKO_SLOTS : style === 'marching' ? MARCH_SLOTS : PERC_SLOTS), k = PK[player];
+      const noteOf = (v, style) => { if (player === 'Tekno') return TEKNO_PERC[v] || 43; if (PERC_KEYS[k]) { const i = slOf(style).findIndex((s) => s.includes(v)); return PERC_KEYS[k][Math.max(0, i)]; } return ctx.P.VOICES[v] ? ctx.P.VOICES[v].gm : 60; };
+      one(player === JP_PLAIN ? 'Percussion, standard drum notes' : 'Percussion for ' + player, voices.map((n) => ({ t: n.t, d: 120, v: n.v, p: noteOf(n.voice, n.pk || content.percKey) }))); return tr;
     }
     // a pitched instrument plays the drums: every drum becomes a tone of the key
     const pitched = pitchDrums(role === 'beats' ? lanes : voices, c, role === 'beats');
@@ -399,10 +421,10 @@ function handRhythm(list, plan, i, isKick, isBack) {
 function percussionist(ev, plan, i, styleKey, swing) {
   if (!ev.length) return ev;
   const c = plan.chapters[i], F = c.feelsLike, cb = c.bars * F / plan.bpm, lead = c.lead.machine === 'percussion';
-  const sl = styleKey === 'taiko' ? TAIKO_SLOTS : styleKey === 'marching' ? MARCH_SLOTS : PERC_SLOTS;
-  const rankOf = (v) => { const k = sl.findIndex((q) => q.includes(v)); return k < 0 ? 5 : k; };
+  const slOf = (st) => (st === 'taiko' ? TAIKO_SLOTS : st === 'marching' ? MARCH_SLOTS : PERC_SLOTS);
+  const rankOf = (v, st) => { const k = slOf(st || styleKey).findIndex((q) => q.includes(v)); return k < 0 ? 5 : k; };
   // the order voices join: a soft time keeper first (shaker, bell), then the low drum, then the talking voices
-  const JOIN = [5, 6, 0, 1, 2, 3, 4, 7], joinRank = (v) => JOIN.indexOf(rankOf(v));
+  const JOIN = [5, 6, 0, 1, 2, 3, 4, 7], joinRank = (v, st) => JOIN.indexOf(rankOf(v, st));
   const R = rng(H(plan.seed, 'perc', i)), keepP = {};
   const kept = ev.filter((n) => {
     const bar = Math.floor(n.t / BAR), e = eAt(c, bar / Math.max(1, cb));
@@ -410,7 +432,7 @@ function percussionist(ev, plan, i, styleKey, swing) {
     let V = Math.min(grow, Math.max(1, Math.round(1 + e * (lead ? 7 : 5))));   // the energy decides how many may play
     const inBar = bar % 4, fill = inBar === 3;
     if (fill) V = Math.min(8, V + 2); else if (inBar === 1) V = Math.max(1, V - 1); // a call, a breath, the answer
-    const jr = joinRank(n.voice); if (jr >= V) return false;
+    const jr = joinRank(n.voice, n.pk); if (jr >= V) return false;
     // the newest voice in plays sparser, it is still finding its place
     if (jr === V - 1 && !fill) { const key = bar + ':' + n.voice; if (keepP[key] == null) keepP[key] = R() < 0.55; if (!keepP[key]) return false; }
     const pos = n.t % BAR, beat = pos % PPQ === 0;
@@ -638,7 +660,7 @@ JR.render = function (plan, ctx) {
     { const w1 = win(plan, i); let g = null, best = -1; for (let b = Math.max(16, (w1.inn || 0) + 8); b < c.bars - (w1.out || 0) - 8; b += 8) { const e = eAt(c, b / c.bars); if (e > best) { best = e; g = b; } }
       if (i > 0 && plan.chapters[i - 1].out === 'riser' && c.bars > (w1.inn || 0) + 24) g = Math.ceil((w1.inn || 0) / 8) * 8; c._gift = g; }
     c._arr = arrange(plan, i); // the arranger writes the plan of this chapter, phrase by phrase, before a note is played
-    const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle];
+    const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle]; c._segs = content.segs || null;
     content.beat = beatLife(content.beat, c, H(plan.seed, 'groove', i));
     { const w2 = win(plan, i), kk = c.feelsLike / plan.bpm, cbt = (jb) => Math.round(jb * BAR * kk);
       if (w2.out && content.beat.length) { const wh = cbt(c.bars - w2.out / 2); for (let s2 = 0; s2 < 8; s2++) content.beat.push({ t: wh - 2 * PPQ + s2 * PPQ / 4, d: 40, lane: s2 < 4 ? 2 : 6, roll: 1, v: 50 + s2 * 8 }); }
@@ -679,7 +701,7 @@ JR.render = function (plan, ctx) {
   // the ending: abrupt stops everything on one last hit
   if (plan.ending.id === 'abrupt') { const last = tl[tl.length - 1], end = last.start + last.len; all.forEach((t) => { t.notes = t.notes.filter((n) => n.t < end - BAR || n.t === end - BAR); t.notes.forEach((n) => { if (n.t + n.d > end) n.d = end - n.t; }); }); }
   const totalTicks = tl[tl.length - 1].start + tl[tl.length - 1].len;
-  return { tracks: all, timeline: tl, totalTicks, markers: plan.chapters.map((c, i) => ({ t: tl[i].start, text: (i + 1) + '. ' + c.word + ' (' + c.lead.name + ')' })) };
+  return { tracks: all, timeline: tl, totalTicks, markers: plan.chapters.flatMap((c, i) => (c._segs ? c._segs.map((g, q) => ({ t: tl[i].start + Math.round(g.t * plan.bpm / c.feelsLike), text: (q ? '' : (i + 1) + '. ' + c.word + ': ') + g.name })) : [{ t: tl[i].start, text: (i + 1) + '. ' + c.word + ' (' + (c.records ? c.records[0].name : c.lead.name) + ')' }])) };
 };
 
 // ---------- MIDI out ----------
@@ -776,7 +798,9 @@ JR.fitTemplate = (tracks, tpl, plan) => {
     if (!hit && tpl.perChapter) { const near = out.filter((o) => o.t.role === tr.role && o.t.player === tr.player).sort((x, y) => Math.abs(x.t.ch - tr.chapter) - Math.abs(y.t.ch - tr.chapter)); if (tr.role !== 'orch' && near.length) hit = near[0]; }
     if (hit) { hit.notes = hit.notes.concat(tr.notes); if (!used.has(hit)) { hit.cc = hit.cc.concat(tr.cc || []); used.add(hit); } if (!hit.name) hit.name = tr.name; continue; }
     // an orchestra part without its own track: every note goes to the template instrument whose register fits it best
-    const orch = here.filter((o) => o.t.role === 'orch' && (o.t.player === tr.player || true)); if (!orch.length) continue;
+    let orch = here.filter((o) => o.t.role === 'orch');
+    if (!orch.length && tpl.perChapter) { const all = out.filter((o) => o.t.role === 'orch'); if (all.length) { const nc = all.reduce((a, o) => (Math.abs(o.t.ch - tr.chapter) < Math.abs(a - tr.chapter) ? o.t.ch : a), all[0].t.ch); orch = all.filter((o) => o.t.ch === nc); } }
+    if (!orch.length) continue;
     tr.notes.forEach((n) => { if (n.ks) return; const o = orch.reduce((a, b) => (Math.abs(centre(b.t.inst) - n.p) < Math.abs(centre(a.t.inst) - n.p) ? b : a)); o.notes.push(n); }); }
   // every track keeps the name of its place in your template; an empty track gets one silent note after the end,
   // because a DAW drops empty tracks on import and everything below would shift up one place

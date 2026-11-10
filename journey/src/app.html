@@ -101,6 +101,13 @@ select.pk.mine{border-color:var(--gold);color:var(--gold)}
 .dz:hover{border-color:var(--gold)}
 .undo{margin-left:auto;background:transparent;border:1px solid var(--line);border-radius:7px;color:var(--mu);font:13px system-ui,sans-serif;padding:3px 9px;cursor:pointer}
 .kv dd{display:flex;align-items:center}
+.crate{display:flex;flex-wrap:wrap;gap:8px}
+.vin{display:flex;align-items:center;gap:9px;background:#0F131C;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 4px;font-size:14px}
+.vin i{flex:none;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,#0B0E14 0 2px,var(--gold) 3px 9px,#15181F 10px 12px,#1E222B 13px 14px,#15181F 15px 100%);box-shadow:inset 0 0 0 1px #2C3240}
+.vin.off{opacity:.45}.vin.off i{background:radial-gradient(circle,#0B0E14 0 2px,#7E8899 3px 9px,#15181F 10px 100%)}
+.vin .rx{background:transparent;border:0;color:var(--mu);cursor:pointer;min-width:30px;min-height:30px;border-radius:50%}.vin .rx:hover{color:var(--tx);background:#1B2130}
+.press{gap:8px}.press .plus{color:var(--mu)}
+.recs{display:flex;flex-direction:column;gap:2px}.recs span{display:flex;align-items:center;gap:6px}.recs span::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--wc);flex:none}
 .out{font-size:13.5px;color:var(--mu);border-top:1px dashed var(--line);padding-top:8px}
 footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 @media (max-width:760px){.words{grid-template-columns:repeat(2,1fr)}.w:last-child{grid-column:1/-1}.rk{grid-template-columns:1fr}.rk .el{padding-top:0}.wb{font-size:19px}}
@@ -123,6 +130,13 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
     <div class="muted small tplh">Free: every journey gets its own tracks, good for building a new template. My template: the new journey lands on exactly the tracks, in exactly the order, of the MIDI you built your DAW from, so every instrument you dragged in stays right.</div></div>
   <div class="rk" id="rack"></div>
 </details>
+
+<section class="card" id="recBox">
+  <div class="sh"><span class="st serif">Your records</span><span class="muted">Press your own records, one to three styles each. The story chooses which chapter plays which, and mixes them.</span></div>
+  <div class="row"><div class="seg" id="recMode"><button data-m="off">Dice</button><button data-m="on">My records</button></div><span class="muted small" id="recSum"></span></div>
+  <div class="crate" id="crate"></div>
+  <div class="row press"><select class="pk" id="rs0" aria-label="Style 1"></select><span class="plus">+</span><select class="pk" id="rs1" aria-label="Style 2"></select><span class="plus">+</span><select class="pk" id="rs2" aria-label="Style 3"></select><button class="btn" id="press">Press this record</button></div>
+</section>
 
 <section class="card">
   <div class="sh"><span class="st serif">The oracle speaks</span><span class="muted">Click a word to roll only that word. Lock what you love.</span></div>
@@ -150,7 +164,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 
 <section class="card" style="align-items:center;text-align:center">
   <button class="btn big" id="make">Make the journey</button>
-  <div class="muted small" id="makeMsg">One zip: the whole journey as one MIDI file, a folder per chapter with a file per layer, and a rack card that tells you which plugin goes on which track.</div>
+  <div class="muted small" id="makeMsg">One zip: the whole journey as one MIDI file, a folder per chapter with a file per layer, your records each on their own, and a rack card that tells you which plugin goes on which track.</div>
 </section>
 <details class="card how"><summary><span class="st serif">How it works</span></summary><ol>
   <li>Tick your plugins in Your rack. The machine only chooses from your ticks.</li>
@@ -158,6 +172,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
   <li>Deep journey is one long arc through all chapters. Mixed journey makes every chapter a song of its own, with its own build, drop and break, mixed into the next.</li>
   <li>Every word becomes a chapter: a leading machine, guests, a feel, a key. Change anything on the cards, or roll it.</li>
   <li>Listen to the sketch in the browser. It plays the journey with simple sounds, your plugins will sound far better.</li>
+  <li>Your records: press your own records from one to three styles, as many as you like. The story decides which chapter plays which record and mixes them inside the chapter. Every record also comes out on its own in the Records folder.</li>
   <li>Built your DAW from a result? Choose My template and load that MIDI: every new journey lands on exactly those tracks.</li>
   <li>Make the journey. Open Rack_Card.txt, load the plugins it names, and drop every file on bar 1.</li>
 </ol></details>
@@ -190,7 +205,28 @@ const S = {
   seed: (Math.random() * 4294967296) >>> 0,
   plan: null,
   ov: [{}, {}, {}, {}, {}],
+  recs: ls.get('journey-records', []),
+  recOn: ss.get('journey-rec-on', false),
 };
+
+// ---------- your records ----------
+const recName = (r) => r.arts.join(' + ');
+function styleOpts(first) { const g = Object.entries(JP.MACHINES).map(([m, M]) => `<optgroup label="${esc(M.name)}">${(m === 'symphony' ? [JP.ORCH] : []).concat(JP.ARTS.filter((a) => a.machine === m).map((a) => a.name)).map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>`).join('');
+  return (first ? '' : '<option value="">nothing</option>') + g; }
+function drawRecords() {
+  const el = $('#crate'); el.innerHTML = '';
+  S.recs.forEach((r, k) => { const d = document.createElement('div'); d.className = 'vin' + (S.recOn ? '' : ' off');
+    d.innerHTML = `<i></i><span>${esc(recName(r))}</span><button class="rx" type="button" title="Take this record out" aria-label="Remove"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M2 2 L10 10 M10 2 L2 10" stroke="currentColor" stroke-width="1.6"/></svg></button>`;
+    d.querySelector('.rx').onclick = () => { S.recs.splice(k, 1); ls.set('journey-records', S.recs); if (!S.recs.length) { S.recOn = false; ss.set('journey-rec-on', false); } drawRecords(); replan(); };
+    el.append(d); });
+  if (!S.recs.length) el.innerHTML = '<span class="muted small">No records yet. Choose one to three styles below and press it.</span>';
+  document.querySelectorAll('#recMode button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.m === 'on') === !!S.recOn ? 'true' : 'false'));
+  $('#recSum').textContent = S.recOn ? S.recs.length + ' records in the crate, each one also comes out on its own' : 'the dice choose the styles';
+}
+$('#rs0').innerHTML = styleOpts(true); $('#rs1').innerHTML = styleOpts(false); $('#rs2').innerHTML = styleOpts(false); $('#rs0').value = 'Trip hop'; $('#rs1').value = JP.ORCH;
+$('#press').onclick = () => { const arts = [...new Set(['#rs0', '#rs1', '#rs2'].map((q) => $(q).value).filter(Boolean))];
+  S.recs.push({ arts }); S.recOn = true; ls.set('journey-records', S.recs); ss.set('journey-rec-on', true); drawRecords(); replan(); };
+document.querySelectorAll('#recMode button').forEach((b) => { b.onclick = () => { S.recOn = b.dataset.m === 'on' && S.recs.length > 0; ss.set('journey-rec-on', S.recOn); drawRecords(); replan(); }; });
 
 // ---------- rack ----------
 function rackSummary() { const n = Object.values(S.rack).reduce((s, l) => s + l.filter((x) => x !== JP.PLAIN).length, 0); $('#rackSum').textContent = n ? n + ' instruments ticked' : 'only plain MIDI so far, tick your plugins here'; }
@@ -229,7 +265,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 // ---------- plan + map ----------
 function replan() {
   const recent = ls.get('journey-recent', []);
-  S.plan = JP.plan(S.words, { mode: S.mode, template: S.tplOn && S.tplLayout ? S.tplLayout : null, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
+  S.plan = JP.plan(S.words, { mode: S.mode, template: S.tplOn && S.tplLayout ? S.tplLayout : null, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov, records: S.recOn ? S.recs : null });
   stopPlay(); PV = null;
   drawMap(); drawChapters();
 }
@@ -256,7 +292,7 @@ function drawMap() {
     s += `<rect x="${X(c.t0)}" y="${top - 46}" width="${X(c.t1) - X(c.t0)}" height="3" fill="${HEX[i]}"/>`;
     const cx = (X(c.t0) + X(c.t1)) / 2;
     s += `<text class="mw" data-i="${i}" x="${cx}" y="${top - 22}" text-anchor="middle" fill="${HEX[i]}" font-size="19" font-family="Georgia,serif">${esc(c.word)}</text>`;
-    s += `<text x="${cx}" y="${top - 3}" text-anchor="middle" fill="#9AA3B2" font-size="12.5">${esc(c.lead.name)}${c.guests.length ? ' +' + c.guests.length : ''}</text>`;
+    s += `<text x="${cx}" y="${top - 3}" text-anchor="middle" fill="#9AA3B2" font-size="12.5">${c.records ? esc(c.records[0].name) + (c.records.length > 1 ? ' +' + (c.records.length - 1) : '') : esc(c.lead.name) + (c.guests.length ? ' +' + c.guests.length : '')}</text>`;
     s += `<text x="${cx}" y="${bot + 22}" text-anchor="middle" fill="#9AA3B2" font-size="12">${esc(c.key)} · ${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}</text>`;
     s += `<text x="${cx}" y="${bot + 40}" text-anchor="middle" fill="#6B7486" font-size="11.5">${c.bars} bars · ${c.minutes.toFixed(1)} min</text>`;
     // the motif, in this chapter's costume
@@ -311,9 +347,9 @@ function drawChapters() {
     const any = Object.keys(o).length > 0;
     d.innerHTML = `<h3 class="serif" style="color:${HEX[i]}">${esc(c.word)} <small>${i + 1} · ${WHEELS[i][1].toLowerCase()}</small>${any ? `<button class="undo" data-i="${i}" title="Give this chapter back to the dice">back to the dice</button>` : ''}</h3>
       <div class="bars">${bars}</div>
-      <dl class="kv"><dt>Leader</dt><dd class="ctl">${leadSel}${dice(i, 'lead')}</dd>
+      <dl class="kv">${c.records ? `<dt>Records</dt><dd><div class="recs">${c.records.map((r) => `<span>${esc(r.name)}</span>`).join('')}${c.reprise ? '<span class="sw">a reprise</span>' : ''}</div></dd>` : `<dt>Leader</dt><dd class="ctl">${leadSel}${dice(i, 'lead')}</dd>
       <dt>Guest 1</dt><dd class="ctl">${gSel(0)}${dice(i, 'g1')}</dd>
-      <dt>Guest 2</dt><dd class="ctl">${gSel(1)}${dice(i, 'g2')}</dd>
+      <dt>Guest 2</dt><dd class="ctl">${gSel(1)}${dice(i, 'g2')}</dd>`}
       <dt>Feel</dt><dd class="ctl">${feelSel}${dice(i, 'feel')}</dd>
       <dt>Key</dt><dd class="ctl">${keySel}${dice(i, 'key')}${c.keyMove === 'golden' ? ' <span class="sw">golden step</span>' : ''}</dd>
       <dt>Length</dt><dd>${c.bars} bars · ${c.minutes.toFixed(1)} min</dd>
@@ -367,7 +403,7 @@ function rackCard(p, res) {
   const L = ['DIVINE JOURNEY MACHINE . RACK CARD', '', S.words.map((w) => w.word).join(' . ') + '   ' + p.bpm + ' bpm, one tempo for the whole journey', (p.mode === 'mixed' ? 'Mixed journey: every chapter is a song of its own. ' : 'Deep journey: one long arc. ') + 'Arc: ' + p.arc.name + '. Opens: ' + p.opening.name + '. Ends: ' + p.ending.name + '.', ''];
   p.chapters.forEach((c, i) => { const b0 = Math.round(res.timeline[i].start / JR.BAR) + 1, b1 = b0 + c.bars - 1;
     L.push((i + 1) + '. ' + c.word.toUpperCase() + '   bars ' + b0 + ' to ' + b1 + '   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + ' (feels like ' + c.feelsLike + ' bpm)');
-    L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
+    if (c.records) L.push('   Records: ' + c.records.map((r) => r.name).join(', then ')); else L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
     const seen = new Set(); res.tracks.filter((t) => t.chapter === i).forEach((t) => { const st = (t.name.match(/(Strings [AB] )?for STRIIIINGS, Style (.*)$|PERRCS, Style (.*)$/) || []); const sty = st[2] || st[3] || '';
       const k = t.role + t.player + sty; if (seen.has(k)) return; seen.add(k);
       L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + 'Sound: ' + t.colour + '. ' + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
@@ -384,6 +420,15 @@ function makeJourney() {
   p.chapters.forEach((c, i) => { const dir = base + '/' + String(i + 1).padStart(2, '0') + '_' + safe(c.word) + '/';
     const by = {}; res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: (i + 1) + ' ' + c.word + ' ' + k })) }); });
+  // your records, each one on its own, in its own folder, at full length, on the tracks of the chapter it plays in
+  if (p.records) { const tplOn = S.tplOn && S.tplLayout;
+    p.records.forEach((rc, id) => { const ci = Math.max(0, p.chapters.findIndex((c) => c.records && c.records.some((r) => r.id === id)));
+      const solo = JP.plan([S.words[ci]], { mode: S.mode, template: tplOn ? S.tplLayout : null, tplChapter: ci, seed: (S.seed ^ ((id + 1) * 7919)) >>> 0, bpm: p.bpm, minutes: 6, rack: S.rack, allWords: JW, solo: true, records: [{ arts: rc.arts.map((a) => (a === JP.ORCH ? JP.ORCH : a.name)) }] });
+      const r2 = JR.render(solo, ctx); r2.tracks.forEach((t) => { t.chapter = ci; t.name = t.name.replace(/^1 /, (ci + 1) + ' '); });
+      const dir = base + '/Records/' + String(id + 1).padStart(2, '0') + '_' + safe(rc.name.replace(/ \+ /g, ' ')) + '/', m2 = Object.assign({}, meta, { title: rc.name, markers: [] });
+      files.push({ name: dir + safe(rc.name.replace(/ \+ /g, ' ')) + '.mid', data: JR.writeMidi(tplOn ? JR.fitTemplate(r2.tracks, S.tplLayout, p) : r2.tracks, m2) });
+      const by = {}; r2.tracks.forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
+      for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, m2, { title: rc.name + ' ' + k })) }); }); }
   files.push({ name: base + '/Rack_Card.txt', data: rackCard(p, res) });
   const a = document.createElement('a'); a.href = URL.createObjectURL(zip(files)); a.download = base + '.zip'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   remember();
@@ -482,6 +527,6 @@ $('#tplFile').onchange = async (e) => { const f = e.target.files[0]; if (!f) ret
     S.tplOn = true; ss.set('journey-tpl-on', true); useTemplate(); replan(); } catch (er) { $('#tplInfo').textContent = 'Could not read that file: ' + er.message; } e.target.value = ''; };
 useTemplate();
 if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
-drawRack(); drawWords(); drawLen(); replan();
+drawRack(); drawRecords(); drawWords(); drawLen(); replan();
 </script>
 </body></html>

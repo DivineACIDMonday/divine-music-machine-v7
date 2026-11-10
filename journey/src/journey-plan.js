@@ -178,6 +178,32 @@ JP.songEnergy = (x, u) => { const S = x.song; let k = S.findIndex((q) => u < q.u
   let e = q.e; if (nx && f > 0.75) e = q.e + (nx.e - q.e) * (f - 0.75) / 0.25 * 0.5; if (pv && f < 0.25) e = q.e + (pv.e - q.e) * (0.25 - f) / 0.25 * 0.5;
   return x.lo + (x.hi - x.lo) * e; };
 
+// ---------- your records ----------
+// a record is one to three styles that sound together; 'Orchestra' lets the word choose the orchestral form
+JP.ORCH = 'Orchestra';
+const ORCH_V = { light: 0.4, speed: 0, warm: 0.3, weight: 0.4, tension: 0, world: 0 };
+const recVec = (rc) => { const v = Object.fromEntries(JP.DIMS.map((d) => [d, 0])); rc.arts.forEach((a) => JP.DIMS.forEach((d) => { v[d] += (a === JP.ORCH ? ORCH_V : a.v)[d] / rc.arts.length; })); return v; };
+const nearestOf = (machine, cv) => JP.ARTS.filter((a) => a.machine === machine).reduce((b, a) => (JP.dist(cv, a.v) < JP.dist(cv, b.v) ? a : b));
+// who leads a record: a Studio style carries the harmony (the slower one), a second Studio style gives the beat (the faster one)
+JP.recordBand = (rc, cv) => { const arts = rc.arts.map((a) => (a === JP.ORCH ? nearestOf('symphony', cv) : a)), st = arts.filter((a) => a.machine === 'studio').sort((a, b) => a.v.speed - b.v.speed);
+  const lead = st.length ? st[0] : arts[0], beatArt = st.length > 1 ? st[st.length - 1] : null, seen = new Set([lead.machine]), guests = [];
+  arts.forEach((a) => { if (a === lead || a === beatArt || seen.has(a.machine)) return; seen.add(a.machine); guests.push(a); });
+  return { name: rc.name, arts, lead, guests, beatArt }; };
+// the dealer: every chapter gets the records that fit its word best; with more records than chapters a chapter mixes several,
+// with fewer a record comes back as a reprise; inside a chapter the records play from calm to strong when the chapter rises
+JP.deal = (recs, ch, r, solo) => {
+  const cvOf = (x) => ({ ...x.c, speed: clamp(x.c.speed * 0.7 + (x.energy - 0.5) * 0.8), weight: clamp(x.c.weight * 0.8 + (x.energy - 0.5) * 0.4) });
+  const cost = recs.map((rc) => ch.map((x) => JP.dist(cvOf(x), recVec(rc)) + r() * 0.15)), got = ch.map(() => []), placed = new Set();
+  const pairs = []; recs.forEach((_, a) => ch.forEach((_, b) => pairs.push([cost[a][b], a, b]))); pairs.sort((p, q) => p[0] - q[0]);
+  for (const [, a, b] of pairs) if (!placed.has(a) && !got[b].length) { got[b].push(a); placed.add(a); }
+  recs.forEach((_, a) => { if (placed.has(a)) return; let best = 0, bv = 1e9; ch.forEach((_, b) => { const v = cost[a][b] + 0.45 * got[b].length; if (v < bv) { bv = v; best = b; } }); got[best].push(a); placed.add(a); });
+  ch.forEach((x, b) => { if (!got[b].length) { let best = 0; recs.forEach((_, a) => { if (cost[a][b] < cost[best][b]) best = a; }); got[b].push(best); x.reprise = true; }
+    const pow = (a) => recVec(recs[a]).speed + recVec(recs[a]).weight, rising = x.eEnd >= x.eStart;
+    got[b].sort((p, q) => (rising ? pow(p) - pow(q) : pow(q) - pow(p)));
+    x.records = got[b].map((a) => Object.assign(JP.recordBand(recs[a], cvOf(x)), { id: a }));
+    x.lead = x.records[0].lead; x.guests = x.records[0].guests; x.beatArt = x.records[0].beatArt; });
+};
+
 // ---------- the plan ----------
 // words: [{wheel, word}] x5; opts: {seed, minutes, rack, recent: [art names]}
 JP.plan = (words, opts = {}) => {
@@ -189,7 +215,7 @@ JP.plan = (words, opts = {}) => {
 
   // arc: the words choose its shape (with the dice)
   const arcW = JP.ARCS.map((a) => { const e = [0.1, 0.3, 0.5, 0.7, 0.9].map(a.f); const pk = e.indexOf(Math.max(...e));
-    return 1 + 0.6 * clamp(avg.speed + avg.weight, 0, 2) * (a.id === 'summit' || a.id === 'plateau' ? 1 : 0) + 0.6 * clamp(-avg.light, 0, 1) * (a.id === 'dawn' ? 1 : 0) + 0.5 * clamp(avg.tension, 0, 1) * (a.id === 'three' || a.id === 'valley' ? 1 : 0) + (pk === 4 && ch[4].c.speed > 0 ? 0.4 : 0); });
+    return 1 + 0.6 * clamp(avg.speed + avg.weight, 0, 2) * (a.id === 'summit' || a.id === 'plateau' ? 1 : 0) + 0.6 * clamp(-avg.light, 0, 1) * (a.id === 'dawn' ? 1 : 0) + 0.5 * clamp(avg.tension, 0, 1) * (a.id === 'three' || a.id === 'valley' ? 1 : 0) + (pk === 4 && ch[n - 1].c.speed > 0 ? 0.4 : 0); });
   const arc = pickW(r, JP.ARCS, arcW.map((w, k) => (JP.ARCS[k].id === 'aida' ? w * 1.6 : w)));
   const opening = pickW(r, JP.OPENINGS, JP.OPENINGS.map((o) => Math.exp(1.4 * likeScore(o.likes, ch[0].c))));
   const ending = pickW(r, JP.ENDINGS, JP.ENDINGS.map((o) => Math.exp(1.4 * likeScore(o.likes, ch[n - 1].c))));
@@ -204,9 +230,11 @@ JP.plan = (words, opts = {}) => {
   if (ending.id === 'fade' || ending.id === 'home') ch[n - 1].eEnd = 0.08; if (ending.id === 'abrupt') ch[n - 1].eEnd = Math.max(0.8, ch[n - 1].eEnd);
   if (ending.id === 'sunrise') ch[n - 1].eEnd = Math.max(0.45, ch[n - 1].eEnd);
 
-  // leaders: each word picks its art from the pots; no art twice in one journey, recent journeys weigh less
+  // your records: you hand the machine a crate, the story chooses which records each chapter plays
+  const recs = (opts.records || []).map((rc) => ({ name: rc.arts.join(' + '), arts: rc.arts.map((nm) => (nm === JP.ORCH ? JP.ORCH : JP.ARTS.find((a) => a.name === nm))).filter(Boolean) })).filter((rc) => rc.arts.length);
   const used = new Set(), leadCount = {};
-  ch.forEach((x, i) => {
+  if (recs.length) JP.deal(recs, ch, r, opts.solo);
+  else ch.forEach((x, i) => {
     const cv = { ...x.c, speed: clamp(x.c.speed * 0.7 + (x.energy - 0.5) * 0.8), weight: clamp(x.c.weight * 0.8 + (x.energy - 0.5) * 0.4) };
     if (i === 0 && opening.id === 'threat') { cv.tension = 1; cv.light = -0.8; }
     if (i === 0 && opening.id === 'midst') { cv.speed = Math.max(cv.speed, 0.4); cv.warm = Math.max(cv.warm, 0.5); }
@@ -222,7 +250,7 @@ JP.plan = (words, opts = {}) => {
   });
 
   // an ode to every machine: each one leads or guests at least once
-  for (const m of Object.keys(JP.MACHINES)) {
+  if (!recs.length) for (const m of Object.keys(JP.MACHINES)) {
     if (ch.some((x) => x.lead.machine === m || x.guests.some((g) => g.machine === m))) continue;
     let bestS = null;
     ch.forEach((x, i) => JP.ARTS.forEach((a) => { if (a.machine !== m || used.has(a.name)) return; const d = JP.dist(x.c, a.v); if (!bestS || d < bestS.d) bestS = { d, i, a }; }));
@@ -232,23 +260,24 @@ JP.plan = (words, opts = {}) => {
   }
 
   // your own choices for the guests win over the dice
-  ch.forEach((x, i) => { const o = ov[i] || {}; ['g1', 'g2'].forEach((g, gi) => { if (!(g in o)) return;
+  ch.forEach((x, i) => { const o = ov[i] || {}; if (x.records) return; ['g1', 'g2'].forEach((g, gi) => { if (!(g in o)) return;
     const a = o[g] === 'none' ? null : JP.ARTS.find((t) => t.name === o[g]); const rest = x.guests.filter((_, k) => k !== gi);
     x.guests = gi === 0 ? [a, ...rest.slice(0, 1)] : [x.guests[0], a]; x.guests = x.guests.filter(Boolean); }); });
 
   // one tempo for the whole journey; each chapter finds its own feel on top of it
+  const grooveBpm = (x) => (x.records ? x.records.reduce((t, rc) => t + (rc.beatArt || rc.lead).bpm, 0) / x.records.length : x.lead.bpm);
   let best = null;
-  for (let b = 96; b <= 130; b++) { let cost = Math.abs(b - 120) / 300; // a journey walks best around 120 for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id === 'straight' ? 0 : 0.02)));
+  for (let b = 96; b <= 130; b++) { let cost = Math.abs(b - 120) / 300; // a journey walks best around 120 for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - grooveBpm(x)) / grooveBpm(x) + (f.id === 'straight' ? 0 : 0.02)));
     cost += r() * 0.04; if (!best || cost < best.cost) best = { b, cost }; }
   const bpm = opts.bpm || best.b;
   // a feel only changes when it really must: neighbours that share a feel make the finest transitions
-  ch.forEach((x, i) => { const pf = i ? ch[i - 1].feel.id : 'straight', cost = (f) => Math.abs(bpm * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id !== pf ? 0.12 : 0) + (f.id !== 'straight' ? 0.12 : 0); // straight is home
+  ch.forEach((x, i) => { const pf = i ? ch[i - 1].feel.id : 'straight', cost = (f) => Math.abs(bpm * f.ratio - grooveBpm(x)) / grooveBpm(x) + (f.id !== pf ? 0.12 : 0) + (f.id !== 'straight' ? (x.records ? 0.3 : 0.12) : 0); // records: the groove sets the feel, straight is home // straight is home
     x.feel = JP.FEELS.reduce((a, f) => (cost(f) < cost(a) ? f : a));
     if (ov[i] && ov[i].feel) x.feel = JP.FEELS.find((f) => f.id === ov[i].feel) || x.feel; x.feelsLike = Math.round(bpm * x.feel.ratio); });
 
   // bars: every chapter a whole number of 8-bar phrases
   const totalBars = minutes * bpm / 4;
-  ch.forEach((x) => { x.bars = Math.max(16, Math.round(totalBars * x.share / 8) * 8); x.minutes = x.bars * 4 / bpm; });
+  ch.forEach((x) => { x.bars = Math.max(16, Math.round(totalBars * x.share / 8) * 8, x.records ? x.records.length * 24 : 0); x.minutes = x.bars * 4 / bpm; }); // every record gets room to sound
 
   // breaths: one, sometimes two, never next to each other, mostly after something big
   const nb = r() < 0.4 ? 2 : 1, spots = [];
@@ -299,13 +328,15 @@ JP.plan = (words, opts = {}) => {
   // the band: a guest brings its own instrument; dance is the ground (a beat in every chapter, one exception at most,
   // never two in a row, never the very first); the orchestra is colour in most chapters when you have one in your rack
   const has = (x, r) => x.players.some((p) => p.role === r), add = (x, r) => { if (!has(x, r)) x.players.push({ role: r, player: pick(r, x), swapped: false }); };
-  ch.forEach((x) => x.guests.forEach((g) => { if (g.machine === 'studio') add(x, 'beats'); else if (g.machine === 'percussion') add(x, 'perc'); else if (g.machine === 'symphony') add(x, 'orch'); }));
+  ch.forEach((x) => (x.records ? x.records.flatMap((rc) => rc.guests.concat(rc.beatArt ? [rc.beatArt] : [], [rc.lead])) : x.guests).forEach((g) => { if (g.machine === 'studio') add(x, 'beats'); else if (g.machine === 'percussion') add(x, 'perc'); else if (g.machine === 'symphony') add(x, 'orch'); }));
+  // a chapter of your records is never only rhythm: it always carries a bass and a harmony, and the orchestra when a record asks for it
+  ch.forEach((x) => { if (!x.records) return; add(x, 'bass'); add(x, 'chords'); if (x.records.some((rc) => rc.arts.some((a) => a.machine === 'symphony' || a.machine === 'score'))) add(x, 'orch'); });
   const noBeat = ch.map((x, i) => (has(x, 'beats') ? -1 : i)).filter((i) => i >= 0);
   const keep = noBeat.filter((i) => i > 0 && i < n - 1).sort((a, b) => ch[a].energy - ch[b].energy)[0];
   noBeat.forEach((i) => { if (i !== keep) add(ch[i], 'beats'); });
   const orchMine = (rack.orch || []).some((p) => p !== JP.PLAIN);
   if (orchMine) { // colour, not a wall: at most three in five chapters carry the orchestra, the leaders of the orchestra keep theirs
-    const own = (x) => x.lead.machine === 'symphony' || x.lead.machine === 'score';
+    const own = (x) => x.lead.machine === 'symphony' || x.lead.machine === 'score' || (x.records && x.records.some((rc) => rc.arts.some((a) => a.machine === 'symphony')));
     let cnt = ch.filter((x) => has(x, 'orch')).length; ch.map((x, i) => i).sort((a, b) => ch[a].energy - ch[b].energy).forEach((i) => { if (cnt > Math.ceil(n * 0.6) && has(ch[i], 'orch') && !own(ch[i])) { ch[i].players = ch[i].players.filter((p) => p.role !== 'orch'); cnt--; } });
     const want = Math.ceil(n * 0.6); let got = ch.filter((x) => has(x, 'orch')).length;
     ch.map((x, i) => i).sort((a, b) => (ch[b].c.weight + ch[b].c.tension + ch[b].c.light) - (ch[a].c.weight + ch[a].c.tension + ch[a].c.light)).forEach((i) => { if (got < want && !has(ch[i], 'orch')) { add(ch[i], 'orch'); got++; } }); }
@@ -326,10 +357,12 @@ JP.plan = (words, opts = {}) => {
 
   // your template: the tracks you built in your DAW decide who plays in each chapter, so the new journey lands on them
   if (opts.template && opts.template.tracks && opts.template.tracks.length) { const T = opts.template.tracks;
-    ch.forEach((x, i) => { const mine = T.filter((t) => t.role !== 'motif' && (t.ch === i || t.ch < 0)); if (!mine.length) return;
+    ch.forEach((x, i0) => { const i = opts.tplChapter != null ? opts.tplChapter : i0; const mine = T.filter((t) => t.role !== 'motif' && (t.ch === i || t.ch < 0)); if (!mine.length) return;
       const roles = {}; mine.forEach((t) => { if (!roles[t.role]) roles[t.role] = t.player; });
       // dance stays the ground: a beat may borrow the beat track of another chapter (same plugin, same kit)
       const anyBeat = T.find((t) => t.role === 'beats'); if (!roles.beats && anyBeat && x.players.some((p) => p.role === 'beats')) roles.beats = anyBeat.player;
+      // your records ask for their band: a role your template has only in another chapter borrows the tracks of the nearest one
+      if (x.records) for (const p of x.players) if (!roles[p.role]) { const near = T.filter((t) => t.role === p.role).sort((a, b) => Math.abs(a.ch - i) - Math.abs(b.ch - i))[0]; if (near) roles[p.role] = near.player; }
       x.players = x.players.filter((p) => roles[p.role]).map((p) => Object.assign({}, p, { player: roles[p.role], swapped: false }));
       if (opts.template.perChapter) for (const [r, pl] of Object.entries(roles)) if (!x.players.some((p) => p.role === r)) x.players.push({ role: r, player: pl, swapped: false });
       x.tplMotif = (T.find((t) => t.role === 'motif' && (t.ch === i || t.ch < 0)) || {}).player; }); }
@@ -363,7 +396,7 @@ JP.plan = (words, opts = {}) => {
     x.song = form.map(([type, w]) => { const u0 = u; u += w / tot; return { type, u0, u1: u, e: JP.SONG_E[type] }; });
     x.hi = clamp(x.energy + 0.3, 0.45, 1); x.lo = clamp(x.energy - 0.5, 0.05, 0.4);
   });
-  return { mode, fixed: !!opts.fixed, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+  return { mode, fixed: !!opts.fixed, records: recs.length ? recs : null, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 
 if (typeof module !== 'undefined') module.exports = JP;

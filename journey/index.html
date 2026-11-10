@@ -101,6 +101,13 @@ select.pk.mine{border-color:var(--gold);color:var(--gold)}
 .dz:hover{border-color:var(--gold)}
 .undo{margin-left:auto;background:transparent;border:1px solid var(--line);border-radius:7px;color:var(--mu);font:13px system-ui,sans-serif;padding:3px 9px;cursor:pointer}
 .kv dd{display:flex;align-items:center}
+.crate{display:flex;flex-wrap:wrap;gap:8px}
+.vin{display:flex;align-items:center;gap:9px;background:#0F131C;border:1px solid var(--line);border-radius:999px;padding:4px 6px 4px 4px;font-size:14px}
+.vin i{flex:none;width:34px;height:34px;border-radius:50%;background:radial-gradient(circle,#0B0E14 0 2px,var(--gold) 3px 9px,#15181F 10px 12px,#1E222B 13px 14px,#15181F 15px 100%);box-shadow:inset 0 0 0 1px #2C3240}
+.vin.off{opacity:.45}.vin.off i{background:radial-gradient(circle,#0B0E14 0 2px,#7E8899 3px 9px,#15181F 10px 100%)}
+.vin .rx{background:transparent;border:0;color:var(--mu);cursor:pointer;min-width:30px;min-height:30px;border-radius:50%}.vin .rx:hover{color:var(--tx);background:#1B2130}
+.press{gap:8px}.press .plus{color:var(--mu)}
+.recs{display:flex;flex-direction:column;gap:2px}.recs span{display:flex;align-items:center;gap:6px}.recs span::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--wc);flex:none}
 .out{font-size:13.5px;color:var(--mu);border-top:1px dashed var(--line);padding-top:8px}
 footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 @media (max-width:760px){.words{grid-template-columns:repeat(2,1fr)}.w:last-child{grid-column:1/-1}.rk{grid-template-columns:1fr}.rk .el{padding-top:0}.wb{font-size:19px}}
@@ -123,6 +130,13 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
     <div class="muted small tplh">Free: every journey gets its own tracks, good for building a new template. My template: the new journey lands on exactly the tracks, in exactly the order, of the MIDI you built your DAW from, so every instrument you dragged in stays right.</div></div>
   <div class="rk" id="rack"></div>
 </details>
+
+<section class="card" id="recBox">
+  <div class="sh"><span class="st serif">Your records</span><span class="muted">Press your own records, one to three styles each. The story chooses which chapter plays which, and mixes them.</span></div>
+  <div class="row"><div class="seg" id="recMode"><button data-m="off">Dice</button><button data-m="on">My records</button></div><span class="muted small" id="recSum"></span></div>
+  <div class="crate" id="crate"></div>
+  <div class="row press"><select class="pk" id="rs0" aria-label="Style 1"></select><span class="plus">+</span><select class="pk" id="rs1" aria-label="Style 2"></select><span class="plus">+</span><select class="pk" id="rs2" aria-label="Style 3"></select><button class="btn" id="press">Press this record</button></div>
+</section>
 
 <section class="card">
   <div class="sh"><span class="st serif">The oracle speaks</span><span class="muted">Click a word to roll only that word. Lock what you love.</span></div>
@@ -150,7 +164,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 
 <section class="card" style="align-items:center;text-align:center">
   <button class="btn big" id="make">Make the journey</button>
-  <div class="muted small" id="makeMsg">One zip: the whole journey as one MIDI file, a folder per chapter with a file per layer, and a rack card that tells you which plugin goes on which track.</div>
+  <div class="muted small" id="makeMsg">One zip: the whole journey as one MIDI file, a folder per chapter with a file per layer, your records each on their own, and a rack card that tells you which plugin goes on which track.</div>
 </section>
 <details class="card how"><summary><span class="st serif">How it works</span></summary><ol>
   <li>Tick your plugins in Your rack. The machine only chooses from your ticks.</li>
@@ -158,6 +172,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
   <li>Deep journey is one long arc through all chapters. Mixed journey makes every chapter a song of its own, with its own build, drop and break, mixed into the next.</li>
   <li>Every word becomes a chapter: a leading machine, guests, a feel, a key. Change anything on the cards, or roll it.</li>
   <li>Listen to the sketch in the browser. It plays the journey with simple sounds, your plugins will sound far better.</li>
+  <li>Your records: press your own records from one to three styles, as many as you like. The story decides which chapter plays which record and mixes them inside the chapter. Every record also comes out on its own in the Records folder.</li>
   <li>Built your DAW from a result? Choose My template and load that MIDI: every new journey lands on exactly those tracks.</li>
   <li>Make the journey. Open Rack_Card.txt, load the plugins it names, and drop every file on bar 1.</li>
 </ol></details>
@@ -347,6 +362,32 @@ JP.songEnergy = (x, u) => { const S = x.song; let k = S.findIndex((q) => u < q.u
   let e = q.e; if (nx && f > 0.75) e = q.e + (nx.e - q.e) * (f - 0.75) / 0.25 * 0.5; if (pv && f < 0.25) e = q.e + (pv.e - q.e) * (0.25 - f) / 0.25 * 0.5;
   return x.lo + (x.hi - x.lo) * e; };
 
+// ---------- your records ----------
+// a record is one to three styles that sound together; 'Orchestra' lets the word choose the orchestral form
+JP.ORCH = 'Orchestra';
+const ORCH_V = { light: 0.4, speed: 0, warm: 0.3, weight: 0.4, tension: 0, world: 0 };
+const recVec = (rc) => { const v = Object.fromEntries(JP.DIMS.map((d) => [d, 0])); rc.arts.forEach((a) => JP.DIMS.forEach((d) => { v[d] += (a === JP.ORCH ? ORCH_V : a.v)[d] / rc.arts.length; })); return v; };
+const nearestOf = (machine, cv) => JP.ARTS.filter((a) => a.machine === machine).reduce((b, a) => (JP.dist(cv, a.v) < JP.dist(cv, b.v) ? a : b));
+// who leads a record: a Studio style carries the harmony (the slower one), a second Studio style gives the beat (the faster one)
+JP.recordBand = (rc, cv) => { const arts = rc.arts.map((a) => (a === JP.ORCH ? nearestOf('symphony', cv) : a)), st = arts.filter((a) => a.machine === 'studio').sort((a, b) => a.v.speed - b.v.speed);
+  const lead = st.length ? st[0] : arts[0], beatArt = st.length > 1 ? st[st.length - 1] : null, seen = new Set([lead.machine]), guests = [];
+  arts.forEach((a) => { if (a === lead || a === beatArt || seen.has(a.machine)) return; seen.add(a.machine); guests.push(a); });
+  return { name: rc.name, arts, lead, guests, beatArt }; };
+// the dealer: every chapter gets the records that fit its word best; with more records than chapters a chapter mixes several,
+// with fewer a record comes back as a reprise; inside a chapter the records play from calm to strong when the chapter rises
+JP.deal = (recs, ch, r, solo) => {
+  const cvOf = (x) => ({ ...x.c, speed: clamp(x.c.speed * 0.7 + (x.energy - 0.5) * 0.8), weight: clamp(x.c.weight * 0.8 + (x.energy - 0.5) * 0.4) });
+  const cost = recs.map((rc) => ch.map((x) => JP.dist(cvOf(x), recVec(rc)) + r() * 0.15)), got = ch.map(() => []), placed = new Set();
+  const pairs = []; recs.forEach((_, a) => ch.forEach((_, b) => pairs.push([cost[a][b], a, b]))); pairs.sort((p, q) => p[0] - q[0]);
+  for (const [, a, b] of pairs) if (!placed.has(a) && !got[b].length) { got[b].push(a); placed.add(a); }
+  recs.forEach((_, a) => { if (placed.has(a)) return; let best = 0, bv = 1e9; ch.forEach((_, b) => { const v = cost[a][b] + 0.45 * got[b].length; if (v < bv) { bv = v; best = b; } }); got[best].push(a); placed.add(a); });
+  ch.forEach((x, b) => { if (!got[b].length) { let best = 0; recs.forEach((_, a) => { if (cost[a][b] < cost[best][b]) best = a; }); got[b].push(best); x.reprise = true; }
+    const pow = (a) => recVec(recs[a]).speed + recVec(recs[a]).weight, rising = x.eEnd >= x.eStart;
+    got[b].sort((p, q) => (rising ? pow(p) - pow(q) : pow(q) - pow(p)));
+    x.records = got[b].map((a) => Object.assign(JP.recordBand(recs[a], cvOf(x)), { id: a }));
+    x.lead = x.records[0].lead; x.guests = x.records[0].guests; x.beatArt = x.records[0].beatArt; });
+};
+
 // ---------- the plan ----------
 // words: [{wheel, word}] x5; opts: {seed, minutes, rack, recent: [art names]}
 JP.plan = (words, opts = {}) => {
@@ -358,7 +399,7 @@ JP.plan = (words, opts = {}) => {
 
   // arc: the words choose its shape (with the dice)
   const arcW = JP.ARCS.map((a) => { const e = [0.1, 0.3, 0.5, 0.7, 0.9].map(a.f); const pk = e.indexOf(Math.max(...e));
-    return 1 + 0.6 * clamp(avg.speed + avg.weight, 0, 2) * (a.id === 'summit' || a.id === 'plateau' ? 1 : 0) + 0.6 * clamp(-avg.light, 0, 1) * (a.id === 'dawn' ? 1 : 0) + 0.5 * clamp(avg.tension, 0, 1) * (a.id === 'three' || a.id === 'valley' ? 1 : 0) + (pk === 4 && ch[4].c.speed > 0 ? 0.4 : 0); });
+    return 1 + 0.6 * clamp(avg.speed + avg.weight, 0, 2) * (a.id === 'summit' || a.id === 'plateau' ? 1 : 0) + 0.6 * clamp(-avg.light, 0, 1) * (a.id === 'dawn' ? 1 : 0) + 0.5 * clamp(avg.tension, 0, 1) * (a.id === 'three' || a.id === 'valley' ? 1 : 0) + (pk === 4 && ch[n - 1].c.speed > 0 ? 0.4 : 0); });
   const arc = pickW(r, JP.ARCS, arcW.map((w, k) => (JP.ARCS[k].id === 'aida' ? w * 1.6 : w)));
   const opening = pickW(r, JP.OPENINGS, JP.OPENINGS.map((o) => Math.exp(1.4 * likeScore(o.likes, ch[0].c))));
   const ending = pickW(r, JP.ENDINGS, JP.ENDINGS.map((o) => Math.exp(1.4 * likeScore(o.likes, ch[n - 1].c))));
@@ -373,9 +414,11 @@ JP.plan = (words, opts = {}) => {
   if (ending.id === 'fade' || ending.id === 'home') ch[n - 1].eEnd = 0.08; if (ending.id === 'abrupt') ch[n - 1].eEnd = Math.max(0.8, ch[n - 1].eEnd);
   if (ending.id === 'sunrise') ch[n - 1].eEnd = Math.max(0.45, ch[n - 1].eEnd);
 
-  // leaders: each word picks its art from the pots; no art twice in one journey, recent journeys weigh less
+  // your records: you hand the machine a crate, the story chooses which records each chapter plays
+  const recs = (opts.records || []).map((rc) => ({ name: rc.arts.join(' + '), arts: rc.arts.map((nm) => (nm === JP.ORCH ? JP.ORCH : JP.ARTS.find((a) => a.name === nm))).filter(Boolean) })).filter((rc) => rc.arts.length);
   const used = new Set(), leadCount = {};
-  ch.forEach((x, i) => {
+  if (recs.length) JP.deal(recs, ch, r, opts.solo);
+  else ch.forEach((x, i) => {
     const cv = { ...x.c, speed: clamp(x.c.speed * 0.7 + (x.energy - 0.5) * 0.8), weight: clamp(x.c.weight * 0.8 + (x.energy - 0.5) * 0.4) };
     if (i === 0 && opening.id === 'threat') { cv.tension = 1; cv.light = -0.8; }
     if (i === 0 && opening.id === 'midst') { cv.speed = Math.max(cv.speed, 0.4); cv.warm = Math.max(cv.warm, 0.5); }
@@ -391,7 +434,7 @@ JP.plan = (words, opts = {}) => {
   });
 
   // an ode to every machine: each one leads or guests at least once
-  for (const m of Object.keys(JP.MACHINES)) {
+  if (!recs.length) for (const m of Object.keys(JP.MACHINES)) {
     if (ch.some((x) => x.lead.machine === m || x.guests.some((g) => g.machine === m))) continue;
     let bestS = null;
     ch.forEach((x, i) => JP.ARTS.forEach((a) => { if (a.machine !== m || used.has(a.name)) return; const d = JP.dist(x.c, a.v); if (!bestS || d < bestS.d) bestS = { d, i, a }; }));
@@ -401,23 +444,24 @@ JP.plan = (words, opts = {}) => {
   }
 
   // your own choices for the guests win over the dice
-  ch.forEach((x, i) => { const o = ov[i] || {}; ['g1', 'g2'].forEach((g, gi) => { if (!(g in o)) return;
+  ch.forEach((x, i) => { const o = ov[i] || {}; if (x.records) return; ['g1', 'g2'].forEach((g, gi) => { if (!(g in o)) return;
     const a = o[g] === 'none' ? null : JP.ARTS.find((t) => t.name === o[g]); const rest = x.guests.filter((_, k) => k !== gi);
     x.guests = gi === 0 ? [a, ...rest.slice(0, 1)] : [x.guests[0], a]; x.guests = x.guests.filter(Boolean); }); });
 
   // one tempo for the whole journey; each chapter finds its own feel on top of it
+  const grooveBpm = (x) => (x.records ? x.records.reduce((t, rc) => t + (rc.beatArt || rc.lead).bpm, 0) / x.records.length : x.lead.bpm);
   let best = null;
-  for (let b = 96; b <= 130; b++) { let cost = Math.abs(b - 120) / 300; // a journey walks best around 120 for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id === 'straight' ? 0 : 0.02)));
+  for (let b = 96; b <= 130; b++) { let cost = Math.abs(b - 120) / 300; // a journey walks best around 120 for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - grooveBpm(x)) / grooveBpm(x) + (f.id === 'straight' ? 0 : 0.02)));
     cost += r() * 0.04; if (!best || cost < best.cost) best = { b, cost }; }
   const bpm = opts.bpm || best.b;
   // a feel only changes when it really must: neighbours that share a feel make the finest transitions
-  ch.forEach((x, i) => { const pf = i ? ch[i - 1].feel.id : 'straight', cost = (f) => Math.abs(bpm * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id !== pf ? 0.12 : 0) + (f.id !== 'straight' ? 0.12 : 0); // straight is home
+  ch.forEach((x, i) => { const pf = i ? ch[i - 1].feel.id : 'straight', cost = (f) => Math.abs(bpm * f.ratio - grooveBpm(x)) / grooveBpm(x) + (f.id !== pf ? 0.12 : 0) + (f.id !== 'straight' ? (x.records ? 0.3 : 0.12) : 0); // records: the groove sets the feel, straight is home // straight is home
     x.feel = JP.FEELS.reduce((a, f) => (cost(f) < cost(a) ? f : a));
     if (ov[i] && ov[i].feel) x.feel = JP.FEELS.find((f) => f.id === ov[i].feel) || x.feel; x.feelsLike = Math.round(bpm * x.feel.ratio); });
 
   // bars: every chapter a whole number of 8-bar phrases
   const totalBars = minutes * bpm / 4;
-  ch.forEach((x) => { x.bars = Math.max(16, Math.round(totalBars * x.share / 8) * 8); x.minutes = x.bars * 4 / bpm; });
+  ch.forEach((x) => { x.bars = Math.max(16, Math.round(totalBars * x.share / 8) * 8, x.records ? x.records.length * 24 : 0); x.minutes = x.bars * 4 / bpm; }); // every record gets room to sound
 
   // breaths: one, sometimes two, never next to each other, mostly after something big
   const nb = r() < 0.4 ? 2 : 1, spots = [];
@@ -468,13 +512,15 @@ JP.plan = (words, opts = {}) => {
   // the band: a guest brings its own instrument; dance is the ground (a beat in every chapter, one exception at most,
   // never two in a row, never the very first); the orchestra is colour in most chapters when you have one in your rack
   const has = (x, r) => x.players.some((p) => p.role === r), add = (x, r) => { if (!has(x, r)) x.players.push({ role: r, player: pick(r, x), swapped: false }); };
-  ch.forEach((x) => x.guests.forEach((g) => { if (g.machine === 'studio') add(x, 'beats'); else if (g.machine === 'percussion') add(x, 'perc'); else if (g.machine === 'symphony') add(x, 'orch'); }));
+  ch.forEach((x) => (x.records ? x.records.flatMap((rc) => rc.guests.concat(rc.beatArt ? [rc.beatArt] : [], [rc.lead])) : x.guests).forEach((g) => { if (g.machine === 'studio') add(x, 'beats'); else if (g.machine === 'percussion') add(x, 'perc'); else if (g.machine === 'symphony') add(x, 'orch'); }));
+  // a chapter of your records is never only rhythm: it always carries a bass and a harmony, and the orchestra when a record asks for it
+  ch.forEach((x) => { if (!x.records) return; add(x, 'bass'); add(x, 'chords'); if (x.records.some((rc) => rc.arts.some((a) => a.machine === 'symphony' || a.machine === 'score'))) add(x, 'orch'); });
   const noBeat = ch.map((x, i) => (has(x, 'beats') ? -1 : i)).filter((i) => i >= 0);
   const keep = noBeat.filter((i) => i > 0 && i < n - 1).sort((a, b) => ch[a].energy - ch[b].energy)[0];
   noBeat.forEach((i) => { if (i !== keep) add(ch[i], 'beats'); });
   const orchMine = (rack.orch || []).some((p) => p !== JP.PLAIN);
   if (orchMine) { // colour, not a wall: at most three in five chapters carry the orchestra, the leaders of the orchestra keep theirs
-    const own = (x) => x.lead.machine === 'symphony' || x.lead.machine === 'score';
+    const own = (x) => x.lead.machine === 'symphony' || x.lead.machine === 'score' || (x.records && x.records.some((rc) => rc.arts.some((a) => a.machine === 'symphony')));
     let cnt = ch.filter((x) => has(x, 'orch')).length; ch.map((x, i) => i).sort((a, b) => ch[a].energy - ch[b].energy).forEach((i) => { if (cnt > Math.ceil(n * 0.6) && has(ch[i], 'orch') && !own(ch[i])) { ch[i].players = ch[i].players.filter((p) => p.role !== 'orch'); cnt--; } });
     const want = Math.ceil(n * 0.6); let got = ch.filter((x) => has(x, 'orch')).length;
     ch.map((x, i) => i).sort((a, b) => (ch[b].c.weight + ch[b].c.tension + ch[b].c.light) - (ch[a].c.weight + ch[a].c.tension + ch[a].c.light)).forEach((i) => { if (got < want && !has(ch[i], 'orch')) { add(ch[i], 'orch'); got++; } }); }
@@ -495,10 +541,12 @@ JP.plan = (words, opts = {}) => {
 
   // your template: the tracks you built in your DAW decide who plays in each chapter, so the new journey lands on them
   if (opts.template && opts.template.tracks && opts.template.tracks.length) { const T = opts.template.tracks;
-    ch.forEach((x, i) => { const mine = T.filter((t) => t.role !== 'motif' && (t.ch === i || t.ch < 0)); if (!mine.length) return;
+    ch.forEach((x, i0) => { const i = opts.tplChapter != null ? opts.tplChapter : i0; const mine = T.filter((t) => t.role !== 'motif' && (t.ch === i || t.ch < 0)); if (!mine.length) return;
       const roles = {}; mine.forEach((t) => { if (!roles[t.role]) roles[t.role] = t.player; });
       // dance stays the ground: a beat may borrow the beat track of another chapter (same plugin, same kit)
       const anyBeat = T.find((t) => t.role === 'beats'); if (!roles.beats && anyBeat && x.players.some((p) => p.role === 'beats')) roles.beats = anyBeat.player;
+      // your records ask for their band: a role your template has only in another chapter borrows the tracks of the nearest one
+      if (x.records) for (const p of x.players) if (!roles[p.role]) { const near = T.filter((t) => t.role === p.role).sort((a, b) => Math.abs(a.ch - i) - Math.abs(b.ch - i))[0]; if (near) roles[p.role] = near.player; }
       x.players = x.players.filter((p) => roles[p.role]).map((p) => Object.assign({}, p, { player: roles[p.role], swapped: false }));
       if (opts.template.perChapter) for (const [r, pl] of Object.entries(roles)) if (!x.players.some((p) => p.role === r)) x.players.push({ role: r, player: pl, swapped: false });
       x.tplMotif = (T.find((t) => t.role === 'motif' && (t.ch === i || t.ch < 0)) || {}).player; }); }
@@ -532,7 +580,7 @@ JP.plan = (words, opts = {}) => {
     x.song = form.map(([type, w]) => { const u0 = u; u += w / tot; return { type, u0, u1: u, e: JP.SONG_E[type] }; });
     x.hi = clamp(x.energy + 0.3, 0.45, 1); x.lo = clamp(x.energy - 0.5, 0.05, 0.4);
   });
-  return { mode, fixed: !!opts.fixed, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+  return { mode, fixed: !!opts.fixed, records: recs.length ? recs : null, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 
 if (typeof module !== 'undefined') module.exports = JP;
@@ -7595,8 +7643,29 @@ function pitchDrums(notes, c, isLane) {
 }
 
 // ---------- one chapter: every role as notes in content time ----------
+// a chapter with several of your records: every record writes the whole chapter in the same key, feel and tempo,
+// then the chapter plays them one after the other, phrase-whole, like a DJ inside one story
 function chapterContent(ctx, plan, i) {
-  const { E, P, S, Y, JP } = ctx, c = plan.chapters[i], B = plan.bpm, F = c.feelsLike, seed = H(plan.seed, i, c.word);
+  const c = plan.chapters[i];
+  if (!c.records || c.records.length < 2) return chapterContentOne(ctx, plan, i, c, H(plan.seed, i, c.word));
+  const k = c.feelsLike / plan.bpm, P = Math.ceil(Math.ceil(c.bars * k) / 8), m = c.records.length, S = [0];
+  for (let q = 1; q < m; q++) S.push(Math.round(q * P / m) * 8 * BAR); S.push(1e12);
+  const parts = c.records.map((rc, q) => chapterContentOne(ctx, plan, i, Object.assign({}, c, { lead: rc.lead, guests: rc.guests, beatArt: rc.beatArt }), H(plan.seed, i, c.word, q)));
+  const inS = (q) => (n) => n.t >= S[q] && n.t < S[q + 1], out = Object.assign({}, parts[0]);
+  for (const key of ['beat', 'perc', 'bass', 'chords', 'melody']) out[key] = parts.flatMap((pt, q) => pt[key].filter(inS(q)).map((n) => (key === 'perc' ? Object.assign({}, n, { pk: PERC_KEY[pt.percStyle] }) : n))
+    .filter((n) => !(key === 'melody' && q > 0 && n.t < S[q] + 8 * BAR))); // the new record's melody waits one phrase: first its groove and harmony
+  // the seam: a fill on the old record, a crash on the new one
+  for (let q = 1; q < m; q++) { if (!out.beat.length) break; for (let s2 = 0; s2 < 8; s2++) out.beat.push({ t: S[q] - 2 * PPQ + s2 * PPQ / 4, d: 40, lane: s2 % 3 === 2 ? 6 : 2, roll: 1, v: 48 + s2 * 9 }); out.beat.push({ t: S[q], d: 240, lane: 7, v: 108, roll: 1 }); }
+  const orch = {}; parts.forEach((pt, q) => (pt.orch || []).forEach((t) => { const o = orch[t.id] || (orch[t.id] = Object.assign({}, t, { notes: [], cc: [], ks: [] }));
+    o.notes = o.notes.concat(t.notes.filter(inS(q))); o.cc = o.cc.concat((t.cc || []).filter((e) => (q === 0 && e.t < S[1]) || inS(q)(e))); o.ks = o.ks.concat((t.ks || []).filter((e) => (q === 0 && e.t < S[1]) || inS(q)(e))); }));
+  out.orch = Object.values(orch);
+  const sc = parts.find((pt) => pt.score); if (sc) { const r0 = sc.score.r, r = {}; for (const key of Object.keys(r0)) { r[key] = Object.assign({}, r0[key], { notes: parts.flatMap((pt, q) => (pt.score ? pt.score.r[key].notes.filter(inS(q)) : [])) }); } out.score = Object.assign({}, sc.score, { r }); }
+  out.perc.sort((a, b) => a.t - b.t);
+  out.segs = c.records.map((rc, q) => ({ t: S[q], name: rc.name })); out.percStyles = parts.map((pt) => pt.percStyle);
+  return out;
+}
+function chapterContentOne(ctx, plan, i, c, seed) {
+  const { E, P, S, Y, JP } = ctx, B = plan.bpm, F = c.feelsLike;
   const lenTicks = c.bars * BAR, needContent = Math.ceil(lenTicks * F / B) + BAR, contentBars = Math.ceil(needContent / BAR);
   const roles = new Set(c.players.map((p) => p.role)), out = { tracks: {} };
   const symLead = c.lead.machine === 'symphony';
@@ -7618,8 +7687,9 @@ function chapterContent(ctx, plan, i) {
     melody = E.renderSong(song, 'melody').concat(E.renderSong(song, 'answer'));
     harmonic = chords.concat(pad, bass);
   }
-  // the beat: always from the Studio engine (a rhythm never clashes with a harmony)
-  out.beat = roles.has('beats') ? E.renderSong(song, 'beat') : [];
+  // the beat: always from the Studio engine (a rhythm never clashes with a harmony); a record with two Studio styles takes the beat of the second
+  const beatSong = c.beatArt ? studioSong(E, c.beatArt.name, c, contentBars, H(seed, 'b2'), F) : song; out.beatSong = beatSong;
+  out.beat = roles.has('beats') ? E.renderSong(beatSong, 'beat') : [];
   // the engine leaves some sections without drums (an intro, a prechorus); where the journey wants a groove, the groove of
   // the nearest bar that has one carries on, so a song never waits half its length for its beat
   if (out.beat.length) { const by = {}; out.beat.forEach((n) => { const b = Math.floor(n.t / BAR); (by[b] = by[b] || []).push(n); });
@@ -7672,10 +7742,10 @@ function speak(ctx, role, player, content, c) {
     if (player === 'PERRCS' && content.score) { const s = content.score; const k = role === 'perc' ? 'perA' : 'perB'; one('PERRCS, Style ' + s.cats[k], s.r[k].notes, s.r[k].ccs); return tr; }
     if (player === 'Kick 1' || player === 'Kick 2') { const ns = role === 'beats' ? lanes.filter((n) => n.lane <= 1).map((n) => ({ t: n.t, d: n.d, v: n.v, p: 36 })) : voices.filter((n) => KICKS.has(n.voice)).map((n) => ({ t: n.t, d: 120, v: n.v, p: 36 })); one(player + ' (kick only)', ns); return tr; }
     if (drumPlugin || player === JP_PLAIN || player === 'PERRCS') {
-      if (role === 'beats') { const key = PK[player] || 'gm'; one(player === JP_PLAIN ? 'Beat, standard drum notes' : 'Beat for ' + player, E.applyMask(song, 'beat', lanes, key, { mode: 'instrument' })); return tr; }
-      const style = content.percKey, sl = style === 'taiko' ? TAIKO_SLOTS : style === 'marching' ? MARCH_SLOTS : PERC_SLOTS, k = PK[player];
-      const noteOf = (v) => { if (player === 'Tekno') return TEKNO_PERC[v] || 43; if (PERC_KEYS[k]) { const i = sl.findIndex((s) => s.includes(v)); return PERC_KEYS[k][Math.max(0, i)]; } return ctx.P.VOICES[v] ? ctx.P.VOICES[v].gm : 60; };
-      one(player === JP_PLAIN ? 'Percussion, standard drum notes' : 'Percussion for ' + player, voices.map((n) => ({ t: n.t, d: 120, v: n.v, p: noteOf(n.voice) }))); return tr;
+      if (role === 'beats') { const key = PK[player] || 'gm'; one(player === JP_PLAIN ? 'Beat, standard drum notes' : 'Beat for ' + player, E.applyMask(content.beatSong || song, 'beat', lanes, key, { mode: 'instrument' })); return tr; }
+      const slOf = (style) => (style === 'taiko' ? TAIKO_SLOTS : style === 'marching' ? MARCH_SLOTS : PERC_SLOTS), k = PK[player];
+      const noteOf = (v, style) => { if (player === 'Tekno') return TEKNO_PERC[v] || 43; if (PERC_KEYS[k]) { const i = slOf(style).findIndex((s) => s.includes(v)); return PERC_KEYS[k][Math.max(0, i)]; } return ctx.P.VOICES[v] ? ctx.P.VOICES[v].gm : 60; };
+      one(player === JP_PLAIN ? 'Percussion, standard drum notes' : 'Percussion for ' + player, voices.map((n) => ({ t: n.t, d: 120, v: n.v, p: noteOf(n.voice, n.pk || content.percKey) }))); return tr;
     }
     // a pitched instrument plays the drums: every drum becomes a tone of the key
     const pitched = pitchDrums(role === 'beats' ? lanes : voices, c, role === 'beats');
@@ -7812,10 +7882,10 @@ function handRhythm(list, plan, i, isKick, isBack) {
 function percussionist(ev, plan, i, styleKey, swing) {
   if (!ev.length) return ev;
   const c = plan.chapters[i], F = c.feelsLike, cb = c.bars * F / plan.bpm, lead = c.lead.machine === 'percussion';
-  const sl = styleKey === 'taiko' ? TAIKO_SLOTS : styleKey === 'marching' ? MARCH_SLOTS : PERC_SLOTS;
-  const rankOf = (v) => { const k = sl.findIndex((q) => q.includes(v)); return k < 0 ? 5 : k; };
+  const slOf = (st) => (st === 'taiko' ? TAIKO_SLOTS : st === 'marching' ? MARCH_SLOTS : PERC_SLOTS);
+  const rankOf = (v, st) => { const k = slOf(st || styleKey).findIndex((q) => q.includes(v)); return k < 0 ? 5 : k; };
   // the order voices join: a soft time keeper first (shaker, bell), then the low drum, then the talking voices
-  const JOIN = [5, 6, 0, 1, 2, 3, 4, 7], joinRank = (v) => JOIN.indexOf(rankOf(v));
+  const JOIN = [5, 6, 0, 1, 2, 3, 4, 7], joinRank = (v, st) => JOIN.indexOf(rankOf(v, st));
   const R = rng(H(plan.seed, 'perc', i)), keepP = {};
   const kept = ev.filter((n) => {
     const bar = Math.floor(n.t / BAR), e = eAt(c, bar / Math.max(1, cb));
@@ -7823,7 +7893,7 @@ function percussionist(ev, plan, i, styleKey, swing) {
     let V = Math.min(grow, Math.max(1, Math.round(1 + e * (lead ? 7 : 5))));   // the energy decides how many may play
     const inBar = bar % 4, fill = inBar === 3;
     if (fill) V = Math.min(8, V + 2); else if (inBar === 1) V = Math.max(1, V - 1); // a call, a breath, the answer
-    const jr = joinRank(n.voice); if (jr >= V) return false;
+    const jr = joinRank(n.voice, n.pk); if (jr >= V) return false;
     // the newest voice in plays sparser, it is still finding its place
     if (jr === V - 1 && !fill) { const key = bar + ':' + n.voice; if (keepP[key] == null) keepP[key] = R() < 0.55; if (!keepP[key]) return false; }
     const pos = n.t % BAR, beat = pos % PPQ === 0;
@@ -8051,7 +8121,7 @@ JR.render = function (plan, ctx) {
     { const w1 = win(plan, i); let g = null, best = -1; for (let b = Math.max(16, (w1.inn || 0) + 8); b < c.bars - (w1.out || 0) - 8; b += 8) { const e = eAt(c, b / c.bars); if (e > best) { best = e; g = b; } }
       if (i > 0 && plan.chapters[i - 1].out === 'riser' && c.bars > (w1.inn || 0) + 24) g = Math.ceil((w1.inn || 0) / 8) * 8; c._gift = g; }
     c._arr = arrange(plan, i); // the arranger writes the plan of this chapter, phrase by phrase, before a note is played
-    const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle];
+    const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle]; c._segs = content.segs || null;
     content.beat = beatLife(content.beat, c, H(plan.seed, 'groove', i));
     { const w2 = win(plan, i), kk = c.feelsLike / plan.bpm, cbt = (jb) => Math.round(jb * BAR * kk);
       if (w2.out && content.beat.length) { const wh = cbt(c.bars - w2.out / 2); for (let s2 = 0; s2 < 8; s2++) content.beat.push({ t: wh - 2 * PPQ + s2 * PPQ / 4, d: 40, lane: s2 < 4 ? 2 : 6, roll: 1, v: 50 + s2 * 8 }); }
@@ -8092,7 +8162,7 @@ JR.render = function (plan, ctx) {
   // the ending: abrupt stops everything on one last hit
   if (plan.ending.id === 'abrupt') { const last = tl[tl.length - 1], end = last.start + last.len; all.forEach((t) => { t.notes = t.notes.filter((n) => n.t < end - BAR || n.t === end - BAR); t.notes.forEach((n) => { if (n.t + n.d > end) n.d = end - n.t; }); }); }
   const totalTicks = tl[tl.length - 1].start + tl[tl.length - 1].len;
-  return { tracks: all, timeline: tl, totalTicks, markers: plan.chapters.map((c, i) => ({ t: tl[i].start, text: (i + 1) + '. ' + c.word + ' (' + c.lead.name + ')' })) };
+  return { tracks: all, timeline: tl, totalTicks, markers: plan.chapters.flatMap((c, i) => (c._segs ? c._segs.map((g, q) => ({ t: tl[i].start + Math.round(g.t * plan.bpm / c.feelsLike), text: (q ? '' : (i + 1) + '. ' + c.word + ': ') + g.name })) : [{ t: tl[i].start, text: (i + 1) + '. ' + c.word + ' (' + (c.records ? c.records[0].name : c.lead.name) + ')' }])) };
 };
 
 // ---------- MIDI out ----------
@@ -8189,7 +8259,9 @@ JR.fitTemplate = (tracks, tpl, plan) => {
     if (!hit && tpl.perChapter) { const near = out.filter((o) => o.t.role === tr.role && o.t.player === tr.player).sort((x, y) => Math.abs(x.t.ch - tr.chapter) - Math.abs(y.t.ch - tr.chapter)); if (tr.role !== 'orch' && near.length) hit = near[0]; }
     if (hit) { hit.notes = hit.notes.concat(tr.notes); if (!used.has(hit)) { hit.cc = hit.cc.concat(tr.cc || []); used.add(hit); } if (!hit.name) hit.name = tr.name; continue; }
     // an orchestra part without its own track: every note goes to the template instrument whose register fits it best
-    const orch = here.filter((o) => o.t.role === 'orch' && (o.t.player === tr.player || true)); if (!orch.length) continue;
+    let orch = here.filter((o) => o.t.role === 'orch');
+    if (!orch.length && tpl.perChapter) { const all = out.filter((o) => o.t.role === 'orch'); if (all.length) { const nc = all.reduce((a, o) => (Math.abs(o.t.ch - tr.chapter) < Math.abs(a - tr.chapter) ? o.t.ch : a), all[0].t.ch); orch = all.filter((o) => o.t.ch === nc); } }
+    if (!orch.length) continue;
     tr.notes.forEach((n) => { if (n.ks) return; const o = orch.reduce((a, b) => (Math.abs(centre(b.t.inst) - n.p) < Math.abs(centre(a.t.inst) - n.p) ? b : a)); o.notes.push(n); }); }
   // every track keeps the name of its place in your template; an empty track gets one silent note after the end,
   // because a DAW drops empty tracks on import and everything below would shift up one place
@@ -8225,7 +8297,28 @@ const S = {
   seed: (Math.random() * 4294967296) >>> 0,
   plan: null,
   ov: [{}, {}, {}, {}, {}],
+  recs: ls.get('journey-records', []),
+  recOn: ss.get('journey-rec-on', false),
 };
+
+// ---------- your records ----------
+const recName = (r) => r.arts.join(' + ');
+function styleOpts(first) { const g = Object.entries(JP.MACHINES).map(([m, M]) => `<optgroup label="${esc(M.name)}">${(m === 'symphony' ? [JP.ORCH] : []).concat(JP.ARTS.filter((a) => a.machine === m).map((a) => a.name)).map((n) => `<option value="${esc(n)}">${esc(n)}</option>`).join('')}</optgroup>`).join('');
+  return (first ? '' : '<option value="">nothing</option>') + g; }
+function drawRecords() {
+  const el = $('#crate'); el.innerHTML = '';
+  S.recs.forEach((r, k) => { const d = document.createElement('div'); d.className = 'vin' + (S.recOn ? '' : ' off');
+    d.innerHTML = `<i></i><span>${esc(recName(r))}</span><button class="rx" type="button" title="Take this record out" aria-label="Remove"><svg viewBox="0 0 12 12" width="11" height="11"><path d="M2 2 L10 10 M10 2 L2 10" stroke="currentColor" stroke-width="1.6"/></svg></button>`;
+    d.querySelector('.rx').onclick = () => { S.recs.splice(k, 1); ls.set('journey-records', S.recs); if (!S.recs.length) { S.recOn = false; ss.set('journey-rec-on', false); } drawRecords(); replan(); };
+    el.append(d); });
+  if (!S.recs.length) el.innerHTML = '<span class="muted small">No records yet. Choose one to three styles below and press it.</span>';
+  document.querySelectorAll('#recMode button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.m === 'on') === !!S.recOn ? 'true' : 'false'));
+  $('#recSum').textContent = S.recOn ? S.recs.length + ' records in the crate, each one also comes out on its own' : 'the dice choose the styles';
+}
+$('#rs0').innerHTML = styleOpts(true); $('#rs1').innerHTML = styleOpts(false); $('#rs2').innerHTML = styleOpts(false); $('#rs0').value = 'Trip hop'; $('#rs1').value = JP.ORCH;
+$('#press').onclick = () => { const arts = [...new Set(['#rs0', '#rs1', '#rs2'].map((q) => $(q).value).filter(Boolean))];
+  S.recs.push({ arts }); S.recOn = true; ls.set('journey-records', S.recs); ss.set('journey-rec-on', true); drawRecords(); replan(); };
+document.querySelectorAll('#recMode button').forEach((b) => { b.onclick = () => { S.recOn = b.dataset.m === 'on' && S.recs.length > 0; ss.set('journey-rec-on', S.recOn); drawRecords(); replan(); }; });
 
 // ---------- rack ----------
 function rackSummary() { const n = Object.values(S.rack).reduce((s, l) => s + l.filter((x) => x !== JP.PLAIN).length, 0); $('#rackSum').textContent = n ? n + ' instruments ticked' : 'only plain MIDI so far, tick your plugins here'; }
@@ -8264,7 +8357,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 // ---------- plan + map ----------
 function replan() {
   const recent = ls.get('journey-recent', []);
-  S.plan = JP.plan(S.words, { mode: S.mode, template: S.tplOn && S.tplLayout ? S.tplLayout : null, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
+  S.plan = JP.plan(S.words, { mode: S.mode, template: S.tplOn && S.tplLayout ? S.tplLayout : null, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov, records: S.recOn ? S.recs : null });
   stopPlay(); PV = null;
   drawMap(); drawChapters();
 }
@@ -8291,7 +8384,7 @@ function drawMap() {
     s += `<rect x="${X(c.t0)}" y="${top - 46}" width="${X(c.t1) - X(c.t0)}" height="3" fill="${HEX[i]}"/>`;
     const cx = (X(c.t0) + X(c.t1)) / 2;
     s += `<text class="mw" data-i="${i}" x="${cx}" y="${top - 22}" text-anchor="middle" fill="${HEX[i]}" font-size="19" font-family="Georgia,serif">${esc(c.word)}</text>`;
-    s += `<text x="${cx}" y="${top - 3}" text-anchor="middle" fill="#9AA3B2" font-size="12.5">${esc(c.lead.name)}${c.guests.length ? ' +' + c.guests.length : ''}</text>`;
+    s += `<text x="${cx}" y="${top - 3}" text-anchor="middle" fill="#9AA3B2" font-size="12.5">${c.records ? esc(c.records[0].name) + (c.records.length > 1 ? ' +' + (c.records.length - 1) : '') : esc(c.lead.name) + (c.guests.length ? ' +' + c.guests.length : '')}</text>`;
     s += `<text x="${cx}" y="${bot + 22}" text-anchor="middle" fill="#9AA3B2" font-size="12">${esc(c.key)} · ${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}</text>`;
     s += `<text x="${cx}" y="${bot + 40}" text-anchor="middle" fill="#6B7486" font-size="11.5">${c.bars} bars · ${c.minutes.toFixed(1)} min</text>`;
     // the motif, in this chapter's costume
@@ -8346,9 +8439,9 @@ function drawChapters() {
     const any = Object.keys(o).length > 0;
     d.innerHTML = `<h3 class="serif" style="color:${HEX[i]}">${esc(c.word)} <small>${i + 1} · ${WHEELS[i][1].toLowerCase()}</small>${any ? `<button class="undo" data-i="${i}" title="Give this chapter back to the dice">back to the dice</button>` : ''}</h3>
       <div class="bars">${bars}</div>
-      <dl class="kv"><dt>Leader</dt><dd class="ctl">${leadSel}${dice(i, 'lead')}</dd>
+      <dl class="kv">${c.records ? `<dt>Records</dt><dd><div class="recs">${c.records.map((r) => `<span>${esc(r.name)}</span>`).join('')}${c.reprise ? '<span class="sw">a reprise</span>' : ''}</div></dd>` : `<dt>Leader</dt><dd class="ctl">${leadSel}${dice(i, 'lead')}</dd>
       <dt>Guest 1</dt><dd class="ctl">${gSel(0)}${dice(i, 'g1')}</dd>
-      <dt>Guest 2</dt><dd class="ctl">${gSel(1)}${dice(i, 'g2')}</dd>
+      <dt>Guest 2</dt><dd class="ctl">${gSel(1)}${dice(i, 'g2')}</dd>`}
       <dt>Feel</dt><dd class="ctl">${feelSel}${dice(i, 'feel')}</dd>
       <dt>Key</dt><dd class="ctl">${keySel}${dice(i, 'key')}${c.keyMove === 'golden' ? ' <span class="sw">golden step</span>' : ''}</dd>
       <dt>Length</dt><dd>${c.bars} bars · ${c.minutes.toFixed(1)} min</dd>
@@ -8402,7 +8495,7 @@ function rackCard(p, res) {
   const L = ['DIVINE JOURNEY MACHINE . RACK CARD', '', S.words.map((w) => w.word).join(' . ') + '   ' + p.bpm + ' bpm, one tempo for the whole journey', (p.mode === 'mixed' ? 'Mixed journey: every chapter is a song of its own. ' : 'Deep journey: one long arc. ') + 'Arc: ' + p.arc.name + '. Opens: ' + p.opening.name + '. Ends: ' + p.ending.name + '.', ''];
   p.chapters.forEach((c, i) => { const b0 = Math.round(res.timeline[i].start / JR.BAR) + 1, b1 = b0 + c.bars - 1;
     L.push((i + 1) + '. ' + c.word.toUpperCase() + '   bars ' + b0 + ' to ' + b1 + '   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + ' (feels like ' + c.feelsLike + ' bpm)');
-    L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
+    if (c.records) L.push('   Records: ' + c.records.map((r) => r.name).join(', then ')); else L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
     const seen = new Set(); res.tracks.filter((t) => t.chapter === i).forEach((t) => { const st = (t.name.match(/(Strings [AB] )?for STRIIIINGS, Style (.*)$|PERRCS, Style (.*)$/) || []); const sty = st[2] || st[3] || '';
       const k = t.role + t.player + sty; if (seen.has(k)) return; seen.add(k);
       L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + 'Sound: ' + t.colour + '. ' + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1. Any drum kit set to General MIDI plays it' : HINT(t.player))); });
@@ -8419,6 +8512,15 @@ function makeJourney() {
   p.chapters.forEach((c, i) => { const dir = base + '/' + String(i + 1).padStart(2, '0') + '_' + safe(c.word) + '/';
     const by = {}; res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: (i + 1) + ' ' + c.word + ' ' + k })) }); });
+  // your records, each one on its own, in its own folder, at full length, on the tracks of the chapter it plays in
+  if (p.records) { const tplOn = S.tplOn && S.tplLayout;
+    p.records.forEach((rc, id) => { const ci = Math.max(0, p.chapters.findIndex((c) => c.records && c.records.some((r) => r.id === id)));
+      const solo = JP.plan([S.words[ci]], { mode: S.mode, template: tplOn ? S.tplLayout : null, tplChapter: ci, seed: (S.seed ^ ((id + 1) * 7919)) >>> 0, bpm: p.bpm, minutes: 6, rack: S.rack, allWords: JW, solo: true, records: [{ arts: rc.arts.map((a) => (a === JP.ORCH ? JP.ORCH : a.name)) }] });
+      const r2 = JR.render(solo, ctx); r2.tracks.forEach((t) => { t.chapter = ci; t.name = t.name.replace(/^1 /, (ci + 1) + ' '); });
+      const dir = base + '/Records/' + String(id + 1).padStart(2, '0') + '_' + safe(rc.name.replace(/ \+ /g, ' ')) + '/', m2 = Object.assign({}, meta, { title: rc.name, markers: [] });
+      files.push({ name: dir + safe(rc.name.replace(/ \+ /g, ' ')) + '.mid', data: JR.writeMidi(tplOn ? JR.fitTemplate(r2.tracks, S.tplLayout, p) : r2.tracks, m2) });
+      const by = {}; r2.tracks.forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
+      for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, m2, { title: rc.name + ' ' + k })) }); }); }
   files.push({ name: base + '/Rack_Card.txt', data: rackCard(p, res) });
   const a = document.createElement('a'); a.href = URL.createObjectURL(zip(files)); a.download = base + '.zip'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   remember();
@@ -8517,6 +8619,6 @@ $('#tplFile').onchange = async (e) => { const f = e.target.files[0]; if (!f) ret
     S.tplOn = true; ss.set('journey-tpl-on', true); useTemplate(); replan(); } catch (er) { $('#tplInfo').textContent = 'Could not read that file: ' + er.message; } e.target.value = ''; };
 useTemplate();
 if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
-drawRack(); drawWords(); drawLen(); replan();
+drawRack(); drawRecords(); drawWords(); drawLen(); replan();
 </script>
 </body></html>
