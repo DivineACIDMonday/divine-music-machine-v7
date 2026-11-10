@@ -130,6 +130,8 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 .swc b{position:absolute;inset:11px;border-radius:50%}
 input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-radius:8px;background:#0F131C;padding:2px;cursor:pointer}
 .nm{flex:0 1 380px;min-width:0;font-size:17px;padding:9px 12px;min-height:44px;max-width:none}
+.orig{display:grid;grid-template-columns:minmax(0,360px) 1fr;gap:16px;align-items:start}.orig[hidden]{display:none}
+@media (max-width:760px){.orig{grid-template-columns:1fr}}
 .lbl{color:var(--mu);font-size:14px;min-width:84px}
 @media (max-width:760px){.sides{grid-template-columns:1fr}.lbl{min-width:0;flex-basis:100%}}
 </style></head><body>
@@ -151,6 +153,13 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
     <div class="muted small tplh">Free: every record gets its own tracks, good for building a new template. My template: side A and side B land on exactly the tracks, in exactly the order, of the MIDI you built your DAW from.</div></div>
   <div class="rk" id="rack"></div>
 </details>
+
+<section class="card" id="trackBox">
+  <div class="sh"><span class="st serif">Your own track</span><span class="muted">Load a WAV or MP3. The press listens to it, draws its record picture, and presses two remixes of it as MIDI, in its tempo and its key. Nothing leaves your computer.</span></div>
+  <div class="row"><label class="btn tplf">Load a track<input type="file" id="trk" accept="audio/*,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a" hidden></label><span class="muted small" id="trkInfo">no track loaded, the press works from the styles alone</span><button class="btn" id="trkOff" hidden>Back to styles only</button></div>
+  <div class="orig" id="origBox" hidden><canvas class="cover" id="cvO" width="1200" height="1200"></canvas>
+    <div class="muted small" id="origTxt">The record picture of your own track. Side A and side B below are the two remixes the press makes of it: the styles you choose above them, with its tempo, its key, its length and a motif from its melody.</div></div>
+</section>
 
 <section class="card">
   <div class="sh"><span class="st serif">The record</span><span class="muted">One to three styles that sound together. The mood word gives the record its character.</span></div>
@@ -192,6 +201,7 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
   <li>Side B is a full remix: the same motif and key, with a new style, a new form, and your hints.</li>
   <li>The record pictures are drawn from the notes: every ring is eight bars, the dots are the beat, the arcs are the harmony, the line is the melody. Choose the colour you like.</li>
   <li>Listen to the sketch, then press it. Open Rack_Card.txt, load the plugins it names, and drop the files on bar 1.</li>
+  <li>Your own track: load a WAV or MP3. The press listens to it in your browser, draws its record picture, and presses two remixes of it as MIDI, with its tempo, its key, its length and a motif from its melody. Choose the styles and hints for the remixes as usual.</li>
   <li>Built your DAW from a record? Choose My template and load that MIDI: every new record lands on exactly those tracks, side A and side B.</li>
 </ol></details>
 <footer>© 2026 Divine Monday</footer>
@@ -219,8 +229,24 @@ const S = {
   word: rnd(JW.W1), key: 'auto', bpm: ss.get('press-bpm', 0), minutes: ss.get('press-min', 6),
   name: '', nameMine: false, style: '', hints: {}, pal: ls.get('press-pal', 0), font: ls.get('press-font', 'classic'), own: ls.get('press-own', null),
   seed: (Math.random() * 4294967296) >>> 0,
-  tpl: ls.get('press-template', null), tplOn: ss.get('press-tpl-on', false),
+  tpl: ls.get('press-template', null), tplOn: ss.get('press-tpl-on', false), audio: null,
 };
+
+// ---------- your own track ----------
+$('#trk').onchange = async (e) => { const f = e.target.files[0]; if (!f) return; e.target.value = '';
+  $('#trkInfo').textContent = 'The press is listening to ' + f.name + '...';
+  try { const buf = await f.arrayBuffer(), ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 2, 44100);
+    const au = await new Promise((ok, no) => { const pr = ac.decodeAudioData(buf, ok, no); if (pr && pr.catch) pr.catch(no); });
+    await new Promise((r) => setTimeout(r, 30));
+    const chans = []; for (let c = 0; c < Math.min(2, au.numberOfChannels); c++) chans.push(au.getChannelData(c));
+    const an = PR.analyse(chans, au.sampleRate); an.motif = PR.motifOf(an, JP); an.file = f.name; S.audio = an;
+    if (!S.nameMine) { S.nameMine = true; setName(f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').slice(0, 60)); }
+    drawTrack(); fresh();
+  } catch (er) { console.error(er); $('#trkInfo').textContent = 'The press could not read that file: ' + (er && er.message ? er.message : 'unknown format'); } };
+$('#trkOff').onclick = () => { S.audio = null; drawTrack(); fresh(); };
+function drawTrack() { const a = S.audio; $('#trkOff').hidden = !a; $('#origBox').hidden = !a;
+  $('#trkInfo').textContent = a ? a.file + ':  ' + a.bpm + ' bpm,  ' + JP.KEYS[a.tonic] + (a.minor ? ' minor' : ' major') + ',  ' + Math.floor(a.sec / 60) + ':' + String(Math.round(a.sec % 60)).padStart(2, '0') + (a.motif ? ',  a motif of ' + a.motif.degrees.length + ' notes from its melody' : '') : 'no track loaded, the press works from the styles alone';
+  document.querySelectorAll('#key,#tempo,#len button').forEach((el) => { el.disabled = !!a; }); }
 
 function rackSummary() { const n = Object.values(S.rack).reduce((s, l) => s + l.filter((x) => x !== JP.PLAIN).length, 0); $('#rackSum').textContent = n ? n + ' instruments ticked' : 'only plain MIDI so far, tick your plugins here'; }
 function drawRack() {
@@ -273,7 +299,7 @@ function drawHints() { const el = $('#hints'); el.innerHTML = '';
 function fresh() { clearTimeout(S.ft); $('#pressInfo').textContent = 'Pressing...'; S.ft = setTimeout(pressNow, 60); }
 function pressNow() {
   stopPlay(); PV = { A: null, B: null };
-  const tpl = S.tplOn && S.tplLayout ? S.tplLayout : null, o = { word: S.word, arts: arts(), minutes: S.minutes, bpm: S.bpm, seed: S.seed, rack: S.rack, template: tpl, key: S.key, name: S.name, style: S.style, hints: S.hints };
+  const tpl = S.tplOn && S.tplLayout ? S.tplLayout : null, o = { word: S.word, arts: arts(), minutes: S.minutes, bpm: S.bpm, seed: S.seed, rack: S.rack, template: tpl, key: S.key, name: S.name, style: S.style, hints: S.hints, audio: S.audio };
   try {
     S.A = PR.planA(JP, JW, o); S.B = PR.planB(JP, JW, o, S.A);
     S.rA = JR.render(S.A, ctx()); S.rB = JR.render(S.B, ctx());
@@ -287,9 +313,11 @@ const palette = () => { const p = Object.assign({}, PR.PALETTES[S.pal] || PR.PAL
 const fmtMin = (t, bpm) => { const s = t / JR.PPQ * 60 / bpm; return Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0'); };
 const label = { start0: 'intro', start1: 'intro', intro: 'intro', A: 'A', A2: 'A', B: 'B', break: 'break', build: 'build', gift: 'gift', outro: 'outro' };
 function info(p, side) { const c = p.chapters[0];
-  return { name: (S.name || '').trim() || 'Untitled', side, styles: c.records[0].arts.map((a) => a.name).join(' + '), bpm: p.bpm, key: c.key.replace('♭', 'b').replace('♯', '#'), remix: side === 'B' ? p.remix : '' }; }
+  return { name: (S.name || '').trim() || 'Untitled', side, styles: c.records[0].arts.map((a) => a.name).join(' + '), bpm: p.bpm, key: c.key.replace('♭', 'b').replace('♯', '#'), remix: side === 'B' || S.audio ? p.remix : '' }; }
 function drawSides() {
   if (!S.A) return; const pal = palette();
+  if (S.audio) { if (!S.dO || S.dO.an !== S.audio) { S.dO = PR.readAudio(S.audio, JR.BAR, JR.PPQ); S.dO.an = S.audio; }
+    PR.drawCover($('#cvO'), S.dO, { name: (S.name || '').trim() || 'Untitled', side: 'O', styles: 'Your own track', bpm: S.audio.bpm, key: (JP.KEYS[S.audio.tonic] + (S.audio.minor ? ' minor' : ' major')).replace('♭', 'b').replace('♯', '#'), remix: '' }, pal, S.font); }
   [['A', S.A, S.rA, S.dA], ['B', S.B, S.rB, S.dB]].forEach(([sd, p, r, d]) => { const c = p.chapters[0];
     PR.drawCover($('#cv' + sd), d, info(p, sd), pal, S.font);
     $('#t' + sd).textContent = sd === 'A' ? c.records[0].name : p.remix;
@@ -345,8 +373,9 @@ const HINT = (player) => ({ 'Plain MIDI': 'any instrument you like', 'XO': 'your
 
 function rackCard() {
   const L = ['DIVINE RECORD PRESS . RACK CARD', '', ((S.name || '').trim() || 'Untitled').toUpperCase(), 'Mood: ' + S.word, ''];
+  if (S.audio) L.splice(4, 0, 'Pressed from your own track ' + S.audio.file + ': ' + S.audio.bpm + ' bpm, ' + (JP.KEYS[S.audio.tonic] + (S.audio.minor ? ' minor' : ' major')).replace('♭', 'b').replace('♯', '#') + '. Both sides are remixes of it.');
   [['SIDE A', S.A, S.rA], ['SIDE B', S.B, S.rB]].forEach(([h, p, r]) => { const c = p.chapters[0];
-    L.push(h + '   ' + (h === 'SIDE B' ? p.remix + '   ' : '') + c.records[0].arts.map((a) => a.name).join(' + ') + '   ' + p.bpm + ' bpm   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + '   ' + fmtMin(r.totalTicks, p.bpm));
+    L.push(h + '   ' + (h === 'SIDE B' || S.audio ? p.remix + '   ' : '') + c.records[0].arts.map((a) => a.name).join(' + ') + '   ' + p.bpm + ' bpm   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + '   ' + fmtMin(r.totalTicks, p.bpm));
     const seen = new Set(); r.tracks.forEach((t) => { const st = (t.name.match(/(Strings [AB] )?for STRIIIINGS, Style (.*)$|PERRCS, Style (.*)$/) || []); const sty = st[2] || st[3] || '';
       const k = t.role + t.player + sty; if (seen.has(k)) return; seen.add(k);
       L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + 'Sound: ' + t.colour + '. ' + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1' : HINT(t.player))); });
@@ -358,17 +387,18 @@ const png = (cv) => { const b = atob(cv.toDataURL('image/png').split(',')[1]), u
 function pressIt() {
   const nm = (S.name || '').trim() || 'Untitled', base = 'DM_Record_' + safe(nm).slice(0, 50) + '_' + S.A.bpm + 'bpm', files = [], tpl = S.tplOn && S.tplLayout;
   [['A', S.A, S.rA], ['B', S.B, S.rB]].forEach(([sd, p, r]) => {
-    const title = sd === 'A' ? nm : nm + ' (' + p.remix + ')', fn = safe(title).slice(0, 70), dir = base + '/Side_' + sd + '/', meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: r.markers.map((m) => Object.assign({}, m, { text: sd === 'A' ? nm : p.remix })) };
+    const title = sd === 'A' && !S.audio ? nm : nm + ' (' + p.remix + ')', fn = safe(title).slice(0, 70), dir = base + '/Side_' + sd + '/', meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: r.markers.map((m) => Object.assign({}, m, { text: sd === 'A' && !S.audio ? nm : p.remix })) };
     files.push({ name: dir + fn + '.mid', data: JR.writeMidi(tpl ? JR.fitTemplate(r.tracks, S.tplLayout, p) : r.tracks, meta) });
     const by = {}; r.tracks.forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + 'Layers/' + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: title + ' ' + k })) });
     files.push({ name: base + '/' + safe(nm).slice(0, 50) + '_Side_' + sd + '.png', data: png($('#cv' + sd)) }); });
+  if (S.audio) files.push({ name: base + '/' + safe(nm).slice(0, 50) + '_Original.png', data: png($('#cvO')) });
   files.push({ name: base + '/Rack_Card.txt', data: rackCard() });
   const a = document.createElement('a'); a.href = URL.createObjectURL(zip(files)); a.download = base + '.zip'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   return files.length;
 }
 $('#make').onclick = () => { const b = $('#make'), m = $('#makeMsg'); b.disabled = true; b.textContent = 'Pressing the vinyl...';
-  setTimeout(() => { try { const n = pressIt(); m.textContent = 'Side A, side B and two record pictures in ' + n + ' files. Enjoy your record.'; } catch (e) { m.textContent = 'Something went wrong: ' + e.message; console.error(e); }
+  setTimeout(() => { try { const n = pressIt(); m.textContent = 'Side A, side B and ' + (S.audio ? 'three' : 'two') + ' record pictures in ' + n + ' files. Enjoy your record.'; } catch (e) { m.textContent = 'Something went wrong: ' + e.message; console.error(e); }
     b.disabled = false; b.textContent = 'Press it'; }, 30); };
 
 // ---------- listen: a sketch of one side with small browser sounds ----------

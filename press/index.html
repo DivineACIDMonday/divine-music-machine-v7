@@ -130,6 +130,8 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 .swc b{position:absolute;inset:11px;border-radius:50%}
 input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-radius:8px;background:#0F131C;padding:2px;cursor:pointer}
 .nm{flex:0 1 380px;min-width:0;font-size:17px;padding:9px 12px;min-height:44px;max-width:none}
+.orig{display:grid;grid-template-columns:minmax(0,360px) 1fr;gap:16px;align-items:start}.orig[hidden]{display:none}
+@media (max-width:760px){.orig{grid-template-columns:1fr}}
 .lbl{color:var(--mu);font-size:14px;min-width:84px}
 @media (max-width:760px){.sides{grid-template-columns:1fr}.lbl{min-width:0;flex-basis:100%}}
 </style></head><body>
@@ -151,6 +153,13 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
     <div class="muted small tplh">Free: every record gets its own tracks, good for building a new template. My template: side A and side B land on exactly the tracks, in exactly the order, of the MIDI you built your DAW from.</div></div>
   <div class="rk" id="rack"></div>
 </details>
+
+<section class="card" id="trackBox">
+  <div class="sh"><span class="st serif">Your own track</span><span class="muted">Load a WAV or MP3. The press listens to it, draws its record picture, and presses two remixes of it as MIDI, in its tempo and its key. Nothing leaves your computer.</span></div>
+  <div class="row"><label class="btn tplf">Load a track<input type="file" id="trk" accept="audio/*,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a" hidden></label><span class="muted small" id="trkInfo">no track loaded, the press works from the styles alone</span><button class="btn" id="trkOff" hidden>Back to styles only</button></div>
+  <div class="orig" id="origBox" hidden><canvas class="cover" id="cvO" width="1200" height="1200"></canvas>
+    <div class="muted small" id="origTxt">The record picture of your own track. Side A and side B below are the two remixes the press makes of it: the styles you choose above them, with its tempo, its key, its length and a motif from its melody.</div></div>
+</section>
 
 <section class="card">
   <div class="sh"><span class="st serif">The record</span><span class="muted">One to three styles that sound together. The mood word gives the record its character.</span></div>
@@ -192,6 +201,7 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
   <li>Side B is a full remix: the same motif and key, with a new style, a new form, and your hints.</li>
   <li>The record pictures are drawn from the notes: every ring is eight bars, the dots are the beat, the arcs are the harmony, the line is the melody. Choose the colour you like.</li>
   <li>Listen to the sketch, then press it. Open Rack_Card.txt, load the plugins it names, and drop the files on bar 1.</li>
+  <li>Your own track: load a WAV or MP3. The press listens to it in your browser, draws its record picture, and presses two remixes of it as MIDI, with its tempo, its key, its length and a motif from its melody. Choose the styles and hints for the remixes as usual.</li>
   <li>Built your DAW from a record? Choose My template and load that MIDI: every new record lands on exactly those tracks, side A and side B.</li>
 </ol></details>
 <footer>© 2026 Divine Monday</footer>
@@ -8311,12 +8321,15 @@ if (typeof module !== 'undefined') module.exports = JR;
   const word = (w) => ({ wheel: 'W1', word: w });
   // side A: the record as a song of its own, with its own build, drop, break and gift
   PR.planA = (JP, JW, o) => {
-    const opt = { solo: true, mode: 'mixed', records: [{ arts: o.arts }], minutes: o.minutes, bpm: o.bpm || 0, seed: o.seed >>> 0, rack: o.rack, allWords: JW, template: o.template || null, tplChapter: 0 };
+    const au = o.audio; // pressing your own track: its tempo, its key and its length, its motif when the press could hear one
+    const opt = { solo: true, mode: 'mixed', records: [{ arts: o.arts }], minutes: au ? Math.max(3, Math.min(9, Math.round(au.sec / 30) / 2)) : o.minutes, bpm: au ? au.bpm : o.bpm || 0, seed: o.seed >>> 0, rack: o.rack, allWords: JW, template: o.template || null, tplChapter: 0 };
+    if (au) o = Object.assign({}, o, { key: JP.KEYS[au.tonic] + (au.minor ? ' minor' : ' major'), minutes: opt.minutes });
     let p = JP.plan([word(o.word)], opt);
     // the key: yours, or one the record itself chooses (the word and the styles), in the mode its character asks for
     const key = o.key && o.key !== 'auto' ? o.key : JP.KEYS[JP.hash(o.word + '|' + o.arts.join('|')) % 12] + (p.chapters[0].minor ? ' minor' : ' major');
     if (key !== p.chapters[0].key) p = JP.plan([word(o.word)], Object.assign(opt, { ov: [{ key }] }));
-    p.side = 'A'; p.title = o.name; return p;
+    if (au && au.motif) p.motif = au.motif;
+    p.side = 'A'; p.title = o.name; p.minutesUsed = opt.minutes; if (au) { p.remix = o.arts.join(' ') + ' Version'; p.title = o.name + ' (' + p.remix + ')'; } return p;
   };
 
   // the remix: the harmony of the record stays, a new style brings a new pulse
@@ -8346,7 +8359,7 @@ if (typeof module !== 'undefined') module.exports = JR;
     const h = o.hints || {}, st = PR.remixStyle(JP, planA, o), arts = PR.remixArts(JP, planA, st, h);
     let bpm = planA.bpm; if (h.faster) bpm = Math.min(134, bpm + 8); if (h.slower) bpm = Math.max(90, bpm - 10);
     const cA = planA.chapters[0]; let [kn, km] = cA.key.split(' '); if (h.darker) km = 'minor'; if (h.lighter) km = 'major';
-    const p = JP.plan([word(o.word)], { solo: true, mode: 'mixed', records: [{ arts }], minutes: o.minutes + (h.extended ? 2 : 0), bpm, seed: (o.seed ^ 0x5bd1e995) >>> 0,
+    const p = JP.plan([word(o.word)], { solo: true, mode: 'mixed', records: [{ arts }], minutes: (planA.minutesUsed || o.minutes) + (h.extended ? 2 : 0), bpm, seed: (o.seed ^ 0x5bd1e995) >>> 0,
       rack: o.rack, allWords: JW, template: o.template || null, tplChapter: 0, ov: [{ key: kn + ' ' + km }] });
     p.motif = planA.motif; const c = p.chapters[0];
     if (h.barer) { c.layers = Math.max(2, c.layers - 2); c.layersStart = Math.max(1, c.layersStart - 1); c.players = c.players.filter((x) => x.role !== 'melody'); } // a dub: the motif sings, the melody rests
@@ -8393,7 +8406,8 @@ if (typeof module !== 'undefined') module.exports = JR;
     { id: 'hand', name: 'Hand', css: '700 #px "Caveat", "Segoe Script", "Bradley Hand", cursive', k: 1.3 },
   ];
   PR.drawCover = (cv, rd, info, pal, fontId) => {
-    const g = cv.getContext('2d'), Wd = cv.width, Ht = cv.height, u = Wd / 1200, { bg, ink, acc } = pal, BAR = rd.BAR, ph = 8 * BAR;
+    const g = cv.getContext('2d'), Wd = cv.width, Ht = cv.height, u = Wd / 1200, { bg, ink, acc } = pal, BAR = rd.BAR;
+    let per = 8; while (per > 1 && rd.total / (per * BAR) < 10) per /= 2; const ph = per * BAR; // a short track gets shorter rings, so there are always enough grooves
     const F = PR.FONTS.find((f) => f.id === fontId) || PR.FONTS[0], serif = F.css, big = (n) => Math.round(n * (F.k || 1)), title = F.up ? info.name.toUpperCase() : info.name;
     const sans = '#px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
     g.save(); g.scale(u, u);
@@ -8403,16 +8417,16 @@ if (typeof module !== 'undefined') module.exports = JR;
     g.fillStyle = ink; g.textBaseline = 'alphabetic';
     fit(g, title, serif, big(76), 1000); g.fillText(title, 60, 118);
     g.font = sans.replace('#', 23); g.fillStyle = rgba(ink, 0.7); g.fillText(info.styles + '   ' + info.bpm + ' bpm   ' + info.key + (info.remix ? '   ' + info.remix : ''), 62, 162);
-    g.textAlign = 'right'; g.font = '600 ' + sans.replace('#', 64); g.fillStyle = rgba(acc, 0.9); g.fillText(info.side, 1140, 118);
+    g.textAlign = 'right'; g.font = '600 ' + sans.replace('#', 64); g.fillStyle = rgba(acc, 0.9); if (info.side !== 'O') g.fillText(info.side, 1140, 118);
     g.font = sans.replace('#', 19); g.fillStyle = rgba(ink, 0.55); g.fillText('Divine Monday Record Press', 1140, 1166); g.textAlign = 'left';
     // the disc: grooves from the outside in, one ring per phrase of eight bars, like a needle reads it
-    const cx = 600, cy = 690, R = 455, inner = R * 0.36, P = rd.P, rw = (R * 0.975 - inner * 1.06) / P;
+    const cx = 600, cy = 690, R = 455, inner = R * 0.36, P = Math.max(1, Math.ceil(rd.total / ph)), rw = (R * 0.975 - inner * 1.06) / P;
     const disc = lum(bg) > 0.5 ? '#141418' : mix(bg, '#000000', 0.55);
     g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.fillStyle = disc; g.fill();
     const sheen = g.createLinearGradient(cx - R, cy - R, cx + R, cy + R); sheen.addColorStop(0, 'rgba(255,255,255,0.06)'); sheen.addColorStop(0.5, 'rgba(255,255,255,0)'); sheen.addColorStop(1, 'rgba(255,255,255,0.05)');
     g.fillStyle = sheen; g.fill();
     const ringR = (q) => R * 0.975 - (q + 0.5) * rw, ang = (t) => -Math.PI / 2 + ((t % ph) / ph) * Math.PI * 2, ringOf = (t) => Math.min(P - 1, Math.floor(t / ph));
-    const dens = rd.rows.map((row) => ROLES.reduce((s, k) => s + row[k], 0)), dmax = Math.max(1, ...dens);
+    const dens = new Array(P).fill(0); ROLES.forEach((k) => rd.notes[k].forEach((n) => { const q = Math.floor(n.t / ph); if (q >= 0 && q < P) dens[q]++; })); const dmax = Math.max(1, ...dens);
     const lite = lum(disc) > 0.5 ? '#000000' : '#FFFFFF';
     for (let q = 0; q < P; q++) { const d = dens[q] / dmax; g.lineWidth = Math.max(0.6, rw * 0.18);
       for (let s = 0; s < 3; s++) { g.beginPath(); g.arc(cx, cy, ringR(q) - rw * 0.33 + s * rw * 0.33, 0, Math.PI * 2); g.strokeStyle = rgba(lite, 0.035 + 0.11 * d); g.stroke(); } }
@@ -8448,11 +8462,92 @@ if (typeof module !== 'undefined') module.exports = JR;
     const lab = lum(acc) > 0.55 ? '#16161A' : '#FBF7EE'; g.fillStyle = lab; g.textAlign = 'center';
     fit(g, title, serif, big(40), inner * 1.5); g.fillText(title, cx, cy - 34);
     g.font = sans.replace('#', 16); g.fillStyle = rgba(lab, 0.8); const sty = info.styles.length > 34 ? info.styles.slice(0, 33) + '.' : info.styles; g.fillText(sty, cx, cy + 50);
-    g.font = '600 ' + sans.replace('#', 15); g.fillText('SIDE ' + info.side + '   ' + info.bpm + ' BPM   ' + info.key.toUpperCase(), cx, cy + 76);
+    g.font = '600 ' + sans.replace('#', 15); g.fillText((info.side === 'O' ? 'ORIGINAL' : 'SIDE ' + info.side) + '   ' + info.bpm + ' BPM   ' + info.key.toUpperCase(), cx, cy + 76);
     if (info.remix) { g.font = sans.replace('#', 15); fit(g, info.remix, sans, 15, inner * 1.5); g.fillText(info.remix, cx, cy + 100); }
     g.font = sans.replace('#', 12); g.fillStyle = rgba(lab, 0.6); g.fillText('DIVINE MONDAY', cx, cy - inner * 0.62);
     g.beginPath(); g.arc(cx, cy, 9, 0, Math.PI * 2); g.fillStyle = bg; g.fill();
     g.restore(); g.textAlign = 'left';
+  };
+
+  // ---------- your own track: the press listens, mechanically, and writes down what it hears ----------
+  // the tempo from the pulse of the onsets, the key from the twelve pitch colours, the beat from the low and the bright hits,
+  // the loud parts from the energy, a melody line from the strongest middle tone. Nothing leaves your computer.
+  function fft(re, im) { const n = re.length;
+    for (let i = 1, j = 0; i < n; i++) { let bit = n >> 1; for (; j & bit; bit >>= 1) j ^= bit; j ^= bit; if (i < j) { [re[i], re[j]] = [re[j], re[i]]; [im[i], im[j]] = [im[j], im[i]]; } }
+    for (let len = 2; len <= n; len <<= 1) { const a = -2 * Math.PI / len, wr = Math.cos(a), wi = Math.sin(a);
+      for (let i = 0; i < n; i += len) { let cr = 1, ci = 0; for (let k = 0; k < len / 2; k++) { const ur = re[i + k], ui = im[i + k], vr = re[i + k + len / 2] * cr - im[i + k + len / 2] * ci, vi = re[i + k + len / 2] * ci + im[i + k + len / 2] * cr;
+        re[i + k] = ur + vr; im[i + k] = ui + vi; re[i + k + len / 2] = ur - vr; im[i + k + len / 2] = ui - vi; const t = cr * wr - ci * wi; ci = cr * wi + ci * wr; cr = t; } } } }
+  const MAJ = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88], MIN = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 3.34, 3.17];
+  const corr = (a, b) => { const ma = a.reduce((x, y) => x + y, 0) / 12, mb = b.reduce((x, y) => x + y, 0) / 12; let n = 0, da = 0, db = 0; for (let i = 0; i < 12; i++) { n += (a[i] - ma) * (b[i] - mb); da += (a[i] - ma) ** 2; db += (b[i] - mb) ** 2; } return n / Math.sqrt(da * db || 1); };
+  PR.analyse = (chans, sr) => {
+    const f = Math.max(1, Math.round(sr / 11025)), sr2 = sr / f, len = Math.floor(chans[0].length / f), x = new Float32Array(len);
+    for (let i = 0; i < len; i++) { let v = 0; for (const c of chans) for (let k = 0; k < f; k++) v += c[i * f + k] || 0; x[i] = v / (f * chans.length); }
+    const N = 2048, hop = 512, F = Math.max(1, Math.floor((len - N) / hop)), fr = sr2 / hop, win = new Float32Array(N).map((_, i) => 0.5 - 0.5 * Math.cos(2 * Math.PI * i / N));
+    const bin = (hz) => Math.round(hz * N / sr2), lo1 = bin(30), lo2 = bin(150), mi1 = bin(1500), mi2 = bin(4500), me1 = bin(300), me2 = bin(2000), ch1 = bin(65), ch2 = bin(2000);
+    const flux = new Float32Array(F), fLow = new Float32Array(F), fMid = new Float32Array(F), rms = new Float32Array(F), lowE = new Float32Array(F), mel = new Float32Array(F), chroma = new Array(12).fill(0), pcOf = [];
+    for (let k = 0; k <= N / 2; k++) { const hz = k * sr2 / N; pcOf[k] = hz > 0 ? ((Math.round(12 * Math.log2(hz / 440) + 69) % 12) + 12) % 12 : 0; }
+    let prev = new Float32Array(N / 2 + 1), pl = 0, pm = 0; const re = new Float32Array(N), im = new Float32Array(N);
+    for (let t = 0; t < F; t++) { let e = 0; for (let i = 0; i < N; i++) { const v = x[t * hop + i]; re[i] = v * win[i]; im[i] = 0; e += v * v; } rms[t] = Math.sqrt(e / N);
+      fft(re, im); let fl = 0, le = 0, me = 0, best = 0, bk = 0, sum = 0;
+      for (let k = 1; k <= N / 2; k++) { const m = Math.log1p(Math.hypot(re[k], im[k]) * 10); const d = m - prev[k]; if (d > 0) fl += d; prev[k] = m;
+        if (k >= lo1 && k <= lo2) le += m; if (k >= mi1 && k <= mi2) me += m; if (k >= ch1 && k <= ch2) chroma[pcOf[k]] += m * m;
+        if (k >= me1 && k <= me2) { sum += m; if (m > best) { best = m; bk = k; } } }
+      flux[t] = fl; fLow[t] = Math.max(0, le - pl); fMid[t] = Math.max(0, me - pm); pl = le; pm = me; lowE[t] = le;
+      mel[t] = best > 2.6 * sum / (me2 - me1 + 1) ? 69 + 12 * Math.log2(bk * sr2 / N / 440) : 0; }
+    // the tempo: the lag where the onsets repeat best, with a soft wish for the dance floor around 120
+    const mean = flux.reduce((a, b) => a + b, 0) / F, env = flux.map((v) => Math.max(0, v - mean)); let bestL = 0, bestS = -1;
+    for (let L = Math.floor(fr * 60 / 180); L <= Math.ceil(fr * 60 / 60); L++) { let sc = 0; for (let t = L; t < F; t++) sc += env[t] * env[t - L]; const bpm = fr * 60 / L; sc *= Math.exp(-0.5 * (Math.log2(bpm / 118) / 0.6) ** 2); if (sc > bestS) { bestS = sc; bestL = L; } }
+    let raw = fr * 60 / bestL; // a finer look around the best lag
+    let fine = raw, fs = -1; for (let b = raw * 0.97; b <= raw * 1.03; b += 0.1) { const L = fr * 60 / b; let sc = 0; for (let t = Math.ceil(L); t < F; t++) { const q = t - L, q0 = Math.floor(q), u = q - q0; sc += env[t] * (env[q0] * (1 - u) + (env[q0 + 1] || 0) * u); } if (sc > fs) { fs = sc; fine = b; } }
+    let bpm = fine; while (bpm < 90) bpm *= 2; while (bpm > 134 && bpm / 2 >= 90) bpm /= 2;
+    // the exact tempo: lay the low hits on a beat grid and let them correct it, a line through all of them
+    { const lowPk = []; for (let t = 2; t < F - 2; t++) if (fLow[t] > fLow[t - 1] && fLow[t] >= fLow[t + 1] && fLow[t] > 0) lowPk.push(t);
+      const top = lowPk.map((t) => fLow[t]).sort((a, b) => b - a)[Math.floor(lowPk.length * 0.4)] || 0, ts = lowPk.filter((t) => fLow[t] >= top).map((t) => t / fr);
+      for (let it = 0; it < 3 && ts.length > 8; it++) { const P = 60 / bpm, t0 = ts[0], pts = ts.map((t) => [Math.round((t - t0) / P), t]).filter(([k, t]) => Math.abs(t - t0 - k * P) < P * 0.2);
+        if (pts.length < 8) break; const n = pts.length, sx = pts.reduce((a, q) => a + q[0], 0), sy = pts.reduce((a, q) => a + q[1], 0), sxx = pts.reduce((a, q) => a + q[0] * q[0], 0), sxy = pts.reduce((a, q) => a + q[0] * q[1], 0);
+        const slope = (n * sxy - sx * sy) / Math.max(1e-9, n * sxx - sx * sx); if (slope > 0) bpm = 60 / slope; } }
+    bpm = Math.round(Math.min(134, Math.max(90, bpm)));
+    const L = fr * 60 / fine; let phase = 0, ps = -1; for (let ph = 0; ph < L; ph++) { let sc = 0; for (let t = ph; t < F; t += L) sc += fLow[Math.round(t)] || 0; if (sc > ps) { ps = sc; phase = ph; } }
+    // the key
+    let tonic = 0, minor = false, kb = -2; for (let k = 0; k < 12; k++) { const rot = chroma.slice(k).concat(chroma.slice(0, k)); const a = corr(rot, MAJ), b = corr(rot, MIN); if (a > kb) { kb = a; tonic = k; minor = false; } if (b > kb) { kb = b; tonic = k; minor = true; } }
+    // hits: peaks above the local level
+    const peaks = (sig, k) => { const out = []; for (let t = 2; t < F - 2; t++) { if (!(sig[t] > sig[t - 1] && sig[t] >= sig[t + 1])) continue; let m = 0, q = 0; for (let u = Math.max(0, t - 22); u < Math.min(F, t + 22); u++) { m += sig[u]; q += sig[u] * sig[u]; } const n = Math.min(F, t + 22) - Math.max(0, t - 22); m /= n; const sd = Math.sqrt(Math.max(0, q / n - m * m)); if (sig[t] > m + k * sd) out.push([t, sig[t]]); } return out; };
+    const kicks = peaks(fLow, 1.3), snares = peaks(fMid, 1.5), all = peaks(flux, 1.0);
+    // the melody line: frames with one clear middle tone, joined into notes
+    const notes = []; let cur = null;
+    for (let t = 0; t < F; t++) { const p = mel[t] ? Math.round(mel[t]) : 0; if (cur && p && Math.abs(p - cur.p) <= 0) { cur.e = t; continue; } if (cur && cur.e - cur.s >= 1) notes.push(cur); cur = p ? { s: t, e: t, p } : null; }
+    if (cur && cur.e - cur.s >= 1) notes.push(cur);
+    const sec = len / sr2, sorted = Array.from(rms).sort((a, b) => a - b);
+    return { bpm, tempoHeard: Math.round(fine * 10) / 10, tonic, minor, sec, fr, phase: phase / fr, rms, lowE, kicks, snares, all, notes, q40: sorted[Math.floor(F * 0.4)] || 0, q90: sorted[Math.floor(F * 0.9)] || 1, frames: F };
+  };
+  // what the press heard, written as notes on the grid of its tempo, so the record picture can draw it like any record
+  PR.readAudio = (an, BAR, PPQ) => {
+    const tps = an.bpm / 60 * PPQ, T = (fr) => Math.round((fr / an.fr - an.phase) * tps), total = Math.max(BAR, Math.round((an.sec - an.phase) * tps)), ph = 8 * BAR;
+    const P = Math.max(1, Math.ceil(total / ph)), rows = Array.from({ length: P }, () => Object.fromEntries(ROLES.map((r) => [r, 0]))), notes = { beats: [], perc: [], bass: [], chords: [], orch: [], melody: [], motif: [] };
+    const add = (role, n) => { if (n.t < 0 || n.t >= total) return; notes[role].push(n); rows[Math.floor(n.t / ph)][role]++; };
+    const kmax = Math.max(1e-6, ...an.kicks.map((k) => k[1])), smax = Math.max(1e-6, ...an.snares.map((k) => k[1]));
+    an.kicks.forEach(([t, v]) => add('beats', { t: T(t), d: 60, p: 36, v: Math.round(40 + 87 * v / kmax) }));
+    an.snares.forEach(([t, v]) => add('beats', { t: T(t), d: 60, p: 38, v: Math.round(40 + 87 * v / smax) }));
+    const ks = new Set(an.kicks.concat(an.snares).map((k) => k[0])); an.all.forEach(([t]) => { if (!ks.has(t)) add('perc', { t: T(t), d: 40, p: 42, v: 60 }); });
+    // one harmony arc and one bass stroke per beat where the track is full
+    const beatF = an.fr * 60 / an.bpm, lmed = Array.from(an.lowE).sort((a, b) => a - b)[Math.floor(an.frames / 2)] || 0;
+    for (let b = an.phase * an.fr, k = 0; b < an.frames; b += beatF, k++) { const i = Math.floor(b), j = Math.min(an.frames, Math.floor(b + beatF)); let e = 0, l = 0; for (let q = i; q < j; q++) { e += an.rms[q]; l += an.lowE[q]; } e /= Math.max(1, j - i); l /= Math.max(1, j - i);
+      if (e > an.q40) add('chords', { t: Math.round(k * PPQ), d: PPQ, p: 60, v: Math.round(Math.min(127, 30 + 97 * (e - an.q40) / Math.max(1e-6, an.q90 - an.q40))) });
+      if (l > lmed * 1.05) add('bass', { t: Math.round(k * PPQ), d: Math.round(PPQ * 0.8), p: 40, v: 90 }); }
+    an.notes.forEach((n) => add('melody', { t: T(n.s), d: Math.max(20, T(n.e + 1) - T(n.s)), p: n.p, v: 90 }));
+    for (const k of Object.keys(notes)) notes[k].sort((a, b) => a.t - b.t);
+    return { P, rows, notes, total, BAR };
+  };
+  // the motif of your track: the busiest two bars of its melody line, written in the steps of its key
+  PR.motifOf = (an, JP) => {
+    if (an.notes.length < 6) return null; const beatF = an.fr * 60 / an.bpm, w = 8 * beatF, scale = an.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
+    let best = null, bs = 0; for (let s = an.phase * an.fr; s < an.frames - w; s += beatF * 2) { const inW = an.notes.filter((n) => n.s >= s && n.s < s + w); const sc = inW.length + inW.reduce((a, n) => a + Math.min(4, n.e - n.s), 0) * 0.2; if (inW.length >= 4 && sc > bs) { bs = sc; best = inW; } }
+    if (!best) return null; const ns = []; best.forEach((n) => { const q = Math.round((n.s - best[0].s) / beatF * 2) / 2; if (!ns.length || q > ns[ns.length - 1].q) ns.push({ q, p: n.p }); });
+    const pick = ns.slice(0, 6); if (pick.length < 4) return null;
+    const step = (p) => { const s0 = ((p - an.tonic) % 12 + 12) % 12, oct = Math.floor((p - an.tonic) / 12); let bi = 0; scale.forEach((v, i) => { if (Math.abs(v - s0) < Math.abs(scale[bi] - s0)) bi = i; }); return oct * 7 + bi; };
+    const base = step(pick[0].p), degrees = pick.map((n) => Math.max(-4, Math.min(7, step(n.p) - base)));
+    const rhythm = pick.map((n, i) => { const d = i < pick.length - 1 ? pick[i + 1].q - n.q : 2; return [0.5, 1, 1.5, 2].reduce((a, b) => (Math.abs(b - d) < Math.abs(a - d) ? b : a)); }); rhythm[rhythm.length - 1] = Math.max(1.5, rhythm[rhythm.length - 1]);
+    return { degrees, rhythm };
   };
 
   root.PR = PR;
@@ -8476,8 +8571,24 @@ const S = {
   word: rnd(JW.W1), key: 'auto', bpm: ss.get('press-bpm', 0), minutes: ss.get('press-min', 6),
   name: '', nameMine: false, style: '', hints: {}, pal: ls.get('press-pal', 0), font: ls.get('press-font', 'classic'), own: ls.get('press-own', null),
   seed: (Math.random() * 4294967296) >>> 0,
-  tpl: ls.get('press-template', null), tplOn: ss.get('press-tpl-on', false),
+  tpl: ls.get('press-template', null), tplOn: ss.get('press-tpl-on', false), audio: null,
 };
+
+// ---------- your own track ----------
+$('#trk').onchange = async (e) => { const f = e.target.files[0]; if (!f) return; e.target.value = '';
+  $('#trkInfo').textContent = 'The press is listening to ' + f.name + '...';
+  try { const buf = await f.arrayBuffer(), ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 2, 44100);
+    const au = await new Promise((ok, no) => { const pr = ac.decodeAudioData(buf, ok, no); if (pr && pr.catch) pr.catch(no); });
+    await new Promise((r) => setTimeout(r, 30));
+    const chans = []; for (let c = 0; c < Math.min(2, au.numberOfChannels); c++) chans.push(au.getChannelData(c));
+    const an = PR.analyse(chans, au.sampleRate); an.motif = PR.motifOf(an, JP); an.file = f.name; S.audio = an;
+    if (!S.nameMine) { S.nameMine = true; setName(f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').slice(0, 60)); }
+    drawTrack(); fresh();
+  } catch (er) { console.error(er); $('#trkInfo').textContent = 'The press could not read that file: ' + (er && er.message ? er.message : 'unknown format'); } };
+$('#trkOff').onclick = () => { S.audio = null; drawTrack(); fresh(); };
+function drawTrack() { const a = S.audio; $('#trkOff').hidden = !a; $('#origBox').hidden = !a;
+  $('#trkInfo').textContent = a ? a.file + ':  ' + a.bpm + ' bpm,  ' + JP.KEYS[a.tonic] + (a.minor ? ' minor' : ' major') + ',  ' + Math.floor(a.sec / 60) + ':' + String(Math.round(a.sec % 60)).padStart(2, '0') + (a.motif ? ',  a motif of ' + a.motif.degrees.length + ' notes from its melody' : '') : 'no track loaded, the press works from the styles alone';
+  document.querySelectorAll('#key,#tempo,#len button').forEach((el) => { el.disabled = !!a; }); }
 
 function rackSummary() { const n = Object.values(S.rack).reduce((s, l) => s + l.filter((x) => x !== JP.PLAIN).length, 0); $('#rackSum').textContent = n ? n + ' instruments ticked' : 'only plain MIDI so far, tick your plugins here'; }
 function drawRack() {
@@ -8530,7 +8641,7 @@ function drawHints() { const el = $('#hints'); el.innerHTML = '';
 function fresh() { clearTimeout(S.ft); $('#pressInfo').textContent = 'Pressing...'; S.ft = setTimeout(pressNow, 60); }
 function pressNow() {
   stopPlay(); PV = { A: null, B: null };
-  const tpl = S.tplOn && S.tplLayout ? S.tplLayout : null, o = { word: S.word, arts: arts(), minutes: S.minutes, bpm: S.bpm, seed: S.seed, rack: S.rack, template: tpl, key: S.key, name: S.name, style: S.style, hints: S.hints };
+  const tpl = S.tplOn && S.tplLayout ? S.tplLayout : null, o = { word: S.word, arts: arts(), minutes: S.minutes, bpm: S.bpm, seed: S.seed, rack: S.rack, template: tpl, key: S.key, name: S.name, style: S.style, hints: S.hints, audio: S.audio };
   try {
     S.A = PR.planA(JP, JW, o); S.B = PR.planB(JP, JW, o, S.A);
     S.rA = JR.render(S.A, ctx()); S.rB = JR.render(S.B, ctx());
@@ -8544,9 +8655,11 @@ const palette = () => { const p = Object.assign({}, PR.PALETTES[S.pal] || PR.PAL
 const fmtMin = (t, bpm) => { const s = t / JR.PPQ * 60 / bpm; return Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0'); };
 const label = { start0: 'intro', start1: 'intro', intro: 'intro', A: 'A', A2: 'A', B: 'B', break: 'break', build: 'build', gift: 'gift', outro: 'outro' };
 function info(p, side) { const c = p.chapters[0];
-  return { name: (S.name || '').trim() || 'Untitled', side, styles: c.records[0].arts.map((a) => a.name).join(' + '), bpm: p.bpm, key: c.key.replace('♭', 'b').replace('♯', '#'), remix: side === 'B' ? p.remix : '' }; }
+  return { name: (S.name || '').trim() || 'Untitled', side, styles: c.records[0].arts.map((a) => a.name).join(' + '), bpm: p.bpm, key: c.key.replace('♭', 'b').replace('♯', '#'), remix: side === 'B' || S.audio ? p.remix : '' }; }
 function drawSides() {
   if (!S.A) return; const pal = palette();
+  if (S.audio) { if (!S.dO || S.dO.an !== S.audio) { S.dO = PR.readAudio(S.audio, JR.BAR, JR.PPQ); S.dO.an = S.audio; }
+    PR.drawCover($('#cvO'), S.dO, { name: (S.name || '').trim() || 'Untitled', side: 'O', styles: 'Your own track', bpm: S.audio.bpm, key: (JP.KEYS[S.audio.tonic] + (S.audio.minor ? ' minor' : ' major')).replace('♭', 'b').replace('♯', '#'), remix: '' }, pal, S.font); }
   [['A', S.A, S.rA, S.dA], ['B', S.B, S.rB, S.dB]].forEach(([sd, p, r, d]) => { const c = p.chapters[0];
     PR.drawCover($('#cv' + sd), d, info(p, sd), pal, S.font);
     $('#t' + sd).textContent = sd === 'A' ? c.records[0].name : p.remix;
@@ -8602,8 +8715,9 @@ const HINT = (player) => ({ 'Plain MIDI': 'any instrument you like', 'XO': 'your
 
 function rackCard() {
   const L = ['DIVINE RECORD PRESS . RACK CARD', '', ((S.name || '').trim() || 'Untitled').toUpperCase(), 'Mood: ' + S.word, ''];
+  if (S.audio) L.splice(4, 0, 'Pressed from your own track ' + S.audio.file + ': ' + S.audio.bpm + ' bpm, ' + (JP.KEYS[S.audio.tonic] + (S.audio.minor ? ' minor' : ' major')).replace('♭', 'b').replace('♯', '#') + '. Both sides are remixes of it.');
   [['SIDE A', S.A, S.rA], ['SIDE B', S.B, S.rB]].forEach(([h, p, r]) => { const c = p.chapters[0];
-    L.push(h + '   ' + (h === 'SIDE B' ? p.remix + '   ' : '') + c.records[0].arts.map((a) => a.name).join(' + ') + '   ' + p.bpm + ' bpm   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + '   ' + fmtMin(r.totalTicks, p.bpm));
+    L.push(h + '   ' + (h === 'SIDE B' || S.audio ? p.remix + '   ' : '') + c.records[0].arts.map((a) => a.name).join(' + ') + '   ' + p.bpm + ' bpm   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + '   ' + fmtMin(r.totalTicks, p.bpm));
     const seen = new Set(); r.tracks.forEach((t) => { const st = (t.name.match(/(Strings [AB] )?for STRIIIINGS, Style (.*)$|PERRCS, Style (.*)$/) || []); const sty = st[2] || st[3] || '';
       const k = t.role + t.player + sty; if (seen.has(k)) return; seen.add(k);
       L.push('   ' + (JP.ROLE_NAME[t.role] || 'Motif').padEnd(11) + t.player.padEnd(22) + (sty ? 'Style: ' + sty + '. ' : '') + 'Sound: ' + t.colour + '. ' + (t.player === 'Plain MIDI' && (t.role === 'beats' || t.role === 'perc') ? 'standard drum notes: kick C1, snare D1, hihat F#1' : HINT(t.player))); });
@@ -8615,17 +8729,18 @@ const png = (cv) => { const b = atob(cv.toDataURL('image/png').split(',')[1]), u
 function pressIt() {
   const nm = (S.name || '').trim() || 'Untitled', base = 'DM_Record_' + safe(nm).slice(0, 50) + '_' + S.A.bpm + 'bpm', files = [], tpl = S.tplOn && S.tplLayout;
   [['A', S.A, S.rA], ['B', S.B, S.rB]].forEach(([sd, p, r]) => {
-    const title = sd === 'A' ? nm : nm + ' (' + p.remix + ')', fn = safe(title).slice(0, 70), dir = base + '/Side_' + sd + '/', meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: r.markers.map((m) => Object.assign({}, m, { text: sd === 'A' ? nm : p.remix })) };
+    const title = sd === 'A' && !S.audio ? nm : nm + ' (' + p.remix + ')', fn = safe(title).slice(0, 70), dir = base + '/Side_' + sd + '/', meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: r.markers.map((m) => Object.assign({}, m, { text: sd === 'A' && !S.audio ? nm : p.remix })) };
     files.push({ name: dir + fn + '.mid', data: JR.writeMidi(tpl ? JR.fitTemplate(r.tracks, S.tplLayout, p) : r.tracks, meta) });
     const by = {}; r.tracks.forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + 'Layers/' + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: title + ' ' + k })) });
     files.push({ name: base + '/' + safe(nm).slice(0, 50) + '_Side_' + sd + '.png', data: png($('#cv' + sd)) }); });
+  if (S.audio) files.push({ name: base + '/' + safe(nm).slice(0, 50) + '_Original.png', data: png($('#cvO')) });
   files.push({ name: base + '/Rack_Card.txt', data: rackCard() });
   const a = document.createElement('a'); a.href = URL.createObjectURL(zip(files)); a.download = base + '.zip'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   return files.length;
 }
 $('#make').onclick = () => { const b = $('#make'), m = $('#makeMsg'); b.disabled = true; b.textContent = 'Pressing the vinyl...';
-  setTimeout(() => { try { const n = pressIt(); m.textContent = 'Side A, side B and two record pictures in ' + n + ' files. Enjoy your record.'; } catch (e) { m.textContent = 'Something went wrong: ' + e.message; console.error(e); }
+  setTimeout(() => { try { const n = pressIt(); m.textContent = 'Side A, side B and ' + (S.audio ? 'three' : 'two') + ' record pictures in ' + n + ' files. Enjoy your record.'; } catch (e) { m.textContent = 'Something went wrong: ' + e.message; console.error(e); }
     b.disabled = false; b.textContent = 'Press it'; }, 30); };
 
 // ---------- listen: a sketch of one side with small browser sounds ----------
