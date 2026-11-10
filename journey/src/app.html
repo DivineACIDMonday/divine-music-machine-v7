@@ -163,7 +163,9 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 <section class="chs" id="chs"></section>
 
 <section class="card" style="align-items:center;text-align:center">
-  <button class="btn big" id="make">Make the journey</button>
+  <div class="sh" style="justify-content:center"><span class="st serif">Name your journey</span></div>
+  <div class="row" style="justify-content:center;flex-wrap:nowrap;width:100%"><input id="jname" class="pk" style="flex:0 1 420px;max-width:none;min-width:0;font-size:17px;padding:9px 12px;min-height:44px" aria-label="Name your journey" maxlength="80"><button class="dz" id="jdice" title="Let the oracle suggest a name" aria-label="Suggest a name"></button></div>
+  <button class="btn big" id="make">Make it</button>
   <div class="muted small" id="makeMsg">One zip: the whole journey as one MIDI file, a folder per chapter with a file per layer, your records each on their own, and a rack card that tells you which plugin goes on which track.</div>
 </section>
 <details class="card how"><summary><span class="st serif">How it works</span></summary><ol>
@@ -174,7 +176,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
   <li>Listen to the sketch in the browser. It plays the journey with simple sounds, your plugins will sound far better.</li>
   <li>Your records: press your own records from one to three styles, as many as you like. The story decides which chapter plays which record and mixes them inside the chapter. Every record also comes out on its own in the Records folder.</li>
   <li>Built your DAW from a result? Choose My template and load that MIDI: every new journey lands on exactly those tracks.</li>
-  <li>Make the journey. Open Rack_Card.txt, load the plugins it names, and drop every file on bar 1.</li>
+  <li>Name your journey, or let the dice suggest a name, and press Make it. Open Rack_Card.txt, load the plugins it names, and drop every file on bar 1.</li>
 </ol></details>
 <footer>© 2026 Divine Monday</footer>
 </div>
@@ -266,7 +268,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 function replan() {
   const recent = ls.get('journey-recent', []);
   S.plan = JP.plan(S.words, { mode: S.mode, template: S.tplOn && S.tplLayout ? S.tplLayout : null, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov, records: S.recOn ? S.recs : null });
-  stopPlay(); PV = null;
+  stopPlay(); PV = null; if (!S.nameMine) setName(suggestName());
   drawMap(); drawChapters();
 }
 function remember() { // after a journey is made (phase 2) this list makes the next one choose differently
@@ -400,7 +402,7 @@ const HINT = (player) => ({ 'Plain MIDI': 'any instrument you like', 'XO': 'your
   'STRIIIINGS': 'set the Style named in the track, Latch off, Sync on Note', 'Berlin': 'one patch per track, the name tells which; CC70 switches articulations', 'BBC': 'one instrument per track, the name tells which; key switches are in the file',
   'Presence': 'any preset', 'Diva': 'any preset' }[player] || 'switch the plugin to Instrument mode');
 function rackCard(p, res) {
-  const L = ['DIVINE JOURNEY MACHINE . RACK CARD', '', S.words.map((w) => w.word).join(' . ') + '   ' + p.bpm + ' bpm, one tempo for the whole journey', (p.mode === 'mixed' ? 'Mixed journey: every chapter is a song of its own. ' : 'Deep journey: one long arc. ') + 'Arc: ' + p.arc.name + '. Opens: ' + p.opening.name + '. Ends: ' + p.ending.name + '.', ''];
+  const L = ['DIVINE JOURNEY MACHINE . RACK CARD', '', ((S.name || '').trim() ? S.name.trim().toUpperCase() : ''), S.words.map((w) => w.word).join(' . ') + '   ' + p.bpm + ' bpm, one tempo for the whole journey', (p.mode === 'mixed' ? 'Mixed journey: every chapter is a song of its own. ' : 'Deep journey: one long arc. ') + 'Arc: ' + p.arc.name + '. Opens: ' + p.opening.name + '. Ends: ' + p.ending.name + '.', ''];
   p.chapters.forEach((c, i) => { const b0 = Math.round(res.timeline[i].start / JR.BAR) + 1, b1 = b0 + c.bars - 1;
     L.push((i + 1) + '. ' + c.word.toUpperCase() + '   bars ' + b0 + ' to ' + b1 + '   ' + c.key.replace('♭', 'b').replace('♯', '#') + '   ' + c.feel.name + ' (feels like ' + c.feelsLike + ' bpm)');
     if (c.records) L.push('   Records: ' + c.records.map((r) => r.name).join(', then ')); else L.push('   Leader: ' + c.lead.name + ' (' + JP.MACHINES[c.lead.machine].name + ')' + (c.guests.length ? '. Guests: ' + c.guests.map((g) => g.name).join(', ') : ''));
@@ -412,10 +414,18 @@ function rackCard(p, res) {
   L.push('Drop every file on bar 1. Everything already sits in its place.', '', '(c) 2026 Divine Monday');
   return new TextEncoder().encode(L.join('\r\n'));
 }
+// ---------- the name of the journey: yours, or a line the oracle suggests from the five words ----------
+function suggestName() { const w = S.words.map((x) => x.word), r = () => w[Math.floor(Math.random() * 5)];
+  const pats = [() => 'The ' + w[4] + ' of ' + w[3], () => w[0] + ' ' + w[4], () => w[2] + ' ' + w[3], () => 'A ' + w[0] + ' ' + w[3], () => w[1] + ' into ' + w[4], () => 'The ' + w[2] + ' ' + w[4], () => w[3] + ', ' + w[0] + ' and ' + w[4], () => 'Where the ' + w[3] + ' is ' + w[0]];
+  let n = pats[Math.floor(Math.random() * pats.length)](); if (n === S.name) n = r() + ' ' + r(); return n; }
+function setName(n) { S.name = n; $('#jname').value = n; }
+$('#jdice').innerHTML = DIE; $('#jdice').onclick = () => { S.nameMine = false; setName(suggestName()); };
+$('#jname').oninput = () => { S.name = $('#jname').value; S.nameMine = !!S.name.trim(); };
 function makeJourney() {
   const p = S.plan, ctx = { E: window.DMM, P: window.PercMotor, S: window.SCORE, Y: window.SYM, JP };
-  const res = JR.render(p, ctx), title = 'Divine Journey ' + S.words.map((w) => w.word).join(' '), meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: res.markers };
-  const base = 'DM_Journey_' + safe(S.words.map((w) => w.word).join('_')) + '_' + p.bpm + 'bpm', files = [];
+  const jn = (S.name || '').trim() || suggestName();
+  const res = JR.render(p, ctx), title = jn, meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: res.markers };
+  const base = 'DM_Journey_' + safe(jn).slice(0, 60) + '_' + p.bpm + 'bpm', files = [];
   files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(S.tplOn && S.tplLayout ? JR.fitTemplate(res.tracks, S.tplLayout, p) : res.tracks, meta) });
   p.chapters.forEach((c, i) => { const dir = base + '/' + String(i + 1).padStart(2, '0') + '_' + safe(c.word) + '/';
     const by = {}; res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
@@ -436,7 +446,7 @@ function makeJourney() {
 }
 $('#make').onclick = () => { const b = $('#make'), m = $('#makeMsg'); b.disabled = true; b.textContent = 'The orchestra is tuning...';
   setTimeout(() => { try { const r = makeJourney(); m.textContent = r.tracks + ' tracks in ' + r.files + ' files. Have a good journey.'; } catch (e) { m.textContent = 'Something went wrong: ' + e.message; console.error(e); }
-    b.disabled = false; b.textContent = 'Make the journey'; }, 30); };
+    b.disabled = false; b.textContent = 'Make it'; }, 30); };
 
 // ---------- listen: a sketch of the journey with small browser sounds ----------
 let AC = null, PV = null, PL = null;
