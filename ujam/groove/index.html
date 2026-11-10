@@ -2614,7 +2614,9 @@ E.renderBar = function (song, part, gbar, res, opts) {
     let fk = isLastOfSec && nextSec ? sec.fill || dflt : dflt;
     if (fk === 'auto' && endK && machine) fk = endK; // the machine's own stop into what comes next
     if (fk !== 'auto' && fk !== 'none') { if (fk === 'hit' || fk === 'half' || !sec.fill && E.STOPS.includes(fk)) E.stopLanes(lanes, fk, N); else E.applyFill(song, lanes, fk, N, r); }
-    if (inBar === 0 && sec !== song.sections[0]) { const prev = song.sections[si - 1]; if (prev && (prev.fill === 'gift' || prev.fill === 'crash' || prev.fill === 'hit' || song.arr && !prev.fill && !song.dgm && (E.arrangeOf(song, si - 1) || {}).stop === 'gift') && lanes[CR]) lanes[CR][0] = 110; }
+    if (inBar === 0 && sec !== song.sections[0]) { const prev = song.sections[si - 1]; if (prev && (prev.fill === 'gift' || prev.fill === 'crash' || prev.fill === 'hit' || song.arr && !prev.fill && !song.dgm && (E.arrangeOf(song, si - 1) || {}).stop === 'gift') && lanes[CR]) lanes[CR][0] = 110;
+      // a build lands with a crash on the one of the chorus or the drop (the machine's own songs)
+      else if (prev && machine && song.arr && !song.dgm && !prev.fill && (prev.type === 'build' || prev.type === 'prechorus') && (type === 'chorus' || type === 'drop') && lanes[CR] && song.genre !== 'ambient') lanes[CR][0] = Math.max(lanes[CR][0], 104); }
     if (fk === 'auto' && song.genre !== 'ambient' && (type === 'fill' || isLastOfSec && nextSec && nextSec.type !== sec.type && nextSec.type !== 'fill') && song.parts.beat.mode !== 'off' && type !== 'break') {
       const st = Math.floor(N / 2);
       const fl = song.genre === 'techno' ? CP : SN;
@@ -2622,7 +2624,11 @@ E.renderBar = function (song, part, gbar, res, opts) {
       for (let s = st; s < N; s++) if (lanes[K][s] && s !== st) lanes[K][s] = 0;
       if (nextSec && (nextSec.type === 'chorus' || nextSec.type === 'drop' || nextSec.type === 'break')) { lanes[OH][N - 1] = 0; lanes[HH][N - 1] = 0; }
     }
-    if ((type === 'build' || type === 'prechorus') && machine) { // rising roll on the last bars
+    // the rising roll on the last bars of a build: played, not printed (learned in the Journey Machine). In 4/4 it leapfrogs over
+    // snare, perc and clap with accents on the beat, ghost notes, flams and a breathing hand, thirty seconds only at the very end;
+    // other metres keep the straight roll
+    const playedRoll = (type === 'build' || type === 'prechorus') && machine && N === 16 && sec.bars - inBar <= 2;
+    if ((type === 'build' || type === 'prechorus') && machine && !playedRoll) { // rising roll on the last bars
       const left = sec.bars - inBar;
       if (left <= 2) for (let s = 0; s < N; s += (left === 1 ? 1 : 2)) lanes[SN][s] = Math.max(lanes[SN][s], 50 + Math.round(s / N * 50));
     }
@@ -2641,6 +2647,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     E.muteLanes(sec, inBar, lanes);
     if (opts.lanes) return { lanes }; // the grid asks what this bar really plays
     lanes.forEach((l, li) => l.forEach((v, s) => { if (v > 0) notes.push({ t: s * E.STEP, d: E.STEP, lane: li, v }); }));
+    if (playedRoll) notes.push(...E.playedRoll(song, gbar, sec.bars - inBar === 1, N));
     if (machine && song.arr && song.genre === 'triphop') notes.forEach((n) => { if (n.lane === SN && n.v >= 80) n.t += 14; }); // laid back: the trip hop snare comes a little late
     if (machine && song.arr && E.dnbOn(song) && !E.CALM_TYPES.includes(type)) notes.forEach((n) => { if (Math.round(n.t / E.STEP) % 2 === 1) n.t += 12; }); // the break swings a little, like a sampled break
   } else if (lastBar && !bo) { // ending: everyone lands together on the one
@@ -2946,6 +2953,21 @@ const HARM_G = { house: { stabs: 1.5, full: 1.3, drone: 0.6 }, acid: { none: 1.8
 const LEAD_W = { techno: { melody: 4, riff: 2, chords: 1 }, triphop: { melody: 6, riff: 1.5, chords: 1 }, hiphop: { melody: 4, riff: 2, chords: 1.2 }, newwave: { melody: 5, riff: 1.5, chords: 1 }, blues: { melody: 7, riff: 0.6, chords: 1 }, free: { melody: 5, riff: 1.5, chords: 1 }, house: { melody: 5, riff: 1, chords: 2 }, acid: { melody: 2, riff: 4, chords: 0.5 }, trance: { melody: 6, riff: 1, chords: 1.5 }, eurodance: { melody: 6, riff: 1, chords: 1 }, breakbeat: { melody: 3, riff: 3, chords: 1 }, ebm: { melody: 3, riff: 4, chords: 0.5 }, punk: { melody: 5, riff: 1, chords: 2 }, dnb: { melody: 3, riff: 3, chords: 1 }, garage: { melody: 4, riff: 2, chords: 1.5 }, dub: { melody: 3, riff: 3, chords: 1 }, synthwave: { melody: 6, riff: 1.5, chords: 1 }, funk: { melody: 3, riff: 3, chords: 2 }, dubtechno: { melody: 1, riff: 1, chords: 5 }, minimal: { melody: 2, riff: 4, chords: 2 }, ambient: { melody: 5, riff: 0.3, chords: 2 }, chillout: { melody: 5, riff: 1, chords: 1.5 }, club: { melody: 2, riff: 4, chords: 2 }, divine: { melody: 5, riff: 2, chords: 1.5 }, songwriter: { melody: 7, riff: 0.5, chords: 0.8 } };
 const INTRO_W = { divine: { kick: 3, hats: 2, solo: 1 }, dubtechno: { kick: 3, hats: 2, silent: 1 }, minimal: { kick: 3, hats: 2 }, ambient: { solo: 2, silent: 3 }, chillout: { solo: 2, hats: 1.5, silent: 1 }, club: { kick: 3, hats: 2, break: 1 }, dnb: { break: 3, hats: 2, solo: 1.5, silent: 1 }, garage: { hats: 2.5, kick: 1.5, solo: 1, break: 1, silent: 1 }, dub: { solo: 3, silent: 1.5, hats: 1 }, synthwave: { solo: 2.5, hats: 1.5, kick: 1.5, silent: 1 }, funk: { count: 2, solo: 2, break: 1.5, hats: 1, silent: 1 }, punk: { count: 4, solo: 2, silent: 1 }, newwave: { count: 1.5, hats: 2, solo: 2, break: 1, kick: 1, silent: 1 }, blues: { count: 2, solo: 2, hats: 2, silent: 1 }, hiphop: { solo: 3, break: 2, hats: 1.5, kick: 1, silent: 1, toms: 0.5 }, ebm: { kick: 3, break: 1, solo: 1, silent: 1 }, house: { hats: 2, kick: 2.5, solo: 1, break: 1, silent: 1 }, acid: { kick: 2, break: 2, hats: 1.5, silent: 1 }, trance: { kick: 2.5, hats: 2, silent: 1, break: 1 }, eurodance: { kick: 2, solo: 2, silent: 1 }, breakbeat: { break: 3, solo: 2, silent: 1, toms: 1 }, techno: { kick: 4, hats: 2.5, break: 1, silent: 1, toms: 0.5 }, def: { hats: 2.5, solo: 2.5, break: 2, kick: 1, toms: 1, silent: 1 }, songwriter: { solo: 3, silent: 1, count: 0.5 } };
 const STOP_P = { punk: 0.6, breakbeat: 0.6, ebm: 0.5, house: 0.45, acid: 0.4, trance: 0.4, eurodance: 0.5, techno: 0.45, triphop: 0.5, hiphop: 0.6, newwave: 0.5, blues: 0.35, free: 0.5, dnb: 0.5, garage: 0.45, dub: 0.55, synthwave: 0.4, funk: 0.6, dubtechno: 0.1, minimal: 0.2, ambient: 0, chillout: 0.25, club: 0.4, divine: 0.35, songwriter: 0.25 };
+// the played roll, one bar of it: the hand moves over three drums, louder towards the end, a little late and early like a drummer
+E.playedRoll = function (song, gbar, last, N) {
+  const R = rng(hash(song.seed, 'roll', gbar)), out = [], LANES = [SN, PC, CP], ST = E.STEP, BAR = N * ST, beat = ST * 4;
+  const step = last ? ST / 2 : ST, start = last ? 0.5 : 0;
+  for (let t = 0; t < BAR; t += (last && t >= BAR / 2 ? step : ST * (last ? 1 : 2))) {
+    const pr = start + (t / BAR) * 0.5, turn = Math.floor(t / (last ? beat / 2 : beat)), lane = LANES[turn % 3], onBeat = t % beat === 0;
+    const wave = 0.85 + 0.15 * Math.sin(t / BAR * Math.PI);
+    let v = (onBeat ? 16 : -6) + (44 + 66 * pr) * wave; if (!onBeat && R() < 0.3) v *= 0.55;
+    const jit = Math.round((R() - 0.5) * 12);
+    out.push({ t: Math.max(0, t + jit), d: 40, lane, v: Math.round(clamp(v, 10, 124)) });
+    if (onBeat && R() < 0.12) out.push({ t: Math.max(0, t + jit - 20), d: 30, lane, v: Math.round(clamp(v * 0.45, 8, 90)) }); // a flam
+    if (pr > 0.75 && turn % 2 && R() < 0.5) out.push({ t: Math.min(BAR - 10, t + step / 2 + jit), d: 30, lane: LANES[(turn + 1) % 3], v: Math.round(clamp(v * 0.7, 8, 110)) }); // they answer each other
+  }
+  return out;
+};
 E.STOPS = ['stop', 'gift', 'hit', 'drop', 'half']; // fills that stop the whole band, not only the drums
 // the plan of one section: who leads, what the harmony does, how it ends, who comes in when
 E.arrangeOf = function (song, si, salt) {
