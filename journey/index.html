@@ -8033,9 +8033,13 @@ JR.fitTemplate = (tracks, tpl, plan) => {
     // an orchestra part without its own track: every note goes to the template instrument whose register fits it best
     const orch = here.filter((o) => o.t.role === 'orch' && (o.t.player === tr.player || true)); if (!orch.length) continue;
     tr.notes.forEach((n) => { if (n.ks) return; const o = orch.reduce((a, b) => (Math.abs(centre(b.t.inst) - n.p) < Math.abs(centre(a.t.inst) - n.p) ? b : a)); o.notes.push(n); }); }
-  return out.map((o) => { let name = o.name;
-    if (!name) { const c = o.t.ch >= 0 ? plan.chapters[o.t.ch] : null; name = c ? (o.t.ch + 1) + ' ' + c.word + ' . ' + o.t.key + ' . ' + plan.bpm + ' bpm' : o.t.key + ' . ' + plan.bpm + ' bpm'; }
-    return { name, role: o.t.role, notes: o.notes.sort((a, b) => a.t - b.t), cc: o.cc }; });
+  // every track keeps the name of its place in your template; an empty track gets one silent note after the end,
+  // because a DAW drops empty tracks on import and everything below would shift up one place
+  const end = Math.max(0, ...tracks.flatMap((t) => t.notes.map((n) => n.t + n.d))) + BAR;
+  return out.map((o) => { const c = o.t.ch >= 0 ? plan.chapters[o.t.ch] : null;
+    const name = (c ? (o.t.ch + 1) + ' ' + c.word + ' . ' : '') + o.t.key + ' . ' + plan.bpm + ' bpm';
+    const notes = o.notes.sort((a, b) => a.t - b.t); if (!notes.length) notes.push({ t: end, d: 30, p: 0, v: 1 });
+    return { name, role: o.t.role, notes, cc: o.cc }; });
 };
 JR.PPQ = PPQ; JR.BAR = BAR;
 })();
