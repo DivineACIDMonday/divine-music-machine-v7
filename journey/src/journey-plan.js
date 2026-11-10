@@ -128,6 +128,7 @@ JP.ARCS = [
   { id: 'open', name: 'Open ending', f: (t) => 0.25 + 0.7 * t + 0.1 * Math.sin(t * 9) },
   { id: 'valley', name: 'Valley', f: (t) => 0.9 - 1.3 * Math.sin(Math.PI * t) * 0.55 },
   { id: 'plateau', name: 'High plateau', f: (t) => (t < 0.2 ? 0.3 + 3 * t : t > 0.8 ? 0.9 - 3 * (t - 0.8) : 0.9) },
+  { id: 'aida', name: 'The long patient journey', f: (t) => (t < 0.25 ? 0.2 + 0.65 * Math.sin(Math.PI / 2 * t / 0.25) ** 1.5 : t < 0.45 ? 0.82 : t < 0.6 ? 0.7 : t < 0.72 ? 0.7 - 0.4 * Math.sin(Math.PI * (t - 0.6) / 0.12) : t < 0.9 ? 0.6 + 0.4 * (t - 0.72) / 0.18 : 1 - 0.4 * (t - 0.9) / 0.1) },
   { id: 'twin', name: 'Two summits, the second higher', f: (t) => 0.25 + 0.5 * Math.exp(-((t - 0.3) ** 2) / 0.012) + 0.7 * Math.exp(-((t - 0.75) ** 2) / 0.015) },
 ];
 JP.OPENINGS = [
@@ -135,6 +136,7 @@ JP.OPENINGS = [
   { id: 'threat', name: 'Threat', start: 0.45, desc: 'dark, menacing drums', likes: { tension: 1, light: -1 } },
   { id: 'midst', name: 'In the middle of it', start: 0.7, desc: 'straight into a swinging groove', likes: { speed: 1, warm: 0.8 } },
   { id: 'motif', name: 'The motif alone', start: 0.12, desc: 'bare, like a question', likes: { weight: -1, speed: -0.4 } },
+  { id: 'overture', name: 'Overture', start: 0.15, desc: 'harmony first, the beat slides in underneath', likes: { weight: 0.6, light: 0.4, warm: 0.4 } },
   { id: 'bang', name: 'A bang', start: 0.95, desc: 'straight onto the summit', likes: { weight: 1, speed: 0.8 } },
 ];
 JP.ENDINGS = [
@@ -188,7 +190,7 @@ JP.plan = (words, opts = {}) => {
   // arc: the words choose its shape (with the dice)
   const arcW = JP.ARCS.map((a) => { const e = [0.1, 0.3, 0.5, 0.7, 0.9].map(a.f); const pk = e.indexOf(Math.max(...e));
     return 1 + 0.6 * clamp(avg.speed + avg.weight, 0, 2) * (a.id === 'summit' || a.id === 'plateau' ? 1 : 0) + 0.6 * clamp(-avg.light, 0, 1) * (a.id === 'dawn' ? 1 : 0) + 0.5 * clamp(avg.tension, 0, 1) * (a.id === 'three' || a.id === 'valley' ? 1 : 0) + (pk === 4 && ch[4].c.speed > 0 ? 0.4 : 0); });
-  const arc = pickW(r, JP.ARCS, arcW);
+  const arc = pickW(r, JP.ARCS, arcW.map((w, k) => (JP.ARCS[k].id === 'aida' ? w * 1.6 : w)));
   const opening = pickW(r, JP.OPENINGS, JP.OPENINGS.map((o) => Math.exp(1.4 * likeScore(o.likes, ch[0].c))));
   const ending = pickW(r, JP.ENDINGS, JP.ENDINGS.map((o) => Math.exp(1.4 * likeScore(o.likes, ch[n - 1].c))));
 
@@ -264,7 +266,8 @@ JP.plan = (words, opts = {}) => {
     x.out = breathHere ? 'breath' : pickW(r, Object.keys(w), Object.values(w));
     if (x.out === 'breath' && (rise > 0.05 || y.eStart >= 0.4)) x.out = 'riser'; // never a pause before a bang: the energy has to be built
     // a transition is a moment of its own: the next song is already growing while the old one still plays
-    x.overlap = x.out === 'cut' || x.out === 'breath' ? 0 : x.out === 'riser' ? 16 : x.out === 'filter' || d > 1.6 || x.feel.id !== y.feel.id ? 32 : 16; }); // a fine filter bridge gets 32 bars of respect
+    const deep = opts.mode !== 'mixed'; // a Deep journey mixes long and hypnotic, a Mixed journey like songs on an album
+    x.overlap = x.out === 'cut' || x.out === 'breath' ? 0 : x.out === 'riser' ? 16 : deep ? (x.out === 'filter' ? 48 : 32) : x.out === 'filter' || d > 1.6 || x.feel.id !== y.feel.id ? 32 : 16; }); // a fine filter bridge gets 32 bars of respect
 
   // keys: only to neighbours that sound beautiful, with one golden step up at the summit sometimes
   const top = ch.reduce((a, x, i) => (x.energy > ch[a].energy ? i : a), 0);
@@ -290,7 +293,7 @@ JP.plan = (words, opts = {}) => {
     x.players = roles.map((role) => ({ role, player: pick(role, x), swapped: false })); });
 
   // an awakening needs something soft to wake up with: chords join the first chapter if it has no harmony yet
-  if ((opening.id === 'awaken' || opening.id === 'motif') && !ch[0].players.some((p) => p.role === 'chords' || p.role === 'orch'))
+  if ((opening.id === 'awaken' || opening.id === 'motif' || opening.id === 'overture') && !ch[0].players.some((p) => p.role === 'chords' || p.role === 'orch'))
     ch[0].players.push({ role: 'chords', player: pick('chords', ch[0]), swapped: false });
 
   // the band: a guest brings its own instrument; dance is the ground (a beat in every chapter, one exception at most,
