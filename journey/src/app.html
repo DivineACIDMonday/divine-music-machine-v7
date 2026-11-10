@@ -47,6 +47,7 @@ details.rack summary{cursor:pointer;list-style:none;display:flex;align-items:bas
 details.rack summary::-webkit-details-marker{display:none}
 .rk{display:grid;grid-template-columns:130px 1fr;gap:8px 12px;align-items:start;margin-top:12px}
 .rk .el{color:var(--mu);font-size:14px;padding-top:7px}
+.tpl{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:12px}.tpl .tl{color:var(--mu);font-size:14px;min-width:120px}.tplf{cursor:pointer;font-size:14px}.tplh{flex-basis:100%}
 .fixed{display:flex;gap:10px;align-items:flex-start;margin-top:12px;font-size:14px;color:var(--mu);cursor:pointer}.fixed b{color:var(--tx)}.fixed input{margin-top:3px;accent-color:#E7B65C;width:17px;height:17px;flex:none}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{background:#0F131C;border:1px solid var(--line);border-radius:999px;padding:6px 11px;cursor:pointer;font-size:13.5px;color:var(--mu);min-height:34px}
@@ -115,7 +116,11 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 <details class="card rack" id="rackBox">
   <summary><span class="st serif">Your rack</span><span class="muted" id="rackSum"></span></summary>
   <div class="muted small" style="margin-top:6px">Tick the instruments you want to use. The machine only chooses from your ticks. Kept for this session.</div>
-  <label class="fixed"><input type="checkbox" id="fixed"> <span><b>Same tracks every time.</b> One track per instrument in the whole journey file, always in the same order, so your DAW template keeps working. The machine uses the first plugin you ticked per element.</span></label>
+  <div class="tpl"><span class="tl"><b>Tracks</b></span>
+    <div class="seg" id="tplMode"><button data-m="free">Free</button><button data-m="mine">My template</button></div>
+    <label class="btn tplf">Load the MIDI you built your template from<input type="file" id="tplFile" accept=".mid,.midi" hidden></label>
+    <span class="muted small" id="tplInfo"></span>
+    <div class="muted small tplh">Free: every journey gets its own tracks, good for building a new template. My template: the new journey lands on exactly the tracks, in exactly the order, of the MIDI you built your DAW from, so every instrument you dragged in stays right.</div></div>
   <div class="rk" id="rack"></div>
 </details>
 
@@ -153,6 +158,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
   <li>Deep journey is one long arc through all chapters. Mixed journey makes every chapter a song of its own, with its own build, drop and break, mixed into the next.</li>
   <li>Every word becomes a chapter: a leading machine, guests, a feel, a key. Change anything on the cards, or roll it.</li>
   <li>Listen to the sketch in the browser. It plays the journey with simple sounds, your plugins will sound far better.</li>
+  <li>Built your DAW from a result? Choose My template and load that MIDI: every new journey lands on exactly those tracks.</li>
   <li>Make the journey. Open Rack_Card.txt, load the plugins it names, and drop every file on bar 1.</li>
 </ol></details>
 <footer>© 2026 Divine Monday</footer>
@@ -178,7 +184,8 @@ const S = {
   locks: [false, false, false, false, false],
   minutes: ss.get('journey-min', 40),
   bpm: ss.get('journey-bpm', 0),
-  fixed: ss.get('journey-fixed', true),
+  tpl: (() => { try { return JSON.parse(localStorage.getItem('journey-template') || 'null'); } catch (e) { return null; } })(),
+  tplOn: ss.get('journey-tpl-on', false),
   mode: ss.get('journey-mode', 'deep'),
   seed: (Math.random() * 4294967296) >>> 0,
   plan: null,
@@ -222,7 +229,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 // ---------- plan + map ----------
 function replan() {
   const recent = ls.get('journey-recent', []);
-  S.plan = JP.plan(S.words, { mode: S.mode, fixed: S.fixed, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
+  S.plan = JP.plan(S.words, { mode: S.mode, template: S.tplOn && S.tplLayout ? S.tplLayout : null, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov });
   stopPlay(); PV = null;
   drawMap(); drawChapters();
 }
@@ -373,7 +380,7 @@ function makeJourney() {
   const p = S.plan, ctx = { E: window.DMM, P: window.PercMotor, S: window.SCORE, Y: window.SYM, JP };
   const res = JR.render(p, ctx), title = 'Divine Journey ' + S.words.map((w) => w.word).join(' '), meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: res.markers };
   const base = 'DM_Journey_' + safe(S.words.map((w) => w.word).join('_')) + '_' + p.bpm + 'bpm', files = [];
-  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(S.fixed ? JR.fix(res.tracks, S.rack, window.SYM).map((t) => Object.assign(t, { name: t.name + ' . ' + p.bpm + ' bpm' })) : res.tracks, meta) });
+  files.push({ name: base + '/00_Whole_Journey/' + base + '.mid', data: JR.writeMidi(S.tplOn && S.tplLayout ? JR.fitTemplate(res.tracks, S.tplLayout, p) : res.tracks, meta) });
   p.chapters.forEach((c, i) => { const dir = base + '/' + String(i + 1).padStart(2, '0') + '_' + safe(c.word) + '/';
     const by = {}; res.tracks.filter((t) => t.chapter === i).forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: (i + 1) + ' ' + c.word + ' ' + k })) }); });
@@ -453,7 +460,25 @@ function drawLen() { document.querySelectorAll('#len button').forEach((b) => b.s
 document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.minutes = +b.dataset.m; ss.set('journey-min', S.minutes); drawLen(); replan(); }; });
 (() => { const t = $('#tempo'); for (let b = 90; b <= 134; b += 2) t.add(new Option(b + ' bpm', b)); t.value = String(S.bpm || 0);
   t.onchange = () => { S.bpm = +t.value; ss.set('journey-bpm', S.bpm); replan(); }; })();
-$('#fixed').checked = S.fixed; $('#fixed').onchange = (e) => { S.fixed = e.target.checked; ss.set('journey-fixed', S.fixed); replan(); };
+// ---------- your template ----------
+function midiNames(buf) { const d = new Uint8Array(buf), names = []; let p = 14; const u32 = (o) => (d[o] << 24) | (d[o + 1] << 16) | (d[o + 2] << 8) | d[o + 3];
+  if (String.fromCharCode(...d.slice(0, 4)) !== 'MThd') throw new Error('this is not a MIDI file');
+  while (p + 8 <= d.length) { const id = String.fromCharCode(...d.slice(p, p + 4)), len = u32(p + 4), end = p + 8 + len; let q = p + 8, name = null, rs = 0;
+    if (id === 'MTrk') { while (q < end && name == null) { while (d[q] & 128) q++; q++; let st = d[q];
+        if (st === 0xff) { const ty = d[q + 1]; q += 2; let l = 0; while (d[q] & 128) l = (l << 7) | (d[q++] & 127); l = (l << 7) | d[q++]; if (ty === 3) name = new TextDecoder().decode(d.slice(q, q + l)); q += l; }
+        else if (st === 0xf0 || st === 0xf7) { q++; let l = 0; while (d[q] & 128) l = (l << 7) | (d[q++] & 127); l = (l << 7) | d[q++]; q += l; }
+        else { if (st & 128) { rs = st; q++; } const hi = rs & 0xf0; q += hi === 0xc0 || hi === 0xd0 ? 1 : 2; } }
+      names.push(name || ''); }
+    p = end; }
+  return names.slice(1); } // the first track is the conductor
+function useTemplate() { S.tplLayout = S.tpl ? JR.parseTemplate(S.tpl.names, window.SYM) : null;
+  $('#tplInfo').textContent = S.tpl ? S.tpl.file + ': ' + S.tpl.names.length + ' tracks' + (S.tplLayout && S.tplLayout.perChapter ? ', a track per chapter' : '') : 'no template loaded yet';
+  document.querySelectorAll('#tplMode button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.m === 'mine') === !!S.tplOn ? 'true' : 'false')); }
+document.querySelectorAll('#tplMode button').forEach((b) => { b.onclick = () => { if (b.dataset.m === 'mine' && !S.tpl) { $('#tplFile').click(); return; } S.tplOn = b.dataset.m === 'mine'; ss.set('journey-tpl-on', S.tplOn); useTemplate(); replan(); }; });
+$('#tplFile').onchange = async (e) => { const f = e.target.files[0]; if (!f) return; try { const names = midiNames(await f.arrayBuffer());
+    S.tpl = { file: f.name, names }; try { localStorage.setItem('journey-template', JSON.stringify(S.tpl)); } catch (er) { /* kept for this visit only */ }
+    S.tplOn = true; ss.set('journey-tpl-on', true); useTemplate(); replan(); } catch (er) { $('#tplInfo').textContent = 'Could not read that file: ' + er.message; } e.target.value = ''; };
+useTemplate();
 if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
 drawRack(); drawWords(); drawLen(); replan();
 </script>

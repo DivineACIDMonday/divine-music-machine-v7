@@ -83,18 +83,18 @@ JP.dist = (a, b) => JP.DIMS.reduce((s, d) => s + (a[d] - b[d]) ** 2 * (d === 'wo
 // ---------- the rack ----------
 // range = the notes the instrument plays well; drums = a drum plugin (only plays drum roles)
 JP.RACK = {
-  beats: { name: 'Beats', icon: '', items: ['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno', 'Kick 2', 'Kick 1'] },
-  perc: { name: 'Percussion', icon: '', items: ['XO', 'Impact', 'Beatmaker', 'Tekno', 'PERRCS'] },
-  melody: { name: 'Melody', icon: '', items: ['Usynth', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Virtual Pianist Score', 'Presence', 'Diva'] },
-  chords: { name: 'Chords', icon: '', items: ['Usynth', 'Virtual Pianist Score', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Presence', 'Diva'] },
-  bass: { name: 'Bass', icon: '', items: ['SubCraft', 'Royal', 'Slap', 'Diva', 'Usynth'] },
+  beats: { name: 'Beats', icon: '', items: ['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno'] },
+  perc: { name: 'Percussion', icon: '', items: ['XO', 'Impact', 'EZdrummer', 'Virtual Drummer', 'Beatmaker', 'Tekno', 'PERRCS'] },
+  melody: { name: 'Melody', icon: '', items: ['Usynth', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Virtual Pianist Score', 'Berlin', 'BBC'] },
+  chords: { name: 'Chords', icon: '', items: ['Usynth', 'Virtual Pianist Score', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'Berlin', 'BBC', 'STRIIIINGS'] },
+  bass: { name: 'Bass', icon: '', items: ['SubCraft', 'Royal', 'Slap', 'Usynth', 'Berlin', 'BBC'] },
   orch: { name: 'Orchestra', icon: '', items: ['STRIIIINGS', 'Berlin', 'BBC'] },
 };
 JP.PLAIN = 'Plain MIDI';
 JP.INSTR = {
-  'XO': { drums: 1 }, 'Impact': { drums: 1 }, 'EZdrummer': { drums: 1 }, 'Virtual Drummer': { drums: 1 }, 'Beatmaker': { drums: 1 }, 'Tekno': { drums: 1 }, 'Kick 2': { drums: 1, kickOnly: 1 }, 'Kick 1': { drums: 1, kickOnly: 1 }, 'PERRCS': { drums: 1 },
+  'XO': { drums: 1 }, 'Impact': { drums: 1 }, 'EZdrummer': { drums: 1 }, 'Virtual Drummer': { drums: 1 }, 'Beatmaker': { drums: 1 }, 'Tekno': { drums: 1 }, 'PERRCS': { drums: 1 },
   'Usynth': { range: [24, 108] }, 'Iron': { range: [40, 88] }, 'Silk': { range: [40, 88] }, 'Carbon': { range: [40, 88] }, 'Cinedream': { range: [40, 88] },
-  'Virtual Pianist Score': { range: [21, 108] }, 'Presence': { range: [21, 108] }, 'Diva': { range: [24, 108] }, 'SubCraft': { range: [24, 64] }, 'Royal': { range: [28, 67] }, 'Slap': { range: [28, 67] },
+  'Virtual Pianist Score': { range: [21, 108] }, 'SubCraft': { range: [24, 64] }, 'Royal': { range: [28, 67] }, 'Slap': { range: [28, 67] },
   'STRIIIINGS': { range: [28, 96] }, 'Berlin': { range: [28, 100] }, 'BBC': { range: [28, 100] },
 };
 JP.ROLE_REG = { melody: [62, 86], chords: [50, 74], bass: [31, 55], orch: [40, 88], beats: null, perc: null };
@@ -210,7 +210,7 @@ JP.plan = (words, opts = {}) => {
     if (i === 0 && opening.id === 'midst') { cv.speed = Math.max(cv.speed, 0.4); cv.warm = Math.max(cv.warm, 0.5); }
     // a word with a strong character chooses sharply; a quiet word leaves more to the dice
     const mag = Math.sqrt(JP.DIMS.reduce((s2, d) => s2 + x.c[d] ** 2, 0)), k = 0.35 + 2.4 * Math.min(1, mag / 1.1);
-    const pop = JP.popularity(opts.allWords), w = JP.ARTS.map((a, ai) => used.has(a.name) ? 0 : Math.exp(-JP.dist(cv, a.v) * k) * pop[ai] * (recent.has(a.name) ? 0.35 : 1) * (leadCount[a.machine] ? 0.5 ** leadCount[a.machine] : 1) * (0.6 + r() * 0.8));
+    const pop = JP.popularity(opts.allWords), w = JP.ARTS.map((a, ai) => used.has(a.name) ? 0 : Math.exp(-JP.dist(cv, a.v) * k) * pop[ai] * (recent.has(a.name) ? 0.35 : 1) * (leadCount[a.machine] ? (a.machine === 'symphony' ? 0 : 0.5 ** leadCount[a.machine]) : 1) * (0.6 + r() * 0.8));
     const ovL = ov[i] && ov[i].lead && JP.ARTS.find((a) => a.name === ov[i].lead);
     x.lead = ovL || pickW(r, JP.ARTS, w); used.add(x.lead.name); leadCount[x.lead.machine] = (leadCount[x.lead.machine] || 0) + 1;
     // one or two guests from other machines: the cross-over
@@ -288,6 +288,20 @@ JP.plan = (words, opts = {}) => {
   if ((opening.id === 'awaken' || opening.id === 'motif') && !ch[0].players.some((p) => p.role === 'chords' || p.role === 'orch'))
     ch[0].players.push({ role: 'chords', player: pick('chords', ch[0]), swapped: false });
 
+  // the band: a guest brings its own instrument; dance is the ground (a beat in every chapter, one exception at most,
+  // never two in a row, never the very first); the orchestra is colour in most chapters when you have one in your rack
+  const has = (x, r) => x.players.some((p) => p.role === r), add = (x, r) => { if (!has(x, r)) x.players.push({ role: r, player: pick(r, x), swapped: false }); };
+  ch.forEach((x) => x.guests.forEach((g) => { if (g.machine === 'studio') add(x, 'beats'); else if (g.machine === 'percussion') add(x, 'perc'); else if (g.machine === 'symphony') add(x, 'orch'); }));
+  const noBeat = ch.map((x, i) => (has(x, 'beats') ? -1 : i)).filter((i) => i >= 0);
+  const keep = noBeat.filter((i) => i > 0 && i < n - 1).sort((a, b) => ch[a].energy - ch[b].energy)[0];
+  noBeat.forEach((i) => { if (i !== keep) add(ch[i], 'beats'); });
+  const orchMine = (rack.orch || []).some((p) => p !== JP.PLAIN);
+  if (orchMine) { // colour, not a wall: at most three in five chapters carry the orchestra, the leaders of the orchestra keep theirs
+    const own = (x) => x.lead.machine === 'symphony' || x.lead.machine === 'score';
+    let cnt = ch.filter((x) => has(x, 'orch')).length; ch.map((x, i) => i).sort((a, b) => ch[a].energy - ch[b].energy).forEach((i) => { if (cnt > Math.ceil(n * 0.6) && has(ch[i], 'orch') && !own(ch[i])) { ch[i].players = ch[i].players.filter((p) => p.role !== 'orch'); cnt--; } });
+    const want = Math.ceil(n * 0.6); let got = ch.filter((x) => has(x, 'orch')).length;
+    ch.map((x, i) => i).sort((a, b) => (ch[b].c.weight + ch[b].c.tension + ch[b].c.light) - (ch[a].c.weight + ch[a].c.tension + ch[a].c.light)).forEach((i) => { if (got < want && !has(ch[i], 'orch')) { add(ch[i], 'orch'); got++; } }); }
+
   // swaps: one or two per journey, always on a chapter edge, and only where the instrument fits the role
   const swaps = []; const nsw = opts.fixed ? 0 : r() < 0.5 ? 2 : 1;
   for (let k = 0; k < nsw; k++) {
@@ -295,11 +309,22 @@ JP.plan = (words, opts = {}) => {
     ch.forEach((x, i) => { if (i === 0 || swaps.some((s) => s.at === i)) return;
       x.players.forEach((p, pi) => { for (const [el, list] of Object.entries(rack)) { if (el === p.role) continue;
         for (const inst of list) { if (inst === JP.PLAIN || inst === p.player) continue;
+          if ((p.role === 'beats' || p.role === 'perc') && ['Berlin', 'BBC', 'STRIIIINGS', 'Iron', 'Silk', 'Carbon', 'Cinedream', 'SubCraft', 'Royal', 'Slap'].includes(inst)) continue; // only a synth or a pianist may play the drums
           const ok = fits(inst, p.role) || ((p.role === 'beats' || p.role === 'perc') && !(JP.INSTR[inst] || {}).drums && (JP.INSTR[inst] || {}).range && JP.INSTR[inst].range[1] - JP.INSTR[inst].range[0] >= 48);
           if (ok) cands.push({ at: i, pi, from: el, inst, role: p.role }); } } }); });
     if (!cands.length) break; const s = cands[Math.floor(r() * cands.length)]; swaps.push(s);
     const p = ch[s.at].players[s.pi]; p.player = s.inst; p.swapped = s.from;
   }
+
+  // your template: the tracks you built in your DAW decide who plays in each chapter, so the new journey lands on them
+  if (opts.template && opts.template.tracks && opts.template.tracks.length) { const T = opts.template.tracks;
+    ch.forEach((x, i) => { const mine = T.filter((t) => t.role !== 'motif' && (t.ch === i || t.ch < 0)); if (!mine.length) return;
+      const roles = {}; mine.forEach((t) => { if (!roles[t.role]) roles[t.role] = t.player; });
+      // dance stays the ground: a beat may borrow the beat track of another chapter (same plugin, same kit)
+      const anyBeat = T.find((t) => t.role === 'beats'); if (!roles.beats && anyBeat && x.players.some((p) => p.role === 'beats')) roles.beats = anyBeat.player;
+      x.players = x.players.filter((p) => roles[p.role]).map((p) => Object.assign({}, p, { player: roles[p.role], swapped: false }));
+      if (opts.template.perChapter) for (const [r, pl] of Object.entries(roles)) if (!x.players.some((p) => p.role === r)) x.players.push({ role: r, player: pl, swapped: false });
+      x.tplMotif = (T.find((t) => t.role === 'motif' && (t.ch === i || t.ch < 0)) || {}).player; }); }
 
   // your own players win over the dice; 'off' takes a layer out
   ch.forEach((x, i) => { const o = (ov[i] || {}).players || {};

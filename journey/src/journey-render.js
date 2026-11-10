@@ -59,10 +59,16 @@ function studioSong(E, genreName, c, contentBars, seed, F) {
   song.bpm = F; song.bpmAuto = false; song.keyAuto = false; song.key = { root: c.tonic, scale: c.minor ? 'minor' : 'major' }; song.meter = '4/4';
   if (c.song) { // Mixed journey: the engine writes a real song in the chapter's form, sections on whole 8-bar phrases
     const secs = []; let at = 0; c.song.forEach((q, k) => { const end = k === c.song.length - 1 ? contentBars : Math.max(at + 8, Math.round(q.u1 * contentBars / 8) * 8);
-      if (end > at) secs.push({ id: 'm' + k, type: ENGINE_TYPE[q.type] || 'verse', bars: end - at }); at = end; });
+      if (end > at) { const ty = ENGINE_TYPE[q.type] || 'verse', len = end - at;
+        // an intro or outro of the engine is drumless: keep it to 8 bars, the rest of the song's intro already grooves
+        if ((ty === 'intro' || ty === 'outro') && len > 8) { if (ty === 'intro') secs.push({ id: 'm' + k, type: 'intro', bars: 8 }, { id: 'm' + k + 'v', type: 'verse', bars: len - 8 });
+          else secs.push({ id: 'm' + k + 'v', type: 'verse', bars: len - 8 }, { id: 'm' + k, type: 'outro', bars: 8 }); }
+        else secs.push({ id: 'm' + k, type: ty, bars: len }); }
+      at = end; });
     song.sections = secs; return song; }
   const secs = []; for (let b = 0, k = 0; b < contentBars; b += 8, k++) { const u = b / Math.max(1, contentBars), e = eAt(c, u);
-    const type = e < 0.35 ? ['intro', 'verse'][k % 2] : e < 0.68 ? ['verse', 'prechorus', 'chorus', 'chorus'][k % 4] : ['drop', 'drop', 'build', 'drop'][k % 4];
+    // the engine writes full material; the journey's own layers decide how much of it sounds
+    const type = e < 0.68 ? ['verse', 'chorus', 'chorus', 'prechorus'][k % 4] : ['drop', 'drop', 'build', 'drop'][k % 4];
     secs.push({ id: 'j' + k, type, bars: Math.min(8, contentBars - b) }); }
   song.sections = secs; return song;
 }
@@ -89,6 +95,7 @@ function orchestrate(chords, bass, mel, c) {
   const bassBar = {}; bass.forEach((n) => { const b = Math.floor(n.t / BAR); if (bassBar[b] == null || n.p < bassBar[b]) bassBar[b] = n.p; });
   const bars = Math.max(0, ...Object.keys(byBar).map(Number), ...Object.keys(bassBar).map(Number)) + 1;
   let prev = null;
+  if (!prev) prev = [0, 2, 4].map((d) => (c.tonic + (c.minor ? SCALE.minor : SCALE.major)[d]) % 12); // before the first chord: the home chord
   for (let b = 0; b < bars; b++) { const pcs = byBar[b] ? [...byBar[b]] : prev; if (!pcs || !pcs.length) continue;
     const same = prev && pcs.length === prev.length && pcs.every((x) => prev.includes(x)); prev = pcs;
     const t = b * BAR, v = 64 + Math.round(30 * eAt(c, b / Math.max(1, bars)));
@@ -132,6 +139,8 @@ function chapterContent(ctx, plan, i) {
   out.song = song; out.studio = studioArt.name;
   let bass = [], chords = [], melody = [], harmonic = [], orch = null;
   if (symLead) { const res = symphonyRes(Y, c.lead, c, needContent, seed, F); out.symphony = res;
+    if (roles.has('beats') || roles.has('perc')) { const q = (t) => Math.round(t / (PPQ / 4)) * (PPQ / 4); // one band, one clock: no rubato against a beat
+      res.tracks.forEach((tr) => { tr.notes.forEach((n) => { const e = q(n.t + n.dur); n.t = q(n.t); n.dur = Math.max(PPQ / 4, e - n.t); }); tr.cc.forEach((e) => { e.t = q(e.t); }); tr.ks.forEach((e) => { e.t = q(e.t); }); }); }
     const get = (ids) => res.tracks.filter((t) => ids.includes(t.id)).flatMap((t) => t.notes.map((n) => ({ t: n.t, d: n.dur, p: n.m, v: n.v })));
     bass = get(['cb']).length ? get(['cb']) : get(['vc']); chords = get(['vla', 'vln2']); melody = get(['svn', 'fl', 'ob']).length > get(['vln1']).length * 0.6 ? get(['svn', 'fl', 'ob']) : get(['vln1']);
     harmonic = get(['vln2', 'vla', 'vc', 'cb', 'hn']); orch = res.tracks;
@@ -143,6 +152,16 @@ function chapterContent(ctx, plan, i) {
   }
   // the beat: always from the Studio engine (a rhythm never clashes with a harmony)
   out.beat = roles.has('beats') ? E.renderSong(song, 'beat') : [];
+  // the engine leaves some sections without drums (an intro, a prechorus); where the journey wants a groove, the groove of
+  // the nearest bar that has one carries on, so a song never waits half its length for its beat
+  if (out.beat.length) { const by = {}; out.beat.forEach((n) => { const b = Math.floor(n.t / BAR); (by[b] = by[b] || []).push(n); });
+    const wantAt = (b) => { if (!c.song) return true; const q = c.song.find((x) => b / contentBars < x.u1) || c.song[c.song.length - 1]; return q.type !== 'break' && q.type !== 'outro' && (q.type !== 'intro' || b >= 8); };
+    const have = Object.keys(by).map(Number).sort((x, y) => x - y), add = [];
+    for (let b = 0; b < contentBars; b++) { if (by[b] || !wantAt(b)) continue;
+      let src = null; for (let d = 8; d <= contentBars && src == null; d += 8) { if (by[b - d]) src = b - d; else if (by[b + d]) src = b + d; }
+      if (src == null) src = have.reduce((a2, x) => (Math.abs(x - b) < Math.abs(a2 - b) ? x : a2), have[0]);
+      by[src].forEach((n) => add.push(Object.assign({}, n, { t: n.t - src * BAR + b * BAR }))); }
+    out.beat = out.beat.concat(add); }
   // the beat evolves: before a new 16 bars the kick rests for 2 bars, and every 4th block opens with 4 bars of hats and percussion only
   out.beat = out.beat.filter((n) => { const bar = Math.floor(n.t / BAR), blk = Math.floor(bar / 16), inb = bar % 16;
     if (blk % 2 === 1 && inb >= 14 && n.lane <= 1) return false;
@@ -153,7 +172,9 @@ function chapterContent(ctx, plan, i) {
   if (roles.has('perc') || roles.has('beats')) {
     const secs = []; if (c.song) { let at = 0; c.song.forEach((q, k) => { const end = k === c.song.length - 1 ? contentBars : Math.max(at + 8, Math.round(q.u1 * contentBars / 8) * 8); if (end > at) secs.push({ type: ENGINE_TYPE[q.type] || 'verse', bars: end - at }); at = end; }); }
     else for (let b = 0, k = 0; b < contentBars; b += 8, k++) { const e = eAt(c, b / contentBars); secs.push({ type: e < 0.35 ? 'verse' : e < 0.68 ? 'chorus' : 'drop', bars: Math.min(8, contentBars - b) }); }
-    const pr = P.generate({ style: PERC_KEY[percArt.name] || 'minimal', bpm: F, seed, wild: clamp(0.25 + c.energy * 0.6, 0, 1), swing: c.c.warm > 0.3 ? 0.4 : 0, sections: secs });
+    // a hand drummer never plays at 240: double and fast feels are played at a human tempo, the groove still sits on the beat
+    let Fp = F; while (Fp > 132) Fp /= 2; const ps = secs.map((q) => Object.assign({}, q, { bars: Math.max(1, Math.ceil(q.bars * Fp / F)) }));
+    const pr = P.generate({ style: PERC_KEY[percArt.name] || 'minimal', bpm: Fp, seed, wild: clamp(0.12 + c.energy * 0.35, 0, 1), swing: c.c.warm > 0.3 ? 0.4 : 0, sections: ps });
     out.perc = pr.events.map((e) => ({ t: Math.round(e.t * F / 60 * PPQ), d: 120, voice: e.v, v: e.vel }));
   } else out.perc = [];
   // Score: follows the harmony, adds its tension (for STRIIIINGS and PERRCS)
@@ -257,6 +278,42 @@ function handRhythm(list, plan, i, isKick, isBack) {
     return true; });
 }
 
+// ---------- the percussionist: joins in, listens, answers, builds ----------
+// voices enter one by one ("you drum, I join with my djembe"), the number of voices follows the energy,
+// every 4th bar is the answer (a fill with more voices), the busiest bars of the beat leave room, accents breathe
+function percussionist(ev, plan, i, styleKey, swing) {
+  if (!ev.length) return ev;
+  const c = plan.chapters[i], F = c.feelsLike, cb = c.bars * F / plan.bpm, lead = c.lead.machine === 'percussion';
+  const sl = styleKey === 'taiko' ? TAIKO_SLOTS : styleKey === 'marching' ? MARCH_SLOTS : PERC_SLOTS;
+  const rankOf = (v) => { const k = sl.findIndex((q) => q.includes(v)); return k < 0 ? 5 : k; };
+  // the order voices join: a soft time keeper first (shaker, bell), then the low drum, then the talking voices
+  const JOIN = [5, 6, 0, 1, 2, 3, 4, 7], joinRank = (v) => JOIN.indexOf(rankOf(v));
+  const R = rng(H(plan.seed, 'perc', i)), keepP = {};
+  const kept = ev.filter((n) => {
+    const bar = Math.floor(n.t / BAR), e = eAt(c, bar / Math.max(1, cb));
+    const grow = Math.min(8, 2 + Math.floor(bar / (lead ? 4 : 8)));          // one more voice every 8 bars (4 when percussion leads)
+    let V = Math.min(grow, Math.max(1, Math.round(1 + e * (lead ? 7 : 5))));   // the energy decides how many may play
+    const inBar = bar % 4, fill = inBar === 3;
+    if (fill) V = Math.min(8, V + 2); else if (inBar === 1) V = Math.max(1, V - 1); // a call, a breath, the answer
+    const jr = joinRank(n.voice); if (jr >= V) return false;
+    // the newest voice in plays sparser, it is still finding its place
+    if (jr === V - 1 && !fill) { const key = bar + ':' + n.voice; if (keepP[key] == null) keepP[key] = R() < 0.55; if (!keepP[key]) return false; }
+    const pos = n.t % BAR, beat = pos % PPQ === 0;
+    n.v = Math.round(clamp(n.v * (beat ? 1.08 : 0.86) * (fill ? 1.06 : 1), 1, 127));
+    n.jr = jr; return true; });
+  // one clock: in a straight chapter the hands play on the band's 16ths, with the band's swing; never two hits of one voice on one step
+  const S16 = PPQ / 4, trip = c.feel.id === 'triplet', sw = Math.round(((swing || 50) * 2 / 100 - 1) * S16), seen = new Set();
+  let out = kept;
+  if (!trip) out = kept.filter((n) => { let st = Math.round(n.t / S16); const key = st + n.voice; if (seen.has(key)) return false; seen.add(key);
+    n.t = st * S16 + (st % 2 ? sw : 0); return true; });
+  // a hand drummer plays a handful of notes per bar, not a wall: the most important voices and the beats of the bar win
+  const per = {}; out.forEach((n) => { const b = Math.floor(n.t / BAR); (per[b] = per[b] || []).push(n); });
+  const final = [];
+  for (const [b, list] of Object.entries(per)) { const e = eAt(c, +b / Math.max(1, cb)), cap = Math.round(5 + e * (lead ? 11 : 7));
+    list.sort((a, z) => (a.jr - z.jr) || ((a.t % PPQ ? 1 : 0) - (z.t % PPQ ? 1 : 0))); list.slice(0, cap).forEach((n) => final.push(n)); }
+  return final.sort((a, z) => a.t - z.t);
+}
+
 // ---------- shaping in journey time: layers, breaths, transitions, the ending ----------
 function shape(plan, i, role, rank, notes, tl) {
   const c = plan.chapters[i], n = plan.chapters.length, len = c.bars * BAR, o = [], w = win(plan, i);
@@ -269,7 +326,9 @@ function shape(plan, i, role, rank, notes, tl) {
     if (role !== 'motif' && !x.ks) {
       // layers: each role has a rank; it plays when the energy carries that many layers
       const seam = (w.out && bar >= c.bars - w.out - 2) || (w.inn && bar < w.inn + 2), rhythm = role === 'beats' || role === 'perc';
-      if (!(seam && rhythm) && !plays(plan, i, rank, Math.floor(x.t * k / BAR), cbars)) continue; // the groove never drops out at a seam
+      const cbar = Math.floor(x.t * k / BAR), sec = c.song ? (c.song.find((q) => cbar / cbars < q.u1) || c.song[c.song.length - 1]).type : '',
+        groove = role === 'beats' && (c.song ? sec !== 'break' && sec !== 'outro' && (cbar >= 16 || eAt(c, cbar / cbars) > 0.3) : cbar >= 16 || (i > 0 && eAt(c, cbar / cbars) > 0.2));
+      if (!(seam && rhythm) && !groove && !plays(plan, i, rank, cbar, cbars)) continue; // the groove never drops out at a seam, and the beat holds the floor
       // a breath inside the chapter: two bars where only the motif sounds
       if (c.breathInside && bar >= c.breathInside.bar && bar < c.breathInside.bar + 2) continue;
       // the way out
@@ -379,6 +438,28 @@ function bridgeSilence(all, plan, tl) {
   });
 }
 
+// ---------- no holes inside a chapter either: silence only where it was meant (a breath, the fading end) ----------
+function fillHoles(all, plan, tl) {
+  const S = PPQ / 4, total = tl[tl.length - 1].start + tl[tl.length - 1].len, cov = new Uint8Array(Math.ceil(total / S) + 2);
+  all.forEach((t) => t.notes.forEach((n) => { if (n.ks) return; for (let k = Math.floor(n.t / S); k < Math.ceil((n.t + n.d) / S); k++) cov[k] = 1; }));
+  plan.chapters.forEach((c, i) => {
+    const s0 = tl[i].start, end = s0 + c.bars * BAR, meant = [];
+    if (c.breathInside) meant.push([s0 + c.breathInside.bar * BAR, s0 + (c.breathInside.bar + 2) * BAR]);
+    if (i < plan.chapters.length - 1 && c.out === 'breath') meant.push([end - BAR, end]);
+    if (i === plan.chapters.length - 1) meant.push([end - 8 * BAR, end]);
+    const isMeant = (t) => meant.some(([a, b]) => t >= a && t < b);
+    for (let k = Math.ceil(s0 / S); k < Math.floor(end / S); k++) { if (cov[k] || isMeant(k * S)) continue;
+      let u = k; while (u < Math.floor(end / S) && !cov[u] && !isMeant(u * S)) u++;
+      if ((u - k) * S > 2 * BAR) { const from = k * S, to = u * S, mo = motifNotes(plan, c), f = plan.bpm / c.feelsLike;
+        let tr = all.find((x) => x.chapter === i && x.role === 'motif');
+        if (!tr) { tr = { chapter: i, word: c.word, role: 'motif', player: 'Plain MIDI', name: (i + 1) + ' ' + c.word + ' . Motif . ' + plan.bpm + ' bpm . ' + JR.colour(c, 'motif', 'Plain MIDI'), notes: [], cc: [] }; all.push(tr); }
+        for (let at = from; at < to - BAR; at += 4 * BAR) { const add = mo.notes.map((n) => ({ t: at + Math.round(n.t * f), d: Math.round(n.d * f), p: n.p, v: Math.round(n.v * 0.75) })).filter((n) => n.t < Math.min(to, at + 4 * BAR));
+          if (!add.length) break; const last = add[add.length - 1]; last.d = Math.max(last.d, Math.min(to, at + 4 * BAR) - last.t - 20);
+          add.forEach((n) => { tr.notes.push(n); for (let q = Math.floor(n.t / S); q < Math.ceil((n.t + n.d) / S); q++) cov[q] = 1; }); } }
+      k = u; }
+  });
+}
+
 // the riser: a snare roll into the next chapter, written into the beat
 function riserRoll(c, i, tl) { const out = [], end = c.bars * BAR, start = end - 4 * BAR; for (let t = start, k = 0; t < end; k++) { const step = k < 16 ? PPQ / 2 : k < 32 ? PPQ / 4 : PPQ / 8; out.push({ t, d: 60, lane: 2, roll: 1, v: 50 + Math.round(70 * (t - start) / (end - start)) }); t += step; } return out; }
 
@@ -390,6 +471,7 @@ JR.render = function (plan, ctx) {
     const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle];
     // the rhythm handover with the neighbours, and a crash on the first beat after a cut or a riser
     content.beat = handRhythm(content.beat, plan, i, (n) => n.lane <= 1, (n) => n.lane === 2 || n.lane === 3);
+    content.perc = percussionist(content.perc, plan, i, content.percKey, (ctx.E.GENRES[GENRE_KEY[content.studio]] || {}).swing);
     content.perc = handRhythm(content.perc, plan, i, (n) => KICKS.has(n.voice), (n) => /snare|slap|clo/.test(n.voice));
     if (i > 0 && ['cut', 'riser'].includes(plan.chapters[i - 1].out) && content.beat.length) content.beat.push({ t: 0, d: 240, lane: 7, v: 112 });
     if (i < plan.chapters.length - 1 && c.out === 'riser' && content.beat.length) content.beat = content.beat.concat(riserRoll(c, i, tl).map((n) => ({ t: Math.round(n.t * c.feelsLike / plan.bpm), d: n.d, lane: n.lane, v: n.v, roll: 1 })));
@@ -404,8 +486,9 @@ JR.render = function (plan, ctx) {
     if (i === 0 && (plan.opening.id === 'awaken' || plan.opening.id === 'motif')) { const soft = ['orch', 'chords', 'melody', 'bass']; order = order.filter((r) => soft.includes(r)).concat(order.filter((r) => !soft.includes(r))); }
     // the melody is the voice of the chapter: it never waits at the back of the queue
     if (order.indexOf('melody') > 2) { order = order.filter((r) => r !== 'melody'); order.splice(2, 0, 'melody'); }
+    if (order.indexOf('beats') > 1) { order = order.filter((r) => r !== 'beats'); order.splice(1, 0, 'beats'); } // dance is the ground
     order.forEach((r, k) => { rank[r] = k; });
-    const motifPlayer = (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: (plan.rack && plan.rack.melody && plan.rack.melody[0]) || JP_PLAIN }).player;
+    const motifPlayer = c.tplMotif || (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: (plan.rack && plan.rack.melody && plan.rack.melody[0]) || JP_PLAIN }).player;
     for (const p of c.players.concat([{ role: 'motif', player: motifPlayer }])) {
       const tracks = speak(ctx, p.role, p.player, content, c);
       for (const t of tracks) { const notes = shape(plan, i, p.role, rank[p.role] || 0, toJ(t.notes), tl);
@@ -416,6 +499,7 @@ JR.render = function (plan, ctx) {
   });
   listen(all, plan, tl);
   bridgeSilence(all, plan, tl);
+  fillHoles(all, plan, tl);
   // the ending: abrupt stops everything on one last hit
   if (plan.ending.id === 'abrupt') { const last = tl[tl.length - 1], end = last.start + last.len; all.forEach((t) => { t.notes = t.notes.filter((n) => n.t < end - BAR || n.t === end - BAR); t.notes.forEach((n) => { if (n.t + n.d > end) n.d = end - n.t; }); }); }
   const totalTicks = tl[tl.length - 1].start + tl[tl.length - 1].len;
@@ -487,6 +571,40 @@ JR.fix = (tracks, rack, Y) => {
   sk.forEach((x) => { by[x.name] = x; });
   for (const t of tracks) { const k = JR.norm(t.name); let d = by[k]; if (!d) { d = by[k] = { role: t.role, name: k, notes: [], cc: [] }; sk.push(d); } d.notes = d.notes.concat(t.notes); d.cc = d.cc.concat(t.cc || []); }
   return sk;
+};
+// ---------- your template: read the tracks of the MIDI you built your DAW from, and land a new journey on exactly those tracks ----------
+const LABEL = { Beat: 'beats', Percussion: 'perc', Bass: 'bass', Chords: 'chords', Melody: 'melody', Motif: 'motif' };
+JR.parseTemplate = (names, Y) => {
+  const inst = new Set(Y.INST.map((x) => x.name).concat(Object.values(Y.BFO).map((x) => x.name)));
+  const tracks = names.map((name, k) => { const full = name.replace(/ \. \d+ bpm( \. .*)?$/, '');
+    const m = full.match(/^(\d+) (.+?) \. (.*)$/), ch = m ? +m[1] - 1 : -1, rest = (m ? m[3] : full).replace(/, Style .*$/, '');
+    let role = null, player = JP_PLAIN, ins = '';
+    let q = rest.match(/^(Beat|Percussion|Bass|Chords|Melody|Motif)(?:, standard drum notes)?(?: for (.+?))?(?: \(Instrument mode\))?(?:, (.+))?$/);
+    if (q) { role = LABEL[q[1]]; if (q[2]) player = q[2].replace(/ \(kick only\)$/, ''); if (q[3]) ins = q[3]; }
+    else if (/^PERRCS/.test(rest)) { role = 'perc'; player = 'PERRCS'; }
+    else if ((q = rest.match(/^Strings ([AB]) for STRIIIINGS/))) { role = 'orch'; player = 'STRIIIINGS'; ins = 'Strings ' + q[1]; }
+    else if ((q = rest.match(/^(.+) for (Berlin|BBC)$/)) && inst.has(q[1])) { role = 'orch'; player = q[2]; ins = q[1]; }
+    else if (inst.has(rest)) { role = 'orch'; ins = rest; }
+    return { k, name, ch, role, player, inst: ins, key: rest }; }).filter((t) => t.role);
+  return { tracks, perChapter: tracks.some((t) => t.ch >= 0), count: names.length };
+};
+const REG = [[/piccolo/i, 86], [/flute/i, 80], [/oboe/i, 74], [/bass clarinet/i, 54], [/clarinet/i, 68], [/contrabassoon/i, 36], [/bassoon/i, 50], [/horn/i, 59],
+  [/trumpet/i, 68], [/trombone/i, 55], [/tuba/i, 41], [/timpani/i, 47], [/(1st)|violins 1/i, 80], [/(2nd)|violins 2/i, 73], [/viola/i, 65], [/cell/i, 53], [/bass/i, 41], [/harp/i, 63], [/strings a/i, 72], [/strings b/i, 55]];
+const centre = (name) => { for (const [re, c] of REG) if (re.test(name)) return c; return 64; };
+JR.fitTemplate = (tracks, tpl, plan) => {
+  const out = tpl.tracks.map((t) => ({ t, notes: [], cc: [], name: null })), used = new Set();
+  const slot = (tr) => out.filter((o) => (tpl.perChapter ? o.t.ch === tr.chapter : true));
+  for (const tr of tracks) { const key = JR.norm(tr.name), here = slot(tr);
+    let hit = here.find((o) => o.t.key === key) || null;
+    if (!hit && tr.role !== 'orch') hit = here.find((o) => o.t.role === tr.role && o.t.player === tr.player) || here.find((o) => o.t.role === tr.role) || null;
+    if (!hit && tpl.perChapter) { const near = out.filter((o) => o.t.role === tr.role && o.t.player === tr.player).sort((x, y) => Math.abs(x.t.ch - tr.chapter) - Math.abs(y.t.ch - tr.chapter)); if (tr.role !== 'orch' && near.length) hit = near[0]; }
+    if (hit) { hit.notes = hit.notes.concat(tr.notes); if (!used.has(hit)) { hit.cc = hit.cc.concat(tr.cc || []); used.add(hit); } if (!hit.name) hit.name = tr.name; continue; }
+    // an orchestra part without its own track: every note goes to the template instrument whose register fits it best
+    const orch = here.filter((o) => o.t.role === 'orch' && (o.t.player === tr.player || true)); if (!orch.length) continue;
+    tr.notes.forEach((n) => { if (n.ks) return; const o = orch.reduce((a, b) => (Math.abs(centre(b.t.inst) - n.p) < Math.abs(centre(a.t.inst) - n.p) ? b : a)); o.notes.push(n); }); }
+  return out.map((o) => { let name = o.name;
+    if (!name) { const c = o.t.ch >= 0 ? plan.chapters[o.t.ch] : null; name = c ? (o.t.ch + 1) + ' ' + c.word + ' . ' + o.t.key + ' . ' + plan.bpm + ' bpm' : o.t.key + ' . ' + plan.bpm + ' bpm'; }
+    return { name, role: o.t.role, notes: o.notes.sort((a, b) => a.t - b.t), cc: o.cc }; });
 };
 JR.PPQ = PPQ; JR.BAR = BAR;
 })();
