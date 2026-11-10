@@ -239,7 +239,9 @@ JP.plan = (words, opts = {}) => {
   for (let b = 96; b <= 130; b++) { let cost = Math.abs(b - 120) / 300; // a journey walks best around 120 for (const x of ch) cost += Math.min(...JP.FEELS.map((f) => Math.abs(b * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id === 'straight' ? 0 : 0.02)));
     cost += r() * 0.04; if (!best || cost < best.cost) best = { b, cost }; }
   const bpm = opts.bpm || best.b;
-  ch.forEach((x, i) => { x.feel = JP.FEELS.reduce((a, f) => (Math.abs(bpm * f.ratio - x.lead.bpm) < Math.abs(bpm * a.ratio - x.lead.bpm) ? f : a));
+  // a feel only changes when it really must: neighbours that share a feel make the finest transitions
+  ch.forEach((x, i) => { const pf = i ? ch[i - 1].feel.id : 'straight', cost = (f) => Math.abs(bpm * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id !== pf ? 0.18 : 0);
+    x.feel = JP.FEELS.reduce((a, f) => (cost(f) < cost(a) ? f : a));
     if (ov[i] && ov[i].feel) x.feel = JP.FEELS.find((f) => f.id === ov[i].feel) || x.feel; x.feelsLike = Math.round(bpm * x.feel.ratio); });
 
   // bars: every chapter a whole number of 8-bar phrases
@@ -258,8 +260,11 @@ JP.plan = (words, opts = {}) => {
   // transitions between chapters
   ch.forEach((x, i) => { if (i === n - 1) return; const y = ch[i + 1], d = JP.dist(x.c, y.c), rise = y.eStart - x.eEnd;
     const breathHere = breaths.some((b) => b.kind === 'between' && b.at === i + 1);
-    const w = { bassout: 1 + (d < 1.5 ? 0.8 : 0), filter: d < 1.2 ? 1.6 : 0.6, motif: 0.8 + (x.feel.id !== y.feel.id ? 0.8 : 0), cut: d > 2.2 ? 1.6 : 0.3, riser: rise > 0.2 ? 2 : 0.3, breath: 0 };
-    x.out = breathHere ? 'breath' : pickW(r, Object.keys(w), Object.values(w)); x.overlap = x.out === 'cut' || x.out === 'breath' ? 0 : x.out === 'riser' ? 4 : 8; });
+    const w = { bassout: 1 + (d < 1.5 ? 0.8 : 0), filter: d < 1.2 ? 2 : 0.8, motif: 0.8 + (x.feel.id !== y.feel.id ? 0.8 : 0), cut: d > 2.2 ? 0.8 : 0.15, riser: rise > 0.2 ? 2.2 : 0.3, breath: 0 };
+    x.out = breathHere ? 'breath' : pickW(r, Object.keys(w), Object.values(w));
+    if (x.out === 'breath' && (rise > 0.05 || y.eStart >= 0.4)) x.out = 'riser'; // never a pause before a bang: the energy has to be built
+    // a transition is a moment of its own: the next song is already growing while the old one still plays
+    x.overlap = x.out === 'cut' || x.out === 'breath' ? 0 : x.out === 'riser' ? 8 : d > 1.6 || x.feel.id !== y.feel.id ? 32 : 16; });
 
   // keys: only to neighbours that sound beautiful, with one golden step up at the summit sometimes
   const top = ch.reduce((a, x, i) => (x.energy > ch[a].energy ? i : a), 0);
