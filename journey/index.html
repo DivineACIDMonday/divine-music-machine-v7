@@ -7518,6 +7518,11 @@ function orchestrate(chords, bass, mel, c) {
     const bp = bassBar[b] != null ? bassBar[b] % 12 : pcs[0]; put(T.vc, 43, 55, 0); T.vc.notes[T.vc.notes.length - 1].m = fold(bp + 48, 43, 55); put(T.cb, 31, 43, 0); T.cb.notes[T.cb.notes.length - 1].m = fold(bp + 36, 31, 43);
     T.vln1.cc.push({ t, c: 1, v: clamp(v + 10, 30, 127) }); T.vln2.cc.push({ t, c: 1, v: clamp(v, 30, 127) }); T.vla.cc.push({ t, c: 1, v: clamp(v, 30, 127) }); T.vc.cc.push({ t, c: 1, v: clamp(v, 30, 127) }); T.cb.cc.push({ t, c: 1, v: clamp(v - 5, 30, 127) }); T.hn.cc.push({ t, c: 1, v: clamp(v - 10, 30, 127) });
   }
+  // the orchestra plays the arrangement: held in A, short answers off the beat in A2, driving eighths in a build, everyone in the gift
+  for (const tr of [T.vln2, T.vla, T.vc]) { const nn = []; tr.notes.forEach((n) => { const L = labelAt(c, Math.floor(n.t / BAR));
+      if (L === 'A2' && tr !== T.vc) { for (let b = 0; b < Math.round(n.dur / BAR); b++) [1.5, 3.5].forEach((q) => nn.push(Object.assign({}, n, { t: n.t + b * BAR + q * PPQ, dur: PPQ / 2 - 30 }))); }
+      else if (L === 'build' && tr !== T.vln2) { for (let q = 0; q < Math.round(n.dur / (PPQ / 2)); q++) nn.push(Object.assign({}, n, { t: n.t + q * PPQ / 2, dur: PPQ / 2 - 40, v: Math.round(n.v * (0.8 + 0.2 * (q % 2 === 0))) })); }
+      else nn.push(n); }); tr.notes = nn; }
   // nobody tires: the violins rest every other 32 bars (the low strings and horns carry), the horns every fourth
   T.vln1.notes = T.vln1.notes.filter((n) => Math.floor(n.t / (32 * BAR)) % 2 === 0); T.vln2.notes = T.vln2.notes.filter((n) => Math.floor(n.t / (32 * BAR)) % 2 === 0);
   T.hn.notes = T.hn.notes.filter((n) => Math.floor(n.t / (32 * BAR)) % 4 !== 3);
@@ -7528,14 +7533,15 @@ function orchestrate(chords, bass, mel, c) {
 
 // the hot pocket: the first notes of a phrase become a riff that repeats for 8 bars and evolves (a note drops out, it swells),
 // like minimal techno inside the symphony; only then the phrase goes on, so the horns never burn through their power
-function hotPocket(notes, seed) {
+function hotPocket(notes, seed, c) {
+  const up = (p) => { if (!c) return p; const sc = c.minor ? SCALE.minor : SCALE.major, rel = ((p - c.tonic) % 12 + 12) % 12; let k = sc.findIndex((x) => x >= rel); if (k < 0) k = 0; const k2 = k + 2; return p - rel + sc[k2 % 7] + (k2 >= 7 ? 12 : 0); };
   if (notes.length < 6) return notes; const out = [], used = new Set(); notes.sort((a, b) => a.t - b.t);
   for (let blk = 0; blk < 64; blk++) { const b0 = blk * 32 * BAR, inBlk = notes.filter((n) => n.t >= b0 && n.t < b0 + 32 * BAR); if (inBlk.length < 4) continue;
     const s = Math.floor(inBlk[0].t / BAR) * BAR, cellLen = inBlk.filter((n) => n.t < s + BAR).length >= 3 ? BAR : 2 * BAR;
     const cell = inBlk.filter((n) => n.t >= s && n.t < s + cellLen); if (cell.length < 2) continue;
     inBlk.filter((n) => n.t >= s && n.t < s + 8 * BAR).forEach((n) => used.add(n));
-    for (let r = 0, k = 0; r * cellLen < 8 * BAR; r++) cell.forEach((n, j) => { if (r % 2 === 1 && j === (r + seed) % cell.length) return;
-      out.push(Object.assign({}, n, { t: n.t + r * cellLen, dur: Math.min(n.dur, cellLen), v: Math.round(clamp(n.v * (0.78 + 0.05 * r), 1, 127)) })); k++; }); }
+    for (let r = 0, k = 0; r * cellLen < 8 * BAR; r++) cell.forEach((n, j) => { const turn = r % 4; if (turn === 3 && j % 2) return;
+      out.push(Object.assign({}, n, { t: n.t + r * cellLen + (turn === 2 ? PPQ / 2 : 0), m: turn === 1 ? up(n.m) : n.m, dur: Math.min(n.dur, cellLen - (turn === 2 ? PPQ / 2 : 0)), v: Math.round(clamp(n.v * (0.78 + 0.05 * r), 1, 127)) })); k++; }); }
   return notes.filter((n) => !used.has(n)).concat(out).sort((a, b) => a.t - b.t);
 }
 
@@ -7548,7 +7554,7 @@ function orchElement(tracks, c, seed) {
   return tracks.filter((t) => groupOf(t.id) >= 0).map((t) => { const gi = groupOf(t.id);
     const notes = t.notes.filter((n) => { const blk = Math.floor(n.t / (32 * BAR)), e = eAt(c, n.t / Math.max(1, c.bars * BAR * c.feelsLike / 120));
       return blk % 2 === gi || e > 0.82; });
-    return Object.assign({}, t, { notes: hotPocket(notes, seed) }); });
+    return Object.assign({}, t, { notes: hotPocket(notes, seed, c) }); });
 }
 
 // ---------- a bass that plays: longer notes, octave jumps, pushes ahead of the beat; blues walks ----------
@@ -7725,6 +7731,58 @@ function plays(plan, i, rank, bar, bars) {
   return true;
 }
 
+// ---------- the arranger: a written plan for every chapter, in phrases of 8 bars, instead of dice ----------
+// A the theme; A2 the theme answered (the orchestra speaks in the gaps of the melody, more percussion);
+// B the contrast (the melody rests, the orchestra or the chords carry the line, the groove turns half-time);
+// break: harmony, motif and a whisper of percussion; build: everything gathers, a roll at its end; gift: everyone;
+// intro and outro: the phrases that meet the neighbours (the handover rules shape them)
+const WHO = {
+  start0: ['chords', 'orch', 'perc'], start1: ['chords', 'orch', 'perc', 'bass', 'beats'],
+  A: ['beats', 'bass', 'chords', 'melody', 'perc'], A2: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'],
+  B: ['beats', 'bass', 'chords', 'orch', 'perc'], break: ['chords', 'orch', 'perc'], build: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'],
+  gift: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'], intro: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'], outro: ['beats', 'bass', 'chords', 'perc', 'orch'],
+};
+function arrange(plan, i) {
+  const c = plan.chapters[i], w = win(plan, i), k = c.feelsLike / plan.bpm, cb = Math.ceil(c.bars * k), P = Math.ceil(cb / 8), out = [];
+  const jb = (p) => p * 8 / k; // the journey bar where content phrase p starts
+  const giftP = c._gift != null ? Math.floor(c._gift * k / 8) : -1, breakP = c.breathInside ? Math.floor(c.breathInside.bar * k / 8) : -1;
+  let m = 0;
+  for (let p = 0; p < P; p++) { const b0 = jb(p), b1 = jb(p + 1), e = eAt(c, p / P);
+    let L;
+    if (w.inn && b0 < w.inn) L = 'intro';
+    else if (w.out && b1 > c.bars - w.out) L = 'outro';
+    else if (i === 0 && p === 0) L = 'start0';
+    else if (i === 0 && p === 1) L = 'start1';
+    else if (p === giftP) L = 'gift';
+    else if (p === giftP - 1) L = 'build';
+    else if (p === breakP) L = 'break';
+    else if (c.song) { const q = c.song.find((x) => p / P < x.u1) || c.song[c.song.length - 1]; L = q.type === 'break' || q.type === 'fall' ? 'break' : q.type === 'build' || q.type === 'rise' ? 'build' : q.type === 'drop' || q.type === 'chorus' || q.type === 'peak' ? 'A2' : 'A'; }
+    else { L = ['A', 'A', 'A2', 'B'][m % 4]; m++; if (L === 'B' && e < 0.3) L = 'A'; if (L === 'A2' && e < 0.35) L = 'A'; }
+    out.push(L); }
+  // a long chapter without a planned breath gets one break, at its quietest middle phrase
+  if (breakP < 0 && P >= 14) { let q = -1, lo = 9; for (let p = 4; p < P - 4; p++) { const e = eAt(c, p / P); if (['A', 'A2', 'B'].includes(out[p]) && out[p - 1] !== 'build' && e < lo) { lo = e; q = p; } } if (q > 0) out[q] = 'break'; }
+  return out;
+}
+const labelAt = (c, cbar) => (c._arr && c._arr[Math.floor(cbar / 8)]) || 'A';
+
+// ---------- the beat lives: per phrase it turns, accents breathe, hats sit in their pocket ----------
+function beatLife(beat, c, seed) {
+  if (!beat.length) return beat; const R = rng(seed), out = [];
+  for (const n of beat) { if (n.roll) { out.push(n); continue; } const bar = Math.floor(n.t / BAR), L = labelAt(c, bar), pos = n.t % BAR, m = Object.assign({}, n);
+    if (L === 'B' && n.lane <= 1 && pos !== 0 && pos !== 2 * PPQ) continue;              // the contrast: the kick goes half-time
+    if (L === 'break' && n.lane <= 3) continue;
+    if (n.lane === 4 || n.lane === 5) { m.v = Math.round(clamp(n.v * (pos % (PPQ / 2) === 0 ? 1.08 : 0.72), 1, 127)); m.t = n.t + Math.round((R() - 0.5) * 10); } // hats: strong on the eighths, soft between, a little human
+    if (n.lane === 2 && (pos === PPQ || pos === 3 * PPQ)) m.v = Math.round(clamp(n.v * 1.1, 1, 127)); // the backbeat speaks
+    out.push(m); }
+  // A2: ghost notes on the snare and an open hat that lifts the end of every second bar; every new section starts with a crash
+  const bars = Math.max(...beat.map((n) => Math.floor(n.t / BAR))) + 1;
+  for (let b = 0; b < bars; b++) { const L = labelAt(c, b), prevL = labelAt(c, b - 1);
+    if (L === 'A2') { if (R() < 0.6) out.push({ t: b * BAR + 3 * PPQ + 3 * PPQ / 4, d: 40, lane: 2, v: 26 }); if (b % 2) out.push({ t: b * BAR + 3 * PPQ + PPQ / 2, d: 120, lane: 5, v: 70 }); }
+    if (b % 8 === 0 && b > 0 && L !== prevL && ['A2', 'B', 'gift'].includes(L)) out.push({ t: b * BAR, d: 240, lane: 7, v: 104 });
+    if (L === 'build' && b % 8 >= 6) for (let s2 = 0; s2 < 8; s2++) out.push({ t: b * BAR + (b % 8 === 7 ? s2 * PPQ / 2 : 0) + s2 * (b % 8 === 7 ? 0 : PPQ / 2), d: 40, lane: s2 % 3 === 2 ? 6 : 2, roll: 1, v: Math.round(40 + 60 * (s2 + (b % 8 === 7 ? 8 : 0)) / 16) }); }
+  return out;
+}
+
 // ---------- the transitions: one beat, one bass, one harmony, one melody at a time ----------
 // window out = the last bars of this chapter that overlap the next one; window in = the first bars that overlap the previous one
 const HARM = new Set(['chords', 'orch']);
@@ -7742,8 +7800,9 @@ function handRhythm(list, plan, i, isKick, isBack) {
   const W0 = cb(c.bars - w.out), Wh = cb(c.bars - w.out / 2), I1 = cb(w.inn), Ih = cb(w.inn / 2);
   return list.filter((n) => { if (n.roll) return true;
     // a different feel never overlaps: the old groove plays to the middle of the window, the new one takes over right there, no hole
-    if (w.out && n.t >= W0) { if (w.feelOut ? n.t >= Wh : (isKick(n) || isBack(n)) && n.t >= Wh) return false; }
-    if (w.inn && n.t < I1) { if (w.feelIn ? n.t < Ih : (isKick(n) || isBack(n)) && n.t < Ih) return false; }
+    // one rhythm section at a time: the old kit plays to the middle of the window, the new one takes over right there, complete
+    if (w.out && n.t >= Wh) return false;
+    if (w.inn && n.t < Ih) return false;
     return true; });
 }
 
@@ -7787,7 +7846,7 @@ function percussionist(ev, plan, i, styleKey, swing) {
 function shape(plan, i, role, rank, notes, tl) {
   const c = plan.chapters[i], n = plan.chapters.length, len = c.bars * BAR, o = [], w = win(plan, i);
   const k = c.feelsLike / plan.bpm, cbars = c.bars * k;
-  for (const x of notes) {
+  for (let x of notes) {
     if (x.t < -PPQ / 2 || x.t >= len) continue; if (x.t < 0) x = Object.assign({}, x, { t: 0 }); const bar = Math.floor(x.t / BAR), u = x.t / len;
     const fb = x.t / BAR; // bar as a fraction, for smooth fades
     let fade = 1;
@@ -7801,7 +7860,9 @@ function shape(plan, i, role, rank, notes, tl) {
       if (overture && (role === 'beats' || role === 'perc') && bar < 24) continue;       // the overture: harmony alone, then the groove slides in
       if (overture && role === 'bass' && bar < 16) continue;
       const gift = c._gift != null && bar >= c._gift && bar < c._gift + 8;             // the gift: everyone plays
-      if (!(overture && HARM.has(role) && bar < 48) && !gift && !(seam && rhythm) && !groove && !plays(plan, i, rank, cbar, cbars)) continue; // the groove never drops out at a seam, and the beat holds the floor
+      const lab = labelAt(c, cbar), who = WHO[lab] || WHO.A;
+      // the arranger decides; a role the chapter does not have simply is not there; a chapter without melody lets the orchestra or chords sing in B
+      if (!(overture && HARM.has(role) && bar < 48) && !gift && !who.includes(role)) continue;
       // a breath inside the chapter: two bars where only the motif sounds
       if (c.breathInside && bar >= c.breathInside.bar && bar < c.breathInside.bar + 2) continue;
       // the way out
@@ -7811,14 +7872,13 @@ function shape(plan, i, role, rank, notes, tl) {
         if (w.out && bar >= c.bars - w.out) { const p = (fb - (c.bars - w.out)) / w.out;
           if ((role === 'melody' && p >= 0.25) || (role === 'bass' && p >= 0.5)) continue; // the old melody bows out first, the old bass hands over halfway
           if (HARM.has(role) && p >= 0.5) continue;                                   // one harmony at a time, always: the seam stays clear
-          if (role === 'perc' && p >= 0.6) continue;
           fade = c.out === 'filter' ? 1 - 0.75 * p : 1 - 0.5 * p; }
         if (c.out === 'riser' && bar >= c.bars - 16) fade *= 0.75 + 0.35 * ((fb - (c.bars - 16)) / 16); // the build lifts everything, still inside the old song
       }
       // the way in
       if (w.inn && bar < w.inn) { const p = fb / w.inn;
         if (role === 'bass' && p < 0.5) continue; // the new bass takes over halfway, right where the old one leaves
-        if (HARM.has(role) && w.keyIn && p < 0.5) continue;
+        if (HARM.has(role) && (w.keyIn ? p < 0.5 : p < 0.25)) continue; // the new bed may glow in a little early when the key stays
         fade = Math.min(fade, w.pv.out === 'filter' ? 0.25 + 0.75 * p : 0.5 + 0.5 * p); }
       if (role === 'melody' && w.pv) { if (bar < w.melodyIn) continue; fade = Math.min(fade, 0.55 + 0.45 * clamp((fb - w.melodyIn) / 8, 0, 1)); }
     }
@@ -7981,7 +8041,24 @@ JR.render = function (plan, ctx) {
   keys(ctx.E, ctx.P, ctx.S); ctx.fixed = !!plan.fixed;
   const tl = JR.timeline(plan), all = [];
   plan.chapters.forEach((c, i) => {
+    const rank = {}; let order = c.players.map((p) => p.role);
+    if (i === 0 && (plan.opening.id === 'awaken' || plan.opening.id === 'motif')) { const soft = ['orch', 'chords', 'melody', 'bass']; order = order.filter((r) => soft.includes(r)).concat(order.filter((r) => !soft.includes(r))); }
+    // the melody is the voice of the chapter: it never waits at the back of the queue
+    if (order.indexOf('melody') > 2) { order = order.filter((r) => r !== 'melody'); order.splice(2, 0, 'melody'); }
+    if (order.indexOf('beats') > 1) { order = order.filter((r) => r !== 'beats'); order.splice(1, 0, 'beats'); } // dance is the ground
+    order.forEach((r, k) => { rank[r] = k; }); c._order = order;
+    // every chapter brings its gift: 8 bars of release at its summit (or right after the build, when the way in was a riser), away from the seams
+    { const w1 = win(plan, i); let g = null, best = -1; for (let b = Math.max(16, (w1.inn || 0) + 8); b < c.bars - (w1.out || 0) - 8; b += 8) { const e = eAt(c, b / c.bars); if (e > best) { best = e; g = b; } }
+      if (i > 0 && plan.chapters[i - 1].out === 'riser' && c.bars > (w1.inn || 0) + 24) g = Math.ceil((w1.inn || 0) / 8) * 8; c._gift = g; }
+    c._arr = arrange(plan, i); // the arranger writes the plan of this chapter, phrase by phrase, before a note is played
     const content = chapterContent(ctx, plan, i); content.percKey = PERC_KEY[content.percStyle];
+    content.beat = beatLife(content.beat, c, H(plan.seed, 'groove', i));
+    { const w2 = win(plan, i), kk = c.feelsLike / plan.bpm, cbt = (jb) => Math.round(jb * BAR * kk);
+      if (w2.out && content.beat.length) { const wh = cbt(c.bars - w2.out / 2); for (let s2 = 0; s2 < 8; s2++) content.beat.push({ t: wh - 2 * PPQ + s2 * PPQ / 4, d: 40, lane: s2 < 4 ? 2 : 6, roll: 1, v: 50 + s2 * 8 }); }
+      if (w2.inn && content.beat.length) content.beat.push({ t: cbt(w2.inn / 2), d: 240, lane: 7, v: 112, roll: 1 }); }
+    // B: when the melody rests, the orchestra sings it (its highest voice, in its own range)
+    if (content.orch && content.orch.length && content.melody.length) { const top = content.orch.reduce((a, t) => (centre(t.name) > centre(a.name) ? t : a));
+      content.melody.filter((n) => labelAt(c, Math.floor(n.t / BAR)) === 'B').forEach((n) => top.notes.push({ t: n.t, dur: n.d, m: fold(n.p, 60, 91), v: Math.round(n.v * 0.9), art: 'long' })); }
     // the rhythm handover with the neighbours, and a crash on the first beat after a cut or a riser
     content.beat = handRhythm(content.beat, plan, i, (n) => n.lane <= 1, (n) => n.lane === 2 || n.lane === 3);
     content.perc = percussionist(content.perc, plan, i, content.percKey, (ctx.E.GENRES[GENRE_KEY[content.studio]] || {}).swing);
@@ -7999,15 +8076,6 @@ JR.render = function (plan, ctx) {
     content.motif = motif;
     // content time to journey time: the chapter was written at its own feel tempo
     const k = plan.bpm / c.feelsLike, toJ = (ns) => ns.map((n) => Object.assign({}, n, { t: Math.round(n.t * k), d: Math.max(30, Math.round((n.d || 120) * k)) }));
-    const rank = {}; let order = c.players.map((p) => p.role);
-    if (i === 0 && (plan.opening.id === 'awaken' || plan.opening.id === 'motif')) { const soft = ['orch', 'chords', 'melody', 'bass']; order = order.filter((r) => soft.includes(r)).concat(order.filter((r) => !soft.includes(r))); }
-    // the melody is the voice of the chapter: it never waits at the back of the queue
-    if (order.indexOf('melody') > 2) { order = order.filter((r) => r !== 'melody'); order.splice(2, 0, 'melody'); }
-    if (order.indexOf('beats') > 1) { order = order.filter((r) => r !== 'beats'); order.splice(1, 0, 'beats'); } // dance is the ground
-    order.forEach((r, k) => { rank[r] = k; }); c._order = order;
-    // every chapter brings its gift: 8 bars of release at its summit (or right after the build, when the way in was a riser), away from the seams
-    { const w1 = win(plan, i); let g = null, best = -1; for (let b = Math.max(16, (w1.inn || 0) + 8); b < c.bars - (w1.out || 0) - 8; b += 8) { const e = eAt(c, b / c.bars); if (e > best) { best = e; g = b; } }
-      if (i > 0 && plan.chapters[i - 1].out === 'riser' && c.bars > (w1.inn || 0) + 24) g = Math.ceil((w1.inn || 0) / 8) * 8; c._gift = g; }
     const motifPlayer = c.tplMotif || (c.players.find((p) => p.role === 'melody') || c.players.find((p) => p.role === 'chords') || { player: (plan.rack && plan.rack.melody && plan.rack.melody[0]) || JP_PLAIN }).player;
     for (const p of c.players.concat([{ role: 'motif', player: motifPlayer }])) {
       const tracks = speak(ctx, p.role, p.player, content, c);
