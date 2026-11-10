@@ -240,7 +240,7 @@ JP.plan = (words, opts = {}) => {
     cost += r() * 0.04; if (!best || cost < best.cost) best = { b, cost }; }
   const bpm = opts.bpm || best.b;
   // a feel only changes when it really must: neighbours that share a feel make the finest transitions
-  ch.forEach((x, i) => { const pf = i ? ch[i - 1].feel.id : 'straight', cost = (f) => Math.abs(bpm * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id !== pf ? 0.18 : 0);
+  ch.forEach((x, i) => { const pf = i ? ch[i - 1].feel.id : 'straight', cost = (f) => Math.abs(bpm * f.ratio - x.lead.bpm) / x.lead.bpm + (f.id !== pf ? 0.12 : 0) + (f.id !== 'straight' ? 0.12 : 0); // straight is home
     x.feel = JP.FEELS.reduce((a, f) => (cost(f) < cost(a) ? f : a));
     if (ov[i] && ov[i].feel) x.feel = JP.FEELS.find((f) => f.id === ov[i].feel) || x.feel; x.feelsLike = Math.round(bpm * x.feel.ratio); });
 
@@ -264,7 +264,7 @@ JP.plan = (words, opts = {}) => {
     x.out = breathHere ? 'breath' : pickW(r, Object.keys(w), Object.values(w));
     if (x.out === 'breath' && (rise > 0.05 || y.eStart >= 0.4)) x.out = 'riser'; // never a pause before a bang: the energy has to be built
     // a transition is a moment of its own: the next song is already growing while the old one still plays
-    x.overlap = x.out === 'cut' || x.out === 'breath' ? 0 : x.out === 'riser' ? 8 : d > 1.6 || x.feel.id !== y.feel.id ? 32 : 16; });
+    x.overlap = x.out === 'cut' || x.out === 'breath' ? 0 : x.out === 'riser' ? 16 : x.out === 'filter' || d > 1.6 || x.feel.id !== y.feel.id ? 32 : 16; }); // a fine filter bridge gets 32 bars of respect
 
   // keys: only to neighbours that sound beautiful, with one golden step up at the summit sometimes
   const top = ch.reduce((a, x, i) => (x.energy > ch[a].energy ? i : a), 0);
