@@ -17,6 +17,8 @@
 <meta name="twitter:image" content="https://divineacidmonday.github.io/divine-music-machine-v7/og/og-press.png">
 <link rel="icon" href="/divine-music-machine-v7/favicon.svg">
 <title>Divine Record Press</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@700&family=Inter:wght@700&family=Playfair+Display:ital,wght@1,600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:dark;--bg:#0B0E14;--card:#131824;--card2:#1A2030;--line:#263044;--tx:#EDE6D8;--mu:#9AA3B2;--gold:#E7B65C;--c0:#E7B65C;--c1:#4FB3A9;--c2:#D9668A;--c3:#9B87E0;--c4:#6FA8DC}
 *{box-sizing:border-box}
@@ -176,6 +178,7 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
   </div>
   <div class="legend" id="legend"></div>
   <div class="row"><span class="lbl">Colour</span><div class="sw6" id="pals"></div><span class="muted small">your own colour</span><input type="color" id="own" aria-label="Your own colour"><button class="btn" id="ownOff" style="min-height:38px;padding:6px 10px">back to the palette</button></div>
+  <div class="row"><span class="lbl">Letters</span><div class="chips" id="fonts"></div></div>
 </section>
 
 <section class="card" style="align-items:center;text-align:center">
@@ -8380,15 +8383,25 @@ if (typeof module !== 'undefined') module.exports = JR;
   // fit text into a width by shrinking the font
   const fit = (g, text, font, size, maxW) => { let s = size; g.font = font.replace('#', s); while (g.measureText(text).width > maxW && s > 10) { s -= 2; g.font = font.replace('#', s); } return s; };
 
-  PR.drawCover = (cv, rd, info, pal) => {
+  // the letters for the name on the sleeve and the label
+  PR.FONTS = [
+    { id: 'classic', name: 'Classic', css: 'italic 600 #px "Playfair Display", "Bodoni 72", Didot, Georgia, serif' },
+    { id: 'poster', name: 'Poster', css: '400 #px "Bebas Neue", Impact, "Arial Narrow", sans-serif', up: true, k: 1.25 },
+    { id: 'display', name: 'Display', css: '400 #px "Abril Fatface", "Bodoni 72", Georgia, serif' },
+    { id: 'clean', name: 'Clean', css: '700 #px "Inter", system-ui, -apple-system, "Segoe UI", sans-serif' },
+    { id: 'type', name: 'Typewriter', css: '700 #px "Space Mono", ui-monospace, Menlo, Consolas, monospace', k: 0.9 },
+    { id: 'hand', name: 'Hand', css: '700 #px "Caveat", "Segoe Script", "Bradley Hand", cursive', k: 1.3 },
+  ];
+  PR.drawCover = (cv, rd, info, pal, fontId) => {
     const g = cv.getContext('2d'), Wd = cv.width, Ht = cv.height, u = Wd / 1200, { bg, ink, acc } = pal, BAR = rd.BAR, ph = 8 * BAR;
-    const serif = 'italic 600 #px "Bodoni 72", Didot, "Bodoni MT", "Playfair Display", Georgia, serif', sans = '#px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    const F = PR.FONTS.find((f) => f.id === fontId) || PR.FONTS[0], serif = F.css, big = (n) => Math.round(n * (F.k || 1)), title = F.up ? info.name.toUpperCase() : info.name;
+    const sans = '#px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
     g.save(); g.scale(u, u);
     // the sleeve
     g.fillStyle = bg; g.fillRect(0, 0, 1200, 1200);
     const glow = g.createRadialGradient(600, 690, 60, 600, 690, 720); glow.addColorStop(0, rgba(acc, 0.16)); glow.addColorStop(1, rgba(acc, 0)); g.fillStyle = glow; g.fillRect(0, 0, 1200, 1200);
     g.fillStyle = ink; g.textBaseline = 'alphabetic';
-    fit(g, info.name, serif, 76, 1080); g.fillText(info.name, 60, 118);
+    fit(g, title, serif, big(76), 1000); g.fillText(title, 60, 118);
     g.font = sans.replace('#', 23); g.fillStyle = rgba(ink, 0.7); g.fillText(info.styles + '   ' + info.bpm + ' bpm   ' + info.key + (info.remix ? '   ' + info.remix : ''), 62, 162);
     g.textAlign = 'right'; g.font = '600 ' + sans.replace('#', 64); g.fillStyle = rgba(acc, 0.9); g.fillText(info.side, 1140, 118);
     g.font = sans.replace('#', 19); g.fillStyle = rgba(ink, 0.55); g.fillText('Divine Monday Record Press', 1140, 1166); g.textAlign = 'left';
@@ -8433,7 +8446,7 @@ if (typeof module !== 'undefined') module.exports = JR;
     g.beginPath(); g.arc(cx, cy, inner, 0, Math.PI * 2); g.fillStyle = acc; g.fill();
     g.beginPath(); g.arc(cx, cy, inner * 0.93, 0, Math.PI * 2); g.lineWidth = 1.5; g.strokeStyle = rgba(lum(acc) > 0.55 ? '#000000' : '#FFFFFF', 0.25); g.stroke();
     const lab = lum(acc) > 0.55 ? '#16161A' : '#FBF7EE'; g.fillStyle = lab; g.textAlign = 'center';
-    fit(g, info.name, serif, 40, inner * 1.5); g.fillText(info.name, cx, cy - 34);
+    fit(g, title, serif, big(40), inner * 1.5); g.fillText(title, cx, cy - 34);
     g.font = sans.replace('#', 16); g.fillStyle = rgba(lab, 0.8); const sty = info.styles.length > 34 ? info.styles.slice(0, 33) + '.' : info.styles; g.fillText(sty, cx, cy + 50);
     g.font = '600 ' + sans.replace('#', 15); g.fillText('SIDE ' + info.side + '   ' + info.bpm + ' BPM   ' + info.key.toUpperCase(), cx, cy + 76);
     if (info.remix) { g.font = sans.replace('#', 15); fit(g, info.remix, sans, 15, inner * 1.5); g.fillText(info.remix, cx, cy + 100); }
@@ -8461,7 +8474,7 @@ const S = {
   rack: ss.get('press-rack', null) || ss.get('journey-rack', null) || JP.defaultRack(),
   arts: ls.get('press-arts', ['Trip hop', JP.ORCH, '']),
   word: rnd(JW.W1), key: 'auto', bpm: ss.get('press-bpm', 0), minutes: ss.get('press-min', 6),
-  name: '', nameMine: false, style: '', hints: {}, pal: ls.get('press-pal', 0), own: ls.get('press-own', null),
+  name: '', nameMine: false, style: '', hints: {}, pal: ls.get('press-pal', 0), font: ls.get('press-font', 'classic'), own: ls.get('press-own', null),
   seed: (Math.random() * 4294967296) >>> 0,
   tpl: ls.get('press-template', null), tplOn: ss.get('press-tpl-on', false),
 };
@@ -8535,13 +8548,18 @@ function info(p, side) { const c = p.chapters[0];
 function drawSides() {
   if (!S.A) return; const pal = palette();
   [['A', S.A, S.rA, S.dA], ['B', S.B, S.rB, S.dB]].forEach(([sd, p, r, d]) => { const c = p.chapters[0];
-    PR.drawCover($('#cv' + sd), d, info(p, sd), pal);
+    PR.drawCover($('#cv' + sd), d, info(p, sd), pal, S.font);
     $('#t' + sd).textContent = sd === 'A' ? c.records[0].name : p.remix;
     $('#f' + sd).innerHTML = `<span><b>${p.bpm} bpm</b></span><span><b>${esc(c.key)}</b></span><span>${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}</span><span><b>${fmtMin(r.totalTicks, p.bpm)}</b> · ${Math.round(r.totalTicks / JR.BAR)} bars</span>`;
     $('#g' + sd).innerHTML = grooveMap(p, d); });
   $('#legend').innerHTML = PR.ROLES.map((k) => `<span><i style="background:${RC[k]}"></i>${RN[k]}</span>`).join('');
-  drawPals();
+  drawPals(); drawFonts();
 }
+function drawFonts() { const el = $('#fonts'); el.innerHTML = '';
+  PR.FONTS.forEach((f) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = f.name; b.style.font = f.css.replace('#', 17); b.setAttribute('aria-pressed', f.id === S.font ? 'true' : 'false');
+    b.onclick = () => { S.font = f.id; ls.set('press-font', f.id); drawSides(); }; el.append(b); }); }
+// the letters arrive from the web a moment later: draw the pictures again when they are there
+if (document.fonts && document.fonts.load) Promise.all(PR.FONTS.map((f) => document.fonts.load(f.css.replace('#', 40), 'Aa'))).then(() => drawSides()).catch(() => {});
 function grooveMap(p, d) {
   const W = 1000, H = 132, top = 22, P = d.P, cw = W / P, c = p.chapters[0], k = c.feelsLike / p.bpm, max = {};
   PR.ROLES.forEach((r) => { max[r] = Math.max(1, ...d.rows.map((x) => x[r])); });

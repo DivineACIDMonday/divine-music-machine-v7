@@ -88,15 +88,25 @@
   // fit text into a width by shrinking the font
   const fit = (g, text, font, size, maxW) => { let s = size; g.font = font.replace('#', s); while (g.measureText(text).width > maxW && s > 10) { s -= 2; g.font = font.replace('#', s); } return s; };
 
-  PR.drawCover = (cv, rd, info, pal) => {
+  // the letters for the name on the sleeve and the label
+  PR.FONTS = [
+    { id: 'classic', name: 'Classic', css: 'italic 600 #px "Playfair Display", "Bodoni 72", Didot, Georgia, serif' },
+    { id: 'poster', name: 'Poster', css: '400 #px "Bebas Neue", Impact, "Arial Narrow", sans-serif', up: true, k: 1.25 },
+    { id: 'display', name: 'Display', css: '400 #px "Abril Fatface", "Bodoni 72", Georgia, serif' },
+    { id: 'clean', name: 'Clean', css: '700 #px "Inter", system-ui, -apple-system, "Segoe UI", sans-serif' },
+    { id: 'type', name: 'Typewriter', css: '700 #px "Space Mono", ui-monospace, Menlo, Consolas, monospace', k: 0.9 },
+    { id: 'hand', name: 'Hand', css: '700 #px "Caveat", "Segoe Script", "Bradley Hand", cursive', k: 1.3 },
+  ];
+  PR.drawCover = (cv, rd, info, pal, fontId) => {
     const g = cv.getContext('2d'), Wd = cv.width, Ht = cv.height, u = Wd / 1200, { bg, ink, acc } = pal, BAR = rd.BAR, ph = 8 * BAR;
-    const serif = 'italic 600 #px "Bodoni 72", Didot, "Bodoni MT", "Playfair Display", Georgia, serif', sans = '#px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
+    const F = PR.FONTS.find((f) => f.id === fontId) || PR.FONTS[0], serif = F.css, big = (n) => Math.round(n * (F.k || 1)), title = F.up ? info.name.toUpperCase() : info.name;
+    const sans = '#px system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
     g.save(); g.scale(u, u);
     // the sleeve
     g.fillStyle = bg; g.fillRect(0, 0, 1200, 1200);
     const glow = g.createRadialGradient(600, 690, 60, 600, 690, 720); glow.addColorStop(0, rgba(acc, 0.16)); glow.addColorStop(1, rgba(acc, 0)); g.fillStyle = glow; g.fillRect(0, 0, 1200, 1200);
     g.fillStyle = ink; g.textBaseline = 'alphabetic';
-    fit(g, info.name, serif, 76, 1080); g.fillText(info.name, 60, 118);
+    fit(g, title, serif, big(76), 1000); g.fillText(title, 60, 118);
     g.font = sans.replace('#', 23); g.fillStyle = rgba(ink, 0.7); g.fillText(info.styles + '   ' + info.bpm + ' bpm   ' + info.key + (info.remix ? '   ' + info.remix : ''), 62, 162);
     g.textAlign = 'right'; g.font = '600 ' + sans.replace('#', 64); g.fillStyle = rgba(acc, 0.9); g.fillText(info.side, 1140, 118);
     g.font = sans.replace('#', 19); g.fillStyle = rgba(ink, 0.55); g.fillText('Divine Monday Record Press', 1140, 1166); g.textAlign = 'left';
@@ -141,7 +151,7 @@
     g.beginPath(); g.arc(cx, cy, inner, 0, Math.PI * 2); g.fillStyle = acc; g.fill();
     g.beginPath(); g.arc(cx, cy, inner * 0.93, 0, Math.PI * 2); g.lineWidth = 1.5; g.strokeStyle = rgba(lum(acc) > 0.55 ? '#000000' : '#FFFFFF', 0.25); g.stroke();
     const lab = lum(acc) > 0.55 ? '#16161A' : '#FBF7EE'; g.fillStyle = lab; g.textAlign = 'center';
-    fit(g, info.name, serif, 40, inner * 1.5); g.fillText(info.name, cx, cy - 34);
+    fit(g, title, serif, big(40), inner * 1.5); g.fillText(title, cx, cy - 34);
     g.font = sans.replace('#', 16); g.fillStyle = rgba(lab, 0.8); const sty = info.styles.length > 34 ? info.styles.slice(0, 33) + '.' : info.styles; g.fillText(sty, cx, cy + 50);
     g.font = '600 ' + sans.replace('#', 15); g.fillText('SIDE ' + info.side + '   ' + info.bpm + ' BPM   ' + info.key.toUpperCase(), cx, cy + 76);
     if (info.remix) { g.font = sans.replace('#', 15); fit(g, info.remix, sans, 15, inner * 1.5); g.fillText(info.remix, cx, cy + 100); }

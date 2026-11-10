@@ -17,6 +17,8 @@
 <meta name="twitter:image" content="https://divineacidmonday.github.io/divine-music-machine-v7/og/og-press.png">
 <link rel="icon" href="/divine-music-machine-v7/favicon.svg">
 <title>Divine Record Press</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Abril+Fatface&family=Bebas+Neue&family=Caveat:wght@700&family=Inter:wght@700&family=Playfair+Display:ital,wght@1,600&family=Space+Mono:wght@700&display=swap" rel="stylesheet">
 <style>
 :root{color-scheme:dark;--bg:#0B0E14;--card:#131824;--card2:#1A2030;--line:#263044;--tx:#EDE6D8;--mu:#9AA3B2;--gold:#E7B65C;--c0:#E7B65C;--c1:#4FB3A9;--c2:#D9668A;--c3:#9B87E0;--c4:#6FA8DC}
 *{box-sizing:border-box}
@@ -176,6 +178,7 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
   </div>
   <div class="legend" id="legend"></div>
   <div class="row"><span class="lbl">Colour</span><div class="sw6" id="pals"></div><span class="muted small">your own colour</span><input type="color" id="own" aria-label="Your own colour"><button class="btn" id="ownOff" style="min-height:38px;padding:6px 10px">back to the palette</button></div>
+  <div class="row"><span class="lbl">Letters</span><div class="chips" id="fonts"></div></div>
 </section>
 
 <section class="card" style="align-items:center;text-align:center">
@@ -214,7 +217,7 @@ const S = {
   rack: ss.get('press-rack', null) || ss.get('journey-rack', null) || JP.defaultRack(),
   arts: ls.get('press-arts', ['Trip hop', JP.ORCH, '']),
   word: rnd(JW.W1), key: 'auto', bpm: ss.get('press-bpm', 0), minutes: ss.get('press-min', 6),
-  name: '', nameMine: false, style: '', hints: {}, pal: ls.get('press-pal', 0), own: ls.get('press-own', null),
+  name: '', nameMine: false, style: '', hints: {}, pal: ls.get('press-pal', 0), font: ls.get('press-font', 'classic'), own: ls.get('press-own', null),
   seed: (Math.random() * 4294967296) >>> 0,
   tpl: ls.get('press-template', null), tplOn: ss.get('press-tpl-on', false),
 };
@@ -288,13 +291,18 @@ function info(p, side) { const c = p.chapters[0];
 function drawSides() {
   if (!S.A) return; const pal = palette();
   [['A', S.A, S.rA, S.dA], ['B', S.B, S.rB, S.dB]].forEach(([sd, p, r, d]) => { const c = p.chapters[0];
-    PR.drawCover($('#cv' + sd), d, info(p, sd), pal);
+    PR.drawCover($('#cv' + sd), d, info(p, sd), pal, S.font);
     $('#t' + sd).textContent = sd === 'A' ? c.records[0].name : p.remix;
     $('#f' + sd).innerHTML = `<span><b>${p.bpm} bpm</b></span><span><b>${esc(c.key)}</b></span><span>${c.feel.id === 'straight' ? 'straight' : esc(c.feel.name)}</span><span><b>${fmtMin(r.totalTicks, p.bpm)}</b> · ${Math.round(r.totalTicks / JR.BAR)} bars</span>`;
     $('#g' + sd).innerHTML = grooveMap(p, d); });
   $('#legend').innerHTML = PR.ROLES.map((k) => `<span><i style="background:${RC[k]}"></i>${RN[k]}</span>`).join('');
-  drawPals();
+  drawPals(); drawFonts();
 }
+function drawFonts() { const el = $('#fonts'); el.innerHTML = '';
+  PR.FONTS.forEach((f) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = f.name; b.style.font = f.css.replace('#', 17); b.setAttribute('aria-pressed', f.id === S.font ? 'true' : 'false');
+    b.onclick = () => { S.font = f.id; ls.set('press-font', f.id); drawSides(); }; el.append(b); }); }
+// the letters arrive from the web a moment later: draw the pictures again when they are there
+if (document.fonts && document.fonts.load) Promise.all(PR.FONTS.map((f) => document.fonts.load(f.css.replace('#', 40), 'Aa'))).then(() => drawSides()).catch(() => {});
 function grooveMap(p, d) {
   const W = 1000, H = 132, top = 22, P = d.P, cw = W / P, c = p.chapters[0], k = c.feelsLike / p.bpm, max = {};
   PR.ROLES.forEach((r) => { max[r] = Math.max(1, ...d.rows.map((x) => x[r])); });
