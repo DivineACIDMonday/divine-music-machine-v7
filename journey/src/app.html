@@ -461,16 +461,18 @@ document.querySelectorAll('#len button').forEach((b) => { b.onclick = () => { S.
 (() => { const t = $('#tempo'); for (let b = 90; b <= 134; b += 2) t.add(new Option(b + ' bpm', b)); t.value = String(S.bpm || 0);
   t.onchange = () => { S.bpm = +t.value; ss.set('journey-bpm', S.bpm); replan(); }; })();
 // ---------- your template ----------
-function midiNames(buf) { const d = new Uint8Array(buf), names = []; let p = 14; const u32 = (o) => (d[o] << 24) | (d[o + 1] << 16) | (d[o + 2] << 8) | d[o + 3];
+function midiNames(buf) { // the names of the tracks a DAW shows: tracks without notes are dropped on import, so they are left out here too
+  const d = new Uint8Array(buf), names = []; let p = 14; const u32 = (o) => ((d[o] << 24) | (d[o + 1] << 16) | (d[o + 2] << 8) | d[o + 3]) >>> 0;
   if (String.fromCharCode(...d.slice(0, 4)) !== 'MThd') throw new Error('this is not a MIDI file');
-  while (p + 8 <= d.length) { const id = String.fromCharCode(...d.slice(p, p + 4)), len = u32(p + 4), end = p + 8 + len; let q = p + 8, name = null, rs = 0;
-    if (id === 'MTrk') { while (q < end && name == null) { while (d[q] & 128) q++; q++; let st = d[q];
-        if (st === 0xff) { const ty = d[q + 1]; q += 2; let l = 0; while (d[q] & 128) l = (l << 7) | (d[q++] & 127); l = (l << 7) | d[q++]; if (ty === 3) name = new TextDecoder().decode(d.slice(q, q + l)); q += l; }
-        else if (st === 0xf0 || st === 0xf7) { q++; let l = 0; while (d[q] & 128) l = (l << 7) | (d[q++] & 127); l = (l << 7) | d[q++]; q += l; }
-        else { if (st & 128) { rs = st; q++; } const hi = rs & 0xf0; q += hi === 0xc0 || hi === 0xd0 ? 1 : 2; } }
-      names.push(name || ''); }
+  const vlq = () => { let v = 0; while (d[q] & 128) v = (v << 7) | (d[q++] & 127); v = (v << 7) | d[q++]; return v; }; let q = 0, first = true;
+  while (p + 8 <= d.length) { const id = String.fromCharCode(...d.slice(p, p + 4)), len = u32(p + 4), end = p + 8 + len; q = p + 8; let name = '', notes = false, rs = 0;
+    if (id === 'MTrk') { while (q < end) { vlq(); let st = d[q];
+        if (st === 0xff) { const ty = d[q + 1]; q += 2; const l = vlq(); if (ty === 3 && !name) name = new TextDecoder().decode(d.slice(q, q + l)); q += l; }
+        else if (st === 0xf0 || st === 0xf7) { q++; q += vlq(); }
+        else { if (st & 128) { rs = st; q++; } const hi = rs & 0xf0; if (hi === 0x90 && d[q + 1] > 0) notes = true; q += hi === 0xc0 || hi === 0xd0 ? 1 : 2; } }
+      if (first) first = false; else if (notes) names.push(name); }
     p = end; }
-  return names.slice(1); } // the first track is the conductor
+  return names; }
 function useTemplate() { S.tplLayout = S.tpl ? JR.parseTemplate(S.tpl.names, window.SYM) : null;
   $('#tplInfo').textContent = S.tpl ? S.tpl.file + ': ' + S.tpl.names.length + ' tracks' + (S.tplLayout && S.tplLayout.perChapter ? ', a track per chapter' : '') : 'no template loaded yet';
   document.querySelectorAll('#tplMode button').forEach((b) => b.setAttribute('aria-pressed', (b.dataset.m === 'mine') === !!S.tplOn ? 'true' : 'false')); }
