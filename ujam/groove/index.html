@@ -3656,6 +3656,7 @@ E.writeMidi = function (tracks, meta) {
     const nm = str(tr.name || 'Track');
     ev.push({ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) });
     const ch = (tr.channel || 0) & 15;
+    for (const c of tr.cc || []) ev.push({ t: Math.max(0, Math.round(c.t)), b: [0xb0 | ch, c.c & 127, clamp(Math.round(c.v), 0, 127)], o: 0 }); // controllers, for the orchestra: articulation and dynamics
     for (const n of tr.notes) {
       const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d));
       ev.push({ t, b: [0x90 | ch, p, v], o: 1 });

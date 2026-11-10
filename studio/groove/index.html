@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-09 14:00</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-10 22:00</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
    ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
@@ -3418,6 +3418,7 @@ E.writeMidi = function (tracks, meta) {
     const nm = str(tr.name || 'Track');
     ev.push({ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) });
     const ch = (tr.channel || 0) & 15;
+    for (const c of tr.cc || []) ev.push({ t: Math.max(0, Math.round(c.t)), b: [0xb0 | ch, c.c & 127, clamp(Math.round(c.v), 0, 127)], o: 0 }); // controllers, for the orchestra: articulation and dynamics
     for (const n of tr.notes) {
       const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d));
       ev.push({ t, b: [0x90 | ch, p, v], o: 1 });
@@ -3668,11 +3669,39 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-11-09 14:00';
+const VERSION = '2026-11-10 22:00';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
 const ALL_PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
+// the orchestra on the pad and the chords: Berlin Free Orchestra and BBC Symphony Orchestra Discover,
+// written the way the Symphony Machine and the Journey speak to them: a string section, every voice of the chord in its own range,
+// held notes long, short chords short, the dynamics on CC1, the articulation on CC70 (Berlin) or a key switch (BBC)
+D.PLUGINS.berlin = { name: 'Berlin Free Orchestra', parts: ['pad', 'chords'], orch: 'berlin' };
+D.PLUGINS.bbc = { name: 'BBC Symphony Orchestra Discover', parts: ['pad', 'chords'], orch: 'bbc' };
+const ORCH = [
+  { id: 'vln1', bbc: 'Violins 1', berlin: 'Violins a8 (1st)', lo: 67, hi: 88, n: 4, voice: 'top' },
+  { id: 'vln2', bbc: 'Violins 2', berlin: 'Violins a8 (2nd)', lo: 60, hi: 81, n: 4, voice: 'upper' },
+  { id: 'vla', bbc: 'Violas', berlin: 'Violas a5', lo: 53, hi: 74, n: 4, voice: 'middle' },
+  { id: 'vc', bbc: 'Celli', berlin: 'Celli a5', lo: 43, hi: 62, n: 4, voice: 'low' },
+  { id: 'cb', bbc: 'Basses', berlin: 'Basses a4', lo: 31, hi: 48, n: 3, voice: 'low' }];
+function orchTracks(sg, part, notes, plugin) {
+  const BT = D.barTicks(sg), beat = D.PPQ, ns = notes.filter((n) => !n.ks).slice().sort((a, b) => a.t - b.t || a.p - b.p), groups = [];
+  for (const n of ns) { const g = groups[groups.length - 1]; if (g && n.t - g.t < 30) g.n.push(n); else groups.push({ t: n.t, n: [n] }); }
+  const withBasses = part === 'pad' || sg.parts.bass.mode === 'off'; // the basses stay out when the bass already plays the low end
+  return ORCH.filter((s) => s.id !== 'cb' || withBasses).map((s) => {
+    const out = [], cc = [{ t: 0, c: 11, v: 110 }], ART = { long: 0, short: 1 }; let prev = null, art = null;
+    for (const g of groups) { const ps = g.n.map((n) => n.p).sort((a, b) => a - b), d = Math.max(...g.n.map((n) => n.d)), v = Math.round(g.n.reduce((a, n) => a + n.v, 0) / g.n.length);
+      const src = s.voice === 'top' ? ps[ps.length - 1] : s.voice === 'upper' ? ps[Math.max(0, ps.length - 2)] : s.voice === 'middle' ? ps[Math.floor(ps.length / 2)] : ps[0];
+      const pc = ((src % 12) + 12) % 12; let best = null; for (let p = s.lo; p <= s.hi; p++) if (p % 12 === pc && (best == null || Math.abs(p - (prev == null ? (s.lo + s.hi) / 2 : prev)) < Math.abs(best - (prev == null ? (s.lo + s.hi) / 2 : prev)))) best = p;
+      if (best == null) continue; prev = best;
+      const a = part === 'pad' || d >= beat * 0.75 ? 'long' : 'short';
+      if (a !== art) { art = a; if (plugin === 'berlin') cc.push({ t: Math.max(0, g.t - 5), c: 70, v: Math.floor((ART[a] + 0.5) * 128 / s.n) }); else out.push({ t: Math.max(0, g.t - 10), d: 10, p: ART[a], v: 100 }); }
+      cc.push({ t: Math.max(0, g.t - 2), c: 1, v: Math.max(30, Math.min(127, 34 + Math.round(v * 0.7))) });
+      out.push({ t: g.t, d: Math.max(30, d), p: best, v }); }
+    return { name: PART_NAMES[part] + ' for ' + D.PLUGINS[plugin].name + ', ' + (plugin === 'berlin' ? s.berlin : s.bbc), channel: 0, notes: out, cc };
+  }).filter((t) => t.notes.some((n) => n.p > 11));
+}
 const PARTS = GROOVE ? ['beat'] : ALL_PARTS;
 function grooveOnly(sg) { if (GROOVE && sg) for (const p of ALL_PARTS) if (p !== 'beat') sg.parts[p].mode = 'off'; }
 const PART_NAMES = { beat: 'Beat', bass: 'Bass', chords: 'Chords', pad: 'Pad', melody: 'Melody', answer: 'Answer' };
@@ -4321,6 +4350,7 @@ function deliveryNo() { let n = store.get(KP + 'counter', 0) + 1; store.set(KP +
 function fileName(sg, part, no, plugin, ver) { const pl = plugin && plugin !== 'plain' && plugin !== 'gm' ? D.PLUGINS[plugin].name.replace(/^UJAM /, '').replace(/[^A-Za-z0-9]+/g, '') : ''; const tt = plugin ? titleFor(Object.keys(PART_NAMES).find((k) => PART_NAMES[k] === part) || '', plugin).replace(/[^A-Za-z0-9]/g, '') : ''; return 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_' + part + (pl ? '_' + pl : '') + (tt ? '_' + tt : '') + (ver ? '_' + ver : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
 function buildPart(sg, part, ver) {
   const plugin = sg.parts[part].plugin, notes = D.renderSong(sg, part, { polished: true });
+  if (D.PLUGINS[plugin] && D.PLUGINS[plugin].orch) return D.writeMidi(orchTracks(sg, part, notes, plugin), { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
   const masked = D.applyMask(sg, part, notes, plugin, { octave: 0, roles: {}, mode: ver ? ver.toLowerCase() : undefined });
   const tt = titleFor(part, plugin), name = PART_NAMES[part] + (plugin !== 'plain' && plugin !== 'gm' ? ' for ' + D.PLUGINS[plugin].name + (tt ? ' ' + tt : '') + (ver ? ' ' + ver : '') : '');
   return D.writeMidi([{ name, channel: part === 'beat' ? 9 : 0, notes: masked }], { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
@@ -4460,7 +4490,7 @@ function closeStart() { const el = $('#start'); if (el) el.remove(); }
 
 document.addEventListener('keydown', (e) => { if (e.target.closest && e.target.closest('input,textarea')) return; if (e.code === 'Space' && song() && !$('#start')) { e.preventDefault(); togglePlay(); } if ((e.metaKey || e.ctrlKey) && e.key === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); } if (e.key === 'Escape' && st.menu) { st.menu = false; renderMenu(); } });
 document.addEventListener('click', (e) => { if (st.menu && !e.target.closest('.menu') && !e.target.closest('[aria-label="Menu"]')) { st.menu = false; renderMenu(); } });
-window.DMS = { st, song, makeSong, setMode, playsMap, emptyWarning, startPlay, stopAll, render };
+window.DMS = { st, song, makeSong, setMode, playsMap, emptyWarning, startPlay, stopAll, render, buildPart, orchTracks };
 render(); openStart();
 })();
 </script>
