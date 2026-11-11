@@ -2073,23 +2073,23 @@ E.freshSong = function (genre, opts) {
   return pick.sg;
 };
 // mystery and hypnosis, for the genres that live on it (trance most, the others milder)
-E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-recent-songs' : 'dmm-recent-songs'); // each app family remembers its own recent songs
+E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-recent-songs' : 'dmmu-recent-songs'); // each app family remembers its own recent songs
 // the groove machine: only the beat, always yours; keep = an existing groove keeps its hits
 
 /* ---------- surprise me: a genre per layer, a feeling and a story ---------- */
 E.SONG_FEELS = {
-  energetic: { name: 'Energetic', icon: '⚡', scale: null, bpm: 1.05, raw: 0.5 },
-  dark: { name: 'Dark', icon: '🌑', scale: 'minor', bpm: 0.98, raw: 0.45 },
+  energetic: { name: 'Energetic', icon: '', scale: null, bpm: 1.05, raw: 0.5 },
+  dark: { name: 'Dark', icon: '', scale: 'minor', bpm: 0.98, raw: 0.45 },
   happy: { name: 'Happy', icon: '☀', scale: 'major', bpm: 1.03, raw: 0.4 },
-  dreamy: { name: 'Dreamy', icon: '💭', scale: 'major', bpm: 0.93, raw: 0.3 },
-  melancholy: { name: 'Melancholy', icon: '🌧', scale: 'minor', bpm: 0.94, raw: 0.3 },
-  hypnotic: { name: 'Hypnotic', icon: '🌀', scale: 'dorian', bpm: 1, raw: 0.25 },
+  dreamy: { name: 'Dreamy', icon: '', scale: 'major', bpm: 0.93, raw: 0.3 },
+  melancholy: { name: 'Melancholy', icon: '', scale: 'minor', bpm: 0.94, raw: 0.3 },
+  hypnotic: { name: 'Hypnotic', icon: '', scale: 'dorian', bpm: 1, raw: 0.25 },
 };
 E.SONG_STORIES = {
-  radio: { name: 'Radio', icon: '📻', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
-  club: { name: 'Club', icon: '🎧', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
-  burner: { name: 'Slow burner', icon: '🔥', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
-  journey: { name: 'Journey', icon: '🌙', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
+  radio: { name: 'Radio', icon: '', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
+  club: { name: 'Club', icon: '', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
+  burner: { name: 'Slow burner', icon: '', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
+  journey: { name: 'Journey', icon: '', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
 };
 E.surpriseSong = function (o) {
   o = o || {};
@@ -4053,6 +4053,14 @@ function vlq(n) { const b = [n & 0x7f]; n >>= 7; while (n) { b.unshift((n & 0x7f
 function str(s) { const o = []; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); o.push(c < 128 ? c : 63); } return o; }
 E.COPYRIGHT = '\u00a9 ' + new Date().getFullYear() + ' Divine Monday';
 E.COPYRIGHT_MIDI = 'Copyright ' + new Date().getFullYear() + ' Divine Monday';
+// one key, one note at a time: when a note starts again before the same note ended, the first one ends just before it
+// (a DAW pairs every note on with a note off, and a doubled note would cut the wrong one short); the same note twice at once plays once, the louder
+const oneAtATime = (notes) => { const out = notes.filter(Boolean).map((n) => Object.assign({}, n)).sort((a, b) => a.t - b.t || b.v - a.v), last = {}, keep = [];
+  for (const n of out) { const k = Math.round(n.p) + (n.ks ? 1000 : 0), pv = last[k];
+    if (pv && Math.round(n.t) <= Math.round(pv.t)) continue;
+    if (pv && Math.round(pv.t) + Math.max(1, Math.round(pv.d)) > Math.round(n.t)) pv.d = Math.max(1, Math.round(n.t) - Math.round(pv.t) - 1);
+    last[k] = n; keep.push(n); }
+  return keep; };
 E.writeMidi = function (tracks, meta) {
   // tracks: [{name, channel, notes:[{t,d,p,v}], markers?:[{t,text}]}]
   const PPQ = E.PPQ;
@@ -4074,7 +4082,7 @@ E.writeMidi = function (tracks, meta) {
     ev.push({ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) });
     const ch = (tr.channel || 0) & 15;
     for (const c of tr.cc || []) ev.push({ t: Math.max(0, Math.round(c.t)), b: [0xb0 | ch, c.c & 127, clamp(Math.round(c.v), 0, 127)], o: 0 }); // controllers, for the orchestra: articulation and dynamics
-    for (const n of tr.notes) {
+    for (const n of oneAtATime(tr.notes)) {
       const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d));
       ev.push({ t, b: [0x90 | ch, p, v], o: 1 });
       ev.push({ t: t + d, b: [0x80 | ch, p, 0], o: 0 });
@@ -4092,7 +4100,7 @@ E.beatOnly = () => { try { return localStorage.getItem('dm_beat_only') === '1'; 
     if (!(tracks.length === 1 && ((tracks[0].channel || 0) & 15) === 9 && E.beatOnly())) return full(tracks, meta);
     const PPQ = E.PPQ, tempo = Math.round(60000000 / meta.bpm), m = E.METERS[meta.meter] || E.METERS['4/4'], den = { 4: 2, 8: 3 }[m.den], tr = tracks[0], nm = str(tr.name || 'Beat');
     const ev = [{ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) }, { t: 0, b: [0xff, 0x51, 3, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] }, { t: 0, b: [0xff, 0x58, 4, m.num, den, m.den === 8 ? 12 : 24, 8] }];
-    for (const n of tr.notes) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
+    for (const n of oneAtATime(tr.notes)) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
     const c = trackBytes(ev), hdr = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (PPQ >> 8) & 255, PPQ & 255], out = new Uint8Array(hdr.length + c.length); out.set(hdr, 0); out.set(c, hdr.length); return out; }; })();
 // the choice sits next to the beat's plugin picker, in every app that has one
 (function () { if (typeof document === 'undefined') return;
@@ -4744,7 +4752,7 @@ function renderTop() {
         h('button', { class: st.polished ? 'on' : '', title: 'Theory checked and mix ready', onclick: () => { st.polished = true; renderTop(); } }, 'Polished')),
       h('button', { id: 'shareBtn', title: 'Send your song as a link: whoever opens it can listen and download the MP3 and MIDI', onclick: shareSong }, ico('share'), 'Share'),
       h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver'),
-      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'suiteBtn', 'aria-label': 'All Divine Monday machines', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠'), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Feedback or contact', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: sendFeedback }, '📮'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
+      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, 'Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'suiteBtn', 'aria-label': 'All Divine Monday machines', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '⌂'), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Feedback or contact', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: sendFeedback }, '✉'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
   );
 }
 function setMeter(m) {
@@ -5196,7 +5204,7 @@ function mixScan(sec, rows, noFx, si) {
   } finally { sec.laneOff = keepOff; sec.laneFx = keepFx; }
   return cnt;
 }
-// a 🎲 you hear: if a variation changes (almost) nothing, roll it again (and at last a bit stronger)
+// a ⚄ you hear: if a variation changes (almost) nothing, roll it again (and at last a bit stronger)
 function rowDiff(sg, si, key) {
   const sec = sg.sections[si], s0 = D.sectionStart(sg, si), drum = isDrum(key);
   const get = () => { const R = D.makeRenderer(sg), o = []; for (let b = 0; b < sec.bars; b++) { let x = null; try { x = drum ? D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }) : D.renderBar(sg, key, s0 + b, R.res, { raw: true }); } catch (e) { x = null; } o.push(JSON.stringify(drum ? (x && x.lanes ? x.lanes[key] : null) : x)); } return o; };
@@ -5219,13 +5227,13 @@ function laneMixer() {
   const wrap = h('div', { class: 'mixwrap' });
   const anyRnd = sec.laneFx && Object.values(sec.laneFx).some((f) => f.rnd);
   wrap.append(h('div', { class: 'mixtop' },
-    h('span', { class: 'small' }, 'Tap a cell: that drum or part off or on in that bar. 🎲 varies it, ↗ lets it grow, ⋯ for all choices. Bar 1 stays your base.'),
+    h('span', { class: 'small' }, 'Tap a cell: that drum or part off or on in that bar. ⚄ varies it, ↗ lets it grow, ⋯ for all choices. Bar 1 stays your base.'),
     h('div', { class: 'grow' }),
     h('button', { id: 'mixRandom', class: 'primary', title: 'Variations and progressions over everything that plays in ' + sectionLabel(st.sec) + ', with respect for rhythm and key', onclick: () => randomizeMix(st.mixLevel || 2) }, ico('dice'), 'Randomize mix'),
     h('div', { class: 'seg mmamt', role: 'group', 'aria-label': 'How much' }, [[1, 'subtle'], [2, 'medium'], [3, 'wild']].map(([k, t]) => h('button', { id: 'mixLevel_' + k, class: (st.mixLevel || 2) === k ? 'on' : '', onclick: () => { st.mixLevel = k; renderEditor(); } }, t))),
     h('div', { class: 'seg mmamt', role: 'group', 'aria-label': 'Where', style: 'grid-template-columns:auto auto;gap:4px' }, h('button', { id: 'mixScopeSec', class: st.mixAll ? '' : 'on', title: 'Randomize, New flow and All plain work on ' + sectionLabel(st.sec), onclick: () => { st.mixAll = false; renderEditor(); } }, 'This section'), h('button', { id: 'mixScopeAll', class: st.mixAll ? 'on' : '', title: 'Randomize, New flow and All plain work on every section at once', onclick: () => { st.mixAll = true; renderEditor(); } }, 'All sections')),
     h('button', { class: 'ghost', id: 'mixPlain', disabled: st.mixAll ? !sg.sections.some((x) => x.laneFx) : !sec.laneFx, title: 'Everything plays as written again' + (st.mixAll ? ', in every section' : ''), onclick: () => { change(() => { if (st.mixAll) sg.sections.forEach((x) => { delete x.laneFx; }); else delete sec.laneFx; }, { keep: true }); renderEditor(); setHint(st.mixAll ? 'Everything in every section plays as written again.' : 'Everything in ' + sectionLabel(st.sec) + ' plays as written again.'); } }, '\u00d7 All plain'),
-    h('button', { id: 'newFlow', disabled: !(st.mixAll ? sg.sections : [sec]).some((x) => x.laneFx && Object.values(x.laneFx).some((f) => f.rnd)), title: 'New variations for everything with a 🎲' + (st.mixAll ? ' in every section' : ' in ' + sectionLabel(st.sec)) + '; your base stays', onclick: () => { change(() => { for (const x of st.mixAll ? sg.sections : [sec]) if (x.laneFx) for (const k of Object.keys(x.laneFx)) if (x.laneFx[k].rnd) x.laneFx[k] = Object.assign({}, x.laneFx[k], { rnd: D.newSeed() }); }, { keep: true }); renderEditor(); setHint('New flow: same base, a new way through ' + (st.mixAll ? 'every section' : sectionLabel(st.sec)) + '.'); } }, ico('dice'), 'New flow')));
+    h('button', { id: 'newFlow', disabled: !(st.mixAll ? sg.sections : [sec]).some((x) => x.laneFx && Object.values(x.laneFx).some((f) => f.rnd)), title: 'New variations for everything with a ⚄' + (st.mixAll ? ' in every section' : ' in ' + sectionLabel(st.sec)) + '; your base stays', onclick: () => { change(() => { for (const x of st.mixAll ? sg.sections : [sec]) if (x.laneFx) for (const k of Object.keys(x.laneFx)) if (x.laneFx[k].rnd) x.laneFx[k] = Object.assign({}, x.laneFx[k], { rnd: D.newSeed() }); }, { keep: true }); renderEditor(); setHint('New flow: same base, a new way through ' + (st.mixAll ? 'every section' : sectionLabel(st.sec)) + '.'); } }, ico('dice'), 'New flow')));
   if (!rows.length) { wrap.append(h('div', { class: 'small' }, 'Nothing plays yet. Switch a part on first.')); return wrap; }
   const tbl = h('div', { class: 'mixgrid', id: 'mixGrid', style: 'grid-template-columns:178px repeat(' + n + ',minmax(18px,1fr))' });
   tbl.append(h('span'));
@@ -5239,7 +5247,7 @@ function laneMixer() {
     lastPart = rw.part;
     const allOff = Array.from({ length: n }, (_, b) => isOff(b, key)).every(Boolean), fx = fxOf(key), open = st.mixOpen === key;
     const from = fx.from != null ? fx.from : 0, to = fx.to != null ? fx.to : n - 1, ranged = fx.from != null || fx.to != null;
-    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : ''), id: 'mixRnd_' + key, style: '--beat:var(--' + rw.color + ')', title: fx.rnd ? 'Another variation of ' + ln.name : 'Let ' + ln.name + ' vary', 'aria-label': 'Vary ' + ln.name, onclick: () => fxChange(key, { rnd: D.newSeed() }, ln.name + ' varies: ' + kinds[fx.kind || 'mix'].toLowerCase() + ', ' + D.EVERY[fx.every || 1] + '. Tap 🎲 again for another.') }, ico('dice'));
+    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : ''), id: 'mixRnd_' + key, style: '--beat:var(--' + rw.color + ')', title: fx.rnd ? 'Another variation of ' + ln.name : 'Let ' + ln.name + ' vary', 'aria-label': 'Vary ' + ln.name, onclick: () => fxChange(key, { rnd: D.newSeed() }, ln.name + ' varies: ' + kinds[fx.kind || 'mix'].toLowerCase() + ', ' + D.EVERY[fx.every || 1] + '. Tap ⚄ again for another.') }, ico('dice'));
     const prog = h('select', { class: 'mixprog', id: 'mixProg_' + key, 'aria-label': ln.name + ' progression', onchange: (e) => fxChange(key, { prog: e.target.value }, ln.name + ': ' + progs[e.target.value].toLowerCase() + '.') },
       Object.entries(progs).map(([k, t]) => h('option', { value: k, selected: (fx.prog || 'none') === k }, '↗ ' + (k === 'none' ? 'none' : t.split(':')[0]))));
     const more = h('button', { class: 'mixfx ' + (open ? 'on' : ''), id: 'mixMore_' + key, style: '--beat:var(--' + rw.color + ')', title: 'All choices for ' + ln.name, 'aria-expanded': open, onclick: () => { st.mixOpen = open ? null : key; renderEditor(); } }, '⋯');
@@ -6355,7 +6363,7 @@ function openStart() {
     h('div', { class: 'stepnum' }, 'Step 1 of 2'), h('h3', null, st.boot ? 'Pick a genre' : 'Or a new song from scratch: pick a genre'),
     genres,
     h('div', { class: 'small' }, 'Not sure? Free flow follows wherever you go, and the machine tells you later what it sounds like.'),
-    h('div', { class: 'noai' }, h('b', null, '⚙️ No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.'),
+    h('div', { class: 'noai' }, h('b', null, 'No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.'),
     manualLinks(true),
     h('div', { class: 'small faint copy' }, D.COPYRIGHT + '. All rights reserved.'),
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
@@ -6371,7 +6379,7 @@ function keepStructureBox() {
     h('b', null, 'New start, same structure'),
     h('div', { class: 'small' }, 'Keeps your spiral, tempo, key, groove and fills. The parts you tick become yours and empty: silent, with shadows to start from. The rest stays exactly as it is.'),
     h('div', { style: 'display:flex;gap:12px;flex-wrap:wrap' }, boxes),
-    h('label', { class: 'small', style: 'display:flex;gap:6px;align-items:center' }, mix, 'Empty the mixer too (🎲, ↗ and cells switched off)'),
+    h('label', { class: 'small', style: 'display:flex;gap:6px;align-items:center' }, mix, 'Empty the mixer too (⚄, ↗ and cells switched off)'),
     h('div', null, h('button', { class: 'primary', id: 'ksGo', onclick: (e) => { const btn = e.currentTarget, parts = D.PARTS.filter((p) => pick[p]); if (!parts.length) { toast('Tick at least one part.'); return; } if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.classList.add('sure'); btn.lastChild.textContent = 'Sure? ' + parts.map((p) => PART_NAMES[p]).join(', ') + ' go. Tap again'; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.sure; btn.classList.remove('sure'); btn.lastChild.textContent = 'New start, same structure'; } }, 4000); return; } newStartSameStructure(parts, mix.checked); closeOverlay(); } }, ico('dice'), h('span', null, 'New start, same structure'))));
 }
 function newStartSameStructure(parts, mixToo) {
@@ -6435,12 +6443,12 @@ function openHelp() {
       row('Slots', 'Six parts: beat, bass, chords, pad, melody and answer. Each is Yours, Machine or Off. Yours leads; the machine bends to it. Tap a slot to open it.'),
       row('Pad', 'Long soft chord tones under everything, made from your chords.'),
       row('Answer', 'A second melody that replies in the rests of the main one. Free with every melody; make it yours to change.'),
-      row('💬 Explain', 'Top right: tap any button to read what it does, nothing changes. On a phone you can also press and hold a button.'),
-      row('Shadows', 'Dashed shapes are suggestions. Tap to keep. 🎲 Section or 🎲 All gives other suggestions.'),
-      row('Mixer', 'Every drum and part, every bar: tap a cell to switch it off or on. 🎲 varies a row, ↗ lets it grow. Randomize mix works on This section or All sections; New flow, × All plain.'),
+      row('Explain', 'Top right: tap any button to read what it does, nothing changes. On a phone you can also press and hold a button.'),
+      row('Shadows', 'Dashed shapes are suggestions. Tap to keep. ⚄ Section or ⚄ All gives other suggestions.'),
+      row('Mixer', 'Every drum and part, every bar: tap a cell to switch it off or on. ⚄ varies a row, ↗ lets it grow. Randomize mix works on This section or All sections; New flow, × All plain.'),
       row('Whole spiral', 'In the Beat view: one core beat with its own version for every kind of section, an energy curve from intro to drop, a break with a soft pulse and the kick coming back.'),
       row('Groove, Into next', 'In the section panel: Dilla, shuffle, pushed, laid back or ghost notes, and the fill into the next section.'),
-      row('Lanes', 'Open the Beat card on the right: swing per drum, earlier or later, 🎲 Random feel. Machine touches add ghost notes around the backbeat.'),
+      row('Lanes', 'Open the Beat card on the right: swing per drum, earlier or later, ⚄ Random feel. Machine touches add ghost notes around the backbeat.'),
       row('Pads 1 to 8', 'In the Beat view: tap a drum, or keys 1 to 8 while it plays, to tap hits in.'),
       row('Energy', 'Machine parts follow the song: calm sections play fewer notes and softer, the drop plays everything. Your own parts stay exactly as you made them.'),
       row('Rings', 'One ring per drum. Further out is louder. Kick outside, crash inside.'),
@@ -6460,7 +6468,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your library and last song are kept in this browser. Save the library as a file now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 12:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, APP_NAME + ', version 2026-10-28 12:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '✉ Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6846,7 +6854,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('change', (e) => { if (st.explain && tipTarget(e)) { e.stopPropagation(); } }, true);
 function toggleExplain() {
   st.explain = !st.explain; hideTip(); renderTop();
-  setHint(st.explain ? 'Explain mode: tap any button to read what it does. Nothing changes. Tap 💬 Explain again to stop.' : 'Explain mode is off. Tip: press and hold any button to read what it does.');
+  setHint(st.explain ? 'Explain mode: tap any button to read what it does. Nothing changes. Tap Explain again to stop.' : 'Explain mode is off. Tip: press and hold any button to read what it does.');
 }
 
 if (!LITE && !openSharedFromLink()) openStart(); // Lite starts itself
@@ -7034,7 +7042,7 @@ function openStart() {
   const box = h('div', { id: 'liteStart' }, h('div', { class: 'col' },
     h('h1', null, 'Divine Music Machine ', h('b', null, 'Lite'), UJ ? h('span', { class: 'ujam' }, 'UJAM') : null),
     h('p', null, 'Pick a style. The machine makes a whole song right away. Then you steer.'),
-    h('div', { class: 'noai' }, h('b', null, '⚙️ No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.'),
+    h('div', { class: 'noai' }, h('b', null, 'No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.'),
     h('div', { class: 'gcards' }, D.GENRE_ALL.map((g) => h('button', { class: 'gc', id: 'lg_' + g, style: '--gc:var(' + GENRE_COLOR[g] + ')', onclick: () => makeSong(g) }, h('b', null, D.GENRES[g].name), h('span', null, GENRE_LINE[g] || '')))),
     last && last.parts && song() && st.liteReady ? h('button', { class: 'ghost', onclick: () => box.remove() }, 'Back to my song') : null,
     last && last.parts && !st.liteReady ? h('button', { class: 'ghost', id: 'liteContinue', onclick: () => { A.loadSong(last); st.liteReady = true; box.remove(); renderLite(); } }, 'Continue where you left off') : null,
@@ -7215,13 +7223,13 @@ function renderSpiral() {
     h('div', { class: 'secs' }, sg.sections.map((x, i) => h('button', { class: 'sec' + (i === cur ? ' now' : '') + (i === L.pick ? ' pick' : ''), id: 'ls_' + i, title: 'Play from ' + secName(i) + ' and show what you can change there', onclick: () => { L.pick = i; play(D.sectionStart(sg, i)); renderSpiral(); } }, h('i', { style: 'background:var(--' + x.type + ')' }), secName(i), x.own ? h('span', { class: 'mark', title: 'Changed on its own' }, ' ✦') : null))),
     L.pick != null && sg.sections[L.pick] ? h('div', { class: 'secbar', id: 'liteSecBar' },
       h('b', null, secName(L.pick)),
-      h('button', { id: 'liteSecNew', title: 'A new take on this section only. The rest of the song stays as it is.', onclick: () => changeSection(L.pick) }, '🎲 Change only this'),
+      h('button', { id: 'liteSecNew', title: 'A new take on this section only. The rest of the song stays as it is.', onclick: () => changeSection(L.pick) }, '⚄ Change only this'),
       sg.sections[L.pick].own ? h('button', { class: 'ghost', id: 'liteSecBack', title: 'Make it sound like the others of its kind again', onclick: () => resetSection(L.pick) }, '↺ Like the others') : null,
       h('span', { class: 'bars' }, h('button', { class: 'ghost', id: 'liteShorter', title: 'Make this section shorter', 'aria-label': 'Shorter', onclick: () => stepBars(L.pick, -1) }, '−'), h('span', { id: 'liteBars' }, sg.sections[L.pick].bars + ' bars'), h('button', { class: 'ghost', id: 'liteLonger', title: 'Make this section longer', 'aria-label': 'Longer', onclick: () => stepBars(L.pick, 1) }, '+')),
-      h('button', { class: 'ghost', id: 'liteDel', title: 'Delete this section', 'aria-label': 'Delete', onclick: () => deleteSection(L.pick) }, '🗑'),
+      h('button', { class: 'ghost', id: 'liteDel', title: 'Delete this section', 'aria-label': 'Delete', onclick: () => deleteSection(L.pick) }, '✕'),
       h('button', { class: 'ghost x', title: 'Close', 'aria-label': 'Close', onclick: () => { L.pick = null; renderSpiral(); } }, '✕')) : null,
     h('div', { class: 'structrow' },
-      h('button', { id: 'liteStruct', title: 'A new structure for the whole song. The music of each kind of section comes along.', onclick: newStructure }, '🎲 New structure'),
+      h('button', { id: 'liteStruct', title: 'A new structure for the whole song. The music of each kind of section comes along.', onclick: newStructure }, '⚄ New structure'),
       h('button', { id: 'liteAdd', class: L.adding ? 'on' : '', title: L.pick != null ? 'Add a section after ' + secName(L.pick) : 'Add a section at the end', onclick: () => { L.adding = !L.adding; renderSpiral(); } }, '+ Add section')),
     L.adding ? h('div', { class: 'addrow', id: 'liteAddRow' }, h('span', { class: 'small' }, L.pick != null ? 'After ' + secName(L.pick) + ':' : 'At the end:'),
       ADD_TYPES.map((t) => h('button', { class: 'sec', id: 'la_' + t, onclick: () => addSection(t) }, h('i', { style: 'background:var(--' + t + ')' }), D.TYPES[t].name))) : null].filter(Boolean));
@@ -7234,7 +7242,7 @@ function singleFiles() {
   const names = { beat: 'Beat', bass: 'Bass', chords: 'Chords', pad: 'Pad', melody: 'Melody', answer: 'Answer', structure: 'Structure' };
   return h('div', { class: 'singles' }, h('span', { class: 'small' }, 'Or one file at a time, no zip:'),
     h('div', { class: 'singrow' }, A.allDeliverParts(song()).map((k) => { const [part, ver] = k.split(':');
-      return h('button', { class: 'ghost', id: 'lf_' + k.replace(':', '_'), title: 'Download only the ' + names[part].toLowerCase() + (ver ? ' (' + ver + ')' : '') + ' as one .mid file', onclick: () => A.deliverFiles([k]) }, '⬇ ' + names[part] + (ver ? ' ' + ver : '')); })));
+      return h('button', { class: 'ghost', id: 'lf_' + k.replace(':', '_'), title: 'Download only the ' + names[part].toLowerCase() + (ver ? ' (' + ver + ')' : '') + ' as one .mid file', onclick: () => A.deliverFiles([k]) }, '↓ ' + names[part] + (ver ? ' ' + ver : '')); })));
 }
 function openGet() {
   closeSheet();
@@ -7242,12 +7250,12 @@ function openGet() {
   if (UJ) return openGetUjam();
   const drums = h('select', { id: 'liteDrums', onchange: (e) => { A.change(() => { song().parts.beat.plugin = e.target.value; }); store.set(KP + 'drums', e.target.value); } },
     D.pluginsFor('beat').filter((k) => k !== 'beatmaker2').map((k) => h('option', { value: k, selected: k === sg.parts.beat.plugin }, D.PLUGINS[k].name)));
-  const mp3 = h('button', { id: 'liteMp3', onclick: () => A.downloadMp3(mp3) }, '🎧 ', h('span', { class: 'lab' }, 'Download as MP3'));
+  const mp3 = h('button', { id: 'liteMp3', onclick: () => A.downloadMp3(mp3) }, '', h('span', { class: 'lab' }, 'Download as MP3'));
   const sheet = h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'Get your song' },
     h('h2', null, 'Get your song'),
     h('label', null, 'Your drums play in', drums, A.titleSel('beat', sg.parts.beat.plugin), h('span', { class: 'small' }, 'The beat lands on the right pads of this plugin. Bass, chords and melody come as plain MIDI that any instrument plays.')),
     h('div', { class: 'row' },
-      h('button', { class: 'primary big', id: 'liteZip', onclick: async () => { await A.deliverFiles(A.allDeliverParts(song()), true); } }, '⬇ MIDI files (one zip)'),
+      h('button', { class: 'primary big', id: 'liteZip', onclick: async () => { await A.deliverFiles(A.allDeliverParts(song()), true); } }, '↓ MIDI files (one zip)'),
       mp3),
     h('span', { class: 'small' }, 'One MIDI file per part plus the song structure, ready to drop in your DAW.'),
     singleFiles(),
@@ -7263,13 +7271,13 @@ function openGetUjam() {
     h('select', { id: 'lu_' + part, onchange: (e) => { A.change(() => ujApply(song(), part, e.target.value)); store.set(KP + 'plug-' + part, e.target.value); renderLite(); } },
       UJ_CHOICES[part].filter((k) => D.PLUGINS[k]).map((k) => h('option', { value: k, selected: sg.parts[part].plugin === k }, D.PLUGINS[k].name))),
     A.titleSel(part, sg.parts[part].plugin)));
-  const mp3 = h('button', { id: 'liteMp3', onclick: () => A.downloadMp3(mp3) }, '🎧 ', h('span', { class: 'lab' }, 'Download as MP3'));
+  const mp3 = h('button', { id: 'liteMp3', onclick: () => A.downloadMp3(mp3) }, '', h('span', { class: 'lab' }, 'Download as MP3'));
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'Get your song' },
     h('h2', null, 'Get your song for UJAM'),
     h('div', { class: 'ujgrid' }, rows),
     h('span', { class: 'small' }, 'Virtual Guitarist and Virtual Bassist come twice for bass, chords and pad: Player, where the plugin plays its own phrases on your chords, and Instrument, every note as the machine wrote it. Melody and answer come once, as Instrument: the notes themselves. Beatmaker comes twice too: Player, its own loops per section, and Instrument, every hit. Virtual Drummer gets the beat on its own pads.'),
     h('div', { class: 'row' },
-      h('button', { class: 'primary big', id: 'liteZip', onclick: async () => { await A.deliverFiles(A.allDeliverParts(song()), true); } }, '⬇ MIDI files (one zip)'),
+      h('button', { class: 'primary big', id: 'liteZip', onclick: async () => { await A.deliverFiles(A.allDeliverParts(song()), true); } }, '↓ MIDI files (one zip)'),
       mp3),
     singleFiles(),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
@@ -7297,7 +7305,7 @@ async function goPro() {
 function openPro() {
   closeSheet();
   document.body.append(h('div', { id: 'liteSheet', onclick: (e) => { if (e.target.id === 'liteSheet') closeSheet(); } }, h('div', { class: 'sh', role: 'dialog', 'aria-label': 'Open in Pro' },
-    h('h2', null, '⚙️ Open in Divine Music Machine Pro'),
+    h('h2', null, 'Open in Divine Music Machine Pro'),
     h('div', null, 'Same song, every button: edit notes, chords, the mixer, the structure, plugins per part.'),
     h('div', { class: 'small' }, 'The song that is open there now is saved in its library first. Lite keeps your song too.'),
     h('div', { class: 'row' }, h('button', { class: 'primary big', id: 'liteProGo', onclick: goPro }, 'Open in Pro'), h('button', { class: 'ghost big', onclick: closeSheet }, 'Stay in Lite')))));
@@ -7307,14 +7315,14 @@ function openPro() {
 function toggleExplain() {
   st.explain = !st.explain;
   const b = document.getElementById('liteExplain'); if (b) b.classList.toggle('on', st.explain);
-  A.toast(st.explain ? 'Explain is on: tap any button to read what it does. Nothing changes. Tap 💬 again to stop.' : 'Explain is off. Tip: press and hold any button to read what it does.');
+  A.toast(st.explain ? 'Explain is on: tap any button to read what it does. Nothing changes. Tap again to stop.' : 'Explain is off. Tip: press and hold any button to read what it does.');
 }
 
 /* ---------- help: the short manual, in three languages ---------- */
 const HELP = {
-  EN: ['Pick a style. The machine makes a whole song.', 'Press ▶ Play. Tap the spiral or a section to start there.', 'Turn a part On or Off. 🎲 gives that part a new idea in the whole song.', 'Variation: Calm plays every section as written, Wild moves the most.', 'Feel: Tight sits on the grid, Loose breathes like a band. Edge: Smooth is polite, Raw bites.', 'Tap a section, then 🎲 Change only this. ↺ makes it like the others again. − and + make it shorter or longer, 🗑 deletes it.', 'Structure: 🎲 New structure gives a whole new order, + Add section puts one after the section you tapped.', '🎲 New song: a new song in the same style.', '⬇ Get: pick your drum plugin, download the MIDI zip or an MP3.', '⚙️ Pro: the same song in Divine Music Machine Pro.', 'Press and hold any button, or turn on 💬, to read what it does. Ctrl+Z undoes, space plays.'],
-  NL: ['Kies een stijl. De machine maakt een heel nummer.', 'Druk op ▶ Play. Tik op de spiraal of een sectie om daar te beginnen.', 'Zet een partij On of Off. 🎲 geeft die partij een nieuw idee in het hele nummer.', 'Variation: Calm speelt elke sectie zoals geschreven, Wild beweegt het meest.', 'Feel: Tight zit strak op de maat, Loose ademt als een band. Edge: Smooth is beleefd, Raw bijt.', 'Tik op een sectie, dan 🎲 Change only this. ↺ maakt hem weer zoals de andere. − en + maken hem korter of langer, 🗑 haalt hem weg.', 'Structuur: 🎲 New structure geeft een hele nieuwe volgorde, + Add section zet er een achter de sectie die je aantikte.', '🎲 New song: een nieuw nummer in dezelfde stijl.', '⬇ Get: kies je drum plugin, download de MIDI zip of een MP3.', '⚙️ Pro: hetzelfde nummer in Divine Music Machine Pro.', 'Houd een knop ingedrukt, of zet 💬 aan, om te lezen wat hij doet. Ctrl+Z maakt ongedaan, spatie speelt.'],
-  DE: ['Wähle einen Stil. Die Maschine macht einen ganzen Song.', 'Drücke ▶ Play. Tippe auf die Spirale oder einen Teil, um dort zu starten.', 'Schalte eine Spur On oder Off. 🎲 gibt dieser Spur eine neue Idee im ganzen Song.', 'Variation: Calm spielt jeden Teil wie geschrieben, Wild bewegt sich am meisten.', 'Feel: Tight sitzt genau im Raster, Loose atmet wie eine Band. Edge: Smooth ist höflich, Raw beißt.', 'Tippe auf einen Teil, dann 🎲 Change only this. ↺ macht ihn wieder wie die anderen. − und + machen ihn kürzer oder länger, 🗑 löscht ihn.', 'Struktur: 🎲 New structure gibt eine ganz neue Reihenfolge, + Add section setzt einen Teil hinter den angetippten.', '🎲 New song: ein neuer Song im selben Stil.', '⬇ Get: wähle dein Drum Plugin, lade das MIDI Zip oder eine MP3.', '⚙️ Pro: derselbe Song in Divine Music Machine Pro.', 'Halte eine Taste gedrückt oder schalte 💬 ein, um zu lesen, was sie tut. Strg+Z macht rückgängig, Leertaste spielt.']
+  EN: ['Pick a style. The machine makes a whole song.', 'Press ▶ Play. Tap the spiral or a section to start there.', 'Turn a part On or Off. ⚄ gives that part a new idea in the whole song.', 'Variation: Calm plays every section as written, Wild moves the most.', 'Feel: Tight sits on the grid, Loose breathes like a band. Edge: Smooth is polite, Raw bites.', 'Tap a section, then ⚄ Change only this. ↺ makes it like the others again. − and + make it shorter or longer, ✕ deletes it.', 'Structure: ⚄ New structure gives a whole new order, + Add section puts one after the section you tapped.', '⚄ New song: a new song in the same style.', '↓ Get: pick your drum plugin, download the MIDI zip or an MP3.', 'Pro: the same song in Divine Music Machine Pro.', 'Press and hold any button, or turn on ?, to read what it does. Ctrl+Z undoes, space plays.'],
+  NL: ['Kies een stijl. De machine maakt een heel nummer.', 'Druk op ▶ Play. Tik op de spiraal of een sectie om daar te beginnen.', 'Zet een partij On of Off. ⚄ geeft die partij een nieuw idee in het hele nummer.', 'Variation: Calm speelt elke sectie zoals geschreven, Wild beweegt het meest.', 'Feel: Tight zit strak op de maat, Loose ademt als een band. Edge: Smooth is beleefd, Raw bijt.', 'Tik op een sectie, dan ⚄ Change only this. ↺ maakt hem weer zoals de andere. − en + maken hem korter of langer, ✕ haalt hem weg.', 'Structuur: ⚄ New structure geeft een hele nieuwe volgorde, + Add section zet er een achter de sectie die je aantikte.', '⚄ New song: een nieuw nummer in dezelfde stijl.', '↓ Get: kies je drum plugin, download de MIDI zip of een MP3.', 'Pro: hetzelfde nummer in Divine Music Machine Pro.', 'Houd een knop ingedrukt, of zet aan, om te lezen wat hij doet. Ctrl+Z maakt ongedaan, spatie speelt.'],
+  DE: ['Wähle einen Stil. Die Maschine macht einen ganzen Song.', 'Drücke ▶ Play. Tippe auf die Spirale oder einen Teil, um dort zu starten.', 'Schalte eine Spur On oder Off. ⚄ gibt dieser Spur eine neue Idee im ganzen Song.', 'Variation: Calm spielt jeden Teil wie geschrieben, Wild bewegt sich am meisten.', 'Feel: Tight sitzt genau im Raster, Loose atmet wie eine Band. Edge: Smooth ist höflich, Raw beißt.', 'Tippe auf einen Teil, dann ⚄ Change only this. ↺ macht ihn wieder wie die anderen. − und + machen ihn kürzer oder länger, ✕ löscht ihn.', 'Struktur: ⚄ New structure gibt eine ganz neue Reihenfolge, + Add section setzt einen Teil hinter den angetippten.', '⚄ New song: ein neuer Song im selben Stil.', '↓ Get: wähle dein Drum Plugin, lade das MIDI Zip oder eine MP3.', 'Pro: derselbe Song in Divine Music Machine Pro.', 'Halte eine Taste gedrückt oder schalte ein, um zu lesen, was sie tut. Strg+Z macht rückgängig, Leertaste spielt.']
 };
 function openHelp(lang) {
   closeSheet(); lang = lang || store.get(KP + 'lang', 'EN'); store.set(KP + 'lang', lang);
@@ -7322,7 +7330,7 @@ function openHelp(lang) {
     h('div', { class: 'row', style: 'align-items:center' }, h('h2', { style: 'flex:2' }, '? How it works'), ['EN', 'NL', 'DE'].map((k) => h('button', { class: k === lang ? 'on' : 'ghost', id: 'liteLang' + k, style: 'flex:0 0 auto', onclick: () => openHelp(k) }, k))),
     h('ol', { class: 'helplist' }, HELP[lang].map((t) => h('li', null, t))),
     h('div', { class: 'small' }, D.COPYRIGHT + '. Lite · version 2026-10-28 12:00 ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy')),
-    h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '📮 Feedback / contact'),
+    h('button', { class: 'ghost', onclick: () => A.sendFeedback() }, '✉ Feedback / contact'),
     h('button', { class: 'ghost', onclick: closeSheet }, 'Close'))));
 }
 
@@ -7338,7 +7346,7 @@ function renderLite() {
       h('div', { class: 'lbrand' }, 'Divine Music Machine ', h('b', null, 'Lite'), UJ ? h('span', { class: 'ujam' }, 'UJAM') : null),
       h('div', { class: 'grow' }),
       h('button', { class: 'primary big', id: 'litePlay', title: 'Play the whole song from the start. Space does the same.', onclick: togglePlay }, '▶ Play'),
-      h('button', { class: 'big', id: 'liteGet', title: 'Download your song: MIDI files for your DAW, or an MP3', onclick: openGet }, '⬇ Get')),
+      h('button', { class: 'big', id: 'liteGet', title: 'Download your song: MIDI files for your DAW, or an MP3', onclick: openGet }, '↓ Get')),
     h('div', { class: 'songline' }, h('b', null, g.name), h('span', null, Math.round(sg.bpm) + ' bpm · ' + D.keyName(sg.key) + ' · ' + D.totalBars(sg) + ' bars'), h('div', { class: 'grow' }),
       h('button', { class: 'linkbtn', id: 'liteStyle', title: 'Start a new song in another style', onclick: openStart }, 'Other style')),
     h('div', { class: 'spiralbox', id: 'liteSpiral' }),
@@ -7348,15 +7356,15 @@ function renderLite() {
       return h('div', { class: 'prow' + (on ? '' : ' off'), style: '--pc:var(--' + gr.key + ')' },
         h('div', { class: 'pn' }, gr.name, h('small', null, UJ ? D.PLUGINS[song().parts[gr.parts[0]].plugin].name : gr.line)),
         h('button', { class: 'sw' + (on ? ' on' : ''), id: 'lsw_' + gr.key, 'aria-pressed': on ? 'true' : 'false', title: on ? 'Turn ' + gr.name.toLowerCase() + ' off' : 'Turn ' + gr.name.toLowerCase() + ' on', onclick: () => toggleGroup(gr) }, on ? 'On' : 'Off'),
-        h('button', { class: 'dice', id: 'ld_' + gr.key, title: 'New ' + gr.name.toLowerCase() + ' for the whole song', onclick: () => rollGroup(gr) }, '🎲'));
+        h('button', { class: 'dice', id: 'ld_' + gr.key, title: 'New ' + gr.name.toLowerCase() + ' for the whole song', onclick: () => rollGroup(gr) }, '⚄'));
     })),
-    h('button', { class: 'primary newsong', id: 'liteNew', title: 'A whole new song in the same style. Parts you turned off stay off.', onclick: newSongSameStyle }, '🎲 New song'),
+    h('button', { class: 'primary newsong', id: 'liteNew', title: 'A whole new song in the same style. Parts you turned off stay off.', onclick: newSongSameStyle }, '⚄ New song'),
     h('div', { class: 'tools' },
-      h('button', { id: 'litePro', title: 'Open this song in Divine Music Machine Pro, with every button', onclick: openPro }, '⚙️ Pro'),
-      h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, '💬 Explain'),
+      h('button', { id: 'litePro', title: 'Open this song in Divine Music Machine Pro, with every button', onclick: openPro }, 'Pro'),
+      h('button', { id: 'liteExplain', class: st.explain ? 'on' : '', onclick: toggleExplain }, 'Explain'),
       h('button', { id: 'liteHelp', title: 'The short manual, in English, Dutch and German', onclick: () => openHelp() }, '? Help'),
-      h('button', { id: 'liteSuite', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '🏠 Suite'),
-      h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '📮 Contact')),
+      h('button', { id: 'liteSuite', title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = 'https://divineacidmonday.github.io/ujam/'; } }, '⌂ Suite'),
+      h('button', { id: 'liteFeedback', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: () => A.sendFeedback() }, '✉ Contact')),
     h('div', { class: 'foot' }, h('span', null, D.COPYRIGHT), h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'), h('span', null, 'Lite · version 2026-10-28 12:00')));
   L.root.replaceChildren(col);
   L.cur = undefined; renderSpiral(); renderHead();

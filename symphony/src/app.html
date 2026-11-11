@@ -149,7 +149,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 
 <section class="hero">
   <span class="opt" style="width:100%">Your orchestra <span class="seg" id="lib"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span>
-  <button class="btn gold big" id="surpriseTop">🎲 Surprise me</button>
+  <button class="btn gold big" id="surpriseTop">⚄ Surprise me</button>
   <span class="muted">One click: the machine picks feeling, era, key, orchestra and form, and composes. Or choose everything yourself below.</span>
 </section>
 
@@ -167,9 +167,9 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
   <div class="sh"><span class="num serif">3</span><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
   <div class="grid forms" id="forms"></div>
   <div id="suitePanel" class="hide">
-    <div class="mozart"><b class="serif" style="font-size:18px">Your suite</b><span class="muted small">🔒 keeps a part when you compose again · ⧉ makes an exact copy · ✕ removes it</span></div>
+    <div class="mozart"><b class="serif" style="font-size:18px">Your suite</b><span class="muted small">lock keeps a part when you compose again · ⧉ makes an exact copy · ✕ removes it</span></div>
     <div class="chain" id="chain"></div>
-    <div class="mozart"><b class="serif" style="font-size:18px">🎩 Mozart Advisor</b><span class="muted small" id="hint"></span></div>
+    <div class="mozart"><b class="serif" style="font-size:18px">Mozart Advisor</b><span class="muted small" id="hint"></span></div>
     <div class="adv" id="adv"></div>
   </div>
   <div class="opts">
@@ -179,7 +179,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
     <span class="opt">Rubato <span class="seg" id="rub"><button data-v="0">Off</button><button data-v="1">Era</button><button data-v="2">More</button></span></span>
     <label class="opt hide" id="soloW">Solo <select id="solo"></select></label>
     <label class="opt"><input type="checkbox" id="early" checked> Long notes 40 ms early</label>
-    <label class="opt">Seed <input type="number" id="seed" min="1" max="999999" style="width:110px"><button class="btn" id="dice" title="New seed" aria-label="New seed">🎲</button></label>
+    <label class="opt">Seed <input type="number" id="seed" min="1" max="999999" style="width:110px"><button class="btn" id="dice" title="New seed" aria-label="New seed">⚄</button></label>
     <label class="opt"><input type="checkbox" id="keep"> Keep this seed</label>
   </div>
 </section>
@@ -203,7 +203,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
   <div class="sh"><span class="num serif">5</span><span class="st serif">Get it</span><span class="muted">One MIDI track per instrument, with articulation switching, CC1 dynamics and CC11 expression.</span></div>
   <div class="go">
     <button class="btn gold" id="compose">Compose</button>
-    <button class="btn" id="surprise" title="Random feeling, era, key, orchestra and form, then compose">🎲 Surprise me</button>
+    <button class="btn" id="surprise" title="Random feeling, era, key, orchestra and form, then compose">⚄ Surprise me</button>
     <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span>
     <span class="muted" id="status"></span>
   </div>
@@ -253,16 +253,16 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
     </div>
   </div>
 </section>
-<footer>© 2026 Divine Monday. All rights reserved. Pure rules of harmony and counterpoint, no samples and no AI inside. BBC Symphony Orchestra Discover is a product of Spitfire Audio. Berlin Free Orchestra is a product of Orchestral Tools. This app is not affiliated with either of them.</footer>
+<footer>© 2026 Divine Monday. All rights reserved. Pure rules of harmony and counterpoint, no samples and no AI inside. BBC Symphony Orchestra Discover is a product of Spitfire Audio. Berlin Free Orchestra is a product of Orchestral Tools. This app is not affiliated with either of them. · <a href="https://divineacidmonday.github.io/divine-music-machine-v7/legal/" style="color:inherit">Impressum · Datenschutz</a></footer>
 </div>
 <div class="modal hide" id="sm" role="dialog" aria-modal="true" aria-labelledby="smT">
   <div class="box">
-    <div style="display:flex;align-items:center;gap:10px"><b class="serif" id="smT" style="font-size:24px">🎲 Surprise me</b><span class="grow"></span><button class="btn" id="smX" aria-label="Close">✕</button></div>
+    <div style="display:flex;align-items:center;gap:10px"><b class="serif" id="smT" style="font-size:24px">⚄ Surprise me</b><span class="grow"></span><button class="btn" id="smX" aria-label="Close">✕</button></div>
     <div><h4>1. What do you want?</h4><div class="chips" id="smType"></div></div>
     <div><h4>2. Main feeling</h4><div class="chips" id="smMain"></div></div>
     <div><h4>3. Combine with (0 to 3)</h4><div class="chips" id="smMix"></div></div>
     <div><h4>Your story</h4><div class="arc" id="smArc"></div></div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn gold big" id="smGo">✨ Make it</button></div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap"><button class="btn gold big" id="smGo">Make it</button></div>
   </div>
 </div>
 <script>
@@ -320,11 +320,11 @@ function closeSM() { $('sm').classList.add('hide'); }
 function drawSM() {
   const F = Y.FEELINGS, chip = (box, label, on, fn, dis) => { const b = document.createElement('button'); b.className = 'chip'; b.innerHTML = label; b.setAttribute('aria-pressed', !!on); if (dis) b.disabled = true; b.onclick = fn; $(box).appendChild(b); };
   ['smType', 'smMain', 'smMix'].forEach(id => $(id).innerHTML = '');
-  [['symphony', 'Symphony (4 movements)'], ['suite', 'Suite (3 to 5 parts)'], ['dice', '🎲 You choose']].forEach(([v, l]) => chip('smType', l, SM.type === v, () => { SM.type = v; drawSM(); }));
+  [['symphony', 'Symphony (4 movements)'], ['suite', 'Suite (3 to 5 parts)'], ['dice', '⚄ You choose']].forEach(([v, l]) => chip('smType', l, SM.type === v, () => { SM.type = v; drawSM(); }));
   Object.entries(F).forEach(([k, f]) => chip('smMain', fic(k) + f.name, SM.main === k, () => { SM.main = k; SM.mix = SM.mix.filter(x => x !== k); drawSM(); }));
-  chip('smMain', '🎲 You choose', SM.main === 'dice', () => { SM.main = 'dice'; drawSM(); });
+  chip('smMain', '⚄ You choose', SM.main === 'dice', () => { SM.main = 'dice'; drawSM(); });
   Object.entries(F).forEach(([k, f]) => chip('smMix', fic(k) + f.name, SM.mix.includes(k), () => { if (SM.mix.includes(k)) SM.mix = SM.mix.filter(x => x !== k); else if (SM.mix.length < 3) SM.mix.push(k); drawSM(); }, k === SM.main || (!SM.mix.includes(k) && SM.mix.length >= 3)));
-  const ic = k => k === 'dice' ? '🎲' : fic(k);
+  const ic = k => k === 'dice' ? '⚄' : fic(k);
   $('smArc').innerHTML = [SM.main].concat(SM.mix).map(ic).join(' → ') + (SM.type === 'symphony' ? '   in 4 movements' : SM.type === 'suite' ? '   in a suite' : '');
 }
 function surprise(choice) {
@@ -414,7 +414,7 @@ function drawSuite() {
     sel.innerHTML = '<option value="">Feeling</option>' + Object.entries(Y.FEELINGS).map(([k, v]) => '<option value="' + k + '"' + (c.feel === k ? ' selected' : '') + '>' + v.name + '</option>').join('');
     sel.onchange = () => { c.feel = sel.value || null; saveChain(); drawSuite(); };
     d.appendChild(sel);
-    mk('🔒', c.lock ? 'Locked: keeps this part' : 'Lock this part', () => { c.lock = !c.lock; saveChain(); drawSuite(); }, c.lock ? 'on' : '');
+    mk('lock', c.lock ? 'Locked: keeps this part' : 'Lock this part', () => { c.lock = !c.lock; saveChain(); drawSuite(); }, c.lock ? 'on' : '');
     mk('⧉', 'Exact copy', () => { c.lock = true; S.chain.splice(i + 1, 0, { form: c.form, seed: c.seed, lock: true, feel: c.feel }); saveChain(); drawSuite(); });
     mk('✕', 'Remove', () => { S.chain.splice(i, 1); saveChain(); drawSuite(); });
     if (!c.lock) d.querySelector('button').style.opacity = .45;
@@ -687,4 +687,5 @@ $('smGo').onclick = () => { closeSM(); surprise({ type: SM.type, main: SM.main, 
 drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); initBfo(); drawHall();
 })();
 </script>
+<script>(function(){try{if(!/\.github\.io$/.test(location.hostname))return;var q=new URLSearchParams({p:location.pathname,t:document.title,s:screen.width+','+screen.height,rnd:Math.random().toString(36).slice(2)});if(document.referrer&&document.referrer.indexOf(location.hostname)<0)q.set('r',document.referrer.split('?')[0]);var u='https://divine-monday.goatcounter.com/count?'+q;if(!(navigator.sendBeacon&&navigator.sendBeacon(u)))new Image().src=u;}catch(e){}})();</script>
 </body></html>

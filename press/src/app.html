@@ -204,7 +204,7 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
   <li>Your own track: load a WAV or MP3. The press listens to it in your browser, draws its record picture, and presses two remixes of it as MIDI, with its tempo, its key, its length and a motif from its melody. Choose the styles and hints for the remixes as usual.</li>
   <li>Built your DAW from a record? Choose My template and load that MIDI: every new record lands on exactly those tracks, side A and side B.</li>
 </ol></details>
-<footer>© 2026 Divine Monday</footer>
+<footer>© 2026 Divine Monday · <a href="https://divineacidmonday.github.io/divine-music-machine-v7/legal/" style="color:inherit">Impressum · Datenschutz</a></footer>
 </div>
 
 <script>/*WORDS*/</script>
@@ -472,4 +472,5 @@ useTemplate();
 if (!ss.get('press-rack', null)) $('#rackBox').open = true;
 drawRack(); drawMood(); drawLen(); drawHints(); pressNow();
 </script>
+<script>(function(){try{if(!/\.github\.io$/.test(location.hostname))return;var q=new URLSearchParams({p:location.pathname,t:document.title,s:screen.width+','+screen.height,rnd:Math.random().toString(36).slice(2)});if(document.referrer&&document.referrer.indexOf(location.hostname)<0)q.set('r',document.referrer.split('?')[0]);var u='https://divine-monday.goatcounter.com/count?'+q;if(!(navigator.sendBeacon&&navigator.sendBeacon(u)))new Image().src=u;}catch(e){}})();</script>
 </body></html>

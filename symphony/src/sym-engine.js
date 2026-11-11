@@ -1703,7 +1703,11 @@ function writeMidi(res, ids, opt) {
     ev.push({ t: 0, o: 0, d: [0xff, 0x03, ...vlq(nb.length), ...nb] });
     tr.cc.forEach(e => { if (!plain || e.c !== 1) ev.push({ t: e.t, o: 1, d: [0xb0, e.c, e.v] }); });
     if (!plain) tr.ks.forEach(k => { ev.push({ t: k.t, o: 3, d: [0x90, k.m, 100] }); ev.push({ t: k.t + 12, o: 2, d: [0x80, k.m, 0] }); });
-    tr.notes.forEach(n => { ev.push({ t: n.t, o: 4, d: [0x90, n.m, n.v] }); ev.push({ t: n.t + n.dur, o: 2, d: [0x80, n.m, 0] }); });
+    // one key, one note at a time: a repeated note ends the one before it, so the synth never cuts the new one short
+    const ns = tr.notes.slice().sort((x, y) => x.t - y.t || y.v - x.v), last = {};
+    ns.forEach(n => { const pv = last[n.m]; if (pv && n.t <= pv.t) return; let dur = n.dur;
+      ev.push({ t: n.t, o: 4, d: [0x90, n.m, n.v] }); const off = { t: n.t + dur, o: 2, d: [0x80, n.m, 0] }; ev.push(off);
+      if (pv && pv.off.t > n.t) pv.off.t = Math.max(pv.t + 1, n.t - 1); last[n.m] = { t: n.t, off }; });
     chunks.push(trackChunk(ev));
   });
   const head = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, 0, chunks.length, (PPQ >> 8) & 255, PPQ & 255];

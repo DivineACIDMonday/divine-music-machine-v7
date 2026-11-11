@@ -178,7 +178,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
   <li>Built your DAW from a result? Choose My template and load that MIDI: every new journey lands on exactly those tracks.</li>
   <li>Name your journey, or let the dice suggest a name, and press Make it. Open Rack_Card.txt, load the plugins it names, and drop every file on bar 1.</li>
 </ol></details>
-<footer>© 2026 Divine Monday</footer>
+<footer>© 2026 Divine Monday · <a href="https://divineacidmonday.github.io/divine-music-machine-v7/legal/" style="color:inherit">Impressum · Datenschutz</a></footer>
 </div>
 
 <script>/*WORDS*/</script>
@@ -539,4 +539,5 @@ useTemplate();
 if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
 drawRack(); drawRecords(); drawWords(); drawLen(); replan();
 </script>
+<script>(function(){try{if(!/\.github\.io$/.test(location.hostname))return;var q=new URLSearchParams({p:location.pathname,t:document.title,s:screen.width+','+screen.height,rnd:Math.random().toString(36).slice(2)});if(document.referrer&&document.referrer.indexOf(location.hostname)<0)q.set('r',document.referrer.split('?')[0]);var u='https://divine-monday.goatcounter.com/count?'+q;if(!(navigator.sendBeacon&&navigator.sendBeacon(u)))new Image().src=u;}catch(e){}})();</script>
 </body></html>

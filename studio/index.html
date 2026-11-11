@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-10 22:15</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 05:00</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
    ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
@@ -1445,18 +1445,18 @@ E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-re
 
 /* ---------- surprise me: a genre per layer, a feeling and a story ---------- */
 E.SONG_FEELS = {
-  energetic: { name: 'Energetic', icon: '⚡', scale: null, bpm: 1.05, raw: 0.5 },
-  dark: { name: 'Dark', icon: '🌑', scale: 'minor', bpm: 0.98, raw: 0.45 },
+  energetic: { name: 'Energetic', icon: '', scale: null, bpm: 1.05, raw: 0.5 },
+  dark: { name: 'Dark', icon: '', scale: 'minor', bpm: 0.98, raw: 0.45 },
   happy: { name: 'Happy', icon: '☀', scale: 'major', bpm: 1.03, raw: 0.4 },
-  dreamy: { name: 'Dreamy', icon: '💭', scale: 'major', bpm: 0.93, raw: 0.3 },
-  melancholy: { name: 'Melancholy', icon: '🌧', scale: 'minor', bpm: 0.94, raw: 0.3 },
-  hypnotic: { name: 'Hypnotic', icon: '🌀', scale: 'dorian', bpm: 1, raw: 0.25 },
+  dreamy: { name: 'Dreamy', icon: '', scale: 'major', bpm: 0.93, raw: 0.3 },
+  melancholy: { name: 'Melancholy', icon: '', scale: 'minor', bpm: 0.94, raw: 0.3 },
+  hypnotic: { name: 'Hypnotic', icon: '', scale: 'dorian', bpm: 1, raw: 0.25 },
 };
 E.SONG_STORIES = {
-  radio: { name: 'Radio', icon: '📻', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
-  club: { name: 'Club', icon: '🎧', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
-  burner: { name: 'Slow burner', icon: '🔥', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
-  journey: { name: 'Journey', icon: '🌙', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
+  radio: { name: 'Radio', icon: '', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
+  club: { name: 'Club', icon: '', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
+  burner: { name: 'Slow burner', icon: '', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
+  journey: { name: 'Journey', icon: '', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
 };
 E.surpriseSong = function (o) {
   o = o || {};
@@ -3420,6 +3420,14 @@ function vlq(n) { const b = [n & 0x7f]; n >>= 7; while (n) { b.unshift((n & 0x7f
 function str(s) { const o = []; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); o.push(c < 128 ? c : 63); } return o; }
 E.COPYRIGHT = '\u00a9 ' + new Date().getFullYear() + ' Divine Monday';
 E.COPYRIGHT_MIDI = 'Copyright ' + new Date().getFullYear() + ' Divine Monday';
+// one key, one note at a time: when a note starts again before the same note ended, the first one ends just before it
+// (a DAW pairs every note on with a note off, and a doubled note would cut the wrong one short); the same note twice at once plays once, the louder
+const oneAtATime = (notes) => { const out = notes.filter(Boolean).map((n) => Object.assign({}, n)).sort((a, b) => a.t - b.t || b.v - a.v), last = {}, keep = [];
+  for (const n of out) { const k = Math.round(n.p) + (n.ks ? 1000 : 0), pv = last[k];
+    if (pv && Math.round(n.t) <= Math.round(pv.t)) continue;
+    if (pv && Math.round(pv.t) + Math.max(1, Math.round(pv.d)) > Math.round(n.t)) pv.d = Math.max(1, Math.round(n.t) - Math.round(pv.t) - 1);
+    last[k] = n; keep.push(n); }
+  return keep; };
 E.writeMidi = function (tracks, meta) {
   // tracks: [{name, channel, notes:[{t,d,p,v}], markers?:[{t,text}]}]
   const PPQ = E.PPQ;
@@ -3441,7 +3449,7 @@ E.writeMidi = function (tracks, meta) {
     ev.push({ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) });
     const ch = (tr.channel || 0) & 15;
     for (const c of tr.cc || []) ev.push({ t: Math.max(0, Math.round(c.t)), b: [0xb0 | ch, c.c & 127, clamp(Math.round(c.v), 0, 127)], o: 0 }); // controllers, for the orchestra: articulation and dynamics
-    for (const n of tr.notes) {
+    for (const n of oneAtATime(tr.notes)) {
       const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d));
       ev.push({ t, b: [0x90 | ch, p, v], o: 1 });
       ev.push({ t: t + d, b: [0x80 | ch, p, 0], o: 0 });
@@ -3459,7 +3467,7 @@ E.beatOnly = () => { try { return localStorage.getItem('dm_beat_only') === '1'; 
     if (!(tracks.length === 1 && ((tracks[0].channel || 0) & 15) === 9 && E.beatOnly())) return full(tracks, meta);
     const PPQ = E.PPQ, tempo = Math.round(60000000 / meta.bpm), m = E.METERS[meta.meter] || E.METERS['4/4'], den = { 4: 2, 8: 3 }[m.den], tr = tracks[0], nm = str(tr.name || 'Beat');
     const ev = [{ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) }, { t: 0, b: [0xff, 0x51, 3, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] }, { t: 0, b: [0xff, 0x58, 4, m.num, den, m.den === 8 ? 12 : 24, 8] }];
-    for (const n of tr.notes) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
+    for (const n of oneAtATime(tr.notes)) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
     const c = trackBytes(ev), hdr = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (PPQ >> 8) & 255, PPQ & 255], out = new Uint8Array(hdr.length + c.length); out.set(hdr, 0); out.set(c, hdr.length); return out; }; })();
 // the choice sits next to the beat's plugin picker, in every app that has one
 (function () { if (typeof document === 'undefined') return;
@@ -3691,7 +3699,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-11-10 22:15';
+const VERSION = '2026-11-11 05:00';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3952,7 +3960,7 @@ function renderTop() {
     has ? h('div', { class: 'tname', role: 'group', 'aria-label': 'Track name' }, h('input', { type: 'text', value: song().name || 'Untitled', maxlength: 60, 'aria-label': 'Track name', onchange: (e) => setName(e.target.value), onkeydown: (e) => { if (e.key === 'Enter') e.target.blur(); } }), h('button', { 'aria-label': 'Random track name', title: 'Roll a name', onclick: () => setName(randomName()) }, '⚄')) : null,
     has ? h('div', { class: 'bpm', role: 'group', 'aria-label': 'Tempo' }, h('button', { 'aria-label': 'Slower', onclick: () => setBpm(song().bpm - 1) }, '−'), h('input', { type: 'number', min: 50, max: 220, value: song().bpm, 'aria-label': 'Tempo in bpm', onchange: (e) => setBpm(+e.target.value) }), h('span', null, 'bpm'), h('button', { 'aria-label': 'Faster', onclick: () => setBpm(song().bpm + 1) }, '+')) : null,
     h('button', { class: 'ib', onclick: () => openStart(), title: 'Start a new song in any genre' }, 'New song'),
-    h('button', { class: 'ib', onclick: () => openSurprise(), title: 'Surprise me: genre, feeling and story', 'aria-label': 'Surprise me' }, '🎲'),
+    h('button', { class: 'ib', onclick: () => openSurprise(), title: 'Surprise me: genre, feeling and story', 'aria-label': 'Surprise me' }, '⚄'),
     h('button', { class: 'ib', 'aria-label': 'New ideas for every Machine part', title: 'New ideas for every Machine part', onclick: newSongSame, disabled: !has || null }, '⚄'),
     h('button', { class: 'ib', 'aria-label': 'Undo', onclick: undo, disabled: !st.hist.length || null }, '↶'),
     h('button', { class: 'ib', 'aria-label': 'Redo', onclick: redo, disabled: !st.fut.length || null }, '↷'),
@@ -4006,7 +4014,7 @@ function secRow(sg, x, i) {
   if (i !== st.sec) return h('div', { class: 'sec', 'data-i': i, role: 'button', tabindex: 0, 'aria-label': secLabel(i) + ', ' + x.bars + ' bars', onclick: (e) => { if (SD.moved) return; st.sec = i; if (AU.playing) startPlay(D.sectionStart(sg, i)); render(); }, onkeydown: (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.currentTarget.click(); } } }, grip, h('i', { style: 'background:var(--' + x.type + ')' }), h('span', null, secLabel(i)), h('small', null, x.bars + ' bars'));
   return h('div', { class: 'sec on', 'data-i': i, role: 'group', 'aria-label': secLabel(i) }, grip, h('i', { style: 'background:var(--' + x.type + ')' }),
     h('select', { class: 'stype', 'aria-label': 'Kind of section', onchange: (e) => changeType(e.target.value) }, SEC_TYPES().map((t) => h('option', { value: t, selected: t === x.type || null }, D.TYPES[t].name))),
-    h('button', { class: 'del', 'aria-label': 'Remove ' + secLabel(i), title: 'Remove this section', disabled: sg.sections.length < 2 || null, onclick: () => deleteSection(i) }, '🗑'),
+    h('button', { class: 'del', 'aria-label': 'Remove ' + secLabel(i), title: 'Remove this section', disabled: sg.sections.length < 2 || null, onclick: () => deleteSection(i) }, '✕'),
     h('span', { class: 'bctl' }, h('button', { 'aria-label': 'Fewer bars', disabled: x.bars <= (x.type === 'fill' ? 1 : Math.min(sg.L || 4, x.bars)) || null, onclick: () => changeBars(-1) }, '−'), h('small', null, x.bars + ' bars'), h('button', { 'aria-label': 'More bars', disabled: x.bars >= (x.type === 'fill' ? 2 : 64) || null, onclick: () => changeBars(1) }, '+')));
 }
 function changeType(t) { const sg = song(), sec = sg.sections[st.sec]; if (!sec || t === sec.type) return; const was = secLabel(st.sec);
@@ -4142,7 +4150,7 @@ function shadowRaw(p, bar, asLanes) { const sg = shadowSong(p), R = D.makeRender
   if (!r) { const ci = sg.sections.findIndex((x) => x.type === 'chorus' || x.type === 'drop'), vi = ci >= 0 ? ci : sg.sections.findIndex((x) => x.type === 'verse'); if (vi >= 0) r = get(from(sg.sections[vi].type)); }
   return r; }
 function shadowNotes(p, bar) { return shadowRaw(p, bar, false) || []; }
-function hearShadow() { AU.hearShadow = !AU.hearShadow; if (AU.hearShadow) { AU.wholeSong = false; AU.loopBar = st.eBar; if (!AU.playing) startPlay(D.sectionStart(song(), st.sec) + st.eBar); } else if (AU.playing && AU.loopBar === st.eBar) { stopAll(); AU.loopBar = null; } renderEdit(); toast(AU.hearShadow ? 'You hear the grey shadow for ' + PART_NAMES[st.ePart].toLowerCase() + ' now. Tap 🎲 for another one.' : 'You hear your own notes again.'); }
+function hearShadow() { AU.hearShadow = !AU.hearShadow; if (AU.hearShadow) { AU.wholeSong = false; AU.loopBar = st.eBar; if (!AU.playing) startPlay(D.sectionStart(song(), st.sec) + st.eBar); } else if (AU.playing && AU.loopBar === st.eBar) { stopAll(); AU.loopBar = null; } renderEdit(); toast(AU.hearShadow ? 'You hear the grey shadow for ' + PART_NAMES[st.ePart].toLowerCase() + ' now. Tap ⚄ for another one.' : 'You hear your own notes again.'); }
 function shadowView() {
   if (song().noShadows) return st.ePart === 'beat' ? { lanes: null } : st.ePart === 'chords' ? null : { notes: [] };
   if (song().diy && st.ePart !== 'chords') { const gb0 = D.sectionStart(song(), st.sec) + st.eBar; if (st.ePart === 'beat') return { lanes: shadowRaw('beat', gb0, true) }; return { notes: shadowNotes(st.ePart, gb0).map((n) => ({ step: Math.round(Math.max(0, n.t) / STEP), d: Math.max(1, Math.round(n.d / STEP)), p: n.p })) }; }
@@ -4331,7 +4339,7 @@ function renderEdit() {
   const bars = h('div', { class: 'card', style: 'width:100%;display:flex;flex-direction:column;gap:12px' },
     h('div', { style: 'display:flex;align-items:center;gap:12px;flex-wrap:wrap' }, h('span', { style: 'font-weight:700' }, 'Bars'), h('span', { style: 'flex:1;font-size:13px;color:var(--soft)' }, st.copyFrom != null ? 'Tap the bars that should become bar ' + (st.copyFrom + 1) + ', then Paste.' : st.sel.length > 1 ? 'You edit bar ' + (st.eBar + 1) + '. ' + st.sel.filter((b) => b !== st.eBar).map((b) => b + 1).join(', ') + ' do the same.' : 'Tap the bars you want to change. More than one: they change together.'),
       st.copyFrom != null ? h('span', { style: 'display:inline-flex;gap:8px' }, h('button', { class: 'ib', style: 'background:var(--accent);color:#fff;border-color:var(--accent)', onclick: copyPaste, disabled: !st.copyTo.length || null }, 'Paste to ' + st.copyTo.length + ' bar' + (st.copyTo.length === 1 ? '' : 's')), h('button', { class: 'ib', onclick: copyCancel }, 'Cancel')) :
-      h('span', { style: 'display:inline-flex;gap:8px;flex-wrap:wrap' }, st.eBar === 0 && st.sec > 0 ? h('button', { class: 'ib', onclick: copyFromPrevSection, title: 'Copy the last bar of the section before into this first bar' }, '⇠ From end of ' + secLabel(st.sec - 1)) : null, h('button', { class: 'ib', onclick: copyPrev, disabled: st.eBar <= 0 || null }, '← Copy to previous'), h('button', { class: 'ib', onclick: copyNext }, 'Copy to next →'), h('button', { class: 'ib', onclick: copyPick, title: 'Copy this bar to bars you tap' }, 'Copy to…'), st.eBar === secNow().bars - 1 && st.sec + 1 < song().sections.length ? h('button', { class: 'ib', onclick: copyToNextSection, title: 'Copy this last bar into bar 1 of the next section' }, 'To start of ' + secLabel(st.sec + 1) + ' ⇢') : null), h('button', { class: 'ib', onclick: newIdeaBars }, '⚄ New idea'), song().diy && !song().noShadows && st.ePart !== 'chords' ? h('button', { class: 'ib', onclick: shuffleShadow, title: 'Show another example as grey shadows; your own notes stay' }, '🎲 Other shadow') : null, song().diy && !song().noShadows && st.ePart !== 'chords' ? h('button', { class: 'ib', onclick: hearShadow, 'aria-pressed': AU.hearShadow ? 'true' : 'false', style: AU.hearShadow ? 'background:var(--' + st.ePart + ');color:#14151E;font-weight:700' : null, title: 'Play the grey shadow instead of your own notes for this part' }, AU.hearShadow ? '👂 Hearing shadow' : '👂 Hear shadow') : null, h('button', { class: 'ib', onclick: clearBars, title: 'Empty the selected bars for this part' }, '⌫ Clear bar'), h('button', { class: 'ib', onclick: clearSection, title: 'Empty every bar of this section for this part' }, '⌫ Clear section'), h('button', { class: 'ib', onclick: backToMachine, disabled: !st.sel.some(edited) || null }, 'Back to machine')),
+      h('span', { style: 'display:inline-flex;gap:8px;flex-wrap:wrap' }, st.eBar === 0 && st.sec > 0 ? h('button', { class: 'ib', onclick: copyFromPrevSection, title: 'Copy the last bar of the section before into this first bar' }, '⇠ From end of ' + secLabel(st.sec - 1)) : null, h('button', { class: 'ib', onclick: copyPrev, disabled: st.eBar <= 0 || null }, '← Copy to previous'), h('button', { class: 'ib', onclick: copyNext }, 'Copy to next →'), h('button', { class: 'ib', onclick: copyPick, title: 'Copy this bar to bars you tap' }, 'Copy to…'), st.eBar === secNow().bars - 1 && st.sec + 1 < song().sections.length ? h('button', { class: 'ib', onclick: copyToNextSection, title: 'Copy this last bar into bar 1 of the next section' }, 'To start of ' + secLabel(st.sec + 1) + ' ⇢') : null), h('button', { class: 'ib', onclick: newIdeaBars }, '⚄ New idea'), song().diy && !song().noShadows && st.ePart !== 'chords' ? h('button', { class: 'ib', onclick: shuffleShadow, title: 'Show another example as grey shadows; your own notes stay' }, '⚄ Other shadow') : null, song().diy && !song().noShadows && st.ePart !== 'chords' ? h('button', { class: 'ib', onclick: hearShadow, 'aria-pressed': AU.hearShadow ? 'true' : 'false', style: AU.hearShadow ? 'background:var(--' + st.ePart + ');color:#14151E;font-weight:700' : null, title: 'Play the grey shadow instead of your own notes for this part' }, AU.hearShadow ? 'Hearing shadow' : 'Hear shadow') : null, h('button', { class: 'ib', onclick: clearBars, title: 'Empty the selected bars for this part' }, '⌫ Clear bar'), h('button', { class: 'ib', onclick: clearSection, title: 'Empty every bar of this section for this part' }, '⌫ Clear section'), h('button', { class: 'ib', onclick: backToMachine, disabled: !st.sel.some(edited) || null }, 'Back to machine')),
     h('div', { style: 'display:grid;grid-template-columns:repeat(auto-fill,minmax(52px,1fr));gap:6px' }, Array.from({ length: sec.bars }, (_, b) => { const on = st.sel.includes(b), f = b === st.eBar;
       const loopOn = AU.playing && AU.loopBar === b;
       return h('div', { style: 'position:relative' }, h('button', { 'data-bar': b, style: 'width:100%;position:relative;height:52px;border-radius:12px;font-size:14px;font-weight:700;border:' + (f ? '3px solid var(--ink)' : on ? '2px solid var(--' + p + ')' : '1px solid var(--line)') + ';background:' + (on ? 'var(--' + p + ')' : 'var(--card)') + ';color:' + (on ? '#14151E' : 'var(--soft)'), 'aria-pressed': on ? 'true' : 'false', 'aria-label': 'Bar ' + (b + 1) + (edited(b) ? ', edited' : ''), onclick: () => { if (st.copyFrom != null) { if (b === st.copyFrom) return; const i = st.copyTo.indexOf(b); if (i >= 0) st.copyTo.splice(i, 1); else st.copyTo.push(b); renderEdit(); return; } selectBar(b); } }, h('span', null, (b + 1) + (edited(b) ? ' •' : ''))),
@@ -4419,14 +4427,14 @@ function renderGet() {
       h('div', { class: 'prow' }, h('span', { class: 'dot', style: 'background:var(--' + p + ')' }), h('span', { class: 'nm', style: 'flex:0 0 90px' }, PART_NAMES[p]), off ? h('span', { style: 'flex:1;color:var(--faint)' }, 'Off: no file') : strip(p),
         off ? null : pluginSel(p),
         off ? null : h('button', { class: 'ib', 'aria-label': 'Listen to ' + PART_NAMES[p] + ' alone', onclick: () => soloPlay(p) }, AU.playing && st.solo === p ? '■' : '▶'),
-        off ? null : h('span', { style: 'display:inline-flex;gap:6px' }, versionsOf(P.plugin, p).map((v) => h('button', { class: 'ib', style: 'font-size:13px', onclick: () => getOne(p, v) }, '⬇ ' + (v || 'MIDI'))))),
+        off ? null : h('span', { style: 'display:inline-flex;gap:6px' }, versionsOf(P.plugin, p).map((v) => h('button', { class: 'ib', style: 'font-size:13px', onclick: () => getOne(p, v) }, '↓ ' + (v || 'MIDI'))))),
       w ? h('div', { class: 'warn' }, h('span', null, w), h('button', { onclick: () => { setMode(p, 'machine'); renderGet(); } }, 'Back to Machine')) : null); });
   const n = deliverList(sg).length + 1;
   wrap.append(h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
       h('button', { class: 'ib', onclick: () => { stopAll(); st.solo = null; st.mode = 'overview'; render(); } }, '← Back'),
       h('div', { style: 'flex:1' }, h('div', { style: 'font-size:22px;font-weight:700' }, 'Get it'), h('div', { style: 'color:var(--soft);font-size:14px' }, D.GENRES[sg.genre].name + ' · ' + sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + tot + ' bars')),
       h('button', { class: 'ib', style: 'height:56px;padding:0 22px;font-weight:700', 'aria-label': AU.playing && !st.solo ? 'Stop' : 'Play all parts', onclick: playAll }, AU.playing && !st.solo ? '■ Stop' : '▶ Play all'),
-      h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '⬇ All ' + n + ' files (one zip)')),
+      h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '↓ All ' + n + ' files (one zip)')),
     h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ Play all hears everything, ▶ on a part listens alone'), rows),
     h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, GROOVE ? 'Plus a Structure file with every section as a marker. Pick your drum plugin and the hits land on the right keys of that plugin.' : 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
 }
@@ -4456,12 +4464,12 @@ function openSurprise() {
   const G = D.GENRE_ALL, pickG = (v) => v === 'dice' ? G[Math.floor(Math.random() * G.length)] : v;
   const chip = (on, label, fn, title) => h('button', { class: 'ib', style: 'margin:3px;' + (on ? 'outline:2px solid var(--acc,#e0b04a);' : ''), 'aria-pressed': on ? 'true' : 'false', title: title || null, onclick: fn }, label);
   const sel = (key, label) => h('label', { style: 'display:flex;align-items:center;gap:8px;margin:4px 0' }, h('span', { style: 'min-width:190px' }, label),
-    h('select', { 'aria-label': label, style: 'min-width:200px', onchange: (e) => { SP[key] = e.target.value; } }, [h('option', { value: 'dice', selected: SP[key] === 'dice' || null }, '🎲 You choose')].concat(G.map((g) => h('option', { value: g, selected: SP[key] === g || null }, D.GENRES[g].name)))));
+    h('select', { 'aria-label': label, style: 'min-width:200px', onchange: (e) => { SP[key] = e.target.value; } }, [h('option', { value: 'dice', selected: SP[key] === 'dice' || null }, '⚄ You choose')].concat(G.map((g) => h('option', { value: g, selected: SP[key] === g || null }, D.GENRES[g].name)))));
   const draw = () => {
     closeSurprise();
     const has = !!song(), F = D.SONG_FEELS, S = D.SONG_STORIES;
     document.body.append(h('div', { class: 'start', id: 'surprise' }, h('div', { class: 'box', role: 'dialog', 'aria-label': 'Surprise me' },
-      h('h1', { style: 'margin:0;font-size:28px' }, '🎲 Surprise me'),
+      h('h1', { style: 'margin:0;font-size:28px' }, '⚄ Surprise me'),
       h('p', { style: 'margin:6px 0 10px;color:var(--soft)' }, 'Three questions, one click: a whole ' + (GROOVE ? 'beat' : 'song') + ' with a story.'),
       h('h3', { style: 'margin:10px 0 4px' }, '1. Genre'),
       sel('beat', GROOVE ? 'Beat' : (SP.mix ? 'Beat' : 'Genre')),
@@ -4469,12 +4477,12 @@ function openSurprise() {
       !GROOVE && SP.mix ? sel('melody', 'Melody') : null,
       !GROOVE && SP.mix ? sel('acc', 'Chords, pad and bass') : null,
       h('h3', { style: 'margin:12px 0 4px' }, '2. Feeling'),
-      h('div', null, Object.keys(F).map((k) => chip(SP.feel === k, F[k].icon + ' ' + F[k].name, () => { SP.feel = k; draw(); })).concat([chip(SP.feel === 'dice', '🎲', () => { SP.feel = 'dice'; draw(); }, 'You choose')])),
+      h('div', null, Object.keys(F).map((k) => chip(SP.feel === k, (F[k].icon + ' ' + F[k].name).trim(), () => { SP.feel = k; draw(); })).concat([chip(SP.feel === 'dice', '⚄', () => { SP.feel = 'dice'; draw(); }, 'You choose')])),
       h('h3', { style: 'margin:12px 0 4px' }, '3. Story'),
-      h('div', null, Object.keys(S).map((k) => chip(SP.story === k, S[k].icon + ' ' + S[k].name, () => { SP.story = k; draw(); }, S[k].blurb)).concat([chip(SP.story === 'dice', '🎲', () => { SP.story = 'dice'; draw(); }, 'You choose')])),
-      has ? h('label', { style: 'display:flex;align-items:center;gap:8px;margin:12px 0 0' }, h('input', { type: 'checkbox', checked: SP.keep || null, onchange: (e) => { SP.keep = e.target.checked; } }), '🔒 Keep my beat') : null,
+      h('div', null, Object.keys(S).map((k) => chip(SP.story === k, (S[k].icon + ' ' + S[k].name).trim(), () => { SP.story = k; draw(); }, S[k].blurb)).concat([chip(SP.story === 'dice', '⚄', () => { SP.story = 'dice'; draw(); }, 'You choose')])),
+      has ? h('label', { style: 'display:flex;align-items:center;gap:8px;margin:12px 0 0' }, h('input', { type: 'checkbox', checked: SP.keep || null, onchange: (e) => { SP.keep = e.target.checked; } }), 'lock Keep my beat') : null,
       h('div', { style: 'display:flex;gap:10px;margin-top:16px;flex-wrap:wrap' },
-        h('button', { class: 'ib', style: 'font-size:18px;padding:10px 22px;font-weight:700', onclick: go }, '✨ Make it'),
+        h('button', { class: 'ib', style: 'font-size:18px;padding:10px 22px;font-weight:700', onclick: go }, 'Make it'),
         h('button', { class: 'ib', onclick: () => { closeSurprise(); if (!song()) openStart(); } }, has ? 'Back to my song' : 'Back'))
     )));
   };
@@ -4486,7 +4494,7 @@ function openSurprise() {
     const feel = SP.feel === 'dice' ? R(Object.keys(D.SONG_FEELS)) : SP.feel, story = SP.story === 'dice' ? R(Object.keys(D.SONG_STORIES)) : SP.story;
     const sg = D.surpriseSong({ beat, melody, acc, feel, story, keep: SP.keep && old ? old : null });
     makeSong(beat, { sg });
-    toast(D.SONG_FEELS[feel].icon + ' ' + D.GENRES[beat].name + (melody !== beat ? ' + ' + D.GENRES[melody].name + ' melody' : '') + (acc !== beat ? ' + ' + D.GENRES[acc].name + ' chords' : '') + ', ' + D.SONG_STORIES[story].name.toLowerCase() + ' story');
+    toast((D.SONG_FEELS[feel].icon + ' ' + D.GENRES[beat].name).trim() + (melody !== beat ? ' + ' + D.GENRES[melody].name + ' melody' : '') + (acc !== beat ? ' + ' + D.GENRES[acc].name + ' chords' : '') + ', ' + D.SONG_STORIES[story].name.toLowerCase() + ' story');
   };
   draw();
 }
@@ -4496,7 +4504,7 @@ function openStart() {
     h('h1', { style: 'margin:0;font-size:28px' }, APP_NAME),
     h('p', { style: 'margin:6px 0 0;color:var(--soft)' }, GROOVE ? 'Pick a genre. The machine makes a whole beat; you shape it.' : 'Pick a genre. The machine makes a whole song; you shape it.'),
     song() ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: closeStart }, '← Back to my song') : last && last.song ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: () => { st.song = last.song; D.ensureTypes && D.ensureTypes(st.song); st.sec = last.sec || 0; clampSec(); closeStart(); render(); } }, 'Continue where you left off') : null,
-    h('button', { class: 'ib', id: 'g_surprise', style: 'margin-top:12px;font-size:17px;padding:10px 18px;font-weight:700', onclick: openSurprise }, '🎲 Surprise me'),
+    h('button', { class: 'ib', id: 'g_surprise', style: 'margin-top:12px;font-size:17px;padding:10px 18px;font-weight:700', onclick: openSurprise }, '⚄ Surprise me'),
     h('div', { class: 'gcards' }, [h('button', { class: 'gc diy', id: 'g_diy', onclick: openShadowPick }, 'DIY: start empty', h('small', null, GROOVE ? 'An empty beat; you tap it in' : 'Every part empty; you make it'))].concat(D.GENRE_ALL.map((g) => { const G = D.GENRES[g]; return h('button', { class: 'gc', id: 'g_' + g, onclick: () => makeSong(g) }, G.name, h('small', null, (G.bpm ? G.bpm[0] + ' to ' + G.bpm[1] + ' bpm' : ''))); }))))));
 }
 // DIY, step two: which genre shows its ideas as grey shadows, or none at all

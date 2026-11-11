@@ -894,8 +894,8 @@ function render() {
   // header
   app.append(h('header', { class: 'card top' },
     h('div', { class: 'brand' }, h('span', { class: 'logo' }, 'Divine ', h('i', null, 'Score'), ' Machine'), h('span', { class: 'tag' }, 'for UJAM STRIIIINGS + PERRCS')),
-    h('button', { id: 'suiteBtn', class: 'ghost', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠 Suite'),
-    h('button', { id: 'newScore', class: 'ghost', title: 'A new score with the same feeling', onclick: () => { st.sc = S.freshScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '🎲 New score'),
+    h('button', { id: 'suiteBtn', class: 'ghost', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '⌂ Suite'),
+    h('button', { id: 'newScore', class: 'ghost', title: 'A new score with the same feeling', onclick: () => { st.sc = S.freshScore(x.fromTrack ? 'suspense' : x.style, { name: x.name }); st.sel = 0; render(); setHint('A fresh ' + S.STYLES[sc().style].name.toLowerCase() + ' score.'); } }, '⚄ New score'),
     h('label', { class: 'lab' }, 'Name', h('input', { id: 'name', type: 'text', value: x.name, style: 'width:150px', onchange: (e) => change(() => { x.name = e.target.value.trim() || 'Untitled'; }, true) })),
     h('label', { class: 'lab' }, 'Tempo', h('input', { id: 'bpm', type: 'number', min: 40, max: 200, value: x.bpm, style: 'width:72px', onchange: (e) => change(() => { x.bpm = S.clamp(Math.round(+e.target.value || x.bpm), 40, 200); }, true) }),
       h('span', { class: 'small muted' }, 'to'), h('input', { id: 'bpmEnd', type: 'number', min: 40, max: 200, value: x.bpmEnd || '', placeholder: 'steady', title: 'The tempo at the end: the score speeds up or slows down bar by bar. Empty: the tempo stays the same.', style: 'width:78px', onchange: (e) => change(() => { const v2 = Math.round(+e.target.value); x.bpmEnd = v2 ? S.clamp(v2, 40, 200) : null; setHint(x.bpmEnd ? 'From ' + x.bpm + ' to ' + x.bpmEnd + ' bpm, bar by bar. The files carry the tempo changes.' : 'Steady tempo.'); }, true) })),
@@ -903,7 +903,7 @@ function render() {
       h('select', { id: 'keyRoot', disabled: x.fromTrack, title: x.fromTrack ? 'Found in your track' : 'Key', onchange: (e) => change(() => { x.key.root = +e.target.value; }, true) }, S.names(x.key).map((n, i) => h('option', { value: i, selected: i === x.key.root }, n))),
       h('select', { id: 'keyMode', disabled: x.fromTrack, onchange: (e) => change(() => { x.key.mode = e.target.value; }, true) }, ['minor', 'major'].map((m) => h('option', { value: m, selected: m === x.key.mode }, m)))),
     h('div', { class: 'grow' }),
-    h('button', { id: 'deliverAll', class: 'primary', onclick: () => deliver() }, '⬇ Download all')));
+    h('button', { id: 'deliverAll', class: 'primary', onclick: () => deliver() }, '↓ Download all')));
   // style and start
   app.append(h('section', { class: 'row' },
     h('div', { class: 'card', style: 'flex:999 1 620px' }, h('div', { class: 'disp' }, 'What should your scene feel like?'),
@@ -959,9 +959,9 @@ function render() {
   return h('div', { id: 'setupCard', class: 'card', title: 'Load STRIIIINGS twice and PERRCS twice, give each track this Style, switch Latch off and Sync on Note, and drop each file on bar 1 of its own track.' }, h('div', { class: 'cap' }, 'Your four tracks'),
     h('div', { class: 'col', style: 'gap:4px' }, S.LAYERS.map(([k, title]) => { const p = title.replace(' ', ''); return h('div', { style: 'display:flex;gap:8px;align-items:center;border-left:3px solid ' + LCOL[k] + ';padding-left:8px' },
       h('b', { style: 'color:' + LCOL[k] + ';flex:0 0 74px' }, title), h('span', { style: 'flex:1;min-width:0' }, cats[k]),
-      h('button', { id: 'dl_' + p, class: 'ghost small', title: fileName(p), 'aria-label': 'Download ' + title, onclick: () => deliver(p) }, '⬇')); }),
-      h('div', { style: 'display:flex;gap:8px;align-items:center;padding-left:11px' }, h('b', { style: 'flex:0 0 74px' }, 'Structure'), h('span', { class: 'muted small', style: 'flex:1' }, 'markers'), h('button', { id: 'dl_Structure', class: 'ghost small', title: fileName('Structure'), 'aria-label': 'Download Structure', onclick: () => deliver('Structure') }, '⬇'))),
-    h('button', { id: 'dlAll', class: 'primary', style: 'margin-top:8px', onclick: () => deliver() }, '⬇ All')); }
+      h('button', { id: 'dl_' + p, class: 'ghost small', title: fileName(p), 'aria-label': 'Download ' + title, onclick: () => deliver(p) }, '↓')); }),
+      h('div', { style: 'display:flex;gap:8px;align-items:center;padding-left:11px' }, h('b', { style: 'flex:0 0 74px' }, 'Structure'), h('span', { class: 'muted small', style: 'flex:1' }, 'markers'), h('button', { id: 'dl_Structure', class: 'ghost small', title: fileName('Structure'), 'aria-label': 'Download Structure', onclick: () => deliver('Structure') }, '↓'))),
+    h('button', { id: 'dlAll', class: 'primary', style: 'margin-top:8px', onclick: () => deliver() }, '↓ All')); }
   aside.append(partCard('strings', 'Strings', 'STRIIIINGS', '#F4C177'), partCard('percs', 'Percs', 'PERRCS', '#9CC7E3'));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Ending'), seg('end', Object.entries(S.ENDINGS), x.ending || 'resolve', (k) => change(() => { x.ending = k; setHint({ resolve: 'The score comes home: an ending phrase and a closing hit.', open: 'A cliffhanger: it ends on the five, a hit and a metal that hangs in the air.', stop: 'A sudden stop: everything cut at once on the last bar.' }[k]); }), 'How it ends')));
   const hl = S.hitsOf(x);
@@ -971,7 +971,7 @@ function render() {
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Tricks'), h('div', { class: 'chips' }, Object.entries(S.TRICKS).map(([k, tt]) => h('button', { id: 'trick_' + k, class: 'chip small' + (x.tricks[k] ? ' on' : ''), 'aria-pressed': x.tricks[k] ? 'true' : 'false', onclick: () => change(() => { x.tricks[k] = !x.tricks[k]; }, true) }, tt)))));
   app.append(h('div', { class: 'row top-align' }, main, aside));
   app.append(h('div', { id: 'hint', class: 'hint', role: 'status' }, st.hint));
-  app.append(h('footer', null, h('span', { class: 'noai' }, 'No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired. © ' + new Date().getFullYear() + ' Divine Monday. Divine Score Machine, ' + VERSION + '.', h('span', { class: 'man' }, 'Manual (PDF): ', ...[['English', 'EN'], ['Nederlands', 'NL'], ['Deutsch', 'DE']].map(([n, c]) => h('a', { href: '../manuals/' + ({ EN: 'Divine-Score-Machine-Manual-EN', NL: 'Divine-Score-Machine-Handleiding-NL', DE: 'Divine-Score-Machine-Handbuch-DE' })[c] + '.pdf', target: '_blank', rel: 'noopener' }, n)))));
+  app.append(h('footer', null, h('span', { class: 'noai' }, 'No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired. © ' + new Date().getFullYear() + ' Divine Monday. Divine Score Machine, ' + VERSION + '. ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', style: 'color:inherit' }, 'Impressum · Datenschutz'), h('span', { class: 'man' }, 'Manual (PDF): ', ...[['English', 'EN'], ['Nederlands', 'NL'], ['Deutsch', 'DE']].map(([n, c]) => h('a', { href: '../manuals/' + ({ EN: 'Divine-Score-Machine-Manual-EN', NL: 'Divine-Score-Machine-Handleiding-NL', DE: 'Divine-Score-Machine-Handbuch-DE' })[c] + '.pdf', target: '_blank', rel: 'noopener' }, n)))));
 }
 window.SCOREAPP = { st, render, deliver, loadTrack, fileName };
 render();

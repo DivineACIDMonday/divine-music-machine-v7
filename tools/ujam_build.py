@@ -74,7 +74,7 @@ s = s.replace("'manuals/Divine-Groove-Machine-", "'/divine-music-machine-v7/ujam
 write('groove', s, 'Divine Groove Machine UJAM', 'DM Groove UJAM', 'groove', 'Groove arranged in one click, for UJAM Beatmaker and Virtual Drummer. Totally free. No AI inside.', V + '/groove/manifest.webmanifest')
 # Score: same app, with a home button to the UJAM suite
 s = open(V + '/score/index.html').read()
-s = rep(s, "title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠 Suite'),", "title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = '" + HOME + "'; } }, '🏠 Suite'),", 1)
+s = rep(s, "title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '⌂ Suite'),", "title: 'Back to the UJAM suite: all Divine Monday machines for UJAM', onclick: () => { location.href = '" + HOME + "'; } }, '⌂ Suite'),", 1)
 s = rep(s, "'../manuals/'", "'/divine-music-machine-v7/manuals/'", 1)
 s = re.sub(r'(<meta property="og:url" content=")[^"]*"', r'\g<1>' + BASE + 'ujam/score/"', s)
 s = re.sub(r'<title>[^<]*</title>', '<title>Divine Score Machine UJAM</title>', s)

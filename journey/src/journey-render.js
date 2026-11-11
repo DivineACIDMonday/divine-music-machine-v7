@@ -707,6 +707,14 @@ JR.render = function (plan, ctx) {
 // ---------- MIDI out ----------
 const vlq = (n) => { const b = [n & 127]; while ((n >>= 7)) b.unshift((n & 127) | 128); return b; };
 const str = (s) => [...new TextEncoder().encode(String(s).replace(/[–—]/g, ','))];
+// one key, one note at a time: when a note starts again before the same note ended, the first one ends just before it
+// (a DAW pairs every note on with a note off, and a doubled note would cut the wrong one short); the same note twice at once plays once, the louder
+const oneAtATime = (notes) => { const out = notes.filter(Boolean).map((n) => Object.assign({}, n)).sort((a, b) => a.t - b.t || b.v - a.v), last = {}, keep = [];
+  for (const n of out) { const k = Math.round(n.p) + (n.ks ? 1000 : 0), pv = last[k];
+    if (pv && Math.round(n.t) <= Math.round(pv.t)) continue;
+    if (pv && Math.round(pv.t) + Math.max(1, Math.round(pv.d)) > Math.round(n.t)) pv.d = Math.max(1, Math.round(n.t) - Math.round(pv.t) - 1);
+    last[k] = n; keep.push(n); }
+  return keep; };
 JR.writeMidi = function (tracks, meta) {
   const chunk = (evs) => { evs.sort((a, b) => a.t - b.t || a.o - b.o); let last = 0, bytes = []; for (const e of evs) { bytes = bytes.concat(vlq(e.t - last), e.b); last = e.t; } bytes = bytes.concat([0, 0xff, 0x2f, 0]); const l = bytes.length; return [0x4d, 0x54, 0x72, 0x6b, (l >>> 24) & 255, (l >>> 16) & 255, (l >>> 8) & 255, l & 255].concat(bytes); };
   const us = Math.round(60000000 / meta.bpm);
@@ -716,7 +724,7 @@ JR.writeMidi = function (tracks, meta) {
   const chunks = [chunk(cond)];
   tracks.forEach((tr, ti) => { const ch = 0, ev = [{ t: 0, o: 0, b: [0xff, 0x03].concat(vlq(str(tr.name).length), str(tr.name)) }];
     (tr.cc || []).forEach((e) => ev.push({ t: e.t, o: 1, b: [0xb0 | ch, e.c, clamp(e.v, 0, 127)] }));
-    tr.notes.forEach((n) => { const p = clamp(Math.round(n.p), 0, 127); ev.push({ t: n.t, o: n.ks ? 2 : 3, b: [0x90 | ch, p, clamp(n.v, 1, 127)] }); ev.push({ t: n.t + Math.max(1, n.d), o: 0, b: [0x80 | ch, p, 0] }); });
+    oneAtATime(tr.notes).forEach((n) => { const p = clamp(Math.round(n.p), 0, 127); ev.push({ t: n.t, o: n.ks ? 2 : 3, b: [0x90 | ch, p, clamp(n.v, 1, 127)] }); ev.push({ t: n.t + Math.max(1, n.d), o: 0, b: [0x80 | ch, p, 0] }); });
     chunks.push(chunk(ev)); });
   const head = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, (chunks.length >> 8) & 255, chunks.length & 255, (PPQ >> 8) & 255, PPQ & 255];
   return new Uint8Array(head.concat(...chunks));

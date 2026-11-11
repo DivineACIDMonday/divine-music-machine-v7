@@ -1359,18 +1359,18 @@ E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-re
 
 /* ---------- surprise me: a genre per layer, a feeling and a story ---------- */
 E.SONG_FEELS = {
-  energetic: { name: 'Energetic', icon: '⚡', scale: null, bpm: 1.05, raw: 0.5 },
-  dark: { name: 'Dark', icon: '🌑', scale: 'minor', bpm: 0.98, raw: 0.45 },
+  energetic: { name: 'Energetic', icon: '', scale: null, bpm: 1.05, raw: 0.5 },
+  dark: { name: 'Dark', icon: '', scale: 'minor', bpm: 0.98, raw: 0.45 },
   happy: { name: 'Happy', icon: '☀', scale: 'major', bpm: 1.03, raw: 0.4 },
-  dreamy: { name: 'Dreamy', icon: '💭', scale: 'major', bpm: 0.93, raw: 0.3 },
-  melancholy: { name: 'Melancholy', icon: '🌧', scale: 'minor', bpm: 0.94, raw: 0.3 },
-  hypnotic: { name: 'Hypnotic', icon: '🌀', scale: 'dorian', bpm: 1, raw: 0.25 },
+  dreamy: { name: 'Dreamy', icon: '', scale: 'major', bpm: 0.93, raw: 0.3 },
+  melancholy: { name: 'Melancholy', icon: '', scale: 'minor', bpm: 0.94, raw: 0.3 },
+  hypnotic: { name: 'Hypnotic', icon: '', scale: 'dorian', bpm: 1, raw: 0.25 },
 };
 E.SONG_STORIES = {
-  radio: { name: 'Radio', icon: '📻', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
-  club: { name: 'Club', icon: '🎧', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
-  burner: { name: 'Slow burner', icon: '🔥', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
-  journey: { name: 'Journey', icon: '🌙', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
+  radio: { name: 'Radio', icon: '', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
+  club: { name: 'Club', icon: '', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
+  burner: { name: 'Slow burner', icon: '', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
+  journey: { name: 'Journey', icon: '', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
 };
 E.surpriseSong = function (o) {
   o = o || {};
@@ -3334,6 +3334,14 @@ function vlq(n) { const b = [n & 0x7f]; n >>= 7; while (n) { b.unshift((n & 0x7f
 function str(s) { const o = []; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); o.push(c < 128 ? c : 63); } return o; }
 E.COPYRIGHT = '\u00a9 ' + new Date().getFullYear() + ' Divine Monday';
 E.COPYRIGHT_MIDI = 'Copyright ' + new Date().getFullYear() + ' Divine Monday';
+// one key, one note at a time: when a note starts again before the same note ended, the first one ends just before it
+// (a DAW pairs every note on with a note off, and a doubled note would cut the wrong one short); the same note twice at once plays once, the louder
+const oneAtATime = (notes) => { const out = notes.filter(Boolean).map((n) => Object.assign({}, n)).sort((a, b) => a.t - b.t || b.v - a.v), last = {}, keep = [];
+  for (const n of out) { const k = Math.round(n.p) + (n.ks ? 1000 : 0), pv = last[k];
+    if (pv && Math.round(n.t) <= Math.round(pv.t)) continue;
+    if (pv && Math.round(pv.t) + Math.max(1, Math.round(pv.d)) > Math.round(n.t)) pv.d = Math.max(1, Math.round(n.t) - Math.round(pv.t) - 1);
+    last[k] = n; keep.push(n); }
+  return keep; };
 E.writeMidi = function (tracks, meta) {
   // tracks: [{name, channel, notes:[{t,d,p,v}], markers?:[{t,text}]}]
   const PPQ = E.PPQ;
@@ -3355,7 +3363,7 @@ E.writeMidi = function (tracks, meta) {
     ev.push({ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) });
     const ch = (tr.channel || 0) & 15;
     for (const c of tr.cc || []) ev.push({ t: Math.max(0, Math.round(c.t)), b: [0xb0 | ch, c.c & 127, clamp(Math.round(c.v), 0, 127)], o: 0 }); // controllers, for the orchestra: articulation and dynamics
-    for (const n of tr.notes) {
+    for (const n of oneAtATime(tr.notes)) {
       const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d));
       ev.push({ t, b: [0x90 | ch, p, v], o: 1 });
       ev.push({ t: t + d, b: [0x80 | ch, p, 0], o: 0 });
@@ -3373,7 +3381,7 @@ E.beatOnly = () => { try { return localStorage.getItem('dm_beat_only') === '1'; 
     if (!(tracks.length === 1 && ((tracks[0].channel || 0) & 15) === 9 && E.beatOnly())) return full(tracks, meta);
     const PPQ = E.PPQ, tempo = Math.round(60000000 / meta.bpm), m = E.METERS[meta.meter] || E.METERS['4/4'], den = { 4: 2, 8: 3 }[m.den], tr = tracks[0], nm = str(tr.name || 'Beat');
     const ev = [{ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) }, { t: 0, b: [0xff, 0x51, 3, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] }, { t: 0, b: [0xff, 0x58, 4, m.num, den, m.den === 8 ? 12 : 24, 8] }];
-    for (const n of tr.notes) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
+    for (const n of oneAtATime(tr.notes)) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
     const c = trackBytes(ev), hdr = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (PPQ >> 8) & 255, PPQ & 255], out = new Uint8Array(hdr.length + c.length); out.set(hdr, 0); out.set(c, hdr.length); return out; }; })();
 // the choice sits next to the beat's plugin picker, in every app that has one
 (function () { if (typeof document === 'undefined') return;

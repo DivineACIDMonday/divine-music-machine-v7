@@ -1683,18 +1683,18 @@ E.recentKey = () => (typeof window !== 'undefined' && window.DMM_UJAM ? 'dmmu-re
 
 /* ---------- surprise me: a genre per layer, a feeling and a story ---------- */
 E.SONG_FEELS = {
-  energetic: { name: 'Energetic', icon: '⚡', scale: null, bpm: 1.05, raw: 0.5 },
-  dark: { name: 'Dark', icon: '🌑', scale: 'minor', bpm: 0.98, raw: 0.45 },
+  energetic: { name: 'Energetic', icon: '', scale: null, bpm: 1.05, raw: 0.5 },
+  dark: { name: 'Dark', icon: '', scale: 'minor', bpm: 0.98, raw: 0.45 },
   happy: { name: 'Happy', icon: '☀', scale: 'major', bpm: 1.03, raw: 0.4 },
-  dreamy: { name: 'Dreamy', icon: '💭', scale: 'major', bpm: 0.93, raw: 0.3 },
-  melancholy: { name: 'Melancholy', icon: '🌧', scale: 'minor', bpm: 0.94, raw: 0.3 },
-  hypnotic: { name: 'Hypnotic', icon: '🌀', scale: 'dorian', bpm: 1, raw: 0.25 },
+  dreamy: { name: 'Dreamy', icon: '', scale: 'major', bpm: 0.93, raw: 0.3 },
+  melancholy: { name: 'Melancholy', icon: '', scale: 'minor', bpm: 0.94, raw: 0.3 },
+  hypnotic: { name: 'Hypnotic', icon: '', scale: 'dorian', bpm: 1, raw: 0.25 },
 };
 E.SONG_STORIES = {
-  radio: { name: 'Radio', icon: '📻', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
-  club: { name: 'Club', icon: '🎧', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
-  burner: { name: 'Slow burner', icon: '🔥', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
-  journey: { name: 'Journey', icon: '🌙', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
+  radio: { name: 'Radio', icon: '', blurb: 'Verse, chorus, about three minutes', secs: [['intro', 1], ['verse', 2], ['chorus', 2], ['verse', 2], ['chorus', 2], ['break', 1], ['chorus', 2], ['outro', 1]] },
+  club: { name: 'Club', icon: '', blurb: 'Long intro, build, drop, DJ outro', secs: [['intro', 4], ['build', 2], ['drop', 4], ['break', 4], ['build', 2], ['drop', 4], ['outro', 4]] },
+  burner: { name: 'Slow burner', icon: '', blurb: 'Grows little by little to one big peak', secs: [['intro', 2], ['verse', 4], ['build', 2], ['verse', 2], ['build', 2], ['chorus', 4], ['outro', 2]] },
+  journey: { name: 'Journey', icon: '', blurb: 'Calm, a peak, and calm again', secs: [['intro', 4], ['verse', 4], ['build', 2], ['drop', 4], ['break', 4], ['chorus', 2], ['outro', 4]] },
 };
 E.surpriseSong = function (o) {
   o = o || {};
@@ -3658,6 +3658,14 @@ function vlq(n) { const b = [n & 0x7f]; n >>= 7; while (n) { b.unshift((n & 0x7f
 function str(s) { const o = []; for (let i = 0; i < s.length; i++) { const c = s.charCodeAt(i); o.push(c < 128 ? c : 63); } return o; }
 E.COPYRIGHT = '\u00a9 ' + new Date().getFullYear() + ' Divine Monday';
 E.COPYRIGHT_MIDI = 'Copyright ' + new Date().getFullYear() + ' Divine Monday';
+// one key, one note at a time: when a note starts again before the same note ended, the first one ends just before it
+// (a DAW pairs every note on with a note off, and a doubled note would cut the wrong one short); the same note twice at once plays once, the louder
+const oneAtATime = (notes) => { const out = notes.filter(Boolean).map((n) => Object.assign({}, n)).sort((a, b) => a.t - b.t || b.v - a.v), last = {}, keep = [];
+  for (const n of out) { const k = Math.round(n.p) + (n.ks ? 1000 : 0), pv = last[k];
+    if (pv && Math.round(n.t) <= Math.round(pv.t)) continue;
+    if (pv && Math.round(pv.t) + Math.max(1, Math.round(pv.d)) > Math.round(n.t)) pv.d = Math.max(1, Math.round(n.t) - Math.round(pv.t) - 1);
+    last[k] = n; keep.push(n); }
+  return keep; };
 E.writeMidi = function (tracks, meta) {
   // tracks: [{name, channel, notes:[{t,d,p,v}], markers?:[{t,text}]}]
   const PPQ = E.PPQ;
@@ -3679,7 +3687,7 @@ E.writeMidi = function (tracks, meta) {
     ev.push({ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) });
     const ch = (tr.channel || 0) & 15;
     for (const c of tr.cc || []) ev.push({ t: Math.max(0, Math.round(c.t)), b: [0xb0 | ch, c.c & 127, clamp(Math.round(c.v), 0, 127)], o: 0 }); // controllers, for the orchestra: articulation and dynamics
-    for (const n of tr.notes) {
+    for (const n of oneAtATime(tr.notes)) {
       const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d));
       ev.push({ t, b: [0x90 | ch, p, v], o: 1 });
       ev.push({ t: t + d, b: [0x80 | ch, p, 0], o: 0 });
@@ -3697,7 +3705,7 @@ E.beatOnly = () => { try { return localStorage.getItem('dm_beat_only') === '1'; 
     if (!(tracks.length === 1 && ((tracks[0].channel || 0) & 15) === 9 && E.beatOnly())) return full(tracks, meta);
     const PPQ = E.PPQ, tempo = Math.round(60000000 / meta.bpm), m = E.METERS[meta.meter] || E.METERS['4/4'], den = { 4: 2, 8: 3 }[m.den], tr = tracks[0], nm = str(tr.name || 'Beat');
     const ev = [{ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) }, { t: 0, b: [0xff, 0x51, 3, (tempo >> 16) & 255, (tempo >> 8) & 255, tempo & 255] }, { t: 0, b: [0xff, 0x58, 4, m.num, den, m.den === 8 ? 12 : 24, 8] }];
-    for (const n of tr.notes) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
+    for (const n of oneAtATime(tr.notes)) { const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d)); ev.push({ t, b: [0x99, p, v], o: 1 }); ev.push({ t: t + d, b: [0x89, p, 0], o: 0 }); }
     const c = trackBytes(ev), hdr = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 0, 0, 1, (PPQ >> 8) & 255, PPQ & 255], out = new Uint8Array(hdr.length + c.length); out.set(hdr, 0); out.set(c, hdr.length); return out; }; })();
 // the choice sits next to the beat's plugin picker, in every app that has one
 (function () { if (typeof document === 'undefined') return;
@@ -4289,7 +4297,7 @@ function renderTop() {
       h('div', { class: 'grp' }, h('button', { class: 'iconbtn', 'aria-label': 'Undo', title: 'Undo (Ctrl Z)', disabled: !st.hist.length, onclick: undo }, ico('undo')), h('button', { class: 'iconbtn', 'aria-label': 'Redo', title: 'Redo', disabled: !st.fut.length, onclick: redo }, ico('redo'))),
       h('button', { id: 'shareBtn', title: 'Send your groove as a link: whoever opens it can listen and download the MIDI', onclick: shareSong }, ico('share'), 'Share'),
       h('button', { class: 'primary', id: 'deliverBtn', onclick: openDeliver }, ico('download'), 'Deliver'),
-      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, '💬 Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'suiteBtn', 'aria-label': 'All Divine Monday machines', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '🏠'), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Feedback or contact', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: sendFeedback }, '📮'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
+      h('div', { class: 'grp' }, h('button', { id: 'explainBtn', class: st.explain ? 'on' : '', 'aria-pressed': !!st.explain, title: 'Explain mode: tap any button to learn what it does, nothing changes', onclick: toggleExplain }, 'Explain'), h('button', { class: 'iconbtn', 'aria-label': 'Help', title: 'How it works', onclick: openHelp }, ico('help')), h('button', { class: 'iconbtn', id: 'suiteBtn', 'aria-label': 'All Divine Monday machines', title: 'Back to the suite: all Divine Monday machines', onclick: () => { location.href = 'https://divineacidmonday.github.io/'; } }, '⌂'), h('button', { class: 'iconbtn', id: 'feedbackBtn', 'aria-label': 'Feedback or contact', title: 'Feedback or contact: opens a mail to Divine Monday', onclick: sendFeedback }, '✉'), h('button', { class: 'ghost', title: 'Back to the start screen', onclick: openStart }, 'New')))
   );
 }
 function setMeter(m) {
@@ -4713,7 +4721,7 @@ function toneWord() { const t = hatTone(); return t < 0.34 ? 'soft' : t < 0.67 ?
 function fmtShift(v) { return v === 0 ? 'on grid' : (v < 0 ? v + ' ms' : '+' + v + ' ms'); }
 
 /* ---------- lane mixer: every lane, every bar of the section, on or off ---------- */
-// a 🎲 you hear: if a variation changes (almost) nothing, roll it again (and at last a bit stronger)
+// a ⚄ you hear: if a variation changes (almost) nothing, roll it again (and at last a bit stronger)
 function laneDiff(sg, si, li) {
   const sec = sg.sections[si], s0 = D.sectionStart(sg, si), get = () => { const R = D.makeRenderer(sg), o = []; for (let b = 0; b < sec.bars; b++) { let x = null; try { x = D.renderBar(sg, 'beat', s0 + b, R.res, { lanes: true }); } catch (e) { x = null; } o.push(JSON.stringify(x && x.lanes ? x.lanes[li] : null)); } return o; };
   const withFx = get(), keep = sec.laneFx; sec.laneFx = Object.assign({}, keep); delete sec.laneFx[li]; const plain = get(); sec.laneFx = keep;
@@ -4738,13 +4746,13 @@ function laneMixer() {
   const anyRnd = sec.laneFx && Object.values(sec.laneFx).some((f) => f.rnd);
   const anyFxAll = sg.sections.some((x) => x.laneFx), anyRndAll = sg.sections.some((x) => x.laneFx && Object.values(x.laneFx).some((f) => f.rnd));
   wrap.append(h('div', { class: 'mixtop' },
-    h('span', { class: 'small' }, 'Tap a cell: that drum off or on in that bar. 🎲 varies a drum, ↗ lets it grow, ⋯ for all choices. Bar 1 stays your base.'),
+    h('span', { class: 'small' }, 'Tap a cell: that drum off or on in that bar. ⚄ varies a drum, ↗ lets it grow, ⋯ for all choices. Bar 1 stays your base.'),
     h('div', { class: 'grow' }),
     h('button', { id: 'mixRandom', class: 'primary', title: 'Variations and progressions over every drum that plays in ' + (st.mixAll ? 'every section' : sectionLabel(st.sec)) + ', with respect for rhythm', onclick: () => randomizeMix(st.mixLevel || 2) }, ico('dice'), 'Randomize mix'),
     h('div', { class: 'seg mmamt', role: 'group', 'aria-label': 'How much' }, [[1, 'subtle'], [2, 'medium'], [3, 'wild']].map(([k, t]) => h('button', { id: 'mixLevel_' + k, class: (st.mixLevel || 2) === k ? 'on' : '', onclick: () => { st.mixLevel = k; renderEditor(); } }, t))),
     h('div', { class: 'seg mmamt', role: 'group', 'aria-label': 'Where', style: 'grid-template-columns:auto auto;gap:4px' }, h('button', { id: 'mixScopeSec', class: st.mixAll ? '' : 'on', title: 'Randomize, New flow and All plain work on ' + sectionLabel(st.sec), onclick: () => { st.mixAll = false; renderEditor(); } }, 'This section'), h('button', { id: 'mixScopeAll', class: st.mixAll ? 'on' : '', title: 'Randomize, New flow and All plain work on every section at once', onclick: () => { st.mixAll = true; renderEditor(); } }, 'All sections')),
     h('button', { class: 'ghost', id: 'mixPlain', disabled: st.mixAll ? !anyFxAll : !sec.laneFx, title: st.mixAll ? 'Every drum in every section plays as written again' : 'Every drum plays as written again', onclick: () => { change(() => { if (st.mixAll) sg.sections.forEach((x) => { delete x.laneFx; }); else delete sec.laneFx; }, { keep: true }); renderEditor(); setHint(st.mixAll ? 'Every drum in every section plays as written again.' : 'Every drum in ' + sectionLabel(st.sec) + ' plays as written again.'); } }, '\u00d7 All plain'),
-    h('button', { id: 'newFlow', disabled: st.mixAll ? !anyRndAll : !anyRnd, title: (st.mixAll ? anyRndAll : anyRnd) ? 'New variations for every drum with a 🎲' + (st.mixAll ? ' in every section' : ' in ' + sectionLabel(st.sec)) + '; your base stays' : 'Give a drum a 🎲 first', onclick: () => { change(() => { for (const x of st.mixAll ? sg.sections : [sec]) if (x.laneFx) for (const k of Object.keys(x.laneFx)) if (x.laneFx[k].rnd) x.laneFx[k] = Object.assign({}, x.laneFx[k], { rnd: D.newSeed() }); }, { keep: true }); renderEditor(); setHint(st.mixAll ? 'New flow everywhere: same base, a new way through every section.' : 'New flow: same base, a new way through ' + sectionLabel(st.sec) + '.'); } }, ico('dice'), 'New flow')));
+    h('button', { id: 'newFlow', disabled: st.mixAll ? !anyRndAll : !anyRnd, title: (st.mixAll ? anyRndAll : anyRnd) ? 'New variations for every drum with a ⚄' + (st.mixAll ? ' in every section' : ' in ' + sectionLabel(st.sec)) + '; your base stays' : 'Give a drum a ⚄ first', onclick: () => { change(() => { for (const x of st.mixAll ? sg.sections : [sec]) if (x.laneFx) for (const k of Object.keys(x.laneFx)) if (x.laneFx[k].rnd) x.laneFx[k] = Object.assign({}, x.laneFx[k], { rnd: D.newSeed() }); }, { keep: true }); renderEditor(); setHint(st.mixAll ? 'New flow everywhere: same base, a new way through every section.' : 'New flow: same base, a new way through ' + sectionLabel(st.sec) + '.'); } }, ico('dice'), 'New flow')));
   const tbl = h('div', { class: 'mixgrid', id: 'mixGrid', style: 'grid-template-columns:178px repeat(' + n + ',minmax(18px,1fr))' });
   tbl.append(h('span'));
   for (let b = 0; b < n; b++) tbl.append(h('button', { class: 'mixbar ' + (b === selBar() ? 'on' : ''), title: 'Bar ' + (b + 1), onclick: () => { selectBar(b); renderEditor(); followBar(); } }, String(b + 1)));
@@ -4753,7 +4761,7 @@ function laneMixer() {
     const allOff = Array.from({ length: n }, (_, b) => D.laneIsOff(sec, b, li)).every(Boolean), fx = fxOf(li), open = st.mixOpen === li;
     const from = fx.from != null ? fx.from : 0, to = fx.to != null ? fx.to : n - 1, ranged = fx.from != null || fx.to != null;
     const idle = !cnt.some((c) => c[li] > 0);
-    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : '') + (idle ? ' stale' : ''), id: 'mixRnd_' + li, title: fx.rnd ? 'Another variation of ' + ln.name : 'Let ' + ln.name + ' vary', 'aria-label': 'Vary ' + ln.name, onclick: () => fxChange(li, { rnd: D.newSeed() }, ln.name + ' varies: ' + D.VARKINDS[fx.kind || 'mix'].toLowerCase() + ', ' + D.EVERY[fx.every || 1] + '. Tap 🎲 again for another.') }, ico('dice'));
+    const dice = h('button', { class: 'mixfx ' + (fx.rnd ? 'on' : '') + (idle ? ' stale' : ''), id: 'mixRnd_' + li, title: fx.rnd ? 'Another variation of ' + ln.name : 'Let ' + ln.name + ' vary', 'aria-label': 'Vary ' + ln.name, onclick: () => fxChange(li, { rnd: D.newSeed() }, ln.name + ' varies: ' + D.VARKINDS[fx.kind || 'mix'].toLowerCase() + ', ' + D.EVERY[fx.every || 1] + '. Tap ⚄ again for another.') }, ico('dice'));
     const prog = h('select', { class: 'mixprog' + (idle ? ' stale' : ''), id: 'mixProg_' + li, 'aria-label': ln.name + ' progression', onchange: (e) => fxChange(li, { prog: e.target.value }, ln.name + ': ' + D.PROGS[e.target.value].toLowerCase() + '.') },
       Object.entries(D.PROGS).map(([k, t]) => h('option', { value: k, selected: (fx.prog || 'none') === k }, '↗ ' + (k === 'none' ? 'none' : t.split(':')[0]))));
     const more = h('button', { class: 'mixfx ' + (open ? 'on' : ''), id: 'mixMore_' + li, title: 'All choices for ' + ln.name, 'aria-expanded': open, onclick: () => { st.mixOpen = open ? null : li; renderEditor(); } }, '⋯');
@@ -5884,9 +5892,9 @@ function openDoors(g) {
     h('h3', null, 'How do you start?'),
     h('div', { class: 'genrepick' },
       h('button', { class: 'gcard', id: 'doorMachine', onclick: () => { newSong(g); spiralBeat(true); closeOverlay(); setHint('A whole ' + D.GENRES[g].name.toLowerCase() + ' groove. Press play, then steer: the Mixer, the dice, or tap the rings.'); } },
-        h('b', null, '🎲 Machine makes a groove'), h('span', null, 'A whole song of beats, ready to play. You steer after.')),
+        h('b', null, '⚄ Machine makes a groove'), h('span', null, 'A whole song of beats, ready to play. You steer after.')),
       h('button', { class: 'gcard', id: 'doorScratch', onclick: () => { newSong(g); closeOverlay(); } },
-        h('b', null, '✏️ From scratch'), h('span', null, 'An empty spiral. You tap every hit, the shadows help.'))),
+        h('b', null, '✏ From scratch'), h('span', null, 'An empty spiral. You tap every hit, the shadows help.'))),
     h('div', { class: 'small' }, 'Both can be changed later: Beat, Whole spiral fills or refills the beat any time.'));
   overlay(sheet, { sticky: st.boot });
 }
@@ -5901,7 +5909,7 @@ function openStart() {
     !st.boot ? keepStructureBox() : null,
     h('h3', null, st.boot ? 'Pick a groove' : 'Or a new groove from scratch'), genres,
     h('div', { class: 'small' }, 'The genre sets the swing and what the shadows suggest. Change it any time.'),
-    h('div', { class: 'noai' }, h('b', null, '⚙️ No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.'),
+    h('div', { class: 'noai' }, h('b', null, 'No AI inside'), ' Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.'),
     h('div', { class: 'small faint copy' }, D.COPYRIGHT + '. All rights reserved.'),
     last && last.parts && st.boot ? h('button', { id: 'continueBtn', onclick: () => { loadSong(last); closeOverlay(); } }, 'Continue where you left off: ' + (last.name || 'Untitled')) : null
   );
@@ -5913,7 +5921,7 @@ function keepStructureBox() {
   return h('div', { class: 'slot open', id: 'keepStructure', style: 'padding:10px 12px;display:flex;flex-direction:column;gap:8px' },
     h('b', null, 'New beat, same structure'),
     h('div', { class: 'small' }, 'Keeps your spiral: sections, bars, tempo, groove and fills. Every beat becomes empty, also the own versions of sections and bars.'),
-    h('label', { class: 'small', style: 'display:flex;gap:6px;align-items:center' }, cb, 'Empty the mixer too (🎲, ↗ and lanes switched off)'),
+    h('label', { class: 'small', style: 'display:flex;gap:6px;align-items:center' }, cb, 'Empty the mixer too (⚄, ↗ and lanes switched off)'),
     h('div', null, h('button', { class: 'primary', id: 'ksGo', onclick: (e) => { const btn = e.currentTarget; if (!btn.dataset.sure) { btn.dataset.sure = '1'; btn.classList.add('sure'); btn.lastChild.textContent = 'Sure? Every beat goes. Tap again'; setTimeout(() => { if (btn.isConnected) { delete btn.dataset.sure; btn.classList.remove('sure'); btn.lastChild.textContent = 'New beat, same structure'; } }, 4000); return; } newBeatSameStructure(cb.checked); closeOverlay(); } }, ico('dice'), h('span', null, 'New beat, same structure'))));
 }
 function newBeatSameStructure(mixToo) {
@@ -5954,19 +5962,19 @@ function openHelp() {
     h('div', { class: 'keys' },
       row('Rings', 'One ring per drum. Further out is louder. Kick outside, crash inside.'),
       row('Lines', 'One row per drum, one box per step. Drag up for louder.'),
-      row('Mixer', 'Every drum, every bar of the section. Tap a cell: that drum off or on in that bar. 🎲 lets one drum vary, ↗ lets it grow, ⋯ opens every choice (kind, subtle to wild, how often, which bars, ♥ keep).'),
+      row('Mixer', 'Every drum, every bar of the section. Tap a cell: that drum off or on in that bar. ⚄ lets one drum vary, ↗ lets it grow, ⋯ opens every choice (kind, subtle to wild, how often, which bars, ♥ keep).'),
       row('Randomize mix', 'In the Mixer: variations over the drums with respect for rhythm. This section or All sections; New flow gives the same choices a new way through; × All plain undoes the mix.'),
       row('Whole spiral', 'The machine makes one core beat with its own version for every kind of section. Repeats vary a little; sections of 8 bars or more move by themselves.'),
       row('Bar 1', 'The base of each section: it plays in every bar. Other bars are the base plus your change; a dot marks them.'),
       row('Change', 'Choose where your change lands: this bar, this section or every section of its type.'),
-      row('Shadows', 'Dashed shapes are the machine’s suggestions. Tap one to keep it. 🎲 Section or 🎲 All gives other suggestions.'),
+      row('Shadows', 'Dashed shapes are the machine’s suggestions. Tap one to keep it. ⚄ Section or ⚄ All gives other suggestions.'),
       row('Random', 'A fresh beat idea right where your change lands. Clear empties it.'),
       row('Pads 1 to 8', 'Tap a drum to hear it. While it plays, tapping puts the hit in the bar you hear.'),
       row('Spiral', 'Your song from the centre out. Tap a colour to select that section; while playing, it jumps there.'),
       row('Sections', 'Tap a chip to select it, drag to reorder, + adds one. The panel sets length, type, groove and the fill into the next section.'),
       row('Copy beat', 'In the section panel: this beat, its changed bars and its mixer go to every section of the same type.'),
       row('Groove', 'Per section: straight, Dilla, ghost notes, shuffle, pushed or laid back.'),
-      row('Lanes', 'On the right: S is swing per drum, slide earlier or later. 🎲 Random feel keeps the kick tight and lets the rest breathe; × Plain resets.'),
+      row('Lanes', 'On the right: S is swing per drum, slide earlier or later. ⚄ Random feel keeps the kick tight and lets the rest breathe; × Plain resets.'),
       row('Feel pad', 'Left ahead, right laid back, top tight, bottom loose.'),
       row('Played by', 'Choose your drum plugin: XO, Impact, Tekno, Beatmaker 3, Playbeat 4 or plain MIDI. The keys land right for it.'),
       row('New', 'A new groove from scratch, or New beat, same structure: keeps your spiral and empties every beat.'),
@@ -5975,7 +5983,7 @@ function openHelp() {
       row('Space', 'Play or pause.'), row('← →', 'Previous or next section.'), row('Ctrl Z', 'Undo.')),
     h('div', { class: 'small' }, 'Your last groove is kept in this browser. Share or Deliver it now and then; browsers can wipe their storage.'),
     manualLinks(),
-    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-28 12:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '📮 Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
+    h('div', { class: 'small faint copy' }, 'Divine Groove Machine, version 2026-10-28 12:00. ' + D.COPYRIGHT + '. All rights reserved.', ' ', h('a', { href: '#', class: 'legal', onclick: (e) => { e.preventDefault(); sendFeedback(); } }, '✉ Feedback / contact'), ' ', h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', target: '_blank', rel: 'noopener', class: 'legal' }, 'Impressum · Privacy'))));
 }
 
 // save to library
@@ -6358,7 +6366,7 @@ document.addEventListener('click', (e) => {
 document.addEventListener('change', (e) => { if (st.explain && tipTarget(e)) { e.stopPropagation(); } }, true);
 function toggleExplain() {
   st.explain = !st.explain; hideTip(); renderTop();
-  setHint(st.explain ? 'Explain mode: tap any button to read what it does. Nothing changes. Tap 💬 Explain again to stop.' : 'Explain mode is off. Tip: press and hold any button to read what it does.');
+  setHint(st.explain ? 'Explain mode: tap any button to read what it does. Nothing changes. Tap Explain again to stop.' : 'Explain mode is off. Tip: press and hold any button to read what it does.');
 }
 
 if (!openSharedFromLink()) openStart();
