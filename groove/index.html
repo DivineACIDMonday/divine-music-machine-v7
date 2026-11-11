@@ -4079,10 +4079,18 @@ E.voiceRoom = function (notes, song, part) {
   const wants = (T, i) => { if (!pick[T]) { const r = R(); pick[T] = T === 'chorus' ? (r < 0.5 ? [3, 7] : [3, 5, 7]) : T === 'prechorus' ? [3, 7] : r < 0.4 ? [3, 7] : r < 0.75 ? [7] : [3]; } return pick[T].includes(i % 8); };
   // the hook before she comes in: an intro without a melody gets the first 4 bars of the chorus melody at its end
   const tease = [];
+  // under the singer the melody becomes a countermelody: its own notes on the strong beats, long (a whole bar in a verse,
+  // half bars in a chorus), below the voice and soft, so it never fights her rhythm
+  if (part === 'melody') { const ns = notes.filter((n) => !n.ks).sort((a, b) => a.t - b.t), half = 2 * beat;
+    for (let b = 0; b < b0; b++) { const x = info[b]; if (!x || !E.VOCAL_TYPES.has(x.t)) continue; const step = x.t === 'chorus' ? half : BT, vel = x.t === 'chorus' ? 0.7 : x.t === 'prechorus' ? 0.62 : 0.55;
+      for (let t = b * BT; t < (b + 1) * BT - 1; t += step) { const src = ns.find((n) => n.t >= t - beat / 4 && n.t < t + step) || ns.filter((n) => n.t < t).pop(); if (!src) continue;
+        let p = src.p; while (p > 64) p -= 12; while (p < 50) p += 12; const last = tease[tease.length - 1];
+        if (last && last.p === p && last.t + last.d >= t - 2) { last.d += step; continue; }
+        tease.push({ t, d: step - 10, p, v: Math.round(src.v * vel) }); } } }
   if (part === 'melody') { let ia = -1, ib = -1, ca = -1; b0 = 0; song.sections.forEach((sec) => { if (sec.type === 'intro' && ia < 0) { ia = b0; ib = b0 + sec.bars; } if (sec.type === 'chorus' && ca < 0) ca = b0; b0 += sec.bars; });
     if (ia >= 0 && ca >= 0 && ib - ia >= 4 && !notes.some((n) => n.t >= ia * BT && n.t < ib * BT)) notes.filter((n) => !n.ks && n.t >= ca * BT && n.t < (ca + 4) * BT).forEach((n) => tease.push(Object.assign({}, n, { t: n.t - ca * BT + (ib - 4) * BT, v: Math.round(n.v * 0.8) }))); }
   return tease.concat(notes.filter((n) => { if (n.ks) return true; const b = Math.floor(n.t / BT), x = info[b]; if (!x || !E.VOCAL_TYPES.has(x.t)) return true;
-    if (part === 'melody') return false;
+    if (part === 'melody') return false; // replaced by the countermelody below
     const pos = n.t - b * BT; return wants(x.t, x.i) && pos >= 2 * beat; }))
     .map((n) => { if (n.ks) return n; const b = Math.floor(n.t / BT), x = info[b]; if (!x || !E.VOCAL_TYPES.has(x.t)) return n;
       let p = n.p; while (p > 69) p -= 12; return Object.assign({}, n, { p, v: Math.round(n.v * 0.85), d: Math.min(n.d, (b + 1) * BT - n.t) }); });
