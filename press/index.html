@@ -403,7 +403,8 @@ const nearestOf = (machine, cv) => JP.ARTS.filter((a) => a.machine === machine).
 // who leads a record: a Studio style carries the harmony (the slower one), a second Studio style gives the beat (the faster one)
 JP.recordBand = (rc, cv) => { const arts = rc.arts.map((a) => (a === JP.ORCH ? nearestOf('symphony', cv) : a)), st = arts.filter((a) => a.machine === 'studio').sort((a, b) => a.v.speed - b.v.speed);
   const mine = rc.beat && st.length > 1 ? st.find((a) => a.name === rc.beat) : null; // you chose the style that plays the beat; the other carries the harmony
-  const lead = mine ? st.find((a) => a !== mine) : st.length ? st[0] : arts[0], beatArt = mine || (st.length > 1 ? st[st.length - 1] : null), seen = new Set([lead.machine]), guests = [];
+  // the style that plays the beat also carries the harmony and the bass when it is the calmer one (a trip hop beat wants trip hop chords); a faster beat style still lays its groove under the calmer harmony
+  const lead = mine ? (mine === st[0] ? mine : st[0]) : st.length ? st[0] : arts[0], beatArt = mine ? (mine === st[0] ? null : mine) : (st.length > 1 ? st[st.length - 1] : null), seen = new Set([lead.machine]), guests = [];
   arts.forEach((a) => { if (a === lead || a === beatArt || seen.has(a.machine)) return; seen.add(a.machine); guests.push(a); });
   return { name: rc.name, arts, lead, guests, beatArt }; };
 // the dealer: every chapter gets the records that fit its word best; with more records than chapters a chapter mixes several,
@@ -7854,6 +7855,7 @@ function chapterContentOne(ctx, plan, i, c, seed) {
   // the beat: always from the Studio engine (a rhythm never clashes with a harmony); a record with two Studio styles takes the beat of the second
   const beatSong = c.beatArt ? studioSong(E, c.beatArt.name, c, contentBars, H(seed, 'b2'), F) : song; out.beatSong = beatSong;
   out.beat = roles.has('beats') ? E.renderSong(beatSong, 'beat') : [];
+  out.beat = pocket(out.beat, c, contentBars);
   // the engine leaves some sections without drums (an intro, a prechorus); where the journey wants a groove, the groove of
   // the nearest bar that has one carries on, so a song never waits half its length for its beat
   if (out.beat.length) { const by = {}; out.beat.forEach((n) => { const b = Math.floor(n.t / BAR); (by[b] = by[b] || []).push(n); });
@@ -7973,8 +7975,8 @@ function plays(plan, i, rank, bar, bars) {
 // break: harmony, motif and a whisper of percussion; build: everything gathers, a roll at its end; gift: everyone;
 // intro and outro: the phrases that meet the neighbours (the handover rules shape them)
 const WHO = {
-  start0: ['chords', 'orch', 'perc'], start1: ['chords', 'orch', 'perc', 'bass', 'beats'],
-  A: ['beats', 'bass', 'chords', 'melody', 'perc'], A2: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'],
+  start0: ['chords', 'orch'], start1: ['chords', 'orch', 'bass', 'beats'], // room at the start: the percussion arrives with the answer
+  A: ['beats', 'bass', 'chords', 'melody'], A2: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'],
   B: ['beats', 'bass', 'chords', 'orch', 'perc'], break: ['chords', 'orch', 'perc'], build: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'],
   gift: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'], intro: ['beats', 'bass', 'chords', 'melody', 'perc', 'orch'], outro: ['beats', 'bass', 'chords', 'perc', 'orch'],
 };
@@ -8002,6 +8004,23 @@ function arrange(plan, i) {
 const labelAt = (c, cbar) => (c._arr && c._arr[Math.floor(cbar / 8)]) || 'A';
 
 // ---------- the beat lives: per phrase it turns, accents breathe, hats sit in their pocket ----------
+// the pocket: a groove you can step into. Every part of the arrangement keeps one 4-bar loop (the first one it plays) and repeats it,
+// only the last bar of each 8 is free for the engine's own turn; every lane sits on one grid (straight or triplet) with the same
+// small push or drag on every same spot of the beat, so it swings the same way every time instead of wobbling
+function pocket(beat, c, contentBars) {
+  if (!beat.length) return beat; const by = {}; beat.forEach((n) => { const b = Math.floor(n.t / BAR); (by[b] = by[b] || []).push(n); });
+  const loops = {}, out = [];
+  for (let p = 0; p < contentBars; p += 8) { const L = labelAt(c, p);
+    if (!loops[L] && [0, 1, 2, 3].every((k) => by[p + k] && by[p + k].length)) loops[L] = [0, 1, 2, 3].map((k) => by[p + k].map((n) => Object.assign({}, n, { t: n.t - (p + k) * BAR })));
+    for (let b = p; b < Math.min(p + 8, contentBars); b++) { if (!by[b]) continue; const src = loops[L];
+      if (src && b - p < 7) src[(b - p) % 4].forEach((n) => out.push(Object.assign({}, n, { t: n.t + b * BAR }))); else by[b].forEach((n) => out.push(n)); } }
+  const lanes = {}; out.forEach((n) => { if (!n.roll) (lanes[n.lane] = lanes[n.lane] || []).push(n); });
+  Object.values(lanes).forEach((ns) => { const err = (g) => ns.reduce((a, n) => a + Math.abs(n.t - Math.round(n.t / g) * g), 0), g = err(PPQ / 3) < err(PPQ / 4) * 0.7 ? PPQ / 3 : PPQ / 4, per = PPQ / g;
+    const off = {}; ns.forEach((n) => { const k = Math.round(n.t / g), pos = ((k % per) + per) % per; (off[pos] = off[pos] || []).push(n.t - k * g); });
+    const mean = {}; Object.keys(off).forEach((pos) => { const a = off[pos].slice().sort((x, y) => x - y); mean[pos] = clamp(a[Math.floor(a.length / 2)], -g / 3, g / 3); });
+    ns.forEach((n) => { const k = Math.round(n.t / g), pos = ((k % per) + per) % per; n.t = Math.max(0, Math.round(k * g + mean[pos])); }); });
+  return out;
+}
 function beatLife(beat, c, seed) {
   if (!beat.length) return beat; const R = rng(seed), out = [];
   for (const n of beat) { if (n.roll) { out.push(n); continue; } const bar = Math.floor(n.t / BAR), L = labelAt(c, bar), pos = n.t % BAR, m = Object.assign({}, n);
@@ -8013,7 +8032,7 @@ function beatLife(beat, c, seed) {
   // A2: ghost notes on the snare and an open hat that lifts the end of every second bar; every new section starts with a crash
   const bars = Math.max(...beat.map((n) => Math.floor(n.t / BAR))) + 1;
   for (let b = 0; b < bars; b++) { const L = labelAt(c, b), prevL = labelAt(c, b - 1);
-    if (L === 'A2') { if (R() < 0.6) out.push({ t: b * BAR + 3 * PPQ + 3 * PPQ / 4, d: 40, lane: 2, v: 26 }); if (b % 2) out.push({ t: b * BAR + 3 * PPQ + PPQ / 2, d: 120, lane: 5, v: 70 }); }
+    if (L === 'A2') { if (b % 2 === 1) out.push({ t: b * BAR + 3 * PPQ + 3 * PPQ / 4, d: 40, lane: 2, v: 26 }); if (b % 2) out.push({ t: b * BAR + 3 * PPQ + PPQ / 2, d: 120, lane: 5, v: 70 }); }
     if (b % 8 === 0 && b > 0 && L !== prevL && ['A2', 'B', 'gift'].includes(L)) out.push({ t: b * BAR, d: 240, lane: 7, v: 104 });
     if (L === 'build' && b % 8 >= 6) for (let s2 = 0; s2 < 8; s2++) out.push({ t: b * BAR + (b % 8 === 7 ? s2 * PPQ / 2 : 0) + s2 * (b % 8 === 7 ? 0 : PPQ / 2), d: 40, lane: s2 % 3 === 2 ? 6 : 2, roll: 1, v: Math.round(40 + 60 * (s2 + (b % 8 === 7 ? 8 : 0)) / 16) }); }
   return out;

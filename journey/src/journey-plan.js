@@ -187,7 +187,8 @@ const nearestOf = (machine, cv) => JP.ARTS.filter((a) => a.machine === machine).
 // who leads a record: a Studio style carries the harmony (the slower one), a second Studio style gives the beat (the faster one)
 JP.recordBand = (rc, cv) => { const arts = rc.arts.map((a) => (a === JP.ORCH ? nearestOf('symphony', cv) : a)), st = arts.filter((a) => a.machine === 'studio').sort((a, b) => a.v.speed - b.v.speed);
   const mine = rc.beat && st.length > 1 ? st.find((a) => a.name === rc.beat) : null; // you chose the style that plays the beat; the other carries the harmony
-  const lead = mine ? st.find((a) => a !== mine) : st.length ? st[0] : arts[0], beatArt = mine || (st.length > 1 ? st[st.length - 1] : null), seen = new Set([lead.machine]), guests = [];
+  // the style that plays the beat also carries the harmony and the bass when it is the calmer one (a trip hop beat wants trip hop chords); a faster beat style still lays its groove under the calmer harmony
+  const lead = mine ? (mine === st[0] ? mine : st[0]) : st.length ? st[0] : arts[0], beatArt = mine ? (mine === st[0] ? null : mine) : (st.length > 1 ? st[st.length - 1] : null), seen = new Set([lead.machine]), guests = [];
   arts.forEach((a) => { if (a === lead || a === beatArt || seen.has(a.machine)) return; seen.add(a.machine); guests.push(a); });
   return { name: rc.name, arts, lead, guests, beatArt }; };
 // the dealer: every chapter gets the records that fit its word best; with more records than chapters a chapter mixes several,
