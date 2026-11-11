@@ -86,36 +86,27 @@ function symphonyRes(Y, art, c, needTicks, seed, F) {
   return { tracks: Object.values(out), form, feel, era };
 }
 
-// strings and brass that hold the chords of the Studio engine: an orchestra that follows the harmony instead of inventing its own
-function orchestrate(chords, bass, mel, c) {
-  const mk = (id, name, ksType) => ({ id, name, notes: [], cc: [{ t: 0, c: 11, v: 110 }], ks: [{ t: 0, m: 0 }], ksType });
-  const T = { vln1: mk('vln1', 'Violins 1', 's'), vln2: mk('vln2', 'Violins 2', 's'), vla: mk('vla', 'Violas', 's'), vc: mk('vc', 'Celli', 's'), cb: mk('cb', 'Basses', 'b'), hn: mk('hn', 'Horns', 'w') };
-  // one block per bar: the notes that sound in that bar, held
+// strings and brass that follow the harmony of the Studio engine, with another job in every part of the arrangement:
+// soft swells in the intro, short strings and pizzicato in A, answers and a countermelody from the motif in A2, tremolo in B,
+// driving eighths in a build, everyone with the motif on top in the gift (the shared E.orchestra of the engine)
+const ORCH_TEX = { start0: 'soft', start1: 'soft', intro: 'soft', A: 'verse', A2: 'answer', B: 'contrast', build: 'build', gift: 'full', break: 'break', outro: 'outro' };
+const ORCH_KS = { s: { long: 0, short: 1, pizz: 2, trem: 3 }, b: { long: 0, short: 1, pizz: 2, trem: 0 }, w: { long: 0, short: 1, pizz: 1, trem: 0 } };
+function orchestrate(chords, bass, mel, c, E, motif, seed) {
+  const META = { vln1: ['Violins 1', 's', 67, 88], vln2: ['Violins 2', 's', 67, 79], vla: ['Violas', 's', 60, 72], vc: ['Celli', 's', 43, 55], cb: ['Basses', 'b', 31, 43], hn: ['Horns', 'w', 55, 67] };
   const byBar = {}; chords.forEach((n) => { const b = Math.floor(n.t / BAR); (byBar[b] = byBar[b] || new Set()).add(n.p % 12); });
   const bassBar = {}; bass.forEach((n) => { const b = Math.floor(n.t / BAR); if (bassBar[b] == null || n.p < bassBar[b]) bassBar[b] = n.p; });
   const bars = Math.max(0, ...Object.keys(byBar).map(Number), ...Object.keys(bassBar).map(Number)) + 1;
-  let prev = null;
-  if (!prev) prev = [0, 2, 4].map((d) => (c.tonic + (c.minor ? SCALE.minor : SCALE.major)[d]) % 12); // before the first chord: the home chord
-  for (let b = 0; b < bars; b++) { const pcs = byBar[b] ? [...byBar[b]] : prev; if (!pcs || !pcs.length) continue;
-    const same = prev && pcs.length === prev.length && pcs.every((x) => prev.includes(x)); prev = pcs;
-    const t = b * BAR, v = 64 + Math.round(30 * eAt(c, b / Math.max(1, bars)));
-    const put = (tr, lo, hi, k) => { const pc = pcs[k % pcs.length]; let p = lo + ((pc - lo) % 12 + 12) % 12; if (p > hi) p -= 12;
-      const last = tr.notes[tr.notes.length - 1]; if (same && last && last.m === p && last.t + last.dur >= t - 10) { last.dur += BAR; return; } tr.notes.push({ t, dur: BAR - 20, m: p, v, art: 'long' }); };
-    put(T.vln1, 72, 88, 2); put(T.vln2, 67, 79, 1); put(T.vla, 60, 72, 0); put(T.hn, 55, 67, 1);
-    const bp = bassBar[b] != null ? bassBar[b] % 12 : pcs[0]; put(T.vc, 43, 55, 0); T.vc.notes[T.vc.notes.length - 1].m = fold(bp + 48, 43, 55); put(T.cb, 31, 43, 0); T.cb.notes[T.cb.notes.length - 1].m = fold(bp + 36, 31, 43);
-    T.vln1.cc.push({ t, c: 1, v: clamp(v + 10, 30, 127) }); T.vln2.cc.push({ t, c: 1, v: clamp(v, 30, 127) }); T.vla.cc.push({ t, c: 1, v: clamp(v, 30, 127) }); T.vc.cc.push({ t, c: 1, v: clamp(v, 30, 127) }); T.cb.cc.push({ t, c: 1, v: clamp(v - 5, 30, 127) }); T.hn.cc.push({ t, c: 1, v: clamp(v - 10, 30, 127) });
-  }
-  // the orchestra plays the arrangement: held in A, short answers off the beat in A2, driving eighths in a build, everyone in the gift
-  for (const tr of [T.vln2, T.vla, T.vc]) { const nn = []; tr.notes.forEach((n) => { const L = labelAt(c, Math.floor(n.t / BAR));
-      if (L === 'A2' && tr !== T.vc) { for (let b = 0; b < Math.round(n.dur / BAR); b++) [1.5, 3.5].forEach((q) => nn.push(Object.assign({}, n, { t: n.t + b * BAR + q * PPQ, dur: PPQ / 2 - 30 }))); }
-      else if (L === 'build' && tr !== T.vln2) { for (let q = 0; q < Math.round(n.dur / (PPQ / 2)); q++) nn.push(Object.assign({}, n, { t: n.t + q * PPQ / 2, dur: PPQ / 2 - 40, v: Math.round(n.v * (0.8 + 0.2 * (q % 2 === 0))) })); }
-      else nn.push(n); }); tr.notes = nn; }
-  // nobody tires: the violins rest every other 32 bars (the low strings and horns carry), the horns every fourth
-  T.vln1.notes = T.vln1.notes.filter((n) => Math.floor(n.t / (32 * BAR)) % 2 === 0); T.vln2.notes = T.vln2.notes.filter((n) => Math.floor(n.t / (32 * BAR)) % 2 === 0);
-  T.hn.notes = T.hn.notes.filter((n) => Math.floor(n.t / (32 * BAR)) % 4 !== 3);
+  const home = [0, 2, 4].map((d) => (c.tonic + (c.minor ? SCALE.minor : SCALE.major)[d]) % 12), chordOf = [];
+  for (let b = 0, prev = home; b < bars + 1; b++) { chordOf[b] = byBar[b] ? [...byBar[b]] : prev; prev = chordOf[b]; }
+  const ranges = {}; Object.keys(META).forEach((id) => { ranges[id] = [META[id][2], META[id][3]]; });
+  const res = E.orchestra({ bars, barTicks: BAR, ppq: PPQ, beats: Math.round(BAR / PPQ), chordAt: (b) => chordOf[Math.max(0, Math.min(bars, b))], bassAt: (b) => (bassBar[b] != null ? bassBar[b] % 12 : null),
+    texAt: (b) => ORCH_TEX[labelAt(c, b)] || 'verse', energyAt: (b) => eAt(c, b / Math.max(1, bars)), tonic: c.tonic, minor: c.minor, motif, ids: Object.keys(META), ranges, seed });
+  const T = Object.keys(META).map((id) => { const [name, ksType] = META[id], r = res[id], ks = [];
+    let cur = -1; r.notes.forEach((n) => { const k = ORCH_KS[ksType][n.art] || 0; if (k !== cur) { ks.push({ t: Math.max(0, n.t - 24), m: k }); cur = k; } }); if (!ks.length) ks.push({ t: 0, m: 0 });
+    return { id, name, ksType, notes: r.notes, ks, cc: [{ t: 0, c: 11, v: 110 }].concat(r.dyn.map((d) => ({ t: d.t, c: 1, v: d.v }))) }; });
   // the melody on top in the violins when it sings
-  if (mel.length) { T.vln1.notes = T.vln1.notes.filter(() => false); mel.forEach((n) => T.vln1.notes.push({ t: n.t, dur: Math.max(60, n.d), m: fold(n.p, 62, 93), v: n.v, art: 'long' })); }
-  return Object.values(T);
+  if (mel.length) { const v1 = T[0]; v1.notes = mel.map((n) => ({ t: n.t, dur: Math.max(60, n.d), m: fold(n.p, 62, 93), v: n.v, art: 'long' })); v1.ks = [{ t: 0, m: 0 }]; }
+  return T;
 }
 
 // the hot pocket: the first notes of a phrase become a riff that repeats for 8 bars and evolves (a note drops out, it swells),
@@ -265,7 +256,7 @@ function chapterContentOne(ctx, plan, i, c, seed) {
     sc = S.fromTrack(sc, { notes: harmonic.filter((n) => n.t < needContent), meter: 4, bpm: F }); sc.parts.percs.on = true; sc.parts.strings.on = true;
     const r = S.render(sc), cats = S.catsFor(sc); out.score = { r, cats, style: scoreArt.name }; }
   out.bass = playBass(bass, c, studioArt.name, seed); out.chords = chords; out.melody = melody;
-  out.orch = orch || orchestrate(chords, bass, c.energy > 0.6 && !roles.has('melody') ? melody : [], c);
+  out.orch = orch || orchestrate(chords, bass, c.energy > 0.6 && !roles.has('melody') ? melody : [], c, E, plan.motif, seed);
   out.F = F; out.lenTicks = lenTicks;
   return out;
 }
@@ -738,6 +729,7 @@ JR.colour = (c, role, player) => {
   const tone = pick([[x.light < -0.3, 'dark'], [x.light > 0.35, 'bright'], [x.tension > 0.45, 'gritty'], [x.warm > 0.35, 'warm'], [x.warm < -0.35, 'cold'], [x.weight > 0.35, 'heavy'], [x.weight < -0.35, 'airy']]);
   const t = tone.length ? tone.join(' ') + ' ' : (x.light >= 0 ? 'gentle ' : 'deep ');
   const fast = x.speed > 0.3 || c.feel.id === 'double', slow = x.speed < -0.3 || c.feel.id === 'half';
+  if (orchP && role === 'orch') return t + 'playing style switches by itself';
   if (orchP && role !== 'beats' && role !== 'perc') return t + (fast ? 'short, spiccato' : slow ? 'long legato, slow attack' : 'long sustain');
   switch (role) {
     case 'beats': return t + (x.warm > 0.35 ? 'vintage kit' : x.warm < -0.35 ? 'electronic kit' : 'tight kit');
