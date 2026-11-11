@@ -8085,6 +8085,11 @@ function arrange(plan, i) {
   return out;
 }
 const labelAt = (c, cbar) => (c._arr && c._arr[Math.floor(cbar / 8)]) || 'A';
+// the parts of the arrangement as markers, in words a singer and a DAW know (the Divine Vocal Machine sings its lyric parts on them)
+const PART_WORD = { start0: 'Intro', start1: 'Intro', intro: 'Intro', A: 'Verse', A2: 'Verse', B: 'Bridge', build: 'Build', gift: 'Chorus', break: 'Break', outro: 'Outro' };
+function partMarks(c, at, plan) { if (!c._arr || !at) return []; const out = []; let last = null;
+  c._arr.forEach((L, k) => { const w = PART_WORD[L] || 'Verse'; if (w !== last) out.push({ t: at.start + Math.round(k * 8 * BAR * plan.bpm / c.feelsLike), text: w }); last = w; });
+  return out; }
 
 // ---------- the beat lives: per phrase it turns, accents breathe, hats sit in their pocket ----------
 // the pocket: a groove you can step into. Every part of the arrangement keeps one 4-bar loop (the first one it plays) and repeats it,
@@ -8430,7 +8435,8 @@ JR.render = function (plan, ctx) {
   // the ending: abrupt stops everything on one last hit
   if (plan.ending.id === 'abrupt') { const last = tl[tl.length - 1], end = last.start + last.len; all.forEach((t) => { t.notes = t.notes.filter((n) => n.t < end - BAR || n.t === end - BAR); t.notes.forEach((n) => { if (n.t + n.d > end) n.d = end - n.t; }); }); }
   const totalTicks = tl[tl.length - 1].start + tl[tl.length - 1].len;
-  return { tracks: all, timeline: tl, totalTicks, markers: plan.chapters.flatMap((c, i) => (c._segs ? c._segs.map((g, q) => ({ t: tl[i].start + Math.round(g.t * plan.bpm / c.feelsLike), text: (q ? '' : (i + 1) + '. ' + c.word + ': ') + g.name })) : [{ t: tl[i].start, text: (i + 1) + '. ' + c.word + ' (' + (c.records ? c.records[0].name : c.lead.name) + ')' }])) };
+  const parts = plan.chapters.flatMap((c, i) => partMarks(c, tl[i], plan));
+  return { tracks: all, timeline: tl, totalTicks, markers: parts.concat(plan.chapters.flatMap((c, i) => (c._segs ? c._segs.map((g, q) => ({ t: tl[i].start + Math.round(g.t * plan.bpm / c.feelsLike), text: (q ? '' : (i + 1) + '. ' + c.word + ': ') + g.name })) : [{ t: tl[i].start, text: (i + 1) + '. ' + c.word + ' (' + (c.records ? c.records[0].name : c.lead.name) + ')' }]))) };
 };
 
 // ---------- MIDI out ----------
@@ -8985,7 +8991,7 @@ const png = (cv) => { const b = atob(cv.toDataURL('image/png').split(',')[1]), u
 function pressIt() {
   const nm = (S.name || '').trim() || 'Untitled', base = 'DM_Record_' + safe(nm).slice(0, 50) + '_' + S.A.bpm + 'bpm', files = [], tpl = S.tplOn && S.tplLayout;
   [['A', S.A, S.rA], ['B', S.B, S.rB]].forEach(([sd, p, r]) => {
-    const title = sd === 'A' && !S.audio ? nm : nm + ' (' + p.remix + ')', fn = safe(title).slice(0, 70), dir = base + '/Side_' + sd + '/', meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: r.markers.map((m) => Object.assign({}, m, { text: sd === 'A' && !S.audio ? nm : p.remix })) };
+    const title = sd === 'A' && !S.audio ? nm : nm + ' (' + p.remix + ')', fn = safe(title).slice(0, 70), dir = base + '/Side_' + sd + '/', meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: r.markers.map((m) => Object.assign({}, m, { text: /^(Intro|Verse|Bridge|Build|Chorus|Break|Outro)$/.test(m.text) ? m.text : sd === 'A' && !S.audio ? nm : p.remix })) }; // the parts of the song keep their names
     files.push({ name: dir + fn + '.mid', data: JR.writeMidi(tpl ? JR.fitTemplate(r.tracks, S.tplLayout, p) : r.tracks, meta) });
     const by = {}; r.tracks.forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + 'Layers/' + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: title + ' ' + k })) });

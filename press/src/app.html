@@ -398,7 +398,7 @@ const png = (cv) => { const b = atob(cv.toDataURL('image/png').split(',')[1]), u
 function pressIt() {
   const nm = (S.name || '').trim() || 'Untitled', base = 'DM_Record_' + safe(nm).slice(0, 50) + '_' + S.A.bpm + 'bpm', files = [], tpl = S.tplOn && S.tplLayout;
   [['A', S.A, S.rA], ['B', S.B, S.rB]].forEach(([sd, p, r]) => {
-    const title = sd === 'A' && !S.audio ? nm : nm + ' (' + p.remix + ')', fn = safe(title).slice(0, 70), dir = base + '/Side_' + sd + '/', meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: r.markers.map((m) => Object.assign({}, m, { text: sd === 'A' && !S.audio ? nm : p.remix })) };
+    const title = sd === 'A' && !S.audio ? nm : nm + ' (' + p.remix + ')', fn = safe(title).slice(0, 70), dir = base + '/Side_' + sd + '/', meta = { bpm: p.bpm, title, copyright: '(c) 2026 Divine Monday', markers: r.markers.map((m) => Object.assign({}, m, { text: /^(Intro|Verse|Bridge|Build|Chorus|Break|Outro)$/.test(m.text) ? m.text : sd === 'A' && !S.audio ? nm : p.remix })) }; // the parts of the song keep their names
     files.push({ name: dir + fn + '.mid', data: JR.writeMidi(tpl ? JR.fitTemplate(r.tracks, S.tplLayout, p) : r.tracks, meta) });
     const by = {}; r.tracks.forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + 'Layers/' + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: title + ' ' + k })) });
