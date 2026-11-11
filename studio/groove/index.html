@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 15:35</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 15:55</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
    ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
@@ -3867,7 +3867,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-11-11 15:35';
+const VERSION = '2026-11-11 15:55';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -4166,7 +4166,8 @@ function renderMenu() {
     h('button', { role: 'menuitem', onclick: () => { applyTheme(document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark'); st.menu = false; renderMenu(); render(); } }, document.documentElement.getAttribute('data-theme') === 'dark' ? 'Light theme' : 'Dark theme'),
     h('a', { href: 'https://divineacidmonday.github.io/divine-music-machine-v7/legal/', role: 'menuitem' }, 'Impressum & privacy'),
     h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); if (song()) saveSongFile(); else toast('Make a song first.'); } }, 'Save song file'),
-    h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); openSongFile(); } }, 'Open song file')));
+    h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); openSongFile(); } }, 'Open song file'),
+    GROOVE ? null : h('button', { role: 'menuitem', onclick: () => { st.menu = false; renderMenu(); openMelodyMidi(); } }, 'Build around my melody (MIDI)')));
 }
 // a name for the track: five word wheels plus two small ones, mechanical, no AI.
 // Each shape of name walks its own number chain (a fixed step that visits every number once), started from the moment you open the Studio;
@@ -4596,6 +4597,28 @@ async function saveFiles(files) { for (let i = 0; i < files.length; i++) { const
 async function getAll() { const sg = song(), no = deliveryNo(), files = deliverList(sg).map((x) => ({ name: fileName(sg, PART_NAMES[x.part], no, sg.parts[x.part].plugin, x.ver), data: buildPart(sg, x.part, x.ver) })); files.push({ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_Structure_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid', data: D.writeMidi([], { bpm: sg.bpm, meter: sg.meter, title: sg.name, markers: markers(sg) }) }); if (D.mergeMidi) files.push({ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_Full_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid', data: D.mergeMidi(files.map((f) => f.data)) }); count('download/zip'); await saveFiles([{ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_All_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.zip', data: makeZip(files) }]); }
 async function getOne(part, ver) { const sg = song(), no = deliveryNo(); count('download/one'); await saveFiles([{ name: fileName(sg, PART_NAMES[part], no, sg.parts[part].plugin, ver), data: buildPart(sg, part, ver) }]); }
 function saveSongFile() { const sg = song(); saveFiles([{ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '.dmsong.json', data: JSON.stringify({ app: 'Divine Music Studio', v: 1, song: sg }) }]); }
+// build a song around your melody: a MIDI melody (from the Vocal Machine, your keyboard or another app) becomes the melody of this
+// song, as in the Pro: its first bars are the verse, the next ones the chorus; tempo and key follow it and the other parts bend to it
+function openMelodyMidi() {
+  if (!song()) { toast('Choose a style first, then load your melody.'); return; }
+  const inp = h('input', { type: 'file', accept: '.mid,.midi,audio/midi', style: 'display:none', onchange: async () => { const f = inp.files[0]; inp.remove(); if (!f) return;
+    let mid; try { mid = D.parseMidi(await f.arrayBuffer()); } catch (e) { toast('This MIDI could not be read.'); return; }
+    const tr = mid.tracks.filter((t) => t.notes.length && !t.notes.every((n) => n.ch === 9)); if (!tr.length) { toast(f.name + ' has no melody notes.'); return; }
+    const med = (t) => { const a = t.notes.map((n) => n.p).sort((x, y) => x - y); return a[a.length >> 1]; };
+    const m = tr.find((t) => /melody|vocal|voice|lead|sing/i.test(t.name || '') && t.notes.length >= 8) || tr.reduce((a, t) => (t.notes.length >= 8 && med(t) > med(a) ? t : a), tr[0]);
+    const notes = m.notes.filter((n) => n.ch !== 9), sg = song();
+    change(() => {
+      if (mid.bpm) { sg.bpm = Math.round(mid.bpm * 10) / 10; sg.bpmAuto = false; }
+      sg.parts.melody.mode = 'yours'; for (const t of D.TYPE_ORDER) sg.mat[t].melody = null; for (const x of sg.sections) if (x.own) delete x.own.melody;
+      const bars = Math.ceil(Math.max(...notes.map((n) => n.t + n.d)) / D.barTicks(sg));
+      const first = Math.floor(Math.min(...notes.map((n) => n.t)) / D.barTicks(sg)); // a sung melody often starts after an intro: begin where it begins
+      D.setUser(sg, 'melody', 'verse', D.notesToMat(sg, 'melody', notes, { offsetBars: first }));
+      if (bars - first >= sg.L * 2) D.setUser(sg, 'melody', 'chorus', D.notesToMat(sg, 'melody', notes, { offsetBars: first + sg.L }));
+      const k = D.detectKey(notes); if (k) { sg.key = { root: k.root, scale: k.scale }; sg.keyAuto = false; }
+    });
+    toast('Your melody from ' + f.name + ' is the melody of this song now (' + Math.round(sg.bpm) + ' bpm). The machine plays around it.'); } });
+  document.body.append(inp); inp.click();
+}
 function openSongFile() { const inp = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: async () => { const f = inp.files[0]; if (!f) return; try { const o = JSON.parse(await f.text()), sg = o.song || o; if (!sg.sections || !sg.parts) throw new Error('not a song'); D.ensureTypes && D.ensureTypes(sg); stopAll(); st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.mode = 'overview'; save(); closeStart(); render(); toast('Opened ' + f.name); } catch (e) { toast('That file is not a Divine song.'); } } }); document.body.append(inp); inp.click(); setTimeout(() => inp.remove(), 60000); }
 
 /* ---------- screen D: get it, with a preview ---------- */

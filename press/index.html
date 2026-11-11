@@ -156,7 +156,7 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
 
 <section class="card" id="trackBox">
   <div class="sh"><span class="st serif">Your own track</span><span class="muted">Load a WAV or MP3. The press listens to it, draws its record picture, and presses two remixes of it as MIDI, in its tempo and its key. Nothing leaves your computer.</span></div>
-  <div class="row"><label class="btn tplf">Load a track<input type="file" id="trk" accept="audio/*,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a" hidden></label><span class="muted small" id="trkInfo">no track loaded, the press works from the styles alone</span><button class="btn" id="trkOff" hidden>Back to styles only</button></div>
+  <div class="row"><label class="btn tplf">Load a track<input type="file" id="trk" accept="audio/*,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a,.mid,.midi,audio/midi" hidden></label><span class="muted small" id="trkInfo">no track loaded, the press works from the styles alone</span><button class="btn" id="trkOff" hidden>Back to styles only</button></div>
   <div class="orig" id="origBox" hidden><canvas class="cover" id="cvO" width="1200" height="1200"></canvas>
     <div class="muted small" id="origTxt">The record picture of your own track. Side A and side B below are the two remixes the press makes of it: the styles you choose above them, with its tempo, its key, its length and a motif from its melody.</div></div>
 </section>
@@ -8839,6 +8839,7 @@ const S = {
 
 // ---------- your own track ----------
 $('#trk').onchange = async (e) => { const f = e.target.files[0]; if (!f) return; e.target.value = '';
+  if (/\.midi?$/i.test(f.name)) { pressAroundMelody(f); return; }
   $('#trkInfo').textContent = 'The press is listening to ' + f.name + '...';
   try { const buf = await f.arrayBuffer(), ac = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(1, 2, 44100);
     const au = await new Promise((ok, no) => { const pr = ac.decodeAudioData(buf, ok, no); if (pr && pr.catch) pr.catch(no); });
@@ -8848,8 +8849,25 @@ $('#trk').onchange = async (e) => { const f = e.target.files[0]; if (!f) return;
     if (!S.nameMine) { S.nameMine = true; setName(f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').slice(0, 60)); }
     drawTrack(); fresh();
   } catch (er) { console.error(er); $('#trkInfo').textContent = 'The press could not read that file: ' + (er && er.message ? er.message : 'unknown format'); } };
+// a record around your melody: a MIDI melody (the Vocal Machine, your keyboard) sets the tempo, the key, the length and the motif,
+// and plays along in the record as its own track, so the record is made to carry it
+async function pressAroundMelody(f) {
+  try { const mid = DMM.parseMidi(await f.arrayBuffer()), tr = mid.tracks.filter((t) => t.notes.length && !t.notes.every((n) => n.ch === 9)); if (!tr.length) throw new Error('no melody notes');
+    const med = (t) => { const a = t.notes.map((n) => n.p).sort((x, y) => x - y); return a[a.length >> 1]; };
+    const m = tr.find((t) => /melody|vocal|voice|lead|sing/i.test(t.name || '') && t.notes.length >= 8) || tr.reduce((a, t) => (t.notes.length >= 8 && med(t) > med(a) ? t : a), tr[0]);
+    const notes = m.notes.filter((n) => n.ch !== 9).sort((a, b) => a.t - b.t), bpm = Math.round((mid.bpm || 120) * 10) / 10, k = DMM.detectKey(notes) || { root: 9, scale: 'minor' };
+    const minor = k.scale !== 'major', sc = minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11], P = JR.PPQ;
+    // the motif: the first six notes of the busiest two bars, as scale steps and beats
+    let best = 0, bs = -1; for (let i = 0; i < notes.length; i++) { const c = notes.filter((n) => n.t >= notes[i].t && n.t < notes[i].t + 8 * P).length; if (c > bs) { bs = c; best = i; } }
+    const pick = notes.slice(best, best + 6), step = (p) => { const s0 = ((p - k.root) % 12 + 12) % 12, oct = Math.floor((p - k.root) / 12); let bi = 0; sc.forEach((v, i) => { if (Math.abs(v - s0) < Math.abs(sc[bi] - s0)) bi = i; }); return oct * 7 + bi; };
+    const motif = pick.length >= 4 ? { degrees: pick.map((n) => Math.max(-4, Math.min(7, step(n.p) - step(pick[0].p)))), rhythm: pick.map((n, i) => { const d = i < pick.length - 1 ? (pick[i + 1].t - n.t) / P : 2; return [0.5, 1, 1.5, 2].reduce((a, b) => (Math.abs(b - d) < Math.abs(a - d) ? b : a)); }) } : null;
+    const end = Math.max(...notes.map((n) => n.t + n.d)), sec = end / P * 60 / bpm + 8;
+    S.audio = { midi: true, file: f.name, bpm, tonic: k.root, minor, sec, motif, notes };
+    if (!S.nameMine) { S.nameMine = true; setName(f.name.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').slice(0, 60)); }
+    drawTrack(); fresh();
+  } catch (er) { $('#trkInfo').textContent = 'The press could not read that MIDI: ' + (er && er.message ? er.message : 'unknown'); } }
 $('#trkOff').onclick = () => { S.audio = null; drawTrack(); fresh(); };
-function drawTrack() { const a = S.audio; $('#trkOff').hidden = !a; $('#origBox').hidden = !a;
+function drawTrack() { const a = S.audio; $('#trkOff').hidden = !a; $('#origBox').hidden = !a || !!a.midi;
   $('#trkInfo').textContent = a ? a.file + ':  ' + a.bpm + ' bpm,  ' + JP.KEYS[a.tonic] + (a.minor ? ' minor' : ' major') + ',  ' + Math.floor(a.sec / 60) + ':' + String(Math.round(a.sec % 60)).padStart(2, '0') + (a.motif ? ',  a motif of ' + a.motif.degrees.length + ' notes from its melody' : '') : 'no track loaded, the press works from the styles alone';
   document.querySelectorAll('#key,#tempo,#len button').forEach((el) => { el.disabled = !!a; }); }
 
@@ -8911,10 +8929,11 @@ function drawHints() { const el = $('#hints'); el.innerHTML = '';
 function fresh() { clearTimeout(S.ft); $('#pressInfo').textContent = 'Pressing...'; S.ft = setTimeout(pressNow, 60); }
 function pressNow() {
   stopPlay(); PV = { A: null, B: null }; drawBeat();
-  const tpl = S.tplOn && S.tplLayout ? S.tplLayout : null, o = { beat: S.beat, voice: S.voice, word: S.word, arts: arts(), minutes: S.minutes, bpm: S.bpm, seed: S.seed, rack: S.rack, template: tpl, key: S.key, name: S.name, style: S.style, hints: S.hints, audio: S.audio };
+  const tpl = S.tplOn && S.tplLayout ? S.tplLayout : null, o = { beat: S.beat, voice: S.voice || !!(S.audio && S.audio.midi), word: S.word, arts: arts(), minutes: S.minutes, bpm: S.bpm, seed: S.seed, rack: S.rack, template: tpl, key: S.key, name: S.name, style: S.style, hints: S.hints, audio: S.audio };
   try {
     S.A = PR.planA(JP, JW, o); S.B = PR.planB(JP, JW, o, S.A);
     S.rA = JR.render(S.A, ctx()); S.rB = JR.render(S.B, ctx());
+    if (S.audio && S.audio.midi) S.rA.tracks.push({ role: 'melody', player: 'Your melody', name: 'Your melody . ' + S.A.bpm + ' bpm', notes: S.audio.notes.map((n) => ({ t: Math.round(n.t), d: Math.max(30, Math.round(n.d)), p: n.p, v: n.v || 90 })), cc: [] }); // your melody plays along on side A
     S.dA = PR.read(S.rA, JR.BAR); S.dB = PR.read(S.rB, JR.BAR);
     if (!S.nameMine && !S.name) setName(suggestName());
     $('#pressInfo').textContent = 'Every picture is drawn from the notes of its own side.';
@@ -8928,7 +8947,7 @@ function info(p, side) { const c = p.chapters[0];
   return { name: (S.name || '').trim() || 'Untitled', side, styles: c.records[0].arts.map((a) => a.name).join(' + '), bpm: p.bpm, key: c.key.replace('♭', 'b').replace('♯', '#'), remix: side === 'B' || S.audio ? p.remix : '' }; }
 function drawSides() {
   if (!S.A) return; const pal = palette();
-  if (S.audio) { if (!S.dO || S.dO.an !== S.audio) { S.dO = PR.readAudio(S.audio, JR.BAR, JR.PPQ); S.dO.an = S.audio; }
+  if (S.audio && !S.audio.midi) { if (!S.dO || S.dO.an !== S.audio) { S.dO = PR.readAudio(S.audio, JR.BAR, JR.PPQ); S.dO.an = S.audio; }
     PR.drawCover($('#cvO'), S.dO, { name: (S.name || '').trim() || 'Untitled', side: 'O', styles: 'Your own track', bpm: S.audio.bpm, key: (JP.KEYS[S.audio.tonic] + (S.audio.minor ? ' minor' : ' major')).replace('♭', 'b').replace('♯', '#'), remix: '' }, pal, S.font); }
   [['A', S.A, S.rA, S.dA], ['B', S.B, S.rB, S.dB]].forEach(([sd, p, r, d]) => { const c = p.chapters[0];
     PR.drawCover($('#cv' + sd), d, info(p, sd), pal, S.font);
@@ -9004,7 +9023,7 @@ function pressIt() {
     const by = {}; r.tracks.forEach((t) => { const k = (JP.ROLE_NAME[t.role] || 'Motif') + '_' + safe(t.player); (by[k] = by[k] || []).push(t); });
     for (const [k, trs] of Object.entries(by)) files.push({ name: dir + 'Layers/' + k + '.mid', data: JR.writeMidi(trs, Object.assign({}, meta, { title: title + ' ' + k })) });
     files.push({ name: base + '/' + safe(nm).slice(0, 50) + '_Side_' + sd + '.png', data: png($('#cv' + sd)) }); });
-  if (S.audio) files.push({ name: base + '/' + safe(nm).slice(0, 50) + '_Original.png', data: png($('#cvO')) });
+  if (S.audio && !S.audio.midi) files.push({ name: base + '/' + safe(nm).slice(0, 50) + '_Original.png', data: png($('#cvO')) });
   files.push({ name: base + '/Rack_Card.txt', data: rackCard() });
   const a = document.createElement('a'); a.href = URL.createObjectURL(zip(files)); a.download = base + '.zip'; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
   return files.length;
