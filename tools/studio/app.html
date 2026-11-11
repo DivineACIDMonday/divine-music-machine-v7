@@ -801,9 +801,8 @@ function buildPart(sg, part, ver) {
 const voiceFold = (p) => { while (p > 62) p -= 12; while (p < 41) p += 12; return p; };
 // room for a voice: melody and answer rest (the singer is the melody), the harmony goes low and soft, the strings play with three
 function toggleVoice() { const sg = song(); change(() => { sg.voice = !sg.voice;
-  if (sg.voice) { sg.voiceKeep = { melody: sg.parts.melody.mode, answer: sg.parts.answer.mode }; sg.parts.melody.mode = 'off'; sg.parts.answer.mode = 'off'; }
-  else if (sg.voiceKeep) { sg.parts.melody.mode = sg.voiceKeep.melody; sg.parts.answer.mode = sg.voiceKeep.answer; } });
-  toast(sg.voice ? 'Room for a voice: melody and answer rest, the harmony sits low and soft.' : 'The melody is back.'); }
+  if (sg.voiceKeep) { sg.parts.melody.mode = sg.voiceKeep.melody; sg.parts.answer.mode = sg.voiceKeep.answer; delete sg.voiceKeep; } });
+  toast(sg.voice ? 'Room for a voice: the singer owns verse and chorus, the answer speaks in her breaths, the melody plays the intro, the drops and the breaks.' : 'The melody plays everywhere again.'); }
 function deliverList(sg) { const out = []; for (const p of PARTS) { if (sg.parts[p].mode === 'off' || !playsMap()[p].some(Boolean)) continue; for (const v of versionsOf(sg.parts[p].plugin, p)) out.push({ part: p, ver: v }); } return out; }
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(d) { let c = 0xffffffff; for (let i = 0; i < d.length; i++) c = CRC[(c ^ d[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
@@ -853,7 +852,7 @@ function renderGet() {
       h('button', { class: 'ib', onclick: () => { stopAll(); st.solo = null; st.mode = 'overview'; render(); } }, '← Back'),
       h('div', { style: 'flex:1' }, h('div', { style: 'font-size:22px;font-weight:700' }, 'Get it'), h('div', { style: 'color:var(--soft);font-size:14px' }, D.GENRES[sg.genre].name + ' · ' + sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + tot + ' bars')),
       h('button', { class: 'ib', style: 'height:56px;padding:0 22px;font-weight:700', 'aria-label': AU.playing && !st.solo ? 'Stop' : 'Play all parts', onclick: playAll }, AU.playing && !st.solo ? '■ Stop' : '▶ Play all'),
-      GROOVE ? null : h('button', { class: 'ib', style: 'height:56px;padding:0 18px;' + (sg.voice ? 'background:var(--ink);color:var(--onink);border-color:var(--ink)' : ''), 'aria-pressed': String(!!sg.voice), title: 'Leave room for a singer: no melody and answer, a low and soft harmony', onclick: () => { toggleVoice(); renderGet(); } }, 'Room for a voice'),
+      GROOVE ? null : h('button', { class: 'ib', style: 'height:56px;padding:0 18px;' + (sg.voice ? 'background:var(--ink);color:var(--onink);border-color:var(--ink)' : ''), 'aria-pressed': String(!!sg.voice), title: 'Leave room for a singer: melody in intro, drops and breaks, answers in the breaths, a low and soft harmony', onclick: () => { toggleVoice(); renderGet(); } }, 'Room for a voice'),
       h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '↓ All ' + n + ' files (one zip)')),
     h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ Play all hears everything, ▶ on a part listens alone'), rows),
     h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, GROOVE ? 'Plus a Structure file with every section as a marker. Pick your drum plugin and the hits land on the right keys of that plugin.' : 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));

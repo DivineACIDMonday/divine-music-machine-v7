@@ -3319,6 +3319,7 @@ E.renderSong = function (song, part, opts) {
   if (part === 'bass' && !own && !opts.raw && !E.FREE_BASS.has((E.GENRES[s2.genre] || {}).bass)) { const chordPc = (b) => { let xs = []; try { xs = R.bar('chords', b, {}).concat(R.bar('pad', b, {})).filter((n) => !n.ks && n.p > 11); } catch (e) { /* no harmony here */ } if (!xs.length) return null; const pcs = new Set(xs.map((n) => n.p % 12)); return { low: xs.reduce((a, n) => (n.p < a.p ? n : a)).p % 12, pcs }; };
     const pk = E.bassPocket(out, s2, chordPc); out.length = 0; pk.forEach((n) => out.push(n)); }
   if ((part === 'melody' || part === 'answer') && !own && !opts.raw) E.foldLeaps(out, (E.GENRES[s2.genre].mel || {}).range || [55, 84]);
+  if ((part === 'melody' || part === 'answer') && song.voice && !opts.raw) { const kept = E.voiceRoom(out, s2, part); out.length = 0; kept.forEach((n) => out.push(n)); }
   if (part === 'bass' && E.bassMono && !(song.parts.bass && song.parts.bass.mode === 'yours')) return E.bassMono(out, E.liquidK(s2) >= 0.8 ? 'glide' : E.bassStyleOf ? E.bassStyleOf(s2) : ''); // across bar lines too
   return out;
 };
@@ -4063,6 +4064,28 @@ E.foldLeaps = function (notes, range) {
   for (let i = 1; i < ns.length; i++) { const a = ns[i - 1], n = ns[i]; if (n.t - a.t > E.PPQ * 2) continue; let p = n.p;
     while (p - a.p > 9 && p - 12 >= range[0] - 2) p -= 12; while (a.p - p > 9 && p + 12 <= range[1] + 2) p += 12; n.p = p; }
   return notes;
+};
+
+/* ---------- room for a voice, the way a band plays around a singer ----------
+   the singer owns the verses, prechoruses and choruses; there the melody rests and the answer only speaks in the singer's
+   breaths: the second half of the 4th bar of every 4 (where the Divine Vocal Machine ends its lines), an octave lower and softer;
+   which breaths it takes differs per kind of section (seeded), so it never answers like a machine. Intro, build, drop, break
+   and outro are the band's own: there the melody and the answer play as written, the hook before she comes in. */
+E.VOCAL_TYPES = new Set(['verse', 'prechorus', 'chorus']);
+E.voiceRoom = function (notes, song, part) {
+  const BT = E.barTicks(song), beat = BT / (E.meter(song).beats || 4), info = []; let b0 = 0;
+  song.sections.forEach((sec) => { for (let k = 0; k < sec.bars; k++) info[b0 + k] = { t: sec.type, i: k }; b0 += sec.bars; });
+  const R = rng(hash(song.seed || 1, 'voice-room', part)), pick = {};
+  const wants = (T, i) => { if (!pick[T]) { const r = R(); pick[T] = T === 'chorus' ? (r < 0.5 ? [3, 7] : [3, 5, 7]) : T === 'prechorus' ? [3, 7] : r < 0.4 ? [3, 7] : r < 0.75 ? [7] : [3]; } return pick[T].includes(i % 8); };
+  // the hook before she comes in: an intro without a melody gets the first 4 bars of the chorus melody at its end
+  const tease = [];
+  if (part === 'melody') { let ia = -1, ib = -1, ca = -1; b0 = 0; song.sections.forEach((sec) => { if (sec.type === 'intro' && ia < 0) { ia = b0; ib = b0 + sec.bars; } if (sec.type === 'chorus' && ca < 0) ca = b0; b0 += sec.bars; });
+    if (ia >= 0 && ca >= 0 && ib - ia >= 4 && !notes.some((n) => n.t >= ia * BT && n.t < ib * BT)) notes.filter((n) => !n.ks && n.t >= ca * BT && n.t < (ca + 4) * BT).forEach((n) => tease.push(Object.assign({}, n, { t: n.t - ca * BT + (ib - 4) * BT, v: Math.round(n.v * 0.8) }))); }
+  return tease.concat(notes.filter((n) => { if (n.ks) return true; const b = Math.floor(n.t / BT), x = info[b]; if (!x || !E.VOCAL_TYPES.has(x.t)) return true;
+    if (part === 'melody') return false;
+    const pos = n.t - b * BT; return wants(x.t, x.i) && pos >= 2 * beat; }))
+    .map((n) => { if (n.ks) return n; const b = Math.floor(n.t / BT), x = info[b]; if (!x || !E.VOCAL_TYPES.has(x.t)) return n;
+      let p = n.p; while (p > 69) p -= 12; return Object.assign({}, n, { p, v: Math.round(n.v * 0.85), d: Math.min(n.d, (b + 1) * BT - n.t) }); });
 };
 
 root.DMM = E;

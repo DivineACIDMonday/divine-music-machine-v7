@@ -398,7 +398,6 @@ JP.plan = (words, opts = {}) => {
     x.song = form.map(([type, w]) => { const u0 = u; u += w / tot; return { type, u0, u1: u, e: JP.SONG_E[type] }; });
     x.hi = clamp(x.energy + 0.3, 0.45, 1); x.lo = clamp(x.energy - 0.5, 0.05, 0.4);
   });
-  if (opts.voice) ch.forEach((x) => { x.players = x.players.filter((p) => p.role !== 'melody'); }); // room for a voice: the singer is the melody
   return { voice: !!opts.voice, mode, fixed: !!opts.fixed, records: recs.length ? recs : null, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 

@@ -202,6 +202,7 @@ function chapterContentOne(ctx, plan, i, c, seed) {
   // the harmony: Studio engine, or the Symphony when it leads
   const studioArt = artFor(JP, c, 'studio');
   const song = studioSong(E, studioArt.name, c, contentBars, seed, F);
+  song.voice = !!plan.voice; // room for a voice: the melody plays where nobody sings, the answer in the singer's breaths
   out.song = song; out.studio = studioArt.name;
   let bass = [], chords = [], melody = [], harmonic = [], orch = null;
   if (symLead) { const res = symphonyRes(Y, c.lead, c, needContent, seed, F); out.symphony = res;
