@@ -53,6 +53,7 @@ select,input[type=text],input[type=number]{height:38px;border-radius:8px;border:
 .chip{min-height:44px;border-radius:22px;padding:0 16px}
 .chip.small{min-height:36px;border-radius:18px;padding:0 12px;font-size:13px}
 .chip.on{border-color:#E8A03A;background:#2B2216;color:#F4C177;font-weight:600}
+.ghost.on{border-color:#E8A03A;background:#2B2216;color:#F4C177;font-weight:600}
 .grp{display:flex;flex-direction:column;gap:6px}
 .chip.feel{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;border-radius:12px;padding:6px 14px;min-height:52px;line-height:1.2}
 .chip.feel span{font-size:11px;color:#A39E94}
@@ -502,6 +503,8 @@ S.layerLevels = function (sc, v, tension, map) {
       const storm = s.type === 'peak' && !S.isCalm(sc, s), at = b0 + (storm ? s.bars - 2 : Math.floor(s.bars / 2) - 2);
       for (let b = at; b < at + 2; b++) { if (storm) { L.strA[b] = 1; L.strB[b] = 1; L.perA[b] = 1; L.perB[b] = 1; } else { L.strA[b] *= 0.7; L.strB[b] = 0; L.perA[b] *= 0.35; L.perB[b] = 0; } } }
     b0 += s.bars; });
+  // room for a voice: the motion rests (only a touch at the peaks), the power is halved, the bed plays softer under the singer
+  if (sc.voice) map.forEach(({ s }, b) => { L.strB[b] = s.type === 'peak' ? Math.min(L.strB[b], 0.45) : 0; L.perB[b] *= 0.5; L.strA[b] *= 0.85; });
   return L;
 };
 // the camera: the pitch wheel moves between the low and the high section of each plugin
@@ -512,7 +515,7 @@ S.cameraOf = function (sc, map) {
     const T = g === 'dark' ? { intro: -0.6, theme: -0.4, build: -0.3 + 0.5 * f, peak: 0, film: -0.8, outro: -0.5 } : g === 'light' ? { intro: 0.2, theme: 0, build: 0.5 * f, peak: 0.4, film: 0.6, outro: 0.2 } : { intro: 0, theme: -0.2, build: -0.3 + 0.7 * f, peak: 0.2, film: -0.5, outro: 0 };
     // call and answer: in some themes and peaks the low section calls and the high section answers, two bars each
     const si = sc.sections.indexOf(s), ca = (s.type === 'theme' || s.type === 'peak') && s.bars >= 4 && rng(hash(sc.seed, 'call', si)).chance(0.4) ? (Math.floor(j / 2) % 2 ? 0.45 : -0.45) : 0;
-    out.push(clamp(T[s.type] + off + ca + (S.styleOf(sc, s).cam || 0), -1, 1));
+    out.push(clamp(T[s.type] + off + ca + (S.styleOf(sc, s).cam || 0), -1, sc.voice ? -0.2 : 1)); // room for a voice: the strings stay in their low section
   });
   return out;
 };
@@ -961,6 +964,7 @@ function render() {
       h('b', { style: 'color:' + LCOL[k] + ';flex:0 0 74px' }, title), h('span', { style: 'flex:1;min-width:0' }, cats[k]),
       h('button', { id: 'dl_' + p, class: 'ghost small', title: fileName(p), 'aria-label': 'Download ' + title, onclick: () => deliver(p) }, '↓')); }),
       h('div', { style: 'display:flex;gap:8px;align-items:center;padding-left:11px' }, h('b', { style: 'flex:0 0 74px' }, 'Structure'), h('span', { class: 'muted small', style: 'flex:1' }, 'markers'), h('button', { id: 'dl_Structure', class: 'ghost small', title: fileName('Structure'), 'aria-label': 'Download Structure', onclick: () => deliver('Structure') }, '↓'))),
+    h('button', { id: 'voiceOn', class: 'ghost' + (x.voice ? ' on' : ''), style: 'margin-top:8px', 'aria-pressed': String(!!x.voice), title: 'Leave room for a singer: Strings B rests, the power is halved, the strings stay low', onclick: () => change(() => { x.voice = !x.voice; }, true) }, 'Room for a voice'),
     h('button', { id: 'dlAll', class: 'primary', style: 'margin-top:8px', onclick: () => deliver() }, '↓ All')); }
   aside.append(partCard('strings', 'Strings', 'STRIIIINGS', '#F4C177'), partCard('percs', 'Percs', 'PERRCS', '#9CC7E3'));
   aside.append(h('div', { class: 'card' }, h('div', { class: 'cap' }, 'Ending'), seg('end', Object.entries(S.ENDINGS), x.ending || 'resolve', (k) => change(() => { x.ending = k; setHint({ resolve: 'The score comes home: an ending phrase and a closing hit.', open: 'A cliffhanger: it ends on the five, a hit and a metal that hangs in the air.', stop: 'A sudden stop: everything cut at once on the last bar.' }[k]); }), 'How it ends')));

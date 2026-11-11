@@ -208,6 +208,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
   <div class="go">
     <button class="btn gold" id="compose">Compose</button>
     <button class="btn" id="surprise" title="Random feeling, era, key, orchestra and form, then compose">⚄ Surprise me</button>
+    <button class="btn" id="voiceOn" aria-pressed="false" title="The orchestra accompanies a singer: the high melody instruments rest, the rest plays lower and softer">Room for a voice</button>
     <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span>
     <span class="muted" id="status"></span>
   </div>
@@ -513,6 +514,18 @@ function drawPresets() {
 }
 
 /* compose */
+// room for a voice: the orchestra becomes an accompaniment for a singer (an aria): the high melody instruments rest,
+// the others fold under the voice and play softer
+const VOICE_REST = new Set(['vln1', 'svn', 'fl', 'picc', 'ob', 'eh', 'tpt', 'stpt', 'glock', 'xyl', 'timp', 'bells']);
+function forVoice(res) {
+  res.movements.forEach((m) => { m.tracks = m.tracks.filter((t) => !VOICE_REST.has(t.id));
+    m.tracks.forEach((t) => { t.notes = t.notes.map((n) => { let p = n.m; if (t.id !== 'cb' && t.id !== 'tba' && t.id !== 'cbsn' && t.id !== 'drums' && t.id !== 'metals') { while (p > 67) p -= 12; } return Object.assign({}, n, { m: p, v: Math.round(n.v * 0.8) }); });
+      t.cc = (t.cc || []).map((e) => (e.c === 1 ? Object.assign({}, e, { v: Math.max(1, Math.round(e.v * 0.8)) }) : e)); }); });
+  return res;
+}
+S.voice = store.get('voice', false);
+$('voiceOn').setAttribute('aria-pressed', String(S.voice)); if (S.voice) $('voiceOn').classList.add('gold');
+$('voiceOn').onclick = () => { S.voice = !S.voice; store.set('voice', S.voice); $('voiceOn').setAttribute('aria-pressed', String(S.voice)); $('voiceOn').classList.toggle('gold', S.voice); if (RES) { const k = S.keep; S.keep = true; compose(); S.keep = k; } };
 function compose() {
   stop();
   if (!S.inst.size) { $('status').textContent = 'Switch on at least one section first.'; return; }
@@ -525,6 +538,7 @@ function compose() {
     try {
       const t0 = performance.now();
       RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed, feel: c.feel })), feel: S.feel, mvFeels: S.form === 'symphony' ? S.mvFeels : null, solo: S.solo === 'auto' ? null : S.solo });
+      if (S.voice) forVoice(RES);
       MV = 0;
       $('status').textContent = 'Done in ' + Math.round(performance.now() - t0) + ' ms. Seed ' + S.seed + '.';
       showResult(); if (S.form === 'suite') drawSuite();

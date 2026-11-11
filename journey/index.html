@@ -5327,6 +5327,8 @@ S.layerLevels = function (sc, v, tension, map) {
       const storm = s.type === 'peak' && !S.isCalm(sc, s), at = b0 + (storm ? s.bars - 2 : Math.floor(s.bars / 2) - 2);
       for (let b = at; b < at + 2; b++) { if (storm) { L.strA[b] = 1; L.strB[b] = 1; L.perA[b] = 1; L.perB[b] = 1; } else { L.strA[b] *= 0.7; L.strB[b] = 0; L.perA[b] *= 0.35; L.perB[b] = 0; } } }
     b0 += s.bars; });
+  // room for a voice: the motion rests (only a touch at the peaks), the power is halved, the bed plays softer under the singer
+  if (sc.voice) map.forEach(({ s }, b) => { L.strB[b] = s.type === 'peak' ? Math.min(L.strB[b], 0.45) : 0; L.perB[b] *= 0.5; L.strA[b] *= 0.85; });
   return L;
 };
 // the camera: the pitch wheel moves between the low and the high section of each plugin
@@ -5337,7 +5339,7 @@ S.cameraOf = function (sc, map) {
     const T = g === 'dark' ? { intro: -0.6, theme: -0.4, build: -0.3 + 0.5 * f, peak: 0, film: -0.8, outro: -0.5 } : g === 'light' ? { intro: 0.2, theme: 0, build: 0.5 * f, peak: 0.4, film: 0.6, outro: 0.2 } : { intro: 0, theme: -0.2, build: -0.3 + 0.7 * f, peak: 0.2, film: -0.5, outro: 0 };
     // call and answer: in some themes and peaks the low section calls and the high section answers, two bars each
     const si = sc.sections.indexOf(s), ca = (s.type === 'theme' || s.type === 'peak') && s.bars >= 4 && rng(hash(sc.seed, 'call', si)).chance(0.4) ? (Math.floor(j / 2) % 2 ? 0.45 : -0.45) : 0;
-    out.push(clamp(T[s.type] + off + ca + (S.styleOf(sc, s).cam || 0), -1, 1));
+    out.push(clamp(T[s.type] + off + ca + (S.styleOf(sc, s).cam || 0), -1, sc.voice ? -0.2 : 1)); // room for a voice: the strings stay in their low section
   });
   return out;
 };

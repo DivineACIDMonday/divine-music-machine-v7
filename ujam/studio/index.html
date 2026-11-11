@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 08:45</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 10:00</span></footer>
 <script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
    ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
@@ -3796,7 +3796,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-11-11 08:45';
+const VERSION = '2026-11-11 10:00';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3821,7 +3821,7 @@ function orchPad(sg, notes, plugin, withBasses) {
   let b0 = 0; sg.sections.forEach((x) => { for (let k = 0; k < x.bars; k++) tex[b0 + k] = ORCH_TEX[x.type] || 'verse'; b0 += x.bars; });
   const bars = Math.max(b0, ...Object.keys(byBar).map(Number).map((x) => x + 1)), chordOf = []; let prev = null;
   for (let b = 0; b <= bars; b++) { chordOf[b] = byBar[b] ? [...byBar[b]] : prev; prev = chordOf[b]; }
-  const voices = ORCH.filter((x) => x.id !== 'cb' || withBasses), ranges = {}; voices.forEach((x) => { ranges[x.id] = [x.lo, x.hi]; });
+  const voices = ORCH.filter((x) => (x.id !== 'cb' || withBasses) && (!sg.voice || ['vln2', 'vla', 'vc'].includes(x.id))), ranges = {}; voices.forEach((x) => { ranges[x.id] = sg.voice && x.id === 'vln2' ? [60, 72] : [x.lo, x.hi]; });
   const res = D.orchestra({ bars, barTicks: BT, ppq: D.PPQ, beats: Math.round(BT / D.PPQ), chordAt: (b) => (byBar[b] ? chordOf[b] : null), bassAt: (b) => (low[b] != null ? ((low[b] % 12) + 12) % 12 : null),
     texAt: (b) => tex[Math.max(0, b)] || 'verse', energyAt: (b) => ORCH_E[tex[b] || 'verse'], tonic: sg.key ? sg.key.root || 0 : 0, minor: !!(sg.key && sg.key.scale !== 'major'), motif: null, ids: voices.map((x) => x.id), ranges, seed: sg.seed });
   const IDX = { long: 0, short: 1, pizz: 2, trem: 3 };
@@ -4498,12 +4498,19 @@ function versionsOf(plugin, part) { const pl = D.PLUGINS[plugin]; if (pl && pl.l
 function deliveryNo() { let n = store.get(KP + 'counter', 0) + 1; store.set(KP + 'counter', n); return String(n).padStart(3, '0'); }
 function fileName(sg, part, no, plugin, ver) { const pl = plugin && plugin !== 'plain' && plugin !== 'gm' ? D.PLUGINS[plugin].name.replace(/^UJAM /, '').replace(/[^A-Za-z0-9]+/g, '') : ''; const tt = plugin ? titleFor(Object.keys(PART_NAMES).find((k) => PART_NAMES[k] === part) || '', plugin).replace(/[^A-Za-z0-9]/g, '') : ''; return 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_' + part + (pl ? '_' + pl : '') + (tt ? '_' + tt : '') + (ver ? '_' + ver : '') + '_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid'; }
 function buildPart(sg, part, ver) {
-  const plugin = sg.parts[part].plugin, notes = D.renderSong(sg, part, { polished: true });
+  const plugin = sg.parts[part].plugin; let notes = D.renderSong(sg, part, { polished: true });
+  if (sg.voice && (part === 'pad' || part === 'chords')) notes = notes.map((n) => (n.ks ? n : Object.assign({}, n, { p: voiceFold(n.p), v: Math.round(n.v * 0.78) }))); // room for a voice: the harmony sits low and soft
   if (D.PLUGINS[plugin] && D.PLUGINS[plugin].orch) return D.writeMidi(orchTracks(sg, part, notes, plugin), { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
   const masked = D.applyMask(sg, part, notes, plugin, { octave: 0, roles: {}, mode: ver ? ver.toLowerCase() : undefined });
   const tt = titleFor(part, plugin), name = PART_NAMES[part] + (plugin !== 'plain' && plugin !== 'gm' ? ' for ' + D.PLUGINS[plugin].name + (tt ? ' ' + tt : '') + (ver ? ' ' + ver : '') : '');
   return D.writeMidi([{ name, channel: part === 'beat' ? 9 : 0, notes: masked }], { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
 }
+const voiceFold = (p) => { while (p > 62) p -= 12; while (p < 41) p += 12; return p; };
+// room for a voice: melody and answer rest (the singer is the melody), the harmony goes low and soft, the strings play with three
+function toggleVoice() { const sg = song(); change(() => { sg.voice = !sg.voice;
+  if (sg.voice) { sg.voiceKeep = { melody: sg.parts.melody.mode, answer: sg.parts.answer.mode }; sg.parts.melody.mode = 'off'; sg.parts.answer.mode = 'off'; }
+  else if (sg.voiceKeep) { sg.parts.melody.mode = sg.voiceKeep.melody; sg.parts.answer.mode = sg.voiceKeep.answer; } });
+  toast(sg.voice ? 'Room for a voice: melody and answer rest, the harmony sits low and soft.' : 'The melody is back.'); }
 function deliverList(sg) { const out = []; for (const p of PARTS) { if (sg.parts[p].mode === 'off' || !playsMap()[p].some(Boolean)) continue; for (const v of versionsOf(sg.parts[p].plugin, p)) out.push({ part: p, ver: v }); } return out; }
 const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
 function crc32(d) { let c = 0xffffffff; for (let i = 0; i < d.length; i++) c = CRC[(c ^ d[i]) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; }
@@ -4553,6 +4560,7 @@ function renderGet() {
       h('button', { class: 'ib', onclick: () => { stopAll(); st.solo = null; st.mode = 'overview'; render(); } }, '← Back'),
       h('div', { style: 'flex:1' }, h('div', { style: 'font-size:22px;font-weight:700' }, 'Get it'), h('div', { style: 'color:var(--soft);font-size:14px' }, D.GENRES[sg.genre].name + ' · ' + sg.bpm + ' bpm · ' + keyName(sg.key) + ' · ' + tot + ' bars')),
       h('button', { class: 'ib', style: 'height:56px;padding:0 22px;font-weight:700', 'aria-label': AU.playing && !st.solo ? 'Stop' : 'Play all parts', onclick: playAll }, AU.playing && !st.solo ? '■ Stop' : '▶ Play all'),
+      GROOVE ? null : h('button', { class: 'ib', style: 'height:56px;padding:0 18px;' + (sg.voice ? 'background:var(--ink);color:var(--onink);border-color:var(--ink)' : ''), 'aria-pressed': String(!!sg.voice), title: 'Leave room for a singer: no melody and answer, a low and soft harmony', onclick: () => { toggleVoice(); renderGet(); } }, 'Room for a voice'),
       h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '↓ All ' + n + ' files (one zip)')),
     h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ Play all hears everything, ▶ on a part listens alone'), rows),
     h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, GROOVE ? 'Plus a Structure file with every section as a marker. Pick your drum plugin and the hits land on the right keys of that plugin.' : 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
