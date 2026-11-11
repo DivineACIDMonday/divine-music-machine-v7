@@ -88,6 +88,10 @@ svg.hall{width:100%;height:auto;display:block;user-select:none}
 .trk .info{flex:1;min-width:0}
 .trk .info div{font-size:12px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .trk button{min-height:36px;padding:6px 10px}
+.trk select{order:3;flex:1 1 100%;min-height:36px;padding:4px 8px}
+.trk:has(select){flex-wrap:wrap}
+.allsyn select{min-height:36px;padding:4px 8px;max-width:240px}
+.allsyn{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--mu);margin-bottom:8px}
 .how{background:#171114;border:1px solid var(--line);border-radius:12px;padding:12px 16px}
 .how ol{margin:6px 0 0 18px;padding:0}
 .how li{margin:3px 0}
@@ -218,6 +222,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
       <button class="btn" id="dlZip">Download all tracks (zip)</button>
     </div>
     <div class="check" id="check"></div>
+    <div class="allsyn hide" id="allsyn">Every instrument plays on <select id="synAll" aria-label="Every instrument plays on"></select><span>or choose per instrument below. The synths get notes in the range they play.</span></div>
     <div class="tracks" id="tracks"></div>
     <div class="how hide" id="howBer">
       <b class="serif" style="font-size:17px">Into your DAW with Berlin Free Orchestra</b>
@@ -235,7 +240,7 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
       <ol>
         <li>Drag the full MIDI file into your song. Every part lands on its own track.</li>
         <li>Put any synth or sampler on any track: a 303, a pad, a piano, your choice.</li>
-        <li>No keyswitches and no CC1 in these files. Dynamics live in the velocity, CC11 is expression.</li>
+        <li>Choose per instrument what plays it: plain MIDI, one of your synths, BBC Discover or Berlin Free. The synths get notes in the range their Instrument mode plays, with the key switch they need. Plain MIDI and the synths have no CC1: dynamics live in the velocity, CC11 is expression.</li>
         <li>Rubato is baked into the note timing. Keep the tempo of your song at the tempo shown here.</li>
       </ol>
     </div>
@@ -277,7 +282,7 @@ const FAM = { str: 'var(--str)', ww: 'var(--ww)', br: 'var(--br)', perc: 'var(--
 const FAMHEX = { str: '#D9A84E', ww: '#8FC29C', br: '#E58256', perc: '#9CC7E3', kb: '#C8B2E8' };
 const IM = {}; Y.INST.forEach(i => IM[i.id] = i);
 const store = { get(k, d) { try { const v = localStorage.getItem('dsym.' + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem('dsym.' + k, JSON.stringify(v)); } catch (e) {} } };
-const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), chain: store.get('chain', []), bfo: store.get('bfo', false), feel: store.get('feel', null), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
+const S = { era: store.get('era', 'classical'), form: store.get('form', 'minuet'), key: store.get('key', 'C'), len: store.get('len', 2), rub: store.get('rub', 1), target: store.get('target', 'bbc'), per: store.get('per', {}), chain: store.get('chain', []), bfo: store.get('bfo', false), feel: store.get('feel', null), keep: false, first: true, firstSuite: true, early: store.get('early', true), seed: Math.floor(Math.random() * 900000) + 1, tempo: null, solo: 'auto', inst: new Set(store.get('inst', Y.PRESETS[store.get('era', 'classical')])) };
 let RES = null, MV = 0;
 
 /* eras */
@@ -390,8 +395,11 @@ function setTarget(v) {
   store.set('bfo', S.bfo); store.set('inst', [...S.inst]);
   syncTarget(); drawHall(); if (RES) showResult();
 }
-function syncTarget() { ['target', 'lib'].forEach(id => [...$(id).children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.target))); $('bfoW').classList.toggle('hide', S.target === 'bbc'); $('how').classList.toggle('hide', S.target !== 'bbc'); $('howAny').classList.toggle('hide', S.target !== 'any'); $('howBer').classList.toggle('hide', S.target !== 'berlin'); }
-const PLAIN = () => ({ plain: S.target === 'any', target: S.target });
+function syncAll() { const w = $('allsyn'); if (!w) return; w.classList.toggle('hide', S.target !== 'any'); $('synAll').innerHTML = '<option value="">choose one for all</option>' + SYNOPTS(''); }
+$('synAll').onchange = () => { const v = $('synAll').value; if (!v || !RES) return; cur().tracks.forEach(t => { S.per[t.id] = v; }); store.set('per', S.per); showResult(); syncAll(); };
+function syncTarget() { syncAll(); ['target', 'lib'].forEach(id => [...$(id).children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.target))); $('bfoW').classList.toggle('hide', S.target === 'bbc'); $('how').classList.toggle('hide', S.target !== 'bbc'); $('howAny').classList.toggle('hide', S.target !== 'any'); $('howBer').classList.toggle('hide', S.target !== 'berlin'); }
+const PLAIN = () => ({ plain: S.target === 'any', target: S.target, per: S.per });
+const SYNOPTS = (v) => Object.entries(Y.SYNTHS).map(([k, x]) => '<option value="' + k + '"' + (k === v ? ' selected' : '') + '>' + x.name + '</option>').join('');
 const TNAME = t => S.target === 'berlin' && Y.BFO[t.id] ? Y.BFO[t.id].name : t.name;
 const SHORTN = { sonata: 'Sonata', rondo: 'Rondo', overture: 'Overture', fugue: 'Fugue', aria: 'Aria', canon: 'Canon', variations: 'Variations', minuet: 'Minuet', waltz: 'Waltz', march: 'March' };
 const newSeed = () => Math.floor(Math.random() * 900000) + 1;
@@ -544,9 +552,12 @@ function showResult() {
   m.tracks.forEach(t => {
     if (S.target === 'berlin' && t.id === 'btbn' && m.tracks.some(x => x.id === 'tbn')) return;
     const used = new Set(t.ks.map(k => k.m));
-    const arts = IM[t.id].x && S.target === 'bbc' ? 'Berlin Free only' : S.target === 'any' ? 'plain MIDI' : S.target === 'berlin' ? (Y.BFO[t.id] && Y.BFO[t.id].n ? 'articulations on CC70' : 'no articulation switch') + (t.id === 'tbn' ? ', bass trombone included' : '') : t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
+    const pick = S.per[t.id] || 'plain';
+    const arts = IM[t.id].x && S.target === 'bbc' ? 'Berlin Free only' : S.target === 'any' ? (pick === 'plain' ? 'plain MIDI' : pick === 'bbc' ? 'BBC key switches and dynamics' : pick === 'berlin' ? 'Berlin articulations on CC70' : 'notes in the range ' + Y.SYNTHS[pick].name + ' plays') : S.target === 'berlin' ? (Y.BFO[t.id] && Y.BFO[t.id].n ? 'articulations on CC70' : 'no articulation switch') + (t.id === 'tbn' ? ', bass trombone included' : '') : t.ksType ? [...used].sort().map(i => Y.ARTNAME[t.ksType][i]).filter(Boolean).join(', ') : 'no keyswitches';
     const d = document.createElement('div'); d.className = 'trk';
     d.innerHTML = '<span class="dot" style="background:' + FAMHEX[fam(t.id)] + '"></span><div class="info"><b>' + TNAME(t) + '</b><div>' + t.notes.length + ' notes · ' + arts + '</div></div>';
+    if (S.target === 'any') { const sel = document.createElement('select'); sel.setAttribute('aria-label', TNAME(t) + ' plays on'); sel.innerHTML = SYNOPTS(pick);
+      sel.onchange = () => { S.per[t.id] = sel.value; store.set('per', S.per); showResult(); }; d.appendChild(sel); }
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'MIDI'; b.onclick = () => save(Y.writeMidi(m, [t.id], PLAIN()), fileBase(m) + ' - ' + TNAME(t) + '.mid', 'audio/midi');
     d.appendChild(b); tr.appendChild(d);
   });
@@ -688,4 +699,16 @@ drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); initBfo(); draw
 })();
 </script>
 <script>(function(){try{if(!/\.github\.io$/.test(location.hostname))return;var q=new URLSearchParams({p:location.pathname,t:document.title,s:screen.width+','+screen.height,rnd:Math.random().toString(36).slice(2)});if(document.referrer&&document.referrer.indexOf(location.hostname)<0)q.set('r',document.referrer.split('?')[0]);var u='https://divine-monday.goatcounter.com/count?'+q;if(!(navigator.sendBeacon&&navigator.sendBeacon(u)))new Image().src=u;}catch(e){}})();</script>
+<!-- Divine Monday suite bar: the name of every machine leads home, and the same Suite button sits next to it in every app -->
+<style>.dm-suite{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:6px 12px;min-height:34px;border:1px solid rgba(128,128,128,.45);border-radius:999px;color:inherit;text-decoration:none;font:600 13px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;white-space:nowrap;vertical-align:middle;opacity:.85;flex:none}.dm-suite:hover,.dm-suite:focus-visible{opacity:1;border-color:currentColor}.dm-home{cursor:pointer}</style>
+<script>(function(){var LOGO=['.trow .brand','header.top .logo','.brand .logo','header .logo','.top h1','.col > h1','header h1','.dm-row > .dm-home'],HIDE='#suiteBtn, header a.back, .suiteback, .top a[data-tt=back]';
+var url=/\/ujam(\/|$)/.test(location.pathname)?'https://divineacidmonday.github.io/ujam/':'https://divineacidmonday.github.io/',go=function(){location.href=url;},busy=false;
+function fix(){busy=false;var l=null;for(var q=0;q<LOGO.length&&!l;q++)l=[].slice.call(document.querySelectorAll(LOGO[q])).filter(function(e){return e.offsetParent!==null;})[0]||null;if(!l)return; // the first kind of name that is on screen, in this order
+ if(!l.classList.contains('dm-home')){l.classList.add('dm-home');l.setAttribute('role','link');l.setAttribute('tabindex','0');l.title='Back to the Divine Music Suite';l.addEventListener('click',go);l.addEventListener('keydown',function(e){if(e.key==='Enter')go();});}
+ var n=l.nextElementSibling;if(!(n&&n.classList.contains('dm-suite'))){var a=document.createElement('a');a.className='dm-suite';a.href=url;a.title='All Divine Monday machines';a.textContent='← Suite';
+  var P=l.parentElement,ps=getComputedStyle(P),row=ps.display.indexOf('flex')>=0&&ps.flexDirection.indexOf('row')===0;
+  if(row||P.classList.contains('dm-row'))l.insertAdjacentElement('afterend',a);
+  else{var w=document.createElement('div');w.className='dm-row';w.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:6px 0;justify-content:'+(ps.textAlign==='center'||ps.alignItems==='center'?'center':'flex-start');P.insertBefore(w,l);w.appendChild(l);w.appendChild(a);l.style.margin='0';}}
+ document.querySelectorAll(HIDE).forEach(function(e){if(!e.classList.contains('dm-suite'))e.style.display='none';});}
+new MutationObserver(function(){if(!busy){busy=true;requestAnimationFrame(fix);}}).observe(document.documentElement,{childList:true,subtree:true});fix();})();</script>
 </body></html>

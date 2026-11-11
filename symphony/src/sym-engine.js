@@ -1685,9 +1685,33 @@ function toBerlin(tracks) {
   if (!byId.tbn && byId.btbn) { const t = byId.btbn, B = BFO.tbn; out.push({ id: 'tbn', name: B.name, notes: t.notes.map(n => { let m = n.m; while (m < B.lo) m += 12; return Object.assign({}, n, { m }); }), cc: t.cc.concat([{ t: 0, c: 70, v: 96 }]), ks: [], ksType: null }); }
   return out;
 }
+// Any synth: every instrument chooses its own player. The synths of the suite get notes in the range their Instrument mode plays,
+// with the key switch they need (the same ranges and keys as in the Music Studio and the Journey); BBC and Berlin keep their own language
+const SYNTHS = {
+  plain: { name: 'Plain MIDI' }, bbc: { name: 'BBC Discover' }, berlin: { name: 'Berlin Free' },
+  usynth: { name: 'Usynth', r: [48, 96] },
+  silk2: { name: 'Virtual Guitarist Silk 2', r: [60, 96], ks: [37, 58] }, iron2: { name: 'Virtual Guitarist Iron 2', r: [60, 96], ks: [37, 58] },
+  cinedream: { name: 'Virtual Guitarist Cinedream', r: [60, 96], ks: [37, 58] }, carbon: { name: 'Virtual Guitarist Carbon', r: [72, 108], ks: [51, 60] },
+  score: { name: 'Virtual Pianist Score', r: [48, 96] }, subcraft: { name: 'UJAM Subcraft', r: [57, 81] },
+  royal: { name: 'Virtual Bassist Royal', r: [36, 63] }, slap: { name: 'Virtual Bassist Slap', r: [38, 75], hold: 21 },
+};
+const foldLine = (notes, lo, hi) => { if (!notes.length) return notes; const ps = notes.map(n => n.m), mn = Math.min(...ps), mx = Math.max(...ps); let sh = 0;
+  if (mx - mn <= hi - lo) { while (mn + sh < lo) sh += 12; while (mx + sh > hi) sh -= 12; if (mn + sh < lo) sh += 12; } else sh = Math.round(((lo + hi) / 2 - (mn + mx) / 2) / 12) * 12;
+  return notes.map(n => { let m = n.m + sh; while (m < lo) m += 12; while (m > hi) m -= 12; return Object.assign({}, n, { m }); }); };
+function anyTrack(t, c, res) {
+  if (c === 'bbc') return Object.assign({}, t, { _plain: false });
+  if (c === 'berlin') { const b = toBerlin([t]); return b && b[0] ? Object.assign({}, b[0], { _plain: false }) : Object.assign({}, t, { _plain: true }); }
+  const S = SYNTHS[c]; if (!S || !S.r) return Object.assign({}, t, { _plain: true });
+  const lo = S.r[0], hi = Math.min(S.r[1], lo + 36), extra = [];
+  if (S.ks) extra.push({ t: 0, m: S.ks[0], v: 100, dur: 30 }, { t: 40, m: S.ks[1], v: 100, dur: 30 }); // the style key, then open
+  if (S.hold) extra.push({ t: 0, m: S.hold, v: 100, dur: Math.max(60, res.end - 10) }); // finger style, held all the way
+  return { id: t.id, name: t.name + ' for ' + S.name, notes: extra.concat(foldLine(t.notes, lo, hi)), cc: t.cc.filter(e => e.c !== 1), ks: [], _plain: true };
+}
+Y.SYNTHS = SYNTHS;
 function writeMidi(res, ids, opt) {
   const plain = opt && opt.plain;
   let pool = res.tracks;
+  if (opt && opt.target === 'any' && opt.per) pool = res.tracks.map(t => anyTrack(t, opt.per[t.id] || 'plain', res));
   if (opt && opt.target === 'berlin') { pool = toBerlin(res.tracks.filter(t => !ids || ids.includes(t.id) || (ids.includes('tbn') && t.id === 'btbn'))); }
   const sel = ids && !(opt && opt.target === 'berlin') ? pool.filter(t => ids.includes(t.id)) : pool;
   const us = Math.round(60000000 / res.tempo);
@@ -1701,8 +1725,9 @@ function writeMidi(res, ids, opt) {
   sel.forEach(tr => {
     const ev = []; const nb = strBytes(tr.name);
     ev.push({ t: 0, o: 0, d: [0xff, 0x03, ...vlq(nb.length), ...nb] });
-    tr.cc.forEach(e => { if (!plain || e.c !== 1) ev.push({ t: e.t, o: 1, d: [0xb0, e.c, e.v] }); });
-    if (!plain) tr.ks.forEach(k => { ev.push({ t: k.t, o: 3, d: [0x90, k.m, 100] }); ev.push({ t: k.t + 12, o: 2, d: [0x80, k.m, 0] }); });
+    const pl = tr._plain != null ? tr._plain : plain;
+    tr.cc.forEach(e => { if (!pl || e.c !== 1) ev.push({ t: e.t, o: 1, d: [0xb0, e.c, e.v] }); });
+    if (!pl) tr.ks.forEach(k => { ev.push({ t: k.t, o: 3, d: [0x90, k.m, 100] }); ev.push({ t: k.t + 12, o: 2, d: [0x80, k.m, 0] }); });
     // one key, one note at a time: a repeated note ends the one before it, so the synth never cuts the new one short
     const ns = tr.notes.slice().sort((x, y) => x.t - y.t || y.v - x.v), last = {};
     ns.forEach(n => { const pv = last[n.m]; if (pv && n.t <= pv.t) return; let dur = n.dur;

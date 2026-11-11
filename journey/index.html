@@ -7259,7 +7259,11 @@ function writeMidi(res, ids, opt) {
     ev.push({ t: 0, o: 0, d: [0xff, 0x03, ...vlq(nb.length), ...nb] });
     tr.cc.forEach(e => { if (!plain || e.c !== 1) ev.push({ t: e.t, o: 1, d: [0xb0, e.c, e.v] }); });
     if (!plain) tr.ks.forEach(k => { ev.push({ t: k.t, o: 3, d: [0x90, k.m, 100] }); ev.push({ t: k.t + 12, o: 2, d: [0x80, k.m, 0] }); });
-    tr.notes.forEach(n => { ev.push({ t: n.t, o: 4, d: [0x90, n.m, n.v] }); ev.push({ t: n.t + n.dur, o: 2, d: [0x80, n.m, 0] }); });
+    // one key, one note at a time: a repeated note ends the one before it, so the synth never cuts the new one short
+    const ns = tr.notes.slice().sort((x, y) => x.t - y.t || y.v - x.v), last = {};
+    ns.forEach(n => { const pv = last[n.m]; if (pv && n.t <= pv.t) return; let dur = n.dur;
+      ev.push({ t: n.t, o: 4, d: [0x90, n.m, n.v] }); const off = { t: n.t + dur, o: 2, d: [0x80, n.m, 0] }; ev.push(off);
+      if (pv && pv.off.t > n.t) pv.off.t = Math.max(pv.t + 1, n.t - 1); last[n.m] = { t: n.t, off }; });
     chunks.push(trackChunk(ev));
   });
   const head = [0x4d, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, 0, chunks.length, (PPQ >> 8) & 255, PPQ & 255];
@@ -8671,4 +8675,16 @@ if (!ss.get('journey-rack', null)) $('#rackBox').open = true;
 drawRack(); drawRecords(); drawWords(); drawLen(); replan();
 </script>
 <script>(function(){try{if(!/\.github\.io$/.test(location.hostname))return;var q=new URLSearchParams({p:location.pathname,t:document.title,s:screen.width+','+screen.height,rnd:Math.random().toString(36).slice(2)});if(document.referrer&&document.referrer.indexOf(location.hostname)<0)q.set('r',document.referrer.split('?')[0]);var u='https://divine-monday.goatcounter.com/count?'+q;if(!(navigator.sendBeacon&&navigator.sendBeacon(u)))new Image().src=u;}catch(e){}})();</script>
+<!-- Divine Monday suite bar: the name of every machine leads home, and the same Suite button sits next to it in every app -->
+<style>.dm-suite{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:6px 12px;min-height:34px;border:1px solid rgba(128,128,128,.45);border-radius:999px;color:inherit;text-decoration:none;font:600 13px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;white-space:nowrap;vertical-align:middle;opacity:.85;flex:none}.dm-suite:hover,.dm-suite:focus-visible{opacity:1;border-color:currentColor}.dm-home{cursor:pointer}</style>
+<script>(function(){var LOGO=['.trow .brand','header.top .logo','.brand .logo','header .logo','.top h1','.col > h1','header h1','.dm-row > .dm-home'],HIDE='#suiteBtn, header a.back, .suiteback, .top a[data-tt=back]';
+var url=/\/ujam(\/|$)/.test(location.pathname)?'https://divineacidmonday.github.io/ujam/':'https://divineacidmonday.github.io/',go=function(){location.href=url;},busy=false;
+function fix(){busy=false;var l=null;for(var q=0;q<LOGO.length&&!l;q++)l=[].slice.call(document.querySelectorAll(LOGO[q])).filter(function(e){return e.offsetParent!==null;})[0]||null;if(!l)return; // the first kind of name that is on screen, in this order
+ if(!l.classList.contains('dm-home')){l.classList.add('dm-home');l.setAttribute('role','link');l.setAttribute('tabindex','0');l.title='Back to the Divine Music Suite';l.addEventListener('click',go);l.addEventListener('keydown',function(e){if(e.key==='Enter')go();});}
+ var n=l.nextElementSibling;if(!(n&&n.classList.contains('dm-suite'))){var a=document.createElement('a');a.className='dm-suite';a.href=url;a.title='All Divine Monday machines';a.textContent='← Suite';
+  var P=l.parentElement,ps=getComputedStyle(P),row=ps.display.indexOf('flex')>=0&&ps.flexDirection.indexOf('row')===0;
+  if(row||P.classList.contains('dm-row'))l.insertAdjacentElement('afterend',a);
+  else{var w=document.createElement('div');w.className='dm-row';w.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:6px 0;justify-content:'+(ps.textAlign==='center'||ps.alignItems==='center'?'center':'flex-start');P.insertBefore(w,l);w.appendChild(l);w.appendChild(a);l.style.margin='0';}}
+ document.querySelectorAll(HIDE).forEach(function(e){if(!e.classList.contains('dm-suite'))e.style.display='none';});}
+new MutationObserver(function(){if(!busy){busy=true;requestAnimationFrame(fix);}}).observe(document.documentElement,{childList:true,subtree:true});fix();})();</script>
 </body></html>

@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 05:00</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 05:20</span></footer>
 <script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
    ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
@@ -3699,7 +3699,7 @@ if (typeof module !== 'undefined') module.exports = E;
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-11-11 05:00';
+const VERSION = '2026-11-11 05:20';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -3965,6 +3965,7 @@ function renderTop() {
     h('button', { class: 'ib', 'aria-label': 'Undo', onclick: undo, disabled: !st.hist.length || null }, '↶'),
     h('button', { class: 'ib', 'aria-label': 'Redo', onclick: redo, disabled: !st.fut.length || null }, '↷'),
     h('button', { class: 'ib', 'aria-label': 'Menu', 'aria-expanded': st.menu ? 'true' : 'false', onclick: () => { st.menu = !st.menu; renderMenu(); } }, '☰'));
+  [...el.childNodes].forEach((n) => { if (n.nodeType === 3 && n.textContent === 'null') n.remove(); }); // empty slots stay empty
 }
 function renderMenu() {
   const old = $('.menu'); if (old) old.remove(); if (!st.menu) return;
@@ -4524,4 +4525,16 @@ window.DMS = { st, song, makeSong, setMode, playsMap, emptyWarning, startPlay, s
 render(); openStart();
 })();
 </script>
+<!-- Divine Monday suite bar: the name of every machine leads home, and the same Suite button sits next to it in every app -->
+<style>.dm-suite{display:inline-flex;align-items:center;gap:6px;margin-left:12px;padding:6px 12px;min-height:34px;border:1px solid rgba(128,128,128,.45);border-radius:999px;color:inherit;text-decoration:none;font:600 13px/1 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;white-space:nowrap;vertical-align:middle;opacity:.85;flex:none}.dm-suite:hover,.dm-suite:focus-visible{opacity:1;border-color:currentColor}.dm-home{cursor:pointer}</style>
+<script>(function(){var LOGO=['.trow .brand','header.top .logo','.brand .logo','header .logo','.top h1','.col > h1','header h1','.dm-row > .dm-home'],HIDE='#suiteBtn, header a.back, .suiteback, .top a[data-tt=back]';
+var url=/\/ujam(\/|$)/.test(location.pathname)?'https://divineacidmonday.github.io/ujam/':'https://divineacidmonday.github.io/',go=function(){location.href=url;},busy=false;
+function fix(){busy=false;var l=null;for(var q=0;q<LOGO.length&&!l;q++)l=[].slice.call(document.querySelectorAll(LOGO[q])).filter(function(e){return e.offsetParent!==null;})[0]||null;if(!l)return; // the first kind of name that is on screen, in this order
+ if(!l.classList.contains('dm-home')){l.classList.add('dm-home');l.setAttribute('role','link');l.setAttribute('tabindex','0');l.title='Back to the Divine Music Suite';l.addEventListener('click',go);l.addEventListener('keydown',function(e){if(e.key==='Enter')go();});}
+ var n=l.nextElementSibling;if(!(n&&n.classList.contains('dm-suite'))){var a=document.createElement('a');a.className='dm-suite';a.href=url;a.title='All Divine Monday machines';a.textContent='← Suite';
+  var P=l.parentElement,ps=getComputedStyle(P),row=ps.display.indexOf('flex')>=0&&ps.flexDirection.indexOf('row')===0;
+  if(row||P.classList.contains('dm-row'))l.insertAdjacentElement('afterend',a);
+  else{var w=document.createElement('div');w.className='dm-row';w.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:6px 0;justify-content:'+(ps.textAlign==='center'||ps.alignItems==='center'?'center':'flex-start');P.insertBefore(w,l);w.appendChild(l);w.appendChild(a);l.style.margin='0';}}
+ document.querySelectorAll(HIDE).forEach(function(e){if(!e.classList.contains('dm-suite'))e.style.display='none';});}
+new MutationObserver(function(){if(!busy){busy=true;requestAnimationFrame(fix);}}).observe(document.documentElement,{childList:true,subtree:true});fix();})();</script>
 </body></html>
