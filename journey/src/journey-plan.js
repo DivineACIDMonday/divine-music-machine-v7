@@ -393,7 +393,7 @@ JP.plan = (words, opts = {}) => {
   const mode = opts.mode === 'mixed' ? 'mixed' : 'deep';
   if (mode === 'mixed') ch.forEach((x) => {
     const slow = x.c.speed < -0.35 || x.lead.machine === 'symphony' && x.c.speed < 0, sing = x.lead.machine === 'symphony' || x.lead.machine === 'score' || x.c.warm > 0.4;
-    const form = slow ? JP.SONGS.slow : sing ? JP.SONGS.verse : JP.SONGS.club;
+    const form = opts.voice ? JP.SONGS.verse : slow ? JP.SONGS.slow : sing ? JP.SONGS.verse : JP.SONGS.club; // a record for a singer gets verses and choruses
     const tot = form.reduce((a, f) => a + f[1], 0); let u = 0;
     x.song = form.map(([type, w]) => { const u0 = u; u += w / tot; return { type, u0, u1: u, e: JP.SONG_E[type] }; });
     x.hi = clamp(x.energy + 0.3, 0.45, 1); x.lo = clamp(x.energy - 0.5, 0.05, 0.4);

@@ -350,21 +350,23 @@ function arrange(plan, i) {
   const c = plan.chapters[i], w = win(plan, i), k = c.feelsLike / plan.bpm, cb = Math.ceil(c.bars * k), P = Math.ceil(cb / 8), out = [];
   const jb = (p) => p * 8 / k; // the journey bar where content phrase p starts
   const giftP = c._gift != null ? Math.floor(c._gift * k / 8) : -1, breakP = c.breathInside ? Math.floor(c.breathInside.bar * k / 8) : -1;
-  let m = 0;
+  let m = 0, verses = 0; const seenVerse = {};
   for (let p = 0; p < P; p++) { const b0 = jb(p), b1 = jb(p + 1), e = eAt(c, p / P);
     let L;
     if (w.inn && b0 < w.inn) L = 'intro';
     else if (w.out && b1 > c.bars - w.out) L = 'outro';
     else if (i === 0 && p === 0) L = 'start0';
     else if (i === 0 && p === 1) L = 'start1';
+    else if (c.song) { // a song of its own: the arrangement follows its form, part by part (verse, a second verse that answers, build, chorus with everyone, break)
+      const q = c.song.find((x) => p / P < x.u1) || c.song[c.song.length - 1], T = q.type;
+      L = T === 'intro' ? 'start1' : T === 'outro' ? 'outro' : T === 'break' || T === 'fall' ? 'break' : T === 'build' || T === 'rise' ? 'build' : T === 'drop' || T === 'chorus' || T === 'peak' ? 'gift' : (seenVerse[q.u0] = seenVerse[q.u0] || (++verses > 1 ? 'A2' : 'A')); }
     else if (p === giftP) L = 'gift';
     else if (p === giftP - 1) L = 'build';
     else if (p === breakP) L = 'break';
-    else if (c.song) { const q = c.song.find((x) => p / P < x.u1) || c.song[c.song.length - 1]; L = q.type === 'break' || q.type === 'fall' ? 'break' : q.type === 'build' || q.type === 'rise' ? 'build' : q.type === 'drop' || q.type === 'chorus' || q.type === 'peak' ? 'A2' : 'A'; }
     else { L = ['A', 'A', 'A2', 'B'][m % 4]; m++; if (L === 'B' && e < 0.3) L = 'A'; if (L === 'A2' && e < 0.35) L = 'A'; }
     out.push(L); }
   // a long chapter without a planned breath gets one break, at its quietest middle phrase
-  if (breakP < 0 && P >= 14) { let q = -1, lo = 9; for (let p = 4; p < P - 4; p++) { const e = eAt(c, p / P); if (['A', 'A2', 'B'].includes(out[p]) && out[p - 1] !== 'build' && e < lo) { lo = e; q = p; } } if (q > 0) out[q] = 'break'; }
+  if (!c.song && breakP < 0 && P >= 14) { let q = -1, lo = 9; for (let p = 4; p < P - 4; p++) { const e = eAt(c, p / P); if (['A', 'A2', 'B'].includes(out[p]) && out[p - 1] !== 'build' && e < lo) { lo = e; q = p; } } if (q > 0) out[q] = 'break'; }
   return out;
 }
 const labelAt = (c, cbar) => (c._arr && c._arr[Math.floor(cbar / 8)]) || 'A';
