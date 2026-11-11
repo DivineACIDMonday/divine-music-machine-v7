@@ -165,6 +165,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px 0 30px}
 <section class="card" style="align-items:center;text-align:center">
   <div class="sh" style="justify-content:center"><span class="st serif">Name your journey</span></div>
   <div class="row" style="justify-content:center;flex-wrap:nowrap;width:100%"><input id="jname" class="pk" style="flex:0 1 420px;max-width:none;min-width:0;font-size:17px;padding:9px 12px;min-height:44px" aria-label="Name your journey" maxlength="80"><button class="dz" id="jdice" title="Let the oracle suggest a name" aria-label="Suggest a name"></button></div>
+  <div class="row" style="justify-content:center"><button class="chip" id="voiceOn" aria-pressed="false">Room for a voice</button><span class="muted small">no melody, a softer and lower harmony and three strings, so a singer fits on top</span></div>
   <button class="btn big" id="make">Make it</button>
   <div class="muted small" id="makeMsg">One zip: the whole journey as one MIDI file, a folder per chapter with a file per layer, your records each on their own, and a rack card that tells you which plugin goes on which track.</div>
 </section>
@@ -192,6 +193,9 @@ const COL = ['var(--c0)', 'var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)'];
 const HEX = ['#E7B65C', '#4FB3A9', '#D9668A', '#9B87E0', '#6FA8DC'];
 const ss = { get(k, d) { try { const v = sessionStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { sessionStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* this session keeps nothing; fine */ } } };
 const ls = { get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* fine */ } } };
+// room for a voice: the journey leaves space for a singer (the Divine Vocal Machine) on top
+setTimeout(() => { const b = document.getElementById('voiceOn'); if (!b) return; S.voice = ls.get('journey-voice', false); b.setAttribute('aria-pressed', String(S.voice));
+  b.onclick = () => { S.voice = !S.voice; ls.set('journey-voice', S.voice); b.setAttribute('aria-pressed', String(S.voice)); if (typeof replan === 'function') replan(); }; }, 0);
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const rnd = (a) => a[Math.floor(Math.random() * a.length)];
 
@@ -267,7 +271,7 @@ function rollOne(i) { const list = JW[S.words[i].wheel]; let w = rnd(list), t = 
 // ---------- plan + map ----------
 function replan() {
   const recent = ls.get('journey-recent', []);
-  S.plan = JP.plan(S.words, { mode: S.mode, template: S.tplOn && S.tplLayout ? S.tplLayout : null, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov, records: S.recOn ? S.recs : null });
+  S.plan = JP.plan(S.words, { voice: S.voice, mode: S.mode, template: S.tplOn && S.tplLayout ? S.tplLayout : null, seed: S.seed, bpm: S.bpm || 0, minutes: S.minutes, rack: S.rack, recent, allWords: JW, ov: S.ov, records: S.recOn ? S.recs : null });
   stopPlay(); PV = null; if (!S.nameMine) setName(suggestName());
   drawMap(); drawChapters();
 }
@@ -433,7 +437,7 @@ function makeJourney() {
   // your records, each one on its own, in its own folder, at full length, on the tracks of the chapter it plays in
   if (p.records) { const tplOn = S.tplOn && S.tplLayout;
     p.records.forEach((rc, id) => { const ci = Math.max(0, p.chapters.findIndex((c) => c.records && c.records.some((r) => r.id === id)));
-      const solo = JP.plan([S.words[ci]], { mode: S.mode, template: tplOn ? S.tplLayout : null, tplChapter: ci, seed: (S.seed ^ ((id + 1) * 7919)) >>> 0, bpm: p.bpm, minutes: 6, rack: S.rack, allWords: JW, solo: true, records: [{ arts: rc.arts.map((a) => (a === JP.ORCH ? JP.ORCH : a.name)) }] });
+      const solo = JP.plan([S.words[ci]], { voice: S.voice, mode: S.mode, template: tplOn ? S.tplLayout : null, tplChapter: ci, seed: (S.seed ^ ((id + 1) * 7919)) >>> 0, bpm: p.bpm, minutes: 6, rack: S.rack, allWords: JW, solo: true, records: [{ arts: rc.arts.map((a) => (a === JP.ORCH ? JP.ORCH : a.name)) }] });
       const r2 = JR.render(solo, ctx); r2.tracks.forEach((t) => { t.chapter = ci; t.name = t.name.replace(/^1 /, (ci + 1) + ' '); });
       const dir = base + '/Records/' + String(id + 1).padStart(2, '0') + '_' + safe(rc.name.replace(/ \+ /g, ' ')) + '/', m2 = Object.assign({}, meta, { title: rc.name, markers: [] });
       files.push({ name: dir + safe(rc.name.replace(/ \+ /g, ' ')) + '.mid', data: JR.writeMidi(tplOn ? JR.fitTemplate(r2.tracks, S.tplLayout, p) : r2.tracks, m2) });

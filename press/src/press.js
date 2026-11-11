@@ -17,7 +17,7 @@
   // side A: the record as a song of its own, with its own build, drop, break and gift
   PR.planA = (JP, JW, o) => {
     const au = o.audio; // pressing your own track: its tempo, its key and its length, its motif when the press could hear one
-    const opt = { solo: true, mode: 'mixed', records: [{ arts: o.arts }], minutes: au ? Math.max(3, Math.min(9, Math.round(au.sec / 30) / 2)) : o.minutes, bpm: au ? au.bpm : o.bpm || 0, seed: o.seed >>> 0, rack: o.rack, allWords: JW, template: o.template || null, tplChapter: 0 };
+    const opt = { solo: true, mode: 'mixed', records: [{ arts: o.arts, beat: o.beat || null }], voice: !!o.voice, minutes: au ? Math.max(3, Math.min(9, Math.round(au.sec / 30) / 2)) : o.minutes, bpm: au ? au.bpm : o.bpm || (o.beat && JP.ARTS.find((x) => x.name === o.beat) ? JP.ARTS.find((x) => x.name === o.beat).bpm : 0), seed: o.seed >>> 0, rack: o.rack, allWords: JW, template: o.template || null, tplChapter: 0 };
     if (au) o = Object.assign({}, o, { key: JP.KEYS[au.tonic] + (au.minor ? ' minor' : ' major'), minutes: opt.minutes });
     let p = JP.plan([word(o.word)], opt);
     // the key: yours, or one the record itself chooses (the word and the styles), in the mode its character asks for
@@ -54,7 +54,7 @@
     const h = o.hints || {}, st = PR.remixStyle(JP, planA, o), arts = PR.remixArts(JP, planA, st, h);
     let bpm = planA.bpm; if (h.faster) bpm = Math.min(134, bpm + 8); if (h.slower) bpm = Math.max(90, bpm - 10);
     const cA = planA.chapters[0]; let [kn, km] = cA.key.split(' '); if (h.darker) km = 'minor'; if (h.lighter) km = 'major';
-    const p = JP.plan([word(o.word)], { solo: true, mode: 'mixed', records: [{ arts }], minutes: (planA.minutesUsed || o.minutes) + (h.extended ? 2 : 0), bpm, seed: (o.seed ^ 0x5bd1e995) >>> 0,
+    const p = JP.plan([word(o.word)], { solo: true, mode: 'mixed', records: [{ arts, beat: arts.includes(o.beat) ? o.beat : null }], voice: !!o.voice, minutes: (planA.minutesUsed || o.minutes) + (h.extended ? 2 : 0), bpm, seed: (o.seed ^ 0x5bd1e995) >>> 0,
       rack: o.rack, allWords: JW, template: o.template || null, tplChapter: 0, ov: [{ key: kn + ' ' + km }] });
     p.motif = planA.motif; const c = p.chapters[0];
     if (h.barer) { c.layers = Math.max(2, c.layers - 2); c.layersStart = Math.max(1, c.layersStart - 1); c.players = c.players.filter((x) => x.role !== 'melody'); } // a dub: the motif sings, the melody rests

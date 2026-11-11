@@ -164,6 +164,8 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
 <section class="card">
   <div class="sh"><span class="st serif">The record</span><span class="muted">One to three styles that sound together. The mood word gives the record its character.</span></div>
   <div class="row"><span class="lbl">Styles</span><div class="sty"><select class="pk" id="s0" aria-label="Style 1"></select><span class="plus">+</span><select class="pk" id="s1" aria-label="Style 2"></select><span class="plus">+</span><select class="pk" id="s2" aria-label="Style 3"></select><button class="dz" id="sdice" title="Let the dice choose the styles" aria-label="Roll the styles"></button></div></div>
+  <div class="row" id="beatRow" hidden><span class="lbl">Beat</span><div class="chips" id="beatFrom"></div><span class="muted small">the style that plays the beat and sets the tempo; the other carries the harmony</span></div>
+  <div class="row"><span class="lbl">Voice</span><button class="chip" id="voiceOn" aria-pressed="false">Room for a voice</button><span class="muted small">no melody, a softer and lower harmony and three strings, so a singer fits on top (the Divine Vocal Machine)</span></div>
   <div class="row"><span class="lbl">Mood</span><button class="mood serif" id="mood" title="Roll the mood word"></button>
     <span class="grow"></span><span class="muted small">Key</span><select class="pk" id="key" aria-label="Key"></select>
     <span class="muted small">Tempo</span><select class="pk" id="tempo" aria-label="Tempo"><option value="0">auto</option></select>
@@ -197,6 +199,8 @@ input[type=color]{width:44px;height:38px;border:1px solid var(--line);border-rad
 <details class="card how"><summary><span class="st serif">How it works</span></summary><ol>
   <li>Tick your plugins in Your rack. The press only chooses from your ticks.</li>
   <li>Choose one to three styles for your record. Orchestra lets the mood choose the orchestral form. Two Studio styles: the calmer one carries the harmony, the faster one the beat.</li>
+  <li>Two Studio styles: choose under Beat which one plays the beat. It also sets the tempo, the other style carries the harmony.</li>
+  <li>Room for a voice: the melody rests, the harmony sits low and soft and the orchestra plays with three strings, so the Divine Vocal Machine can sing on top.</li>
   <li>Click the mood word to roll it. It gives the record its character, its colour and its key.</li>
   <li>Side B is a full remix: the same motif and key, with a new style, a new form, and your hints.</li>
   <li>The record pictures are drawn from the notes: every ring is eight bars, the dots are the beat, the arcs are the harmony, the line is the melody. Choose the colour you like.</li>
@@ -229,7 +233,7 @@ const S = {
   word: rnd(JW.W1), key: 'auto', bpm: ss.get('press-bpm', 0), minutes: ss.get('press-min', 6),
   name: '', nameMine: false, style: '', hints: {}, pal: ls.get('press-pal', 0), font: ls.get('press-font', 'classic'), own: ls.get('press-own', null),
   seed: (Math.random() * 4294967296) >>> 0,
-  tpl: ls.get('press-template', null), tplOn: ss.get('press-tpl-on', false), audio: null,
+  tpl: ls.get('press-template', null), tplOn: ss.get('press-tpl-on', false), audio: null, beat: ls.get('press-beat', ''), voice: ls.get('press-voice', false),
 };
 
 // ---------- your own track ----------
@@ -275,6 +279,13 @@ $('#sdice').innerHTML = DIE; $('#sdice').onclick = () => { const st = JP.ARTS.fi
   if (S.arts[1] === S.arts[0]) S.arts[1] = ''; if (S.arts[2] === S.arts[1] || S.arts[2] === S.arts[0]) S.arts[2] = '';
   ['#s0', '#s1', '#s2'].forEach((q, k) => { $(q).value = S.arts[k] || ''; }); ls.set('press-arts', S.arts); fresh(); };
 const arts = () => [...new Set(S.arts.filter(Boolean))];
+// the beat: which of your Studio styles plays it (style 1 unless you choose); only when the record has two of them
+function studioArts() { return arts().filter((n) => { const a = JP.ARTS.find((x) => x.name === n); return a && a.machine === 'studio'; }); }
+function drawBeat() { const st = studioArts(), row = $('#beatRow'); row.hidden = st.length < 2; if (!st.includes(S.beat)) S.beat = st[0] || '';
+  $('#beatFrom').innerHTML = ''; st.forEach((n) => { const b = document.createElement('button'); b.className = 'chip'; b.textContent = n; b.setAttribute('aria-pressed', String(n === S.beat));
+    b.onclick = () => { S.beat = n; ls.set('press-beat', n); drawBeat(); fresh(); }; $('#beatFrom').append(b); }); }
+$('#voiceOn').setAttribute('aria-pressed', String(!!S.voice));
+$('#voiceOn').onclick = () => { S.voice = !S.voice; ls.set('press-voice', S.voice); $('#voiceOn').setAttribute('aria-pressed', String(S.voice)); fresh(); };
 function drawMood() { $('#mood').textContent = S.word; }
 $('#mood').onclick = () => { let w = rnd(JW.W1), t = 0; while (w === S.word && t++ < 5) w = rnd(JW.W1); S.word = w; const b = $('#mood'); b.classList.remove('spin'); void b.offsetWidth; b.classList.add('spin'); setTimeout(drawMood, 200); fresh(); };
 (() => { const k = $('#key'); k.add(new Option('auto', 'auto')); JP.KEYS.forEach((n) => { k.add(new Option(n + ' major', n + ' major')); k.add(new Option(n + ' minor', n + ' minor')); }); k.onchange = () => { S.key = k.value; fresh(); };
@@ -298,8 +309,8 @@ function drawHints() { const el = $('#hints'); el.innerHTML = '';
 // ---------- press: plan both sides, render, draw ----------
 function fresh() { clearTimeout(S.ft); $('#pressInfo').textContent = 'Pressing...'; S.ft = setTimeout(pressNow, 60); }
 function pressNow() {
-  stopPlay(); PV = { A: null, B: null };
-  const tpl = S.tplOn && S.tplLayout ? S.tplLayout : null, o = { word: S.word, arts: arts(), minutes: S.minutes, bpm: S.bpm, seed: S.seed, rack: S.rack, template: tpl, key: S.key, name: S.name, style: S.style, hints: S.hints, audio: S.audio };
+  stopPlay(); PV = { A: null, B: null }; drawBeat();
+  const tpl = S.tplOn && S.tplLayout ? S.tplLayout : null, o = { beat: S.beat, voice: S.voice, word: S.word, arts: arts(), minutes: S.minutes, bpm: S.bpm, seed: S.seed, rack: S.rack, template: tpl, key: S.key, name: S.name, style: S.style, hints: S.hints, audio: S.audio };
   try {
     S.A = PR.planA(JP, JW, o); S.B = PR.planB(JP, JW, o, S.A);
     S.rA = JR.render(S.A, ctx()); S.rB = JR.render(S.B, ctx());

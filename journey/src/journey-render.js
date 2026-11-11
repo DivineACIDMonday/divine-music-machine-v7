@@ -91,8 +91,8 @@ function symphonyRes(Y, art, c, needTicks, seed, F) {
 // driving eighths in a build, everyone with the motif on top in the gift (the shared E.orchestra of the engine)
 const ORCH_TEX = { start0: 'soft', start1: 'soft', intro: 'soft', A: 'verse', A2: 'answer', B: 'contrast', build: 'build', gift: 'full', break: 'break', outro: 'outro' };
 const ORCH_KS = { s: { long: 0, short: 1, pizz: 2, trem: 3 }, b: { long: 0, short: 1, pizz: 2, trem: 0 }, w: { long: 0, short: 1, pizz: 1, trem: 0 } };
-function orchestrate(chords, bass, mel, c, E, motif, seed) {
-  const META = { vln1: ['Violins 1', 's', 67, 88], vln2: ['Violins 2', 's', 67, 79], vla: ['Violas', 's', 60, 72], vc: ['Celli', 's', 43, 55], cb: ['Basses', 'b', 31, 43], hn: ['Horns', 'w', 55, 67] };
+function orchestrate(chords, bass, mel, c, E, motif, seed, voice) {
+  const META = voice ? { vln2: ['Violins 2', 's', 60, 72], vla: ['Violas', 's', 53, 67], vc: ['Celli', 's', 43, 55] } : { vln1: ['Violins 1', 's', 67, 88], vln2: ['Violins 2', 's', 67, 79], vla: ['Violas', 's', 60, 72], vc: ['Celli', 's', 43, 55], cb: ['Basses', 'b', 31, 43], hn: ['Horns', 'w', 55, 67] };
   const byBar = {}; chords.forEach((n) => { const b = Math.floor(n.t / BAR); (byBar[b] = byBar[b] || new Set()).add(n.p % 12); });
   const bassBar = {}; bass.forEach((n) => { const b = Math.floor(n.t / BAR); if (bassBar[b] == null || n.p < bassBar[b]) bassBar[b] = n.p; });
   const bars = Math.max(0, ...Object.keys(byBar).map(Number), ...Object.keys(bassBar).map(Number)) + 1;
@@ -255,8 +255,10 @@ function chapterContentOne(ctx, plan, i, c, seed) {
     let sc = S.newScore(SCORE_KEY[scoreArt.name] || 'suspense', { seed }); sc.bpm = F;
     sc = S.fromTrack(sc, { notes: harmonic.filter((n) => n.t < needContent), meter: 4, bpm: F }); sc.parts.percs.on = true; sc.parts.strings.on = true;
     const r = S.render(sc), cats = S.catsFor(sc); out.score = { r, cats, style: scoreArt.name }; }
+  if (plan.voice) chords = chords.map((n) => Object.assign({}, n, { p: fold(n.p, 41, 62), v: Math.round(n.v * 0.78) })); // room for a voice: the harmony sits low and soft, under the singer
   out.bass = playBass(bass, c, studioArt.name, seed); out.chords = chords; out.melody = melody;
-  out.orch = orch || orchestrate(chords, bass, c.energy > 0.6 && !roles.has('melody') ? melody : [], c, E, plan.motif, seed);
+  out.orch = orch || orchestrate(chords, bass, c.energy > 0.6 && !roles.has('melody') && !plan.voice ? melody : [], c, E, plan.motif, seed, plan.voice);
+  if (plan.voice && out.orch) { const keep = ['vc', 'vla', 'vln2', 'cb']; out.orch = out.orch.filter((t) => keep.includes(t.id)).sort((a, b) => keep.indexOf(a.id) - keep.indexOf(b.id)).slice(0, 3); } // three voices of strings, under the singer
   out.F = F; out.lenTicks = lenTicks;
   return out;
 }
@@ -657,7 +659,7 @@ JR.render = function (plan, ctx) {
       if (w2.out && content.beat.length) { const wh = cbt(c.bars - w2.out / 2); for (let s2 = 0; s2 < 8; s2++) content.beat.push({ t: wh - 2 * PPQ + s2 * PPQ / 4, d: 40, lane: s2 < 4 ? 2 : 6, roll: 1, v: 50 + s2 * 8 }); }
       if (w2.inn && content.beat.length) content.beat.push({ t: cbt(w2.inn / 2), d: 240, lane: 7, v: 112, roll: 1 }); }
     // B: when the melody rests, the orchestra sings it (its highest voice, in its own range)
-    if (content.orch && content.orch.length && content.melody.length) { const top = content.orch.reduce((a, t) => (centre(t.name) > centre(a.name) ? t : a));
+    if (!plan.voice && content.orch && content.orch.length && content.melody.length) { const top = content.orch.reduce((a, t) => (centre(t.name) > centre(a.name) ? t : a));
       content.melody.filter((n) => labelAt(c, Math.floor(n.t / BAR)) === 'B').forEach((n) => top.notes.push({ t: n.t, dur: n.d, m: fold(n.p, 60, 91), v: Math.round(n.v * 0.9), art: 'long' })); }
     // the rhythm handover with the neighbours, and a crash on the first beat after a cut or a riser
     content.beat = handRhythm(content.beat, plan, i, (n) => n.lane <= 1, (n) => n.lane === 2 || n.lane === 3);

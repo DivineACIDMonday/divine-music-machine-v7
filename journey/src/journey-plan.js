@@ -186,7 +186,8 @@ const recVec = (rc) => { const v = Object.fromEntries(JP.DIMS.map((d) => [d, 0])
 const nearestOf = (machine, cv) => JP.ARTS.filter((a) => a.machine === machine).reduce((b, a) => (JP.dist(cv, a.v) < JP.dist(cv, b.v) ? a : b));
 // who leads a record: a Studio style carries the harmony (the slower one), a second Studio style gives the beat (the faster one)
 JP.recordBand = (rc, cv) => { const arts = rc.arts.map((a) => (a === JP.ORCH ? nearestOf('symphony', cv) : a)), st = arts.filter((a) => a.machine === 'studio').sort((a, b) => a.v.speed - b.v.speed);
-  const lead = st.length ? st[0] : arts[0], beatArt = st.length > 1 ? st[st.length - 1] : null, seen = new Set([lead.machine]), guests = [];
+  const mine = rc.beat && st.length > 1 ? st.find((a) => a.name === rc.beat) : null; // you chose the style that plays the beat; the other carries the harmony
+  const lead = mine ? st.find((a) => a !== mine) : st.length ? st[0] : arts[0], beatArt = mine || (st.length > 1 ? st[st.length - 1] : null), seen = new Set([lead.machine]), guests = [];
   arts.forEach((a) => { if (a === lead || a === beatArt || seen.has(a.machine)) return; seen.add(a.machine); guests.push(a); });
   return { name: rc.name, arts, lead, guests, beatArt }; };
 // the dealer: every chapter gets the records that fit its word best; with more records than chapters a chapter mixes several,
@@ -231,7 +232,7 @@ JP.plan = (words, opts = {}) => {
   if (ending.id === 'sunrise') ch[n - 1].eEnd = Math.max(0.45, ch[n - 1].eEnd);
 
   // your records: you hand the machine a crate, the story chooses which records each chapter plays
-  const recs = (opts.records || []).map((rc) => ({ name: rc.arts.join(' + '), arts: rc.arts.map((nm) => (nm === JP.ORCH ? JP.ORCH : JP.ARTS.find((a) => a.name === nm))).filter(Boolean) })).filter((rc) => rc.arts.length);
+  const recs = (opts.records || []).map((rc) => ({ name: rc.arts.join(' + '), beat: rc.beat || null, arts: rc.arts.map((nm) => (nm === JP.ORCH ? JP.ORCH : JP.ARTS.find((a) => a.name === nm))).filter(Boolean) })).filter((rc) => rc.arts.length);
   const used = new Set(), leadCount = {};
   if (recs.length) JP.deal(recs, ch, r, opts.solo);
   else ch.forEach((x, i) => {
@@ -396,7 +397,8 @@ JP.plan = (words, opts = {}) => {
     x.song = form.map(([type, w]) => { const u0 = u; u += w / tot; return { type, u0, u1: u, e: JP.SONG_E[type] }; });
     x.hi = clamp(x.energy + 0.3, 0.45, 1); x.lo = clamp(x.energy - 0.5, 0.05, 0.4);
   });
-  return { mode, fixed: !!opts.fixed, records: recs.length ? recs : null, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
+  if (opts.voice) ch.forEach((x) => { x.players = x.players.filter((p) => p.role !== 'melody'); }); // room for a voice: the singer is the melody
+  return { voice: !!opts.voice, mode, fixed: !!opts.fixed, records: recs.length ? recs : null, rack, seed, words, bpm, minutes, arc, opening, ending, chapters: ch, breaths, swaps, motif, top, totalBars: ch.reduce((s, x) => s + x.bars, 0) };
 };
 
 if (typeof module !== 'undefined') module.exports = JP;
