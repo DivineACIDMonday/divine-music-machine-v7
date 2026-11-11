@@ -387,6 +387,15 @@ function pocket(beat, c, contentBars) {
     if (!loops[L] && [0, 1, 2, 3].every((k) => by[p + k] && by[p + k].length)) loops[L] = [0, 1, 2, 3].map((k) => by[p + k].map((n) => Object.assign({}, n, { t: n.t - (p + k) * BAR })));
     for (let b = p; b < Math.min(p + 8, contentBars); b++) { if (!by[b]) continue; const src = loops[L];
       if (src && b - p < 7) src[(b - p) % 4].forEach((n) => out.push(Object.assign({}, n, { t: n.t + b * BAR }))); else by[b].forEach((n) => out.push(n)); } }
+  // air in the groove: soft hihat flicks between the eighths and the little percussion ticks fill every gap and suck the groove out;
+  // the hats drop their soft flicks and keep at most one sixteenth per beat (every second beat in the quiet parts); the percussion
+  // only speaks on the eighths, two per bar at most in the full parts, one in the quiet ones
+  const busy = (b) => ['gift', 'A2', 'build'].includes(labelAt(c, b)), keepN = []; const perBeat = {}, percBar = {};
+  out.sort((x, y) => x.t - y.t).forEach((n) => { if (n.roll) { keepN.push(n); return; } const b = Math.floor(n.t / BAR), pos = n.t % BAR, eighth = Math.abs(((pos + PPQ / 4) % (PPQ / 2)) - PPQ / 4) < PPQ / 12;
+    if (n.lane === 4 && !eighth) { const k = Math.floor(n.t / PPQ); if (n.v < (busy(b) ? 40 : 55) || perBeat[k] || !busy(b) && k % 2 === 0) return; perBeat[k] = 1; }
+    if (n.lane === 6) { if (!eighth || (percBar[b] || 0) >= (busy(b) ? 2 : 1)) return; percBar[b] = (percBar[b] || 0) + 1; }
+    keepN.push(n); });
+  out.length = 0; keepN.forEach((n) => out.push(n));
   const lanes = {}; out.forEach((n) => { if (!n.roll) (lanes[n.lane] = lanes[n.lane] || []).push(n); });
   Object.values(lanes).forEach((ns) => { const err = (g) => ns.reduce((a, n) => a + Math.abs(n.t - Math.round(n.t / g) * g), 0), g = err(PPQ / 3) < err(PPQ / 4) * 0.7 ? PPQ / 3 : PPQ / 4, per = PPQ / g;
     const off = {}; ns.forEach((n) => { const k = Math.round(n.t / g), pos = ((k % per) + per) % per; (off[pos] = off[pos] || []).push(n.t - k * g); });
