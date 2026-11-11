@@ -3315,6 +3315,10 @@ E.renderSong = function (song, part, opts) {
   const out = [];
   for (let b = 0; b < total; b++) for (const n of R.bar(part, b, opts)) out.push(Object.assign({}, n, { t: n.t + b * BT }));
   out.forEach((n) => { if (n.t < 0) n.t = 0; });
+  const own = song.parts[part] && song.parts[part].mode === 'yours';
+  if (part === 'bass' && !own && !opts.raw && !E.FREE_BASS.has((E.GENRES[s2.genre] || {}).bass)) { const chordPc = (b) => { let xs = []; try { xs = R.bar('chords', b, {}).concat(R.bar('pad', b, {})).filter((n) => !n.ks && n.p > 11); } catch (e) { /* no harmony here */ } if (!xs.length) return null; const pcs = new Set(xs.map((n) => n.p % 12)); return { low: xs.reduce((a, n) => (n.p < a.p ? n : a)).p % 12, pcs }; };
+    const pk = E.bassPocket(out, s2, chordPc); out.length = 0; pk.forEach((n) => out.push(n)); }
+  if ((part === 'melody' || part === 'answer') && !own && !opts.raw) E.foldLeaps(out, (E.GENRES[s2.genre].mel || {}).range || [55, 84]);
   if (part === 'bass' && E.bassMono && !(song.parts.bass && song.parts.bass.mode === 'yours')) return E.bassMono(out, E.liquidK(s2) >= 0.8 ? 'glide' : E.bassStyleOf ? E.bassStyleOf(s2) : ''); // across bar lines too
   return out;
 };
@@ -4027,6 +4031,38 @@ E.mergeMidi = function (datas) {
   const size = 14 + out.reduce((a, t) => a + t.chunk.length, 0), r = new Uint8Array(size);
   r.set([0x4D, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, out.length >> 8, out.length & 255, ppq >> 8, ppq & 255]); let at = 14; out.forEach((t) => { r.set(t.chunk, at); at += t.chunk.length; });
   return r;
+};
+
+/* ---------- the bass pocket: a bass line you can sing along with ----------
+   every kind of section (verse, chorus, drop...) keeps one 2-bar riff, the first one it plays, and repeats it through every
+   section of that kind, moved to the root of each bar; only the last bar of each 8 keeps the engine's own turn */
+// bass styles that already move by their own law keep it: a walking bass, punk eighths, a reese, a dub line, a drone, a folk bass
+E.FREE_BASS = new Set(['walk', 'pump8', 'reese', 'dub', 'drone', 'folk']);
+E.bassPocket = function (notes, song, chordPc) {
+  if (!notes.length) return notes; const BT = E.barTicks(song), by = {}, type = []; let b0 = 0;
+  song.sections.forEach((sec) => { for (let k = 0; k < sec.bars; k++) type[b0 + k] = { t: sec.type, i: k }; b0 += sec.bars; });
+  notes.forEach((n) => { const b = Math.floor(n.t / BT); (by[b] = by[b] || []).push(n); });
+  const rootOf = (xs, b) => { const d = xs.filter((n) => n.t - b * BT < BT / 16).sort((x, y) => x.t - y.t || x.p - y.p); return d.length ? d[0].p : xs.reduce((a, n) => (n.p < a ? n.p : a), 999); };
+  const sc = new Set((song.key.scale === 'major' ? [0, 2, 4, 5, 7, 9, 11] : [0, 2, 3, 5, 7, 8, 10]).map((x) => (x + song.key.root) % 12)), inKey = (p) => sc.has(((p % 12) + 12) % 12);
+  const riffs = {}, out = [];
+  for (let b = 0; b < b0; b++) { const xs = by[b]; if (!xs || !type[b]) continue; const T = type[b].t, i = type[b].i;
+    if (!riffs[T] && i % 8 === 0 && by[b + 1] && type[b + 1] && type[b + 1].t === T) riffs[T] = [b, b + 1].map((x) => { const r = rootOf(by[x], x); return by[x].map((n) => Object.assign({}, n, { t: n.t - x * BT, rel: n.p - r })); });
+    const R = riffs[T];
+    if (!R || i % 8 === 7) { xs.forEach((n) => out.push(n)); continue; }
+    let root = rootOf(xs, b); const ch = chordPc ? chordPc(b) : null, cpc = ch ? ch.low : null; if (cpc != null && ((root % 12) + 12) % 12 !== cpc) { const cand = [0, -1, 1, -2, 2, -3, 3, -4, 4, -5, 5, -6, 6].map((d) => root + d).filter((p) => ((p % 12) + 12) % 12 === cpc); if (cand.length) root = cand[0]; }
+    const lo = Math.min(...xs.map((n) => n.p)) - 5, hi = Math.max(...xs.map((n) => n.p)) + 5;
+    const keyed = xs.every((n) => inKey(n.p));
+    R[i % 2].forEach((n) => { let p = root + n.rel; if (keyed && !inKey(p)) p = inKey(p - 1) ? p - 1 : p + 1; while (p > hi && p - 12 >= lo) p -= 12; while (p < lo) p += 12; if (ch && n.t < BT / 16 && !ch.pcs.has(((p % 12) + 12) % 12)) { const f = [0, -1, 1, -2, 2, -3, 3].map((d) => p + d).find((x) => ch.pcs.has(((x % 12) + 12) % 12)); if (f != null) p = f; } // the one always lands on the chord
+      const m = Object.assign({}, n, { t: n.t + b * BT, p }); delete m.rel; out.push(m); }); }
+  for (const k of Object.keys(by)) if (+k >= b0) by[k].forEach((n) => out.push(n));
+  return out.sort((x, y) => x.t - y.t);
+};
+/* a melody that leaps further than a sixth within two beats folds that note by an octave towards the one before, when it fits its range */
+E.foldLeaps = function (notes, range) {
+  const ns = notes.filter((n) => !n.ks).sort((a, b) => a.t - b.t);
+  for (let i = 1; i < ns.length; i++) { const a = ns[i - 1], n = ns[i]; if (n.t - a.t > E.PPQ * 2) continue; let p = n.p;
+    while (p - a.p > 9 && p - 12 >= range[0] - 2) p -= 12; while (a.p - p > 9 && p + 12 <= range[1] + 2) p += 12; n.p = p; }
+  return notes;
 };
 
 root.DMM = E;
