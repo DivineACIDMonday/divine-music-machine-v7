@@ -839,12 +839,35 @@ const safe = (s) => String(s || 'Untitled').replace(/[^A-Za-z0-9]+/g, '').slice(
 function keyTag() { const k = sc().key; return S.pcName(k.root, k).replace('#', 'sharp').replace('b', 'flat').replace('Cflat', 'B') + (k.mode === 'minor' ? 'm' : ''); }
 function fileName(part) { const x = sc(); return 'DM_Score_' + safe(x.name) + '_' + safe(x.fromTrack ? 'MyTrack' : S.STYLES[x.style].name) + '_' + part + '_' + x.bpm + 'bpm_' + keyTag() + '.mid'; }
 function save(name, data) { const url = URL.createObjectURL(new Blob([data], { type: 'audio/midi' })); const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); }
+// every track in one MIDI file as well (format 1), next to the separate files
+const mergeMidi = function (datas) {
+  const files = [];
+  datas.forEach((raw) => { const d = raw instanceof Uint8Array ? raw : new Uint8Array(raw); if (d.length < 14 || d[0] !== 0x4D || d[1] !== 0x54 || d[2] !== 0x68 || d[3] !== 0x64) return;
+    const ppq = (d[12] << 8) | d[13], tracks = []; let i = 8 + ((d[4] << 24 | d[5] << 16 | d[6] << 8 | d[7]) >>> 0);
+    while (i + 8 <= d.length) { const len = (d[i + 4] << 24 | d[i + 5] << 16 | d[i + 6] << 8 | d[i + 7]) >>> 0, isTrk = d[i] === 0x4D && d[i + 1] === 0x54 && d[i + 2] === 0x72 && d[i + 3] === 0x6B;
+      if (isTrk) { const body = d.subarray(i + 8, i + 8 + len); let j = 0, run = 0, notes = false;
+        const vlq = () => { let v = 0, b; do { b = body[j++]; v = (v << 7) | (b & 0x7f); } while (b & 0x80 && j < body.length); return v; };
+        while (j < body.length && !notes) { vlq(); const b = body[j];
+          if (b === 0xFF) { j += 2; j += vlq(); continue; } if (b === 0xF0 || b === 0xF7) { j++; j += vlq(); continue; }
+          if (b & 0x80) { run = b; j++; } const st = run & 0xF0; if (st === 0x90 && body[j + 1] > 0) notes = true; j += (st === 0xC0 || st === 0xD0) ? 1 : 2; }
+        tracks.push({ chunk: d.subarray(i, i + 8 + len), notes }); }
+      i += 8 + len; }
+    files.push({ ppq, tracks }); });
+  if (!files.length) return new Uint8Array(0);
+  const ppq = files[0].ppq, all = files.filter((f) => f.ppq === ppq);
+  let cond = null; for (const f of all) { const t = f.tracks.find((x) => !x.notes); if (t && (!cond || f.tracks.every((x) => !x.notes))) { cond = t; if (f.tracks.every((x) => !x.notes)) break; } }
+  const out = (cond ? [cond] : []).concat(...all.map((f) => f.tracks.filter((t) => t.notes)));
+  const size = 14 + out.reduce((a, t) => a + t.chunk.length, 0), r = new Uint8Array(size);
+  r.set([0x4D, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, out.length >> 8, out.length & 255, ppq >> 8, ppq & 255]); let at = 14; out.forEach((t) => { r.set(t.chunk, at); at += t.chunk.length; });
+  return r;
+};
 function deliver(which) {
   const files = S.files(sc()).filter((f) => !which || f.part === which);
   if (!files.length) { setHint('Nothing to download: switch Strings or Percs on first.'); return; }
   try { if (!which) { const rec = JSON.parse(localStorage.getItem('dms-recent') || '[]'); rec.unshift(S.fingerprint(sc())); localStorage.setItem('dms-recent', JSON.stringify(rec.slice(0, 20))); } } catch (e) { /* private mode */ }
   files.forEach((f, i) => setTimeout(() => save(fileName(f.part), f.data), i * 350));
-  setHint(files.length > 1 ? files.length + ' files on their way. Drop each on bar 1 in Studio One.' : fileName(files[0].part) + ' downloaded.');
+  if (!which && files.length > 1) setTimeout(() => save(fileName('Full'), mergeMidi(files.map((f) => f.data))), files.length * 350);
+  setHint(files.length > 1 ? files.length + ' files and one Full MIDI on their way. Drop each on bar 1 in Studio One.' : fileName(files[0].part) + ' downloaded.');
 }
 
 /* ---------- your own track ---------- */

@@ -83,7 +83,7 @@ foot{display:block}
 </style></head><body>
 <header class="top" id="top"></header>
 <div class="wrap" id="wrap"><aside class="left" id="left"></aside><main class="mid" id="mid"></main><aside class="right" id="right"></aside></div>
-<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 10:00</span></footer>
+<footer class="foot"><span>© 2026 Divine Monday</span><span>Every note comes from music theory and fixed rules. Fully mechanical, right in your browser. Made to inspire and be inspired.</span><span>version 2026-11-11 13:55</span></footer>
 <script>window.DMS_GROOVE=true;</script><script>window.DMS_UJAM=true;window.DMM_UJAM=true;</script><script>
 /* Divine Music Machine engine: theory, genres, generators, arrangement, feel, polish, masks, MIDI. No DOM.
    ONE engine for every app (Machine, Lite, Groove, UJAM, Studios, Divine Groove Machine). Edit engine/engine.js only, then run tools/sync_engine.py. */
@@ -3767,6 +3767,30 @@ E.orchestra = function (o) {
   return out;
 };
 
+/* ---------- one MIDI for the whole song: the parts of a delivery merged into one multi-track file (format 1) ----------
+   the first file without notes (the Structure, with tempo and markers) becomes the conductor track; every track with notes follows */
+E.mergeMidi = function (datas) {
+  const files = [];
+  datas.forEach((raw) => { const d = raw instanceof Uint8Array ? raw : new Uint8Array(raw); if (d.length < 14 || d[0] !== 0x4D || d[1] !== 0x54 || d[2] !== 0x68 || d[3] !== 0x64) return;
+    const ppq = (d[12] << 8) | d[13], tracks = []; let i = 8 + ((d[4] << 24 | d[5] << 16 | d[6] << 8 | d[7]) >>> 0);
+    while (i + 8 <= d.length) { const len = (d[i + 4] << 24 | d[i + 5] << 16 | d[i + 6] << 8 | d[i + 7]) >>> 0, isTrk = d[i] === 0x4D && d[i + 1] === 0x54 && d[i + 2] === 0x72 && d[i + 3] === 0x6B;
+      if (isTrk) { const body = d.subarray(i + 8, i + 8 + len); let j = 0, run = 0, notes = false;
+        const vlq = () => { let v = 0, b; do { b = body[j++]; v = (v << 7) | (b & 0x7f); } while (b & 0x80 && j < body.length); return v; };
+        while (j < body.length && !notes) { vlq(); const b = body[j];
+          if (b === 0xFF) { j += 2; j += vlq(); continue; } if (b === 0xF0 || b === 0xF7) { j++; j += vlq(); continue; }
+          if (b & 0x80) { run = b; j++; } const st = run & 0xF0; if (st === 0x90 && body[j + 1] > 0) notes = true; j += (st === 0xC0 || st === 0xD0) ? 1 : 2; }
+        tracks.push({ chunk: d.subarray(i, i + 8 + len), notes }); }
+      i += 8 + len; }
+    files.push({ ppq, tracks }); });
+  if (!files.length) return new Uint8Array(0);
+  const ppq = files[0].ppq, all = files.filter((f) => f.ppq === ppq);
+  let cond = null; for (const f of all) { const t = f.tracks.find((x) => !x.notes); if (t && (!cond || f.tracks.every((x) => !x.notes))) { cond = t; if (f.tracks.every((x) => !x.notes)) break; } }
+  const out = (cond ? [cond] : []).concat(...all.map((f) => f.tracks.filter((t) => t.notes)));
+  const size = 14 + out.reduce((a, t) => a + t.chunk.length, 0), r = new Uint8Array(size);
+  r.set([0x4D, 0x54, 0x68, 0x64, 0, 0, 0, 6, 0, 1, out.length >> 8, out.length & 255, ppq >> 8, ppq & 255]); let at = 14; out.forEach((t) => { r.set(t.chunk, at); at += t.chunk.length; });
+  return r;
+};
+
 root.DMM = E;
 if (typeof module !== 'undefined') module.exports = E;
 })(typeof window !== 'undefined' ? window : globalThis);
@@ -3796,7 +3820,7 @@ if (window.DMM_UJAM && window.DMM) (function (E) {
 /* Divine Music Studio: one path from genre to MIDI. The engine is the suite's own; this is a new face for it. */
 (function () {
 const D = window.DMM;
-const VERSION = '2026-11-11 10:00';
+const VERSION = '2026-11-11 13:55';
 const GROOVE = !!window.DMS_GROOVE;
 const APP_NAME = 'Divine ' + (GROOVE ? 'Groove' : 'Music') + ' Studio' + (window.DMS_UJAM ? ' UJAM' : '');
 const SUITE = window.DMS_UJAM ? 'https://divineacidmonday.github.io/ujam/' : 'https://divineacidmonday.github.io/';
@@ -4523,7 +4547,7 @@ function makeZip(files) {
   const all = parts.concat(cent, [new Uint8Array(end.buffer)]), tot = all.reduce((a, b) => a + b.length, 0), out = new Uint8Array(tot); let o = 0; for (const p of all) { out.set(p, o); o += p.length; } return out;
 }
 async function saveFiles(files) { for (let i = 0; i < files.length; i++) { const f = files[i], blob = new Blob([f.data], { type: /\.zip$/.test(f.name) ? 'application/zip' : /\.json$/.test(f.name) ? 'application/json' : 'audio/midi' }), url = URL.createObjectURL(blob), a = document.createElement('a'); a.href = url; a.download = f.name; document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 4000); if (i < files.length - 1) await new Promise((r) => setTimeout(r, 450)); } toast(files.length === 1 ? 'Downloaded ' + files[0].name : 'Downloaded ' + files.length + ' files'); }
-async function getAll() { const sg = song(), no = deliveryNo(), files = deliverList(sg).map((x) => ({ name: fileName(sg, PART_NAMES[x.part], no, sg.parts[x.part].plugin, x.ver), data: buildPart(sg, x.part, x.ver) })); files.push({ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_Structure_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid', data: D.writeMidi([], { bpm: sg.bpm, meter: sg.meter, title: sg.name, markers: markers(sg) }) }); count('download/zip'); await saveFiles([{ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_All_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.zip', data: makeZip(files) }]); }
+async function getAll() { const sg = song(), no = deliveryNo(), files = deliverList(sg).map((x) => ({ name: fileName(sg, PART_NAMES[x.part], no, sg.parts[x.part].plugin, x.ver), data: buildPart(sg, x.part, x.ver) })); files.push({ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_Structure_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid', data: D.writeMidi([], { bpm: sg.bpm, meter: sg.meter, title: sg.name, markers: markers(sg) }) }); if (D.mergeMidi) files.push({ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_Full_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.mid', data: D.mergeMidi(files.map((f) => f.data)) }); count('download/zip'); await saveFiles([{ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '_All_' + Math.round(sg.bpm) + 'bpm_' + keyShort(sg.key) + '_' + no + '.zip', data: makeZip(files) }]); }
 async function getOne(part, ver) { const sg = song(), no = deliveryNo(); count('download/one'); await saveFiles([{ name: fileName(sg, PART_NAMES[part], no, sg.parts[part].plugin, ver), data: buildPart(sg, part, ver) }]); }
 function saveSongFile() { const sg = song(); saveFiles([{ name: 'DM_' + safe(sg.name) + '_' + genreTag(sg) + '.dmsong.json', data: JSON.stringify({ app: 'Divine Music Studio', v: 1, song: sg }) }]); }
 function openSongFile() { const inp = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: async () => { const f = inp.files[0]; if (!f) return; try { const o = JSON.parse(await f.text()), sg = o.song || o; if (!sg.sections || !sg.parts) throw new Error('not a song'); D.ensureTypes && D.ensureTypes(sg); stopAll(); st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.mode = 'overview'; save(); closeStart(); render(); toast('Opened ' + f.name); } catch (e) { toast('That file is not a Divine song.'); } } }); document.body.append(inp); inp.click(); setTimeout(() => inp.remove(), 60000); }
