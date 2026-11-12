@@ -3998,8 +3998,13 @@ function drawScenes() {
     if (i) { const j = document.createElement('div'); j.className = 'joint'; j.textContent = '›'; j.title = 'The machine makes the connection'; box.append(j); }
     const d = document.createElement('div'); d.className = 'scene';
     const h = document.createElement('h3'); h.className = 'serif'; h.textContent = 'Scene ' + (i + 1);
-    const sh = document.createElement('button'); sh.className = 'x'; sh.textContent = 'Shuffle'; sh.title = 'New ideas for this scene only';
-    sh.onclick = () => { sc.seed = E.newSeed(); save(); if (S.res) make(false); }; h.append(sh);
+    const sh = document.createElement('button'); sh.className = 'x'; sh.textContent = 'Shuffle'; sh.title = 'New ideas for this scene only. An empty scene gets set up for you';
+    sh.onclick = () => { sc.seed = E.newSeed(); const r = E.rng(sc.seed);
+      if (!SLOTS.some(([p]) => sc.slots[p] && sc.slots[p].inst)) {   // an empty scene: the shuffle sets it up for you, a genre and three to five places with a feeling
+        const pick = (a) => a[Math.floor(r() * a.length)]; sc.genre = pick(GENRES)[0];
+        const want = ['beat', 'bass', 'chords', 'melody', 'answer'].slice(0, 3 + Math.floor(r() * 3));
+        SLOTS.forEach(([p]) => { sc.slots[p] = want.includes(p) ? { inst: r() < 0.4 ? 'machine' : pick(Object.keys(INST[p])), feel: r() < 0.75 ? pick(Object.keys(FEELS)) : '' } : {}; }); }
+      save(); drawScenes(); make(false); }; h.append(sh);
     if (S.scenes.length > 1) { const x = document.createElement('button'); x.className = 'x'; x.textContent = 'Remove'; x.onclick = () => { S.scenes.splice(i, 1); save(); drawScenes(); }; h.append(x); }
     d.append(h);
     const g = document.createElement('div'); g.className = 'slot'; const gn = document.createElement('span'); gn.className = 'nm'; gn.textContent = 'Genre';
