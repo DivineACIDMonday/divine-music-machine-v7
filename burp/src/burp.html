@@ -49,6 +49,7 @@
       if (!prev) { sc = { genre: pick(G), slots: {} }; PK.forEach((p) => { sc.slots[p] = {}; }); ['chords', pick(['bass', 'beat'])].forEach((p) => { sc.slots[p] = slotNew(p, r, pick, chance); sc.slots[p].sw = 'grow'; }); }   // the opening: a few places, growing
       else { sc = JSON.parse(JSON.stringify(prev)); if (chance(0.6)) sc.genre = pick(G);                     // the next part inherits, and changes two or three things
         const ch = PK.slice().sort(() => r() - 0.5).slice(0, 2 + Math.floor(r() * 2));
+        PK.forEach((p) => { const sl = sc.slots[p]; if (!sl.inst) return; if (sl.rh === 'speed' || sl.rh === 'slow') { delete sl.rh; delete sl.n; } delete sl.sw; delete sl.in; });   // what carries over keeps its sound, not its gesture
         ch.forEach((p) => { sc.slots[p] = sc.slots[p].inst && p !== 'beat' && chance(0.35) ? {} : slotNew(p, r, pick, chance); }); }   // once the beat is in, it stays (it may change)
       if (!sc.slots.chords.inst) sc.slots.chords = Object.assign(slotNew('chords', r, pick, chance), { inst: pick(['pad', 'strings', 'organ', 'machine']), rh: undefined, rhFrom: undefined });   // glue: always harmony
       if (i >= 1 && !sc.slots.beat.inst) sc.slots.beat = slotNew('beat', r, pick, chance);
