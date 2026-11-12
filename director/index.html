@@ -44,6 +44,7 @@ input[type=number]{background:#0F131C;border:1px solid var(--line);border-radius
 .slot .nm{color:var(--mu);font-size:13.5px;padding-top:8px}
 .slot .ch{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
 .slot .ch select{flex:1 1 92px;min-width:0}
+input[type=text]{background:#0F131C;border:1px solid var(--line);border-radius:9px;padding:7px 9px;min-height:38px;color:var(--tx);font:inherit}
 [hidden]{display:none!important}
 .rhy{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;min-width:0}
 .rhy input{width:58px}
@@ -4000,7 +4001,11 @@ function drawScenes() {
     if (S.scenes.length > 1) { const x = document.createElement('button'); x.className = 'x'; x.textContent = 'Remove'; x.onclick = () => { S.scenes.splice(i, 1); save(); drawScenes(); }; h.append(x); }
     d.append(h);
     const g = document.createElement('div'); g.className = 'slot'; const gn = document.createElement('span'); gn.className = 'nm'; gn.textContent = 'Genre';
-    const gc = document.createElement('div'); gc.className = 'ch'; gc.append(sel(GENRES, sc.genre, (v) => { sc.genre = v; save(); })); g.append(gn, gc); d.append(g);
+    const gc = document.createElement('div'); gc.className = 'ch'; gc.append(sel(GENRES, sc.genre, (v) => { sc.genre = v; save(); if (i === 0) drawScenes(); })); g.append(gn, gc); d.append(g);
+    const lr = document.createElement('div'); lr.className = 'slot'; const ln = document.createElement('span'); ln.className = 'nm'; ln.textContent = 'Length';
+    const lc = document.createElement('div'); lc.className = 'ch'; lc.style.alignItems = 'center'; const ti = document.createElement('input'); ti.type = 'text'; ti.placeholder = 'm:ss'; ti.value = sc.time || ''; ti.style.width = '80px'; ti.title = 'How long this scene lasts, for example 2:30. Empty: the length at the top';
+    const lt = document.createElement('span'); lt.className = 'muted small'; const show = () => { const b = barsOf(i); lt.textContent = (sc.time && secOf(sc.time) ? '' : 'empty: like the others, ') + b + ' bars, ' + fmt(b * 240 / bpmNow()) + ' at ' + bpmNow() + ' bpm'; }; show();
+    ti.onchange = () => { sc.time = secOf(ti.value) ? ti.value.trim() : ''; save(); drawScenes(); }; lc.append(ti, lt); lr.append(ln, lc); d.append(lr);
     SLOTS.forEach(([part, name]) => { const sl = sc.slots[part] = sc.slots[part] || {};
       const r = document.createElement('div'); r.className = 'slot'; const n = document.createElement('span'); n.className = 'nm'; n.textContent = name;
       const c = document.createElement('div'); c.className = 'ch';
@@ -4009,7 +4014,7 @@ function drawScenes() {
       if (sl.inst) {
         c.append(sel(Object.entries(FEELS).map(([k, v]) => [k, v.n]), sl.feel, (v) => { sl.feel = v; save(); }, 'any feeling'));
         c.append(sel(plugOpts(part), sl.plug || (part === 'beat' ? 'gm' : 'plain'), (v) => { sl.plug = v; save(); }));
-        c.append(rhythmBox(sl));
+        c.append(rhythmBox(sl, barsOf(i)));
       }
       r.append(n, c); d.append(r); });
     box.append(d);
@@ -4020,12 +4025,16 @@ function drawScenes() {
 }
 function segInit(id, get, set) { const b = document.querySelectorAll(id + ' button'); const draw = () => b.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === String(get()))));
   b.forEach((x) => { x.onclick = () => { set(x.dataset.v); save(); draw(); }; }); draw(); }
-segInit('#tempoMode', () => S.tempo, (v) => { S.tempo = v; $('#bpm').hidden = v !== 'own'; });
+segInit('#tempoMode', () => S.tempo, (v) => { S.tempo = v; $('#bpm').hidden = v !== 'own'; drawScenes(); });
 segInit('#lenSeg', () => S.len, (v) => { S.len = +v; drawScenes(); });
-$('#bpm').hidden = S.tempo !== 'own'; $('#bpm').value = S.bpm; $('#bpm').oninput = () => { S.bpm = E.clamp(+$('#bpm').value || 110, 60, 200); save(); };
+$('#bpm').hidden = S.tempo !== 'own'; $('#bpm').value = S.bpm; $('#bpm').onchange = () => { S.bpm = E.clamp(+$('#bpm').value || 110, 60, 200); save(); drawScenes(); };
 
 // ---------- your own timing: a rhythm per place, and every hit on the strip can be clicked on or off ----------
 const STEP = PPQ / 4, RHY = [['machine', 'Rhythm: Machine'], ['every', 'Rhythm: Every N bars'], ['speed', 'Rhythm: Speeding up'], ['slow', 'Rhythm: Slowing down'], ['draw', 'Rhythm: Draw my own']];
+function bpmNow() { const sc0 = S.scenes[0]; return S.tempo === 'own' ? S.bpm : (sc0.genre === 'cinematic' ? 96 : E.GENRES[ENGINE_GENRE(sc0.genre)].def); }
+const secOf = (txt) => { const m = String(txt || '').trim().match(/^(\d+)(?::(\d{1,2}))?$/); return m ? (m[2] != null ? +m[1] * 60 + +m[2] : +m[1]) : 0; };   // 2:30 or 150
+const fmt = (sec) => Math.floor(sec / 60) + ':' + String(Math.round(sec % 60)).padStart(2, '0');
+function barsOf(si) { const sc = S.scenes[si]; if (sc && sc.time && secOf(sc.time)) return Math.max(1, Math.round(secOf(sc.time) * bpmNow() / 240)); return sceneBars(); }  // a time you give wins: bars = seconds x bpm / 240
 function sceneBars() { const lines = S.lyrics.split('\n').filter((l) => l.trim() && !/^\s*\[.*\]\s*$/.test(l)).length, n = S.scenes.length;
   return lines ? Math.max(S.len, Math.ceil((lines * 4.5 + 8) / n / 8) * 8) : S.len; }
 function baseHits(sl, bars) { const m = sl.rh || 'machine', n = E.clamp(Math.round(+sl.n || 4), 1, 64), tot = bars * 16, h = [];
@@ -4035,7 +4044,7 @@ function baseHits(sl, bars) { const m = sl.rh || 'machine', n = E.clamp(Math.rou
   return h; }
 function hitsOf(sl, bars) { if (!sl.rh || sl.rh === 'machine') return null; const tot = bars * 16, ed = sl.ed || { add: [], del: [] };
   const set = new Set(baseHits(sl, bars).filter((x) => !ed.del.includes(x))); ed.add.forEach((x) => { if (x < tot) set.add(x); }); return [...set].sort((a, b) => a - b); }
-function rhythmBox(sl) { const box = document.createElement('div'); box.className = 'rhy'; const bars = sceneBars();
+function rhythmBox(sl, bars) { const box = document.createElement('div'); box.className = 'rhy';
   const s = sel(RHY, sl.rh || 'machine', (v) => { sl.rh = v; sl.ed = { add: [], del: [] }; save(); drawScenes(); }); s.style.flex = '1 1 160px'; box.append(s);
   if (['every', 'speed', 'slow'].includes(sl.rh)) { const lb = document.createElement('span'); lb.className = 'muted small'; lb.textContent = sl.rh === 'every' ? 'every' : sl.rh === 'speed' ? 'start every' : 'end every';
     const inp = document.createElement('input'); inp.type = 'number'; inp.min = 1; inp.max = 64; inp.value = sl.n || 4; const lb2 = document.createElement('span'); lb2.className = 'muted small'; lb2.textContent = 'bars';
@@ -4048,7 +4057,7 @@ function rhythmBox(sl) { const box = document.createElement('div'); box.classNam
       if (near != null) { if (sl.ed.add.includes(near)) sl.ed.add = sl.ed.add.filter((x) => x !== near); else sl.ed.del.push(near); }
       else { const q = Math.round(pos / 4) * 4; if (sl.ed.del.includes(q)) sl.ed.del = sl.ed.del.filter((x) => x !== q); else sl.ed.add.push(q); }   // a new hit lands on the nearest beat
       save(); drawScenes(); };
-    const hint = document.createElement('span'); hint.className = 'muted small'; hint.textContent = sl.rh === 'draw' ? bars + ' bars, empty. Click where you want a hit, click a stripe to take it away.' : bars + ' bars. Click a stripe to switch it off, click an empty place to add one.'; box.append(sw, hint); }
+    const hint = document.createElement('span'); hint.className = 'muted small'; hint.textContent = sl.rh === 'draw' ? bars + ' bars (' + fmt(bars * 240 / bpmNow()) + '), empty. Click where you want a hit, click a stripe to take it away.' : bars + ' bars (' + fmt(bars * 240 / bpmNow()) + '). Click a stripe to switch it off, click an empty place to add one.'; box.append(sw, hint); }
   return box; }
 // the rhythm decides when; the machine still decides what: the pitch that sounds there, the drum that fits
 function applyRhythm(part, notes, hits, bars, instKey) {
@@ -4065,7 +4074,7 @@ function applyRhythm(part, notes, hits, bars, instKey) {
 function typeOf(e) { return e <= 0.3 ? 'break' : e <= 0.5 ? 'verse' : e <= 0.72 ? 'build' : e <= 0.9 ? 'chorus' : 'drop'; }
 function sceneEnergy(sc) { const es = Object.values(sc.slots).filter((s) => s.inst && s.feel).map((s) => FEELS[s.feel].e);
   if (!es.length) return sc.genre === 'cinematic' || sc.genre === 'ambient' ? 0.4 : 0.75; return Math.max(...es) * 0.7 + es.reduce((a, b) => a + b, 0) / es.length * 0.3; }
-function songFor(genre, seed, bpm, key, bars, type) { const s = E.newSong(ENGINE_GENRE(genre), { seed }); s.voice = !!S.lyrics.trim(); // room for a voice when there are words s.bpm = bpm; s.bpmAuto = false; s.keyAuto = false; s.key = Object.assign({}, key); s.meter = '4/4';
+function songFor(genre, seed, bpm, key, bars, type) { const s = E.newSong(ENGINE_GENRE(genre), { seed }); s.voice = !!S.lyrics.trim(); /* room for a voice when there are words */ s.bpm = bpm; s.bpmAuto = false; s.keyAuto = false; s.key = Object.assign({}, key); s.meter = '4/4';
   s.sections = bars > 8 && type !== 'break' ? [{ id: 'a', type: type === 'drop' || type === 'chorus' ? 'build' : 'verse', bars: 8 }, { id: 'b', type, bars: bars - 8 }].map((x, i) => (bars >= 16 && i === 0 && type === 'verse' ? Object.assign(x, { type: 'intro' }) : x)) : [{ id: 'a', type, bars }];
   return s; }
 const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 60; };
@@ -4104,15 +4113,15 @@ function beatAs(notes, kind, f, r) {
   return notes;
 }
 function makeAll() {
-  const sc0 = S.scenes[0], g0 = E.GENRES[ENGINE_GENRE(sc0.genre)], bpm = S.tempo === 'own' ? S.bpm : (sc0.genre === 'cinematic' ? 96 : g0.def);
+  const sc0 = S.scenes[0], bpm = bpmNow();
   const first = E.newSong(ENGINE_GENRE(sc0.genre), { seed: E.hash(S.seed, 'key') }), anyMinor = S.scenes.some((sc) => Object.values(sc.slots).some((s) => s.feel && FEELS[s.feel].minor));
   const key = { root: first.key.root, scale: anyMinor && first.key.scale === 'major' ? 'minor' : first.key.scale };
-  const bars = sceneBars(); // words need room: the scenes grow until every line can breathe
+  const bars0 = sceneBars(); // words need room: the scenes grow until every line can breathe
   const tracks = {}, markers = [], EN = S.scenes.map(sceneEnergy); let at = 0;
   const put = (part, label, plug, notes, song) => { const k = part + '|' + label + '|' + plug; const tr = tracks[k] = tracks[k] || { part, label, plug, notes: [], scenes: new Set() };
     const mapped = E.applyMask(song, part, notes, plug, { mode: 'instrument' }); mapped.forEach((n) => tr.notes.push(Object.assign({}, n, { t: n.t + at }))); tr.scenes.add(markers.length - 1); };
   S.scenes.forEach((sc, si) => {
-    const energy = EN[si], type = typeOf(energy), seed = E.hash(sc.seed || 1, 'scene'), song = songFor(sc.genre, seed, bpm, key, bars, type);
+    const bars = barsOf(si), energy = EN[si], type = typeOf(energy), seed = E.hash(sc.seed || 1, 'scene'), song = songFor(sc.genre, seed, bpm, key, bars, type);
     song.parts.beat.plugin = 'gm';
     markers.push({ t: at, text: 'Scene ' + (si + 1) + ': ' + (GENRES.find((g) => g[0] === sc.genre) || ['', sc.genre])[1] + ' (' + PARTNAME[type] + ')' });
     const engine = { beat: E.renderSong(song, 'beat'), bass: E.renderSong(song, 'bass'), chords: E.renderSong(song, 'chords').concat(E.renderSong(song, 'pad')), melody: E.renderSong(song, 'melody'), answer: E.renderSong(song, 'answer') };
@@ -4132,7 +4141,7 @@ function makeAll() {
     at += bars * BAR; });
   const order = { beat: 0, bass: 1, chords: 2, melody: 3, answer: 4 };
   const list = Object.values(tracks).filter((t) => t.notes.length).sort((a, b) => order[a.part] - order[b.part]).map((t) => ({ name: SLOTS.find((s) => s[0] === t.part)[1] + (t.label !== 'machine' ? ' (' + t.label + ')' : '') + (t.plug !== 'plain' && t.plug !== 'gm' ? ' for ' + E.PLUGINS[t.plug].name : ''), notes: t.notes, scenes: t.scenes, part: t.part }));
-  return { tracks: list, markers, bpm, key, total: at, n: S.scenes.length, grown: bars > S.len ? bars : 0 };
+  return { tracks: list, markers, bpm, key, total: at, n: S.scenes.length, grown: bars0 > S.len ? bars0 : 0 };
 }
 // ---------- seamless joints: the end of a scene already leans into the next one ----------
 const PARTNAME = { break: 'Break', verse: 'Verse', build: 'Build', chorus: 'Chorus', drop: 'Drop' };
