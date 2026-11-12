@@ -196,16 +196,21 @@ function sceneBars() { const lines = S.lyrics.split('\n').filter((l) => l.trim()
   return lines ? Math.max(S.len, Math.ceil((lines * 4.5 + 8) / n / 8) * 8) : S.len; }
 function baseHits(sl, bars) { const m = sl.rh || 'machine', n = E.clamp(Math.round(+sl.n || 4), 1, 64), tot = bars * 16, h = [];
   if (m === 'every') for (let b = 0; b < bars; b += n) h.push(b * 16);
-  if (m === 'speed' || m === 'slow') { let t = 0; while (t < tot) { h.push(t); const x = t / tot, f = m === 'speed' ? Math.pow(x, 2.2) : 1 - Math.pow(1 - x, 2.2), gap = m === 'speed' ? n * 16 * (1 - f) + f : (1 - f) + n * 16 * f;
-      t += gap >= 16 ? Math.round(gap / 16) * 16 : [8, 4, 2, 1].find((q) => q <= gap) || 1; } }   // whole bars exactly, the small steps only where it rushes
+  if (m === 'speed' || m === 'slow') { // from every N bars down to the fastest roll there is (a 64th), evenly faster all the way; you click off where it should stop
+    const A = n * 16, Z = 0.25, top = 0.88; let t = 0;
+    while (t < tot - 1e-9) { h.push(Math.round(t * 4) / 4); const x = Math.min(1, (m === 'speed' ? t : tot - t) / (tot * top)), gap = A * Math.pow(Z / A, Math.pow(x, 1.8));  /* calm for a long time, then faster and faster */
+      t += gap >= 16 ? Math.max(16, Math.round(gap / 16) * 16) : [8, 4, 2, 1, 0.5, 0.25].find((q) => q <= gap) || 0.25; } }
   return h; }
 function hitsOf(sl, bars) { if (!sl.rh || sl.rh === 'machine') return null; const tot = bars * 16, ed = sl.ed || { add: [], del: [] };
-  const set = new Set(baseHits(sl, bars).filter((x) => !ed.del.includes(x))); ed.add.forEach((x) => { if (x < tot) set.add(x); }); return [...set].sort((a, b) => a - b); }
+  const stop = sl.rh === 'speed' && +sl.stop > 0 ? (+sl.stop) * 16 : Infinity;   // stop at bar: the roll ends where you say
+  const set = new Set(baseHits(sl, bars).filter((x) => !ed.del.includes(x) && x < stop)); ed.add.forEach((x) => { if (x < tot) set.add(x); }); return [...set].sort((a, b) => a - b); }
 function rhythmBox(sl, bars) { const box = document.createElement('div'); box.className = 'rhy';
   const s = sel(RHY, sl.rh || 'machine', (v) => { sl.rh = v; sl.ed = { add: [], del: [] }; save(); drawScenes(); }); s.style.flex = '1 1 160px'; box.append(s);
   if (['every', 'speed', 'slow'].includes(sl.rh)) { const lb = document.createElement('span'); lb.className = 'muted small'; lb.textContent = sl.rh === 'every' ? 'every' : sl.rh === 'speed' ? 'start every' : 'end every';
     const inp = document.createElement('input'); inp.type = 'number'; inp.min = 1; inp.max = 64; inp.value = sl.n || 4; const lb2 = document.createElement('span'); lb2.className = 'muted small'; lb2.textContent = 'bars';
-    inp.onchange = () => { sl.n = E.clamp(Math.round(+inp.value || 4), 1, 64); sl.ed = { add: [], del: [] }; save(); drawScenes(); }; box.append(lb, inp, lb2); }
+    inp.onchange = () => { sl.n = E.clamp(Math.round(+inp.value || 4), 1, 64); sl.ed = { add: [], del: [] }; save(); drawScenes(); }; box.append(lb, inp, lb2);
+    if (sl.rh === 'speed') { const l3 = document.createElement('span'); l3.className = 'muted small'; l3.textContent = 'stop after bar'; const st2 = document.createElement('input'); st2.type = 'number'; st2.min = 1; st2.max = bars; st2.placeholder = 'end'; st2.value = sl.stop || '';
+      st2.title = 'Empty: it goes on until the end of the scene, as fast as it can'; st2.onchange = () => { sl.stop = +st2.value > 0 ? Math.round(+st2.value) : ''; save(); drawScenes(); }; box.append(l3, st2); } }
   const hits = hitsOf(sl, bars);
   if (hits) { const st = document.createElement('div'); st.className = 'strip'; st.style.setProperty('--bw', (100 / bars) + '%'); st.style.width = Math.max(bars * 16, 300) + 'px'; const sw = document.createElement('div'); sw.className = 'sw'; sw.append(st); st.title = 'Click a stripe to switch it off, click an empty place to add one';
     hits.forEach((x) => { const i = document.createElement('i'); i.style.left = (x / (bars * 16) * 100) + '%'; st.append(i); });
@@ -220,7 +225,7 @@ function rhythmBox(sl, bars) { const box = document.createElement('div'); box.cl
 function applyRhythm(part, notes, hits, bars, instKey) {
   const T = hits.map((x) => x * STEP), end = bars * BAR;
   if (part === 'beat') return T.map((t, i) => { const gap = (T[i + 1] != null ? T[i + 1] : end) - t, fast = gap < PPQ, bar1 = t % BAR === 0;
-    return { t, d: 120, lane: fast && i % 2 ? 2 : 0, v: E.clamp(Math.round(bar1 ? 112 : fast ? 78 + 30 * (t / end) : 96), 30, 124) }; });
+    return { t, d: Math.max(12, Math.min(120, gap - 6)), lane: fast && i % 2 ? 2 : 0, v: E.clamp(Math.round(bar1 ? 112 : fast ? 78 + 30 * (t / end) : 96), 30, 124) }; });
   const src = notes.slice().sort((a, b) => a.t - b.t); if (!src.length) return [];
   const out = []; T.forEach((t, i) => { const nx = T[i + 1] != null ? T[i + 1] : end; let on = src.filter((n) => n.t <= t && n.t + n.d > t);
     if (!on.length) { const prev = src.filter((n) => n.t <= t), base = prev.length ? prev[prev.length - 1].t : src[0].t; on = src.filter((n) => n.t === base); }
