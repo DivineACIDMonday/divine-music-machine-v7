@@ -44,6 +44,15 @@ input[type=number]{background:#0F131C;border:1px solid var(--line);border-radius
 .slot .nm{color:var(--mu);font-size:13.5px;padding-top:8px}
 .slot .ch{display:flex;flex-wrap:wrap;gap:6px}
 .slot .ch select{flex:1 1 92px;min-width:0}
+[hidden]{display:none!important}
+.rhy{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+.rhy input{width:58px}
+.strip{position:relative;height:34px;width:100%;background:repeating-linear-gradient(90deg,#1b2232 0,#1b2232 calc(var(--bw) - 2px),#0F131C calc(var(--bw) - 2px),#0F131C var(--bw));border-radius:4px;cursor:pointer}
+.strip i{position:absolute;top:0;bottom:0;width:2px;background:var(--gold);border-radius:1px;pointer-events:none}
+.grid16{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;width:100%}
+.grid16 button{height:24px;border:1px solid var(--line);border-radius:4px;background:#0F131C;cursor:pointer;padding:0;min-height:0}
+.grid16 button.on{background:var(--gold);border-color:var(--gold)}
+.grid16 button:nth-child(4n+1){border-color:#3C4A66}
 .add{flex:0 0 70px;border:1px dashed var(--line);border-radius:12px;background:none;color:var(--gold);font-size:30px;cursor:pointer}
 .add:hover{border-color:var(--gold)}
 .joint{align-self:center;color:var(--mu);font-size:22px;flex:none}
@@ -156,6 +165,7 @@ function drawScenes() {
       if (sl.inst) {
         c.append(sel(Object.entries(FEELS).map(([k, v]) => [k, v.n]), sl.feel, (v) => { sl.feel = v; save(); }, 'any feeling'));
         c.append(sel(plugOpts(part), sl.plug || (part === 'beat' ? 'gm' : 'plain'), (v) => { sl.plug = v; save(); }));
+        c.append(rhythmBox(sl));
       }
       r.append(n, c); d.append(r); });
     box.append(d);
@@ -167,9 +177,49 @@ function drawScenes() {
 function segInit(id, get, set) { const b = document.querySelectorAll(id + ' button'); const draw = () => b.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === String(get()))));
   b.forEach((x) => { x.onclick = () => { set(x.dataset.v); save(); draw(); }; }); draw(); }
 segInit('#tempoMode', () => S.tempo, (v) => { S.tempo = v; $('#bpm').hidden = v !== 'own'; });
-segInit('#lenSeg', () => S.len, (v) => { S.len = +v; });
+segInit('#lenSeg', () => S.len, (v) => { S.len = +v; drawScenes(); });
 $('#bpm').hidden = S.tempo !== 'own'; $('#bpm').value = S.bpm; $('#bpm').oninput = () => { S.bpm = E.clamp(+$('#bpm').value || 110, 60, 200); save(); };
 
+// ---------- your own timing: a rhythm per place, and every hit on the strip can be clicked on or off ----------
+const STEP = PPQ / 4, RHY = [['machine', 'Rhythm: Machine'], ['every', 'Rhythm: Every N bars'], ['speed', 'Rhythm: Speeding up'], ['slow', 'Rhythm: Slowing down'], ['draw', 'Rhythm: Draw my own']];
+function sceneBars() { const lines = S.lyrics.split('\n').filter((l) => l.trim() && !/^\s*\[.*\]\s*$/.test(l)).length, n = S.scenes.length;
+  return lines ? Math.max(S.len, Math.ceil((lines * 4.5 + 8) / n / 8) * 8) : S.len; }
+function baseHits(sl, bars) { const m = sl.rh || 'machine', n = E.clamp(Math.round(+sl.n || 4), 1, 64), tot = bars * 16, h = [];
+  if (m === 'every') for (let b = 0; b < bars; b += n) h.push(b * 16);
+  if (m === 'draw') { const g = sl.grid || [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0]; for (let b = 0; b < bars; b++) g.forEach((on, st) => { if (on) h.push(b * 16 + st); }); }
+  if (m === 'speed' || m === 'slow') { let t = 0; while (t < tot) { h.push(t); const x = t / tot, f = m === 'speed' ? Math.pow(x, 2.2) : 1 - Math.pow(1 - x, 2.2), gap = m === 'speed' ? n * 16 * (1 - f) + f : (1 - f) + n * 16 * f;
+      t += gap >= 16 ? Math.round(gap / 16) * 16 : [8, 4, 2, 1].find((q) => q <= gap) || 1; } }   // whole bars exactly, the small steps only where it rushes
+  return h; }
+function hitsOf(sl, bars) { if (!sl.rh || sl.rh === 'machine') return null; const tot = bars * 16, ed = sl.ed || { add: [], del: [] };
+  const set = new Set(baseHits(sl, bars).filter((x) => !ed.del.includes(x))); ed.add.forEach((x) => { if (x < tot) set.add(x); }); return [...set].sort((a, b) => a - b); }
+function rhythmBox(sl) { const box = document.createElement('div'); box.className = 'rhy'; const bars = sceneBars();
+  const s = sel(RHY, sl.rh || 'machine', (v) => { sl.rh = v; sl.ed = { add: [], del: [] }; save(); drawScenes(); }); s.style.flex = '1 1 160px'; box.append(s);
+  if (['every', 'speed', 'slow'].includes(sl.rh)) { const lb = document.createElement('span'); lb.className = 'muted small'; lb.textContent = sl.rh === 'every' ? 'every' : sl.rh === 'speed' ? 'start every' : 'end every';
+    const inp = document.createElement('input'); inp.type = 'number'; inp.min = 1; inp.max = 64; inp.value = sl.n || 4; const lb2 = document.createElement('span'); lb2.className = 'muted small'; lb2.textContent = 'bars';
+    inp.onchange = () => { sl.n = E.clamp(Math.round(+inp.value || 4), 1, 64); sl.ed = { add: [], del: [] }; save(); drawScenes(); }; box.append(lb, inp, lb2); }
+  if (sl.rh === 'draw') { const g = document.createElement('div'); g.className = 'grid16'; sl.grid = sl.grid || [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
+    sl.grid.forEach((on, i) => { const b = document.createElement('button'); b.className = on ? 'on' : ''; b.title = 'step ' + (i + 1); b.onclick = () => { sl.grid[i] = sl.grid[i] ? 0 : 1; sl.ed = { add: [], del: [] }; save(); drawScenes(); }; g.append(b); }); box.append(g); }
+  const hits = hitsOf(sl, bars);
+  if (hits) { const st = document.createElement('div'); st.className = 'strip'; st.style.setProperty('--bw', (100 / bars) + '%'); st.title = 'Click a stripe to switch it off, click an empty place to add one';
+    hits.forEach((x) => { const i = document.createElement('i'); i.style.left = (x / (bars * 16) * 100) + '%'; st.append(i); });
+    st.onclick = (ev) => { const r0 = st.getBoundingClientRect(), pos = (ev.clientX - r0.left) / r0.width * bars * 16, near = hits.find((x) => Math.abs(x - pos) <= Math.max(1.5, bars * 16 / r0.width * 4));
+      sl.ed = sl.ed || { add: [], del: [] };
+      if (near != null) { if (sl.ed.add.includes(near)) sl.ed.add = sl.ed.add.filter((x) => x !== near); else sl.ed.del.push(near); }
+      else { const q = Math.round(pos / 4) * 4; if (sl.ed.del.includes(q)) sl.ed.del = sl.ed.del.filter((x) => x !== q); else sl.ed.add.push(q); }   // a new hit lands on the nearest beat
+      save(); drawScenes(); };
+    const hint = document.createElement('span'); hint.className = 'muted small'; hint.textContent = bars + ' bars. Click a stripe to switch it off, click an empty place to add one.'; box.append(st, hint); }
+  return box; }
+// the rhythm decides when; the machine still decides what: the pitch that sounds there, the drum that fits
+function applyRhythm(part, notes, hits, bars, instKey) {
+  const T = hits.map((x) => x * STEP), end = bars * BAR;
+  if (part === 'beat') return T.map((t, i) => { const gap = (T[i + 1] != null ? T[i + 1] : end) - t, fast = gap < PPQ, bar1 = t % BAR === 0;
+    return { t, d: 120, lane: fast && i % 2 ? 2 : 0, v: E.clamp(Math.round(bar1 ? 112 : fast ? 78 + 30 * (t / end) : 96), 30, 124) }; });
+  const src = notes.slice().sort((a, b) => a.t - b.t); if (!src.length) return [];
+  const out = []; T.forEach((t, i) => { const nx = T[i + 1] != null ? T[i + 1] : end; let on = src.filter((n) => n.t <= t && n.t + n.d > t);
+    if (!on.length) { const prev = src.filter((n) => n.t <= t), base = prev.length ? prev[prev.length - 1].t : src[0].t; on = src.filter((n) => n.t === base); }
+    if (part !== 'chords') on = [on.reduce((a, b) => (part === 'bass' ? (b.p < a.p ? b : a) : (b.p > a.p ? b : a)))];
+    on.forEach((n) => out.push({ t, d: Math.max(60, Math.min(nx - t - 20, PPQ * 8)), p: n.p, v: t % BAR === 0 ? Math.min(124, n.v + 8) : n.v })); });
+  return out; }
 // ---------- the machine ----------
 function typeOf(e) { return e <= 0.3 ? 'break' : e <= 0.5 ? 'verse' : e <= 0.72 ? 'build' : e <= 0.9 ? 'chorus' : 'drop'; }
 function sceneEnergy(sc) { const es = Object.values(sc.slots).filter((s) => s.inst && s.feel).map((s) => FEELS[s.feel].e);
@@ -216,8 +266,7 @@ function makeAll() {
   const sc0 = S.scenes[0], g0 = E.GENRES[ENGINE_GENRE(sc0.genre)], bpm = S.tempo === 'own' ? S.bpm : (sc0.genre === 'cinematic' ? 96 : g0.def);
   const first = E.newSong(ENGINE_GENRE(sc0.genre), { seed: E.hash(S.seed, 'key') }), anyMinor = S.scenes.some((sc) => Object.values(sc.slots).some((s) => s.feel && FEELS[s.feel].minor));
   const key = { root: first.key.root, scale: anyMinor && first.key.scale === 'major' ? 'minor' : first.key.scale };
-  const lines = S.lyrics.split('\n').filter((l) => l.trim() && !/^\s*\[.*\]\s*$/.test(l)).length, n = S.scenes.length;
-  const bars = lines ? Math.max(S.len, Math.ceil((lines * 4.5 + 8) / n / 8) * 8) : S.len; // words need room: the scenes grow until every line can breathe
+  const bars = sceneBars(); // words need room: the scenes grow until every line can breathe
   const tracks = {}, markers = [], EN = S.scenes.map(sceneEnergy); let at = 0;
   const put = (part, label, plug, notes, song) => { const k = part + '|' + label + '|' + plug; const tr = tracks[k] = tracks[k] || { part, label, plug, notes: [], scenes: new Set() };
     const mapped = E.applyMask(song, part, notes, plug, { mode: 'instrument' }); mapped.forEach((n) => tr.notes.push(Object.assign({}, n, { t: n.t + at }))); tr.scenes.add(markers.length - 1); };
@@ -234,6 +283,7 @@ function makeAll() {
       if (part === 'chords' && sl.inst === 'strings') notes = strings(engine.chords, engine.bass, bars, type, f ? f.e : energy, key, E.hash(seed, 'str'));
       if (part === 'bass' && inst && inst[3]) notes = legato(notes, false);
       notes = feel(notes, part, f, inst, r);
+      const hits = hitsOf(sl, bars); if (hits) notes = applyRhythm(part, notes, hits, bars, sl.inst);
       if (!f && inst && inst[1]) notes = fold(notes, inst[1], inst[2]);
       notes = joint(part, notes, si, EN, bars, key, r);
       const label = inst ? inst[0] : 'machine', plug = sl.plug || (part === 'beat' ? 'gm' : 'plain');
@@ -322,7 +372,7 @@ $('#dlFull').onclick = () => saveBlob(new Blob([full()], { type: 'audio/midi' })
 const enc = (t) => new TextEncoder().encode(t);
 $('#dlSvp').onclick = () => saveBlob(new Blob([S.vocal.svp], { type: 'application/json' }), title() + '_Vocal.svp');
 $('#dlXml').onclick = () => saveBlob(new Blob([S.vocal.xml], { type: 'application/vnd.recordare.musicxml+xml' }), title() + '_Vocal.musicxml');
-$('#lyrics').value = S.lyrics; $('#lyrics').oninput = () => { S.lyrics = $('#lyrics').value; save(); };
+$('#lyrics').value = S.lyrics; $('#lyrics').oninput = () => { const b0 = sceneBars(); S.lyrics = $('#lyrics').value; save(); if (sceneBars() !== b0) drawScenes(); };
 $('#clearLy').onclick = () => { S.lyrics = ''; $('#lyrics').value = ''; save(); };
 $('#oracle').onclick = async () => { $('#oracle').disabled = true; try { const w = await vocalFrame(); const g = { triphop: 'triphop', synthwave: 'synthwave', newwave: 'newwave', acid: 'acid', techno: 'techno', house: 'house', blues: 'blues' }[S.scenes[0].genre] || 'triphop';
   const o = w.eval('rng = Math.random; oracle(' + JSON.stringify(g) + ')'); S.lyrics = o.text; $('#lyrics').value = o.text; save(); } catch (e) { $('#info').textContent = 'The oracle could not be reached: ' + e.message; } $('#oracle').disabled = false; };
