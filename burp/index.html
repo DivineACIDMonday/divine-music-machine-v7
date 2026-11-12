@@ -4356,14 +4356,14 @@ drawScenes();
       prev = sc;
       // long parts get a small change every 8 to 16 bars, so nothing stands still
       const first = scenes.length;
-      for (let a0 = 0; a0 < L; ) { const piece = Math.min(L - a0, L - a0 > 24 ? pick([8, 16]) : L - a0), c = JSON.parse(JSON.stringify(sc)); c.seed = Math.floor(r() * 2147483647); c.time = fmt(piece * 240 / bpm); c.cont = a0 > 0; scenes.push(c); a0 += piece; } });
+      for (let a0 = 0; a0 < L; ) { const piece = Math.min(L - a0, L - a0 > 24 ? pick([8, 16]) : L - a0), c = JSON.parse(JSON.stringify(sc)); c.seed = Math.floor(r() * 2147483647); c.time = fmt(piece * 240 / bpm); c.cont = a0 > 0; scenes.push(c); a0 += piece; }
       // a part cut in pieces keeps its gestures once: a speed up only in the last piece, a slow down and a late entry only in the first, a swell once
       const pieces = scenes.slice(first), last = pieces.length - 1;
       pieces.forEach((c, k) => PK.forEach((p) => { const sl = c.slots[p]; if (!sl.inst) return;
         if (sl.rh === 'speed' && k !== last) { delete sl.rh; delete sl.n; }
         if (sl.rh === 'slow' && k !== 0) { delete sl.rh; delete sl.n; }
         if (sl.in && k !== 0) delete sl.in;
-        if (sl.sw && k !== (sl.sw === 'arc' ? Math.floor(last / 2) : sl.sw === 'grow' ? last : 0)) delete sl.sw; }));
+        if (sl.sw && k !== (sl.sw === 'arc' ? Math.floor(last / 2) : sl.sw === 'grow' ? last : 0)) delete sl.sw; })); });
     const end = scenes[scenes.length - 1];   // only the very last stretch thins out and fades, so a long last part keeps its beat
     if (scenes.length > 2) { PK.forEach((p) => { if (end.slots[p].inst && (p === 'melody' || p === 'answer') && chance(0.5)) end.slots[p] = {}; }); ['chords', 'bass', 'beat'].forEach((p) => { if (end.slots[p].inst) end.slots[p].sw = 'fade'; }); }
     if (!end.slots.bass.inst && !end.slots.beat.inst) end.slots.bass = slotNew('bass', r, pick, chance);
