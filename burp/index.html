@@ -4329,9 +4329,9 @@ drawScenes();
   // everything is open: any genre next to any genre, rules of one place on another, sometimes, never always
   function slotNew(p, r, pick, chance) { const sl = { inst: chance(0.3) ? 'machine' : pick(Object.keys(INST[p])), feel: chance(0.7) ? pick(Object.keys(FEELS)) : '' };
     if (chance(0.35)) sl.src = pick(G);                                                                     // play like another genre
-    const rr = r(); if (rr < 0.12) { sl.rh = pick(['every', 'speed', 'slow']); sl.n = pick([1, 2, 3, 4, 5, 7, 8]); }
+    const rr = r(); if (rr < 0.12) { sl.rh = pick(['every', 'speed', 'slow']); sl.n = p === 'beat' && sl.rh === 'every' ? 1 : pick([1, 2, 3, 4, 5, 7, 8]); }   // a beat never thins to one hit in many bars
     else if (rr < 0.2) { sl.rh = 'draw'; sl.ed = { add: [], del: [] }; sl.pat = Array.from({ length: 16 }, (_, i) => (i % 4 === 0 ? r() < 0.7 : r() < 0.22)); }
-    else if (rr < 0.32) sl.rhFrom = pick(PK.filter((q) => q !== p));                                        // borrow another place's rhythm
+    else if (rr < 0.32) sl.rhFrom = p === 'beat' ? 'bass' : pick(PK.filter((q) => q !== p));                                        // borrow another place's rhythm
     if (chance(0.33)) sl.sw = pick(['grow', 'fade', 'arc']);
     if (p !== 'beat' && chance(0.25)) sl.shape = pick(['rise', 'fall', 'stay']);
     if (chance(0.15)) sl.in = 1 + 4 * Math.floor(r() * 2);
