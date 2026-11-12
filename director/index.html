@@ -75,9 +75,17 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px}
 <div class="scenes" id="scenes"></div>
 
 <section class="card">
+  <div class="row"><span class="st serif">Lyrics</span><span class="muted small">optional: paste your own words or press Oracle, and you also get the sung line for Synthesizer V</span></div>
+  <textarea id="lyrics" rows="6" placeholder="[Verse]&#10;your words here&#10;&#10;[Chorus]&#10;..." style="background:#0F131C;border:1px solid var(--line);border-radius:10px;color:var(--tx);font:inherit;padding:10px;resize:vertical"></textarea>
+  <div class="row"><button class="btn" id="oracle">Oracle</button><button class="btn" id="clearLy">Clear</button>
+    <span class="lbl">Voice</span><div class="seg" id="voiceSeg"><button data-v="nyl">NYL II</button><button data-v="moxu">Mo Xu</button><button data-v="any">Other</button></div>
+    <span class="lbl">Character</span><div class="seg" id="charSeg"><button data-v="0.6">Subtle</button><button data-v="1">Expressive</button><button data-v="1.5">Bold</button></div></div>
+</section>
+
+<section class="card">
   <div class="row"><button class="btn big" id="make">Make it</button><button class="btn" id="again" hidden>Again, new ideas</button><span class="muted small" id="info"></span></div>
   <div class="tracks" id="tracks"></div>
-  <div class="row" id="dl" hidden><button class="btn big" id="dlZip">Download all (zip)</button><button class="btn" id="dlFull">Full MIDI only</button>
+  <div class="row" id="dl" hidden><button class="btn big" id="dlZip">Download all (zip)</button><button class="btn" id="dlFull">Full MIDI only</button><button class="btn" id="dlSvp" hidden>Synthesizer V project</button><button class="btn" id="dlXml" hidden>MusicXML</button>
     <span class="muted small">In Studio One: drag the Full MIDI in, every place gets its own track, the scenes are markers.</span></div>
 </section>
 
@@ -3963,8 +3971,8 @@ const plugOpts = (part) => E.pluginsFor(part === 'beat' ? 'beat' : part).map((k)
 
 // ---------- state ----------
 const blank = () => ({ genre: 'cinematic', slots: { melody: {}, chords: {}, answer: {}, bass: {}, beat: {} } });
-const S = { tempo: ls.get('dir-tempo', 'auto'), bpm: ls.get('dir-bpm', 110), len: ls.get('dir-len', 16), scenes: ls.get('dir-scenes', null) || [blank()], seed: E.newSeed(), res: null };
-const save = () => { ls.set('dir-scenes', S.scenes); ls.set('dir-tempo', S.tempo); ls.set('dir-bpm', S.bpm); ls.set('dir-len', S.len); };
+const S = { lyrics: ls.get('dir-lyrics', ''), voice: ls.get('dir-voice', 'nyl'), char: ls.get('dir-char', 1), vocal: null, tempo: ls.get('dir-tempo', 'auto'), bpm: ls.get('dir-bpm', 110), len: ls.get('dir-len', 16), scenes: ls.get('dir-scenes', null) || [blank()], seed: E.newSeed(), res: null };
+const save = () => { ls.set('dir-lyrics', S.lyrics); ls.set('dir-voice', S.voice); ls.set('dir-char', S.char); ls.set('dir-scenes', S.scenes); ls.set('dir-tempo', S.tempo); ls.set('dir-bpm', S.bpm); ls.set('dir-len', S.len); };
 
 function sel(opts, val, onch, openLabel) {
   const s = document.createElement('select'); if (openLabel) opts = [['', openLabel]].concat(opts);
@@ -4008,7 +4016,7 @@ const rngOf = (...k) => E.rng(E.hash(S.seed, ...k));
 function typeOf(e) { return e <= 0.3 ? 'break' : e <= 0.5 ? 'verse' : e <= 0.72 ? 'build' : e <= 0.9 ? 'chorus' : 'drop'; }
 function sceneEnergy(sc) { const es = Object.values(sc.slots).filter((s) => s.inst && s.inst !== 'silent' && s.feel).map((s) => FEELS[s.feel].e);
   if (!es.length) return sc.genre === 'cinematic' || sc.genre === 'ambient' ? 0.4 : 0.75; return Math.max(...es) * 0.7 + es.reduce((a, b) => a + b, 0) / es.length * 0.3; }
-function songFor(genre, seed, bpm, key, bars, type) { const s = E.newSong(ENGINE_GENRE(genre), { seed }); s.bpm = bpm; s.bpmAuto = false; s.keyAuto = false; s.key = Object.assign({}, key); s.meter = '4/4';
+function songFor(genre, seed, bpm, key, bars, type) { const s = E.newSong(ENGINE_GENRE(genre), { seed }); s.voice = !!S.lyrics.trim(); // room for a voice when there are words s.bpm = bpm; s.bpmAuto = false; s.keyAuto = false; s.key = Object.assign({}, key); s.meter = '4/4';
   s.sections = bars > 8 && type !== 'break' ? [{ id: 'a', type: type === 'drop' || type === 'chorus' ? 'build' : 'verse', bars: 8 }, { id: 'b', type, bars: bars - 8 }].map((x, i) => (bars >= 16 && i === 0 && type === 'verse' ? Object.assign(x, { type: 'intro' }) : x)) : [{ id: 'a', type, bars }];
   return s; }
 const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 60; };
@@ -4050,13 +4058,15 @@ function makeAll() {
   const sc0 = S.scenes[0], g0 = E.GENRES[ENGINE_GENRE(sc0.genre)], bpm = S.tempo === 'own' ? S.bpm : (sc0.genre === 'cinematic' ? 96 : g0.def);
   const first = E.newSong(ENGINE_GENRE(sc0.genre), { seed: E.hash(S.seed, 'key') }), anyMinor = S.scenes.some((sc) => Object.values(sc.slots).some((s) => s.feel && FEELS[s.feel].minor));
   const key = { root: first.key.root, scale: anyMinor && first.key.scale === 'major' ? 'minor' : first.key.scale };
-  const tracks = {}, markers = [], bars = S.len; let at = 0;
+  const lines = S.lyrics.split('\n').filter((l) => l.trim() && !/^\s*\[.*\]\s*$/.test(l)).length, n = S.scenes.length;
+  const bars = lines ? Math.max(S.len, Math.ceil((lines * 4.5 + 8) / n / 8) * 8) : S.len; // words need room: the scenes grow until every line can breathe
+  const tracks = {}, markers = [], EN = S.scenes.map(sceneEnergy); let at = 0;
   const put = (part, label, plug, notes, song) => { const k = part + '|' + label + '|' + plug; const tr = tracks[k] = tracks[k] || { part, label, plug, notes: [], scenes: new Set() };
     const mapped = E.applyMask(song, part, notes, plug, { mode: 'instrument' }); mapped.forEach((n) => tr.notes.push(Object.assign({}, n, { t: n.t + at }))); tr.scenes.add(markers.length - 1); };
   S.scenes.forEach((sc, si) => {
-    const energy = sceneEnergy(sc), type = typeOf(energy), seed = E.hash(S.seed, 'scene', si), song = songFor(sc.genre, seed, bpm, key, bars, type);
+    const energy = EN[si], type = typeOf(energy), seed = E.hash(S.seed, 'scene', si), song = songFor(sc.genre, seed, bpm, key, bars, type);
     song.parts.beat.plugin = 'gm';
-    markers.push({ t: at, text: 'Scene ' + (si + 1) + ': ' + (GENRES.find((g) => g[0] === sc.genre) || ['', sc.genre])[1] });
+    markers.push({ t: at, text: 'Scene ' + (si + 1) + ': ' + (GENRES.find((g) => g[0] === sc.genre) || ['', sc.genre])[1] + ' (' + PARTNAME[type] + ')' });
     const engine = { beat: E.renderSong(song, 'beat'), bass: E.renderSong(song, 'bass'), chords: E.renderSong(song, 'chords').concat(E.renderSong(song, 'pad')), melody: E.renderSong(song, 'melody'), answer: E.renderSong(song, 'answer') };
     SLOTS.forEach(([part, pname]) => { const sl = sc.slots[part] || {}; if (sl.inst === 'silent') return;
       const r = rngOf('feel', si, part), f = sl.feel ? FEELS[sl.feel] : null, inst = sl.inst ? INST[part][sl.inst] : null; let notes = engine[part];
@@ -4067,21 +4077,69 @@ function makeAll() {
       if (part === 'bass' && inst && inst[3]) notes = legato(notes, false);
       notes = feel(notes, part, f, inst, r);
       if (!f && inst && inst[1]) notes = fold(notes, inst[1], inst[2]);
+      notes = joint(part, notes, si, EN, bars, key, r);
       const label = inst ? inst[0] : 'machine', plug = sl.plug || (part === 'beat' ? 'gm' : 'plain');
       put(part, label, plug, notes.filter((n) => n.t < bars * BAR), song); });
     at += bars * BAR; });
   const order = { beat: 0, bass: 1, chords: 2, melody: 3, answer: 4 };
   const list = Object.values(tracks).filter((t) => t.notes.length).sort((a, b) => order[a.part] - order[b.part]).map((t) => ({ name: SLOTS.find((s) => s[0] === t.part)[1] + (t.label !== 'machine' ? ' (' + t.label + ')' : '') + (t.plug !== 'plain' && t.plug !== 'gm' ? ' for ' + E.PLUGINS[t.plug].name : ''), notes: t.notes, scenes: t.scenes, part: t.part }));
-  return { tracks: list, markers, bpm, key, total: at, n: S.scenes.length };
+  return { tracks: list, markers, bpm, key, total: at, n: S.scenes.length, grown: bars > S.len ? bars : 0 };
 }
-function make(fresh) {
+// ---------- seamless joints: the end of a scene already leans into the next one ----------
+const PARTNAME = { break: 'Break', verse: 'Verse', build: 'Build', chorus: 'Chorus', drop: 'Drop' };
+function joint(part, notes, si, EN, bars, key, r) {
+  const n = EN.length, end = bars * BAR, last = end - BAR, half = end - 2 * PPQ, rise = si < n - 1 ? EN[si + 1] - EN[si] : 0, sc = E.scalePcs(key);
+  let out = notes.slice();
+  if (part === 'beat') {
+    if (si > 0 && out.length && EN[si] - EN[si - 1] > -0.15) out.push({ t: 0, d: 120, lane: 7, v: 104 });     // a new scene opens with a crash
+    if (si < n - 1 && out.length) {
+      if (rise > 0.15) { out = out.filter((x) => !(x.t >= last && (x.lane === 2 || x.lane === 3)));       // it rises: a snare roll that speeds up
+        for (let k = 0; k < 8; k++) out.push({ t: last + k * PPQ / 2, d: 60, lane: 2, v: 50 + k * 4 });
+        for (let k = 0; k < 8; k++) out.push({ t: last + 2 * PPQ + k * PPQ / 4, d: 50, lane: 2, v: 70 + k * 6 }); }
+      else if (rise < -0.15) out = out.filter((x) => x.t < half);                                         // it falls: the band breathes out first
+      else { out = out.filter((x) => !(x.t >= half && x.lane >= 2 && x.lane <= 5));                         // it stays: a short fill
+        for (let k = 0; k < 8; k++) out.push({ t: half + k * PPQ / 4, d: 50, lane: k % 3 === 2 ? 6 : 2, v: 64 + k * 5 - (k % 2 ? 12 : 0) }); } }
+    return out.sort((a, b) => a.t - b.t);
+  }
+  if (si >= n - 1 || !out.length) return out;
+  if (part === 'bass') { const pre = out.filter((x) => x.t < half), ref = pre.length ? pre[pre.length - 1].p : 36;   // the bass walks home: two steps into the tonic of the next scene
+    let home = ref - ((ref - key.root) % 12 + 12) % 12; if (ref - home > 6) home += 12;
+    const step2 = home + ((sc[1] - key.root + 12) % 12), lead = home - ((key.root - sc[6] + 12) % 12 || 1);
+    return pre.concat([{ t: half, d: PPQ - 30, p: step2, v: 88 }, { t: half + PPQ, d: PPQ - 30, p: lead, v: 96 }]); }
+  if (part === 'melody' && rise > 0.15) { const pre = out.filter((x) => x.t < half), ref = pre.length ? pre[pre.length - 1].p : 72;  // it rises: a pickup into the next scene
+    let p = ref; const up = []; for (let k = 0; k < 4; k++) { do { p++; } while (!sc.includes(((p % 12) + 12) % 12)); up.push({ t: half + k * PPQ / 2, d: PPQ / 2 - 20, p, v: 80 + k * 6 }); }
+    return pre.concat(up); }
+  if ((part === 'melody' || part === 'chords' || part === 'answer') && rise < -0.15) { const lastOn = Math.max(...out.map((x) => x.t));  // it falls: the last sound rings out
+    return out.map((x) => (x.t === lastOn ? Object.assign({}, x, { d: Math.max(x.d, end - x.t - 20) }) : x)); }
+  return out;
+}
+
+// ---------- the voice: the Vocal Machine sings the words over the whole song ----------
+const VOCAL_URL = /\.github\.io$/.test(location.hostname) ? '/vocal/' : '/divineacidmonday.github.io/vocal/';
+let VF = null;
+function vocalFrame() { if (VF) return VF;
+  VF = new Promise((res, rej) => { const f = document.createElement('iframe'); f.title = 'Vocal Machine'; f.style.cssText = 'position:absolute;left:-9999px;width:800px;height:600px;border:0'; f.src = VOCAL_URL;
+    const to = setTimeout(() => rej(new Error('The Vocal Machine did not load')), 25000);
+    f.onload = () => { clearTimeout(to); const w = f.contentWindow; try { w.keep = function () {}; } catch (e) { /* older page */ } res(w); }; document.body.append(f); });
+  VF.catch(() => { VF = null; }); return VF; }
+async function vocalize(bytes) { const w = await vocalFrame(), d = w.document;
+  d.querySelector('#lyrics').value = S.lyrics; w.eval("setMode('write')"); w.setVoice(S.voice);
+  w.loadSong(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength), 'Divine_Director.mid'); w.make();
+  const r = w.eval('S.result'), warn = d.querySelector('#warn');
+  if (!r || !r.notes || !r.notes.length) throw new Error(warn && !warn.hidden ? warn.textContent : 'No sung line');
+  return { svp: w.toSvp(r.notes, r.bpm, r.title, S.voice, S.char), xml: w.toXml(r.notes, r.bpm, r.key, r.title), notes: r.notes.length, warn: warn && !warn.hidden ? warn.textContent : '' }; }
+async function make(fresh) {
   if (fresh) S.seed = E.newSeed();
   S.res = makeAll(); const R = S.res;
-  $('#info').textContent = R.n + (R.n === 1 ? ' scene, ' : ' scenes, ') + Math.round(R.total / BAR) + ' bars, ' + R.bpm + ' bpm, ' + E.keyName(R.key);
+  $('#info').textContent = R.n + (R.n === 1 ? ' scene, ' : ' scenes, ') + Math.round(R.total / BAR) + ' bars, ' + R.bpm + ' bpm, ' + E.keyName(R.key) + (R.grown ? ' (every scene ' + R.grown + ' bars, so your words fit)' : '');
   const box = $('#tracks'); box.innerHTML = '';
   R.tracks.forEach((t) => { const d = document.createElement('div'); d.className = 'trk'; const b = document.createElement('b'); b.textContent = t.name; const bar = document.createElement('div'); bar.className = 'bar';
     for (let i = 0; i < R.n; i++) { const s = document.createElement('span'); if (t.scenes.has(i)) s.className = 'on'; bar.append(s); } d.append(b, bar); box.append(d); });
-  $('#dl').hidden = false; $('#again').hidden = false;
+  $('#dl').hidden = false; $('#again').hidden = false; S.vocal = null; $('#dlSvp').hidden = true; $('#dlXml').hidden = true;
+  if (S.lyrics.trim()) { $('#info').textContent += ', the voice is writing her line...';
+    try { S.vocal = await vocalize(full()); $('#dlSvp').hidden = false; $('#dlXml').hidden = false;
+      $('#info').textContent = $('#info').textContent.replace(', the voice is writing her line...', ', and a sung line of ' + S.vocal.notes + ' notes' + (S.vocal.warn ? '. ' + S.vocal.warn : '')); }
+    catch (e) { $('#info').textContent = $('#info').textContent.replace(', the voice is writing her line...', '. The voice could not be made: ' + e.message); } }
 }
 const title = () => 'DM_Director_' + Math.round(S.res.bpm) + 'bpm_' + E.keyName(S.res.key).replace(/\s/g, '');
 const full = () => E.writeMidi(S.res.tracks.map((t, i) => ({ name: t.name, channel: t.part === 'beat' ? 9 : i % 9, notes: t.notes })), { bpm: S.res.bpm, meter: '4/4', title: 'Divine Director', markers: S.res.markers });
@@ -4103,7 +4161,17 @@ function zip(files) {
 const safe = (t) => String(t).normalize('NFKD').replace(/[^\w#.+ ()-]/g, '').replace(/\s+/g, '_');
 $('#make').onclick = () => make(true); $('#again').onclick = () => make(true);
 $('#dlFull').onclick = () => saveBlob(new Blob([full()], { type: 'audio/midi' }), title() + '_Full.mid');
+const enc = (t) => new TextEncoder().encode(t);
+$('#dlSvp').onclick = () => saveBlob(new Blob([S.vocal.svp], { type: 'application/json' }), title() + '_Vocal.svp');
+$('#dlXml').onclick = () => saveBlob(new Blob([S.vocal.xml], { type: 'application/vnd.recordare.musicxml+xml' }), title() + '_Vocal.musicxml');
+$('#lyrics').value = S.lyrics; $('#lyrics').oninput = () => { S.lyrics = $('#lyrics').value; save(); };
+$('#clearLy').onclick = () => { S.lyrics = ''; $('#lyrics').value = ''; save(); };
+$('#oracle').onclick = async () => { $('#oracle').disabled = true; try { const w = await vocalFrame(); const g = { triphop: 'triphop', synthwave: 'synthwave', newwave: 'newwave', acid: 'acid', techno: 'techno', house: 'house', blues: 'blues' }[S.scenes[0].genre] || 'triphop';
+  const o = w.eval('rng = Math.random; oracle(' + JSON.stringify(g) + ')'); S.lyrics = o.text; $('#lyrics').value = o.text; save(); } catch (e) { $('#info').textContent = 'The oracle could not be reached: ' + e.message; } $('#oracle').disabled = false; };
+segInit('#voiceSeg', () => S.voice, (v) => { S.voice = v; });
+segInit('#charSeg', () => S.char, (v) => { S.char = +v; });
 $('#dlZip').onclick = () => { const files = [{ name: title() + '_Full.mid', data: full() }];
+  if (S.vocal) files.push({ name: title() + '_Vocal.svp', data: enc(S.vocal.svp) }, { name: title() + '_Vocal.musicxml', data: enc(S.vocal.xml) });
   S.res.tracks.forEach((t, i) => files.push({ name: String(i + 1).padStart(2, '0') + '_' + safe(t.name) + '.mid', data: E.writeMidi([{ name: t.name, channel: t.part === 'beat' ? 9 : 0, notes: t.notes }], { bpm: S.res.bpm, meter: '4/4', title: t.name, markers: S.res.markers }) }));
   saveBlob(zip(files), title() + '.zip'); };
 drawScenes();
