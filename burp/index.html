@@ -4371,6 +4371,8 @@ drawScenes();
     R.tracks.forEach((tr) => { tr.notes.forEach((x) => { x.v = E.clamp(x.v, 40, 120); });
       if (tr.part === 'bass') tr.notes.push({ t: R.total, d: BAR * 2 - 40, p: 36 + ((R.key.root - 0) % 12 + 12) % 12 - (R.key.root > 7 ? 12 : 0), v: 96 });
       if (tr.part === 'chords') triad.forEach((pc) => tr.notes.push({ t: R.total, d: BAR * 2 - 40, p: 60 + ((pc - 0) % 12 + 12) % 12 - (pc > 7 ? 12 : 0), v: 80 })); });
+    try { const pitched = R.tracks.filter((t) => t.part !== 'beat').flatMap((t) => t.notes), sc7 = E.scalePcs(R.key), off = pitched.filter((x) => !sc7.includes(((x.p % 12) + 12) % 12)).length;
+      if (pitched.length && off > pitched.length * 0.25) { const dk = E.detectKey(pitched); if (dk) R.key = { root: dk.root, scale: dk.scale }; } } catch (e) { /* keep the planned key */ }   // the file name always tells the key you really hear
     R.total += BAR * 2; S.res = R; return R; }
   function show(R) { const secs = Math.round(R.total / BAR * 240 / R.bpm);
     $('#bInfo').innerHTML = '<b>Track ' + String(B.count).padStart(4, '0') + '</b>  ·  ' + fmt(secs) + '  ·  ' + R.bpm + ' bpm';
