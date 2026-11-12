@@ -4356,7 +4356,7 @@ drawScenes();
       // long parts get a small change every 8 to 16 bars, so nothing stands still
       for (let a0 = 0; a0 < L; ) { const piece = Math.min(L - a0, L - a0 > 24 ? pick([8, 16]) : L - a0), c = JSON.parse(JSON.stringify(sc)); c.seed = Math.floor(r() * 2147483647); c.time = fmt(piece * 240 / bpm); c.cont = a0 > 0; scenes.push(c); a0 += piece; } });
     const end = scenes[scenes.length - 1];   // only the very last stretch thins out and fades, so a long last part keeps its beat
-    if (scenes.length > 2) { PK.forEach((p) => { if (end.slots[p].inst && p !== 'chords' && p !== 'bass' && chance(0.5)) end.slots[p] = {}; }); ['chords', 'bass'].forEach((p) => { if (end.slots[p].inst) end.slots[p].sw = 'fade'; }); }
+    if (scenes.length > 2) { PK.forEach((p) => { if (end.slots[p].inst && (p === 'melody' || p === 'answer') && chance(0.5)) end.slots[p] = {}; }); ['chords', 'bass', 'beat'].forEach((p) => { if (end.slots[p].inst) end.slots[p].sw = 'fade'; }); }
     if (!end.slots.bass.inst && !end.slots.beat.inst) end.slots.bass = slotNew('bass', r, pick, chance);
     return { scenes, bpm, key }; }
   const print = (t) => t.scenes.map((s) => s.genre).join('>') + '|' + t.key.root + t.key.scale + '|' + Math.round(t.bpm / 6);
