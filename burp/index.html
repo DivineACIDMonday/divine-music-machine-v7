@@ -4110,7 +4110,8 @@ function shapeNotes(part, notes, sl, bars, key) {
   return out; }
 // the rhythm decides when; the machine still decides what: the pitch that sounds there, the drum that fits
 function applyRhythm(part, notes, hits, bars, instKey) {
-  const T = hits.map((x) => x * STEP), end = bars * BAR;
+  let T = hits.map((x) => x * STEP); const end = bars * BAR;
+  if (part !== 'beat') { const k = []; T.forEach((t) => { if (!k.length || t - k[k.length - 1] >= STEP) k.push(t); }); T = k; }   // a melody or bass never goes faster than 16ths; only drums may roll
   if (part === 'beat') return T.map((t, i) => { const gap = (T[i + 1] != null ? T[i + 1] : end) - t, fast = gap < PPQ, bar1 = t % BAR === 0;
     return { t, d: Math.max(12, Math.min(120, gap - 6)), lane: fast && i % 2 ? 2 : 0, v: E.clamp(Math.round(bar1 ? 112 : fast ? 78 + 30 * (t / end) : 96), 30, 124) }; });
   const src = notes.slice().sort((a, b) => a.t - b.t); if (!src.length) return [];
@@ -4166,7 +4167,7 @@ function makeAll() {
   const first = E.newSong(ENGINE_GENRE(sc0.genre), { seed: E.hash(S.seed, 'key') }), anyMinor = S.scenes.some((sc) => Object.values(sc.slots).some((s) => s.feel && FEELS[s.feel].minor));
   const key = S.forceKey ? Object.assign({}, S.forceKey) : { root: first.key.root, scale: anyMinor && first.key.scale === 'major' ? 'minor' : first.key.scale };   // the Burp Machine can hand in its own key
   const bars0 = sceneBars(); // words need room: the scenes grow until every line can breathe
-  const tracks = {}, markers = [], EN = S.scenes.map(sceneEnergy); let at = 0;
+  const tracks = {}, markers = [], EN = S.scenes.map(sceneEnergy); let at = 0, motif = null;
   const put = (part, label, plug, notes, song) => { const k = part + '|' + label + '|' + plug; const tr = tracks[k] = tracks[k] || { part, label, plug, notes: [], scenes: new Set() };
     const mapped = E.applyMask(song, part, notes, plug, { mode: 'instrument' }); mapped.forEach((n) => tr.notes.push(Object.assign({}, n, { t: n.t + at }))); tr.scenes.add(markers.length - 1); };
   S.scenes.forEach((sc, si) => {
@@ -4182,6 +4183,14 @@ function makeAll() {
       if (part === 'bass' && sl.inst === 'acid') { const bs = songFor('acid', E.hash(seed, 'acid'), bpm, key, bars, type); notes = E.renderSong(bs, 'bass'); }
       if (part === 'chords' && sl.inst === 'strings') notes = strings(engine.chords, engine.bass, bars, type, f ? f.e : energy, key, E.hash(seed, 'str'));
       if (part === 'bass' && inst && inst[3]) notes = legato(notes, false);
+      if (S.motif && part === 'melody' && notes.length) {   // one motif runs through the whole track: the first melody gives it, later ones answer it, a little changed
+        const sc7 = E.scalePcs(key), deg = (p) => { const o = Math.floor((p - key.root) / 12), pc = ((p - key.root) % 12 + 12) % 12; let i = 0; sc7.forEach((x, j) => { if (Math.abs(((x - key.root) % 12 + 12) % 12 - pc) < Math.abs(((sc7[i] - key.root) % 12 + 12) % 12 - pc)) i = j; }); return o * 7 + i; };
+        const pit = (d) => key.root + Math.floor(d / 7) * 12 + ((sc7[((d % 7) + 7) % 7] - key.root) % 12 + 12) % 12;
+        if (!motif) motif = notes.filter((n) => n.t < 2 * BAR).map((n) => ({ t: n.t, d: n.d, g: deg(n.p), v: n.v }));
+        else if (motif.length && r() < 0.75) { const med = median(notes.map((n) => n.p)), base = deg(med) - (median(motif.map((m) => m.g)) | 0), turn = r() < 0.3 ? -1 : 1, nudge = Math.floor(r() * 3) - 1;
+          [0, 8].filter((b) => b < bars).forEach((b0, k) => { const A = b0 * BAR, Z = A + 2 * BAR; notes = notes.filter((n) => n.t < A || n.t >= Z);
+            motif.forEach((m, j) => { const g = base + (k ? turn * (m.g - motif[0].g) + motif[0].g : m.g) + (j === motif.length - 1 ? 0 : nudge * (j % 2)); notes.push({ t: A + m.t, d: m.d, p: pit(g), v: m.v }); }); });
+          notes.sort((a, b) => a.t - b.t); } }
       notes = feel(notes, part, f, inst, r);
       let hits = hitsOf(sl, bars);
       if (!hits && sl.rhFrom && engine[sl.rhFrom] && sl.rhFrom !== part) { const w = win(sl, bars); hits = [...new Set(engine[sl.rhFrom].map((n) => Math.round(n.t / STEP)))].filter((x) => x >= w.a && x < w.z).sort((a, b) => a - b); }   // or borrows another place's rhythm
@@ -4318,30 +4327,47 @@ drawScenes();
   const PARTS = [['beat', 'Beat'], ['bass', 'Bass'], ['chords', 'Chords'], ['melody', 'Melody'], ['answer', 'Answer']];
   const G = GENRES.map((g) => g[0]), PK = ['melody', 'chords', 'answer', 'bass', 'beat'];
   // everything is open: any genre next to any genre, rules of one place on another, sometimes, never always
+  function slotNew(p, r, pick, chance) { const sl = { inst: chance(0.3) ? 'machine' : pick(Object.keys(INST[p])), feel: chance(0.7) ? pick(Object.keys(FEELS)) : '' };
+    if (chance(0.35)) sl.src = pick(G);                                                                     // play like another genre
+    const rr = r(); if (rr < 0.12) { sl.rh = pick(['every', 'speed', 'slow']); sl.n = pick([1, 2, 3, 4, 5, 7, 8]); }
+    else if (rr < 0.2) { sl.rh = 'draw'; sl.ed = { add: [], del: [] }; sl.pat = Array.from({ length: 16 }, (_, i) => (i % 4 === 0 ? r() < 0.7 : r() < 0.22)); }
+    else if (rr < 0.32) sl.rhFrom = pick(PK.filter((q) => q !== p));                                        // borrow another place's rhythm
+    if (chance(0.33)) sl.sw = pick(['grow', 'fade', 'arc']);
+    if (p !== 'beat' && chance(0.25)) sl.shape = pick(['rise', 'fall', 'stay']);
+    if (chance(0.15)) sl.in = 1 + 4 * Math.floor(r() * 2);
+    return sl; }
+  // everything is open, and still one piece: glue in every part, one thread from part to part, a form with a start and an end
   function roll(seed) { const r = E.rng(seed), pick = (a) => a[Math.floor(r() * a.length)], chance = (p) => r() < p;
-    const n = 3 + Math.floor(r() * 6), total = 120 + r() * 240, w = Array.from({ length: n }, () => 0.4 + r()), ws = w.reduce((a, b) => a + b, 0);
-    const scenes = w.map((x) => { const sc = { genre: pick(G), seed: Math.floor(r() * 2147483647), time: fmt(Math.max(12, total * x / ws)), slots: {} };
-      PK.forEach((p) => { if (!chance({ beat: 0.82, bass: 0.82, chords: 0.6, melody: 0.65, answer: 0.35 }[p])) { sc.slots[p] = {}; return; }
-        const sl = sc.slots[p] = { inst: chance(0.3) ? 'machine' : pick(Object.keys(INST[p])), feel: chance(0.7) ? pick(Object.keys(FEELS)) : '' };
-        if (chance(0.35)) sl.src = pick(G);                                                    // play like another genre
-        const rr = r(); if (rr < 0.12) { sl.rh = pick(['every', 'speed', 'slow']); sl.n = pick([1, 2, 3, 4, 5, 7, 8]); }
-        else if (rr < 0.2) { sl.rh = 'draw'; const pat = Array.from({ length: 16 }, (_, i) => (i % 4 === 0 ? r() < 0.7 : r() < 0.22)); sl.ed = { add: [], del: [] }; sl.pat = pat; }
-        else if (rr < 0.32) sl.rhFrom = pick(PK.filter((q) => q !== p));                       // borrow another place's rhythm
-        if (chance(0.33)) sl.sw = pick(['grow', 'fade', 'arc']);
-        if (p !== 'beat' && chance(0.25)) sl.shape = pick(['rise', 'fall', 'stay']);
-        if (chance(0.18)) sl.in = 1 + 4 * Math.floor(r() * 3);
-        if (chance(0.12)) sl.out = 8 + 4 * Math.floor(r() * 4); });
-      if (!PK.some((p) => sc.slots[p].inst)) sc.slots.beat = { inst: 'machine' };
-      return sc; });
-    return { scenes, bpm: 70 + Math.floor(r() * 101), key: { root: Math.floor(r() * 12), scale: pick(['minor', 'minor', 'major']) } }; }
+    const bpm = 70 + Math.floor(r() * 101), key = { root: Math.floor(r() * 12), scale: pick(['minor', 'minor', 'major']) };
+    const totalBars = Math.max(48, Math.round((120 + r() * 240) * bpm / 240 / 8) * 8), n = 3 + Math.floor(r() * 6);
+    let left = totalBars; const lens = []; for (let i = 0; i < n; i++) { const share = i === n - 1 ? left : Math.max(8, Math.round(left / (n - i) * (0.6 + r() * 0.8) / 8) * 8); lens.push(Math.min(share, left - 8 * (n - i - 1))); left -= lens[i]; }
+    const scenes = []; let prev = null;
+    lens.forEach((L, i) => { let sc;
+      if (!prev) { sc = { genre: pick(G), slots: {} }; PK.forEach((p) => { sc.slots[p] = {}; }); ['chords', pick(['bass', 'beat'])].forEach((p) => { sc.slots[p] = slotNew(p, r, pick, chance); sc.slots[p].sw = 'grow'; }); }   // the opening: a few places, growing
+      else { sc = JSON.parse(JSON.stringify(prev)); if (chance(0.6)) sc.genre = pick(G);                     // the next part inherits, and changes two or three things
+        const ch = PK.slice().sort(() => r() - 0.5).slice(0, 2 + Math.floor(r() * 2));
+        ch.forEach((p) => { sc.slots[p] = sc.slots[p].inst && chance(0.35) ? {} : slotNew(p, r, pick, chance); }); }
+      if (!sc.slots.chords.inst) sc.slots.chords = Object.assign(slotNew('chords', r, pick, chance), { inst: pick(['pad', 'strings', 'organ', 'machine']), rh: undefined, rhFrom: undefined });   // glue: always harmony
+      if (sc.slots.answer.inst && !sc.slots.melody.inst) sc.slots.answer = {};                              // an answer needs a melody to answer
+      if (i === n - 1 && n > 2) { PK.forEach((p) => { if (sc.slots[p].inst && p !== 'chords' && p !== 'bass' && chance(0.5)) sc.slots[p] = {}; }); ['chords', 'bass'].forEach((p) => { if (sc.slots[p].inst) sc.slots[p].sw = 'fade'; }); }   // the end thins out
+      if (!sc.slots.bass.inst && !sc.slots.beat.inst) sc.slots.bass = slotNew('bass', r, pick, chance);   // and always a floor, also at the end
+      prev = sc;
+      // long parts get a small change every 8 to 16 bars, so nothing stands still
+      for (let a0 = 0; a0 < L; ) { const piece = Math.min(L - a0, L - a0 > 24 ? pick([8, 16]) : L - a0), c = JSON.parse(JSON.stringify(sc)); c.seed = Math.floor(r() * 2147483647); c.time = fmt(piece * 240 / bpm); c.cont = a0 > 0; scenes.push(c); a0 += piece; } });
+    return { scenes, bpm, key }; }
   const print = (t) => t.scenes.map((s) => s.genre).join('>') + '|' + t.key.root + t.key.scale + '|' + Math.round(t.bpm / 6);
-  function build(t) { S.scenes = JSON.parse(JSON.stringify(t.scenes)); S.lyrics = ''; S.tempo = 'own'; S.bpm = t.bpm; S.forceKey = t.key; S.seed = t.seed;
+  function build(t) { S.scenes = JSON.parse(JSON.stringify(t.scenes)); S.lyrics = ''; S.tempo = 'own'; S.bpm = t.bpm; S.forceKey = t.key; S.seed = t.seed; S.motif = true;
     S.scenes.forEach((sc) => { PK.forEach((p) => { const sl = sc.slots[p]; if (!sl.inst) return; sl.plug = B.plug[p];
       if (sl.pat) { const bars = barsOf(S.scenes.indexOf(sc)); for (let b = 0; b < bars; b++) sl.pat.forEach((on, i) => { if (on) sl.ed.add.push(b * 16 + i); }); delete sl.pat; } }); });
     const R = makeAll(), merged = {};
     R.tracks.forEach((tr) => { const m = merged[tr.part] = merged[tr.part] || { name: PARTS.find((x) => x[0] === tr.part)[1], part: tr.part, notes: [], scenes: new Set() }; m.notes.push(...tr.notes); });
     R.tracks = PARTS.map(([p]) => merged[p]).filter(Boolean).map((m) => Object.assign(m, { notes: m.notes.sort((a, b) => a.t - b.t) }));
-    R.markers = R.markers.map((m, i) => ({ t: m.t, text: 'Part ' + (i + 1) })); S.res = R; return R; }
+    R.markers = R.markers.filter((m, i) => !S.scenes[i].cont).map((m, i) => ({ t: m.t, text: 'Part ' + (i + 1) }));
+    const sc7 = E.scalePcs(R.key), triad = [0, 2, 4].map((d) => sc7[d]);   // the end: one last chord on the home tone, so it lands
+    R.tracks.forEach((tr) => { tr.notes.forEach((x) => { x.v = E.clamp(x.v, 40, 120); });
+      if (tr.part === 'bass') tr.notes.push({ t: R.total, d: BAR * 2 - 40, p: 36 + ((R.key.root - 0) % 12 + 12) % 12 - (R.key.root > 7 ? 12 : 0), v: 96 });
+      if (tr.part === 'chords') triad.forEach((pc) => tr.notes.push({ t: R.total, d: BAR * 2 - 40, p: 60 + ((pc - 0) % 12 + 12) % 12 - (pc > 7 ? 12 : 0), v: 80 })); });
+    R.total += BAR * 2; S.res = R; return R; }
   function show(R) { const secs = Math.round(R.total / BAR * 240 / R.bpm);
     $('#bInfo').innerHTML = '<b>Track ' + String(B.count).padStart(4, '0') + '</b>  ·  ' + fmt(secs) + '  ·  ' + R.bpm + ' bpm';
     const box = $('#bParts'); box.innerHTML = '';

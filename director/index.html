@@ -4110,7 +4110,8 @@ function shapeNotes(part, notes, sl, bars, key) {
   return out; }
 // the rhythm decides when; the machine still decides what: the pitch that sounds there, the drum that fits
 function applyRhythm(part, notes, hits, bars, instKey) {
-  const T = hits.map((x) => x * STEP), end = bars * BAR;
+  let T = hits.map((x) => x * STEP); const end = bars * BAR;
+  if (part !== 'beat') { const k = []; T.forEach((t) => { if (!k.length || t - k[k.length - 1] >= STEP) k.push(t); }); T = k; }   // a melody or bass never goes faster than 16ths; only drums may roll
   if (part === 'beat') return T.map((t, i) => { const gap = (T[i + 1] != null ? T[i + 1] : end) - t, fast = gap < PPQ, bar1 = t % BAR === 0;
     return { t, d: Math.max(12, Math.min(120, gap - 6)), lane: fast && i % 2 ? 2 : 0, v: E.clamp(Math.round(bar1 ? 112 : fast ? 78 + 30 * (t / end) : 96), 30, 124) }; });
   const src = notes.slice().sort((a, b) => a.t - b.t); if (!src.length) return [];
@@ -4166,7 +4167,7 @@ function makeAll() {
   const first = E.newSong(ENGINE_GENRE(sc0.genre), { seed: E.hash(S.seed, 'key') }), anyMinor = S.scenes.some((sc) => Object.values(sc.slots).some((s) => s.feel && FEELS[s.feel].minor));
   const key = S.forceKey ? Object.assign({}, S.forceKey) : { root: first.key.root, scale: anyMinor && first.key.scale === 'major' ? 'minor' : first.key.scale };   // the Burp Machine can hand in its own key
   const bars0 = sceneBars(); // words need room: the scenes grow until every line can breathe
-  const tracks = {}, markers = [], EN = S.scenes.map(sceneEnergy); let at = 0;
+  const tracks = {}, markers = [], EN = S.scenes.map(sceneEnergy); let at = 0, motif = null;
   const put = (part, label, plug, notes, song) => { const k = part + '|' + label + '|' + plug; const tr = tracks[k] = tracks[k] || { part, label, plug, notes: [], scenes: new Set() };
     const mapped = E.applyMask(song, part, notes, plug, { mode: 'instrument' }); mapped.forEach((n) => tr.notes.push(Object.assign({}, n, { t: n.t + at }))); tr.scenes.add(markers.length - 1); };
   S.scenes.forEach((sc, si) => {
@@ -4182,6 +4183,14 @@ function makeAll() {
       if (part === 'bass' && sl.inst === 'acid') { const bs = songFor('acid', E.hash(seed, 'acid'), bpm, key, bars, type); notes = E.renderSong(bs, 'bass'); }
       if (part === 'chords' && sl.inst === 'strings') notes = strings(engine.chords, engine.bass, bars, type, f ? f.e : energy, key, E.hash(seed, 'str'));
       if (part === 'bass' && inst && inst[3]) notes = legato(notes, false);
+      if (S.motif && part === 'melody' && notes.length) {   // one motif runs through the whole track: the first melody gives it, later ones answer it, a little changed
+        const sc7 = E.scalePcs(key), deg = (p) => { const o = Math.floor((p - key.root) / 12), pc = ((p - key.root) % 12 + 12) % 12; let i = 0; sc7.forEach((x, j) => { if (Math.abs(((x - key.root) % 12 + 12) % 12 - pc) < Math.abs(((sc7[i] - key.root) % 12 + 12) % 12 - pc)) i = j; }); return o * 7 + i; };
+        const pit = (d) => key.root + Math.floor(d / 7) * 12 + ((sc7[((d % 7) + 7) % 7] - key.root) % 12 + 12) % 12;
+        if (!motif) motif = notes.filter((n) => n.t < 2 * BAR).map((n) => ({ t: n.t, d: n.d, g: deg(n.p), v: n.v }));
+        else if (motif.length && r() < 0.75) { const med = median(notes.map((n) => n.p)), base = deg(med) - (median(motif.map((m) => m.g)) | 0), turn = r() < 0.3 ? -1 : 1, nudge = Math.floor(r() * 3) - 1;
+          [0, 8].filter((b) => b < bars).forEach((b0, k) => { const A = b0 * BAR, Z = A + 2 * BAR; notes = notes.filter((n) => n.t < A || n.t >= Z);
+            motif.forEach((m, j) => { const g = base + (k ? turn * (m.g - motif[0].g) + motif[0].g : m.g) + (j === motif.length - 1 ? 0 : nudge * (j % 2)); notes.push({ t: A + m.t, d: m.d, p: pit(g), v: m.v }); }); });
+          notes.sort((a, b) => a.t - b.t); } }
       notes = feel(notes, part, f, inst, r);
       let hits = hitsOf(sl, bars);
       if (!hits && sl.rhFrom && engine[sl.rhFrom] && sl.rhFrom !== part) { const w = win(sl, bars); hits = [...new Set(engine[sl.rhFrom].map((n) => Math.round(n.t / STEP)))].filter((x) => x >= w.a && x < w.z).sort((a, b) => a - b); }   // or borrows another place's rhythm
