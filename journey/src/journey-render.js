@@ -99,8 +99,9 @@ function orchestrate(chords, bass, mel, c, E, motif, seed, voice) {
   const home = [0, 2, 4].map((d) => (c.tonic + (c.minor ? SCALE.minor : SCALE.major)[d]) % 12), chordOf = [];
   for (let b = 0, prev = home; b < bars + 1; b++) { chordOf[b] = byBar[b] ? [...byBar[b]] : prev; prev = chordOf[b]; }
   const ranges = {}; Object.keys(META).forEach((id) => { ranges[id] = [META[id][2], META[id][3]]; });
+  const leadBars = new Set(); mel.forEach((n) => leadBars.add(Math.floor(n.t / BAR))); // the strings make room while the lead sings
   const res = E.orchestra({ bars, barTicks: BAR, ppq: PPQ, beats: Math.round(BAR / PPQ), chordAt: (b) => chordOf[Math.max(0, Math.min(bars, b))], bassAt: (b) => (bassBar[b] != null ? bassBar[b] % 12 : null),
-    texAt: (b) => ORCH_TEX[labelAt(c, b)] || 'verse', energyAt: (b) => eAt(c, b / Math.max(1, bars)), tonic: c.tonic, minor: c.minor, motif, ids: Object.keys(META), ranges, seed });
+    texAt: (b) => ORCH_TEX[labelAt(c, b)] || 'verse', energyAt: (b) => eAt(c, b / Math.max(1, bars)), tonic: c.tonic, minor: c.minor, motif, ids: Object.keys(META), ranges, seed, leadAt: (b) => leadBars.has(b) });
   const T = Object.keys(META).map((id) => { const [name, ksType] = META[id], r = res[id], ks = [];
     let cur = -1; r.notes.forEach((n) => { const k = ORCH_KS[ksType][n.art] || 0; if (k !== cur) { ks.push({ t: Math.max(0, n.t - 24), m: k }); cur = k; } }); if (!ks.length) ks.push({ t: 0, m: 0 });
     return { id, name, ksType, notes: r.notes, ks, cc: [{ t: 0, c: 11, v: 110 }].concat(r.dyn.map((d) => ({ t: d.t, c: 1, v: d.v }))) }; });

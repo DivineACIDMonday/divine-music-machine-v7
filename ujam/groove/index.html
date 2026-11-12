@@ -3933,92 +3933,145 @@ function yin(x, sr, fmin, fmax) {
   return sr / (tau + off);
 }
 
-/* ---------- the living orchestra: every section of the song gives the strings and horns another job ----------
+/* ---------- the living orchestra: the voices listen to each other ----------
+   no faders: the life is in the notes. One voice asks a short question, another answers in the silence after it, upside down;
+   a third holds and lets a note hang over the chord change before it sighs down a step (a suspension); the celli walk against
+   the violins; every repeat changes one small thing; the strings rest while the lead sings, and fall silent before a big return.
    o: { bars, barTicks, ppq, beats, chordAt(b) -> pitch classes, bassAt(b) -> pitch class, texAt(b) -> soft|verse|answer|contrast|build|full|break|outro,
-        energyAt(b) -> 0..1, tonic, minor, motif: { degrees, rhythm (beats) } or null, ids: which voices, ranges: { id: [lo, hi] }, seed }
-   returns { id: { notes: [{ t, dur, m, v, art }], dyn: [{ t, v }] } }, art is long, short, pizz or trem */
+        energyAt(b) -> 0..1, tonic, minor, motif: { degrees, rhythm (beats) } or null, ids, ranges: { id: [lo, hi] }, seed, leadAt(b) -> true while the lead sings (optional) }
+   returns { id: { notes: [{ t, dur, m, v, art }], dyn: [{ t, v }] } }, art is long, short, pizz or trem; dyn is one calm CC1 value per part */
 E.orchestra = function (o) {
-  const P = o.ppq, BT = o.barTicks, NB = o.beats || 4, R = rng(hash(o.seed || 1, 'orchestra')), sc = o.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11];
-  const fold = (p, lo, hi) => { while (p < lo) p += 12; while (p > hi) p -= 12; return p; };
-  const out = {}; o.ids.forEach((id) => { out[id] = { notes: [], dyn: [] }; });
-  const near = (pc, lo, hi, prev) => { let best = null; const aim = prev == null ? (lo + hi) / 2 : prev; for (let p = lo; p <= hi; p++) if (((p % 12) + 12) % 12 === pc && (best == null || Math.abs(p - aim) < Math.abs(best - aim))) best = p; return best; };
-  const inKey = (p) => sc.includes((((p - o.tonic) % 12) + 12) % 12);
-  const stepTo = (a, b) => { const dir = Math.sign(b - a); for (let p = a + dir; p !== b; p += dir) if (inKey(p)) return p; return null; };
-  const prev = {}, rg = (id) => o.ranges[id];
-  const push = (id, t, dur, m, v, art) => { if (out[id] && m != null) out[id].notes.push({ t: Math.round(t), dur: Math.max(30, Math.round(dur)), m, v: clamp(Math.round(v), 20, 127), art }); };
-  // the countermelody: the motif, slower and noble, starting every four bars; without a motif a line that walks through the chord tones
-  const motif = o.motif && o.motif.degrees && o.motif.degrees.length ? o.motif : null;
-  let mPos = 0, mLine = 0; const CV = o.ranges.vln1 ? 'vln1' : 'vln2'; // without first violins the second violins carry the countermelody
-  const counter = (b, t0, v, lo, hi) => { if (CV === 'vln2') { lo = o.ranges.vln2[0]; hi = o.ranges.vln2[1] + 5; }
-    if (motif) {
-      if (b % 4 === 0) { mPos = 0; mLine = t0; }
-      const rh = motif.rhythm.map((x) => x * 2 * P), total = rh.reduce((a, x) => a + x, 0); if (!total) return;
-      let t = mLine, k = 0; while (t < t0 + BT && k < motif.degrees.length) { const d = rh[k];
-        if (t >= t0) { const base = 12 * Math.floor((lo + hi) / 24); let m = fold(base + o.tonic + sc[((motif.degrees[k] % 7) + 7) % 7] + 12 * Math.floor(motif.degrees[k] / 7), lo, hi);
-          const ch = o.chordAt(Math.floor(t / BT)) || []; if (t % P === 0 && !ch.includes(m % 12)) { const fix = [m - 1, m + 1, m - 2, m + 2].find((x) => ch.includes(((x % 12) + 12) % 12) && x >= lo && x <= hi); if (fix != null) m = fix; }
-          push(CV, t, Math.min(d, t0 + BT - t) - 20, m, v, 'long'); }
-        t += d; k++; }
-      return;
-    }
-    const ch = o.chordAt(b) || []; if (!ch.length) return;
-    const a = near(ch[(b + 1) % ch.length], lo, hi, prev[CV]); prev[CV] = a; const half = Math.floor(NB / 2) * P;
-    push(CV, t0, half - 20, a, v, 'long');
-    const nxt = o.chordAt(b + 1) || ch, target = near(nxt[0], lo, hi, a), st = target != null && target !== a ? stepTo(a, target) : null;
-    push(CV, t0 + half, BT - half - 20, st != null ? st : a, v - 6, 'long');
-  };
-  for (let b = 0; b < o.bars; b++) {
-    const pcs = o.chordAt(b); if (!pcs || !pcs.length) continue;
-    const t0 = b * BT, X = o.texAt(b), e = clamp(o.energyAt(b), 0, 1), v = 58 + Math.round(44 * e), bp = o.bassAt(b) != null ? o.bassAt(b) : pcs[0];
-    // voice-led held tones: each voice keeps its note when it can and takes another tone of the chord than its neighbours
-    const used = new Set(), held = {};
-    ['vln2', 'vla', 'hn'].forEach((id) => { if (!rg(id)) return; const [lo, hi] = rg(id); const cand = pcs.filter((x) => !used.has(x) && (id !== 'vln2' || x !== bp)); const pool = cand.length ? cand : pcs;
-      let best = null; pool.forEach((pc) => { const p = near(pc, lo, hi, prev[id]); if (p != null && (best == null || Math.abs(p - (prev[id] == null ? p : prev[id])) < Math.abs(best - (prev[id] == null ? best : prev[id])))) best = p; });
-      held[id] = best; if (best != null) { used.add(best % 12); prev[id] = best; } });
-    if (rg('vc')) held.vc = prev.vc = near(bp, rg('vc')[0], rg('vc')[1], prev.vc);
-    if (rg('cb')) held.cb = prev.cb = near(bp, rg('cb')[0], rg('cb')[1], prev.cb);
-    const fifth = (id) => (held[id] == null ? null : near((bp + 7) % 12, rg(id)[0], rg(id)[1], held[id]));
-    const eighths = (id, m, m2, vv, art, accent) => { for (let q = 0; q < NB * 2; q++) push(id, t0 + q * P / 2, P / 2 - 40, q % 2 && m2 != null ? m2 : m, vv * (q % 2 === 0 ? 1 : 0.82) + (accent ? q * 1.5 : 0), art); };
-    const ph = (b % 4) / 3, dyn = (id, a, z) => { if (!out[id]) return; a = a - 10 + ph * 12; z = z - 4 + ph * 14; out[id].dyn.push({ t: t0, v: clamp(Math.round(a), 20, 127) }); out[id].dyn.push({ t: t0 + BT * 0.8, v: clamp(Math.round(z), 20, 127) }); }; // every 4-bar phrase swells
-    const long = (id, vv, art) => { if (id === 'vln2' && (!art || art === 'long') && rg('vln2')) return line(vv); push(id, t0, BT - 20, held[id], vv, art || 'long'); };
-    // the second violins sing a slow line of their own: half notes through the chord, a step towards the next bar, never 4 tones for a whole song
-    const line = (vv) => { const [lo, hi] = rg('vln2'), up = Math.floor(b / 4) % 2 === 0, ch = pcs.slice().sort((x, y) => x - y);
-      let a = held.vln2; const alt = ch.map((pc) => near(pc, lo, hi, a)).filter((x) => x != null && x !== a).sort((x, y) => Math.abs(x - a) - Math.abs(y - a));
-      if (b % 2 === 1 && alt.length) a = (up ? alt.find((x) => x > a) : alt.find((x) => x < a)) || alt[0];
-      const nx = o.chordAt(b + 1) || pcs, tgt = near(nx[0], lo, hi, a), st = tgt != null && tgt !== a ? stepTo(a, tgt) : null, half = Math.floor(NB / 2) * P;
-      push('vln2', t0, half - 20, a, vv, 'long'); push('vln2', t0 + half, BT - half - 20, st != null && R() < 0.7 ? st : a, vv - 4, 'long'); prev.vln2 = a; };
-    const rest = X === 'verse' && b % 8 >= 6; // the orchestra breathes: two bars of every eight the upper strings are silent in a verse
-    if (X === 'soft') { long('vln2', v - 14); long('vla', v - 14); long('vc', v - 10); if (e > 0.3) long('cb', v - 16); if (b % 4 === 0) push('hn', t0, BT * 2 - 20, held.hn, v - 18, 'long');
-      ['vln2', 'vla', 'vc', 'cb', 'hn'].forEach((id) => dyn(id, v - 30, v - 12)); }
-    else if (X === 'verse') { if (!rest) { long('vln2', v - 10); eighths('vla', held.vla, fifth('vla'), v - 8, 'short'); }
-      for (let q = 0; q < NB; q += NB === 3 ? 3 : 2) push('vc', t0 + q * P, P - 40, held.vc, v - 4, 'pizz'); long('cb', v - 14);
-      ['vln2', 'vla', 'vc', 'cb'].forEach((id) => dyn(id, v - 12, v - 12)); }
-    else if (X === 'answer') { ['vln2', 'vla'].forEach((id) => { for (let q = 0; q < NB; q += 2) push(id, t0 + (q + 0.5) * P, P / 2 - 30, held[id], v - 4, 'short'); if (NB === 3) push(id, t0 + 1.5 * P, P / 2 - 30, held[id], v - 8, 'short'); });
-      push('vc', t0, P - 40, held.vc, v, 'pizz'); long('cb', v - 14); counter(b, t0, v - 14, rg('vln1') ? rg('vln1')[0] : 67, rg('vln1') ? rg('vln1')[1] : 88);
-      ['vln1', 'vln2', 'vla', 'vc', 'cb'].forEach((id) => dyn(id, v - 14, v - 8)); }
-    else if (X === 'contrast') { long('vln2', v - 10, 'trem'); long('vla', v - 10, 'trem'); long('vc', v - 6); long('cb', v - 10); if (b % 2 === 0) push('hn', t0, BT * 2 - 20, held.hn, v - 12, 'long');
-      ['vln2', 'vla', 'vc', 'cb', 'hn'].forEach((id) => dyn(id, v - 24, v)); }
-    else if (X === 'build') { long('vln2', v - 6, 'trem'); eighths('vla', held.vla, held.vla, v - 6, 'short', true); eighths('vc', held.vc, held.vc, v - 4, 'short', true); long('cb', v - 8);
-      if (b === o.bars - 1 || o.texAt(b + 1) !== 'build') push('hn', t0, BT - 20, held.hn, v, 'long');
-      ['vln2', 'vla', 'vc', 'cb', 'hn'].forEach((id) => dyn(id, v - 20 + (b % 4) * 8, v - 6 + (b % 4) * 8)); }
-    else if (X === 'full') { counter(b, t0, v + 6, rg('vln1') ? rg('vln1')[0] : 67, rg('vln1') ? rg('vln1')[1] : 88); if (CV !== 'vln2') long('vln2', v);
-      for (let q = 1; q < NB; q += 2) push('vla', t0 + q * P, P / 2 - 20, held.vla, v + 6, 'short'); // stabs with the backbeat: the strings answer the snare
-      push('vc', t0, BT - 20, held.vc, v, 'long'); long('cb', v - 4);
-      push('hn', t0, P - 40, held.hn, v + 8, 'short'); push('hn', t0 + P, BT - P - 20, held.hn, v - 6, 'long');
-      ['vln1', 'vln2', 'vla', 'vc', 'cb', 'hn'].forEach((id) => dyn(id, v + 4, v + 4)); }
-    else if (X === 'break') { long('vln2', v - 20); long('vla', v - 22); if (b % 2 === 0) push('vc', t0, BT * 2 - 20, held.vc, v - 20, 'long');
-      ['vln2', 'vla', 'vc'].forEach((id) => dyn(id, v - 34, v - 28)); }
-    else { long('vln2', v - 12); long('vla', v - 14); long('vc', v - 10); long('cb', v - 16); if (o.texAt(b - 1) !== 'outro') counter(b, t0, v - 16, rg('vln1') ? rg('vln1')[0] : 67, rg('vln1') ? rg('vln1')[1] : 88);
-      ['vln1', 'vln2', 'vla', 'vc', 'cb'].forEach((id) => dyn(id, v - 14, v - 30)); }
-  }
-  // held notes that stay the same tie over the bar line; a third between two held notes gets a passing note on the last beat
+  const P = o.ppq, BT = o.barTicks, NB = o.beats || 4, NBARS = o.bars, seed = o.seed || 1, R = rng(hash(seed, 'orchestra'));
+  const sc = (o.minor ? [0, 2, 3, 5, 7, 8, 10] : [0, 2, 4, 5, 7, 9, 11]).map((x) => (x + (o.tonic || 0)) % 12);
+  const pcOf = (p) => ((p % 12) + 12) % 12, out = {}; o.ids.forEach((id) => { if (o.ranges[id]) out[id] = { notes: [], dyn: [] }; });
+  const has = (id) => !!(id && out[id]), rg = (id) => o.ranges[id];
+  const CH = []; let lastC = [0, 2, 4].map((d) => sc[d]);
+  for (let b = 0; b < NBARS; b++) { const c = o.chordAt(b); if (c && c.length) lastC = c; CH[b] = lastC; }
+  const chord = (b) => CH[Math.max(0, Math.min(NBARS - 1, b))] || lastC, live = (b) => { const c = o.chordAt(b); return !!(c && c.length); };
+  const push = (id, t, dur, m, v, art) => { const b = Math.floor(t / BT); if (!has(id) || m == null || b >= NBARS || !live(b)) return;
+    out[id].notes.push({ t: Math.round(t), dur: Math.max(40, Math.round(Math.min(dur, NBARS * BT - t))), m, v: clamp(Math.round(v), 20, 118), art: art || 'long' }); };
+  const scaleIn = (id) => { const [lo, hi] = rg(id), s = []; for (let p = lo; p <= hi; p++) if (sc.includes(pcOf(p))) s.push(p); return s; };
+  const step = (id, m, n) => { const s = scaleIn(id); let i = s.indexOf(m); if (i < 0) { i = 0; s.forEach((x, j) => { if (Math.abs(x - m) < Math.abs(s[i] - m)) i = j; }); } return s[Math.max(0, Math.min(s.length - 1, i + n))]; };
+  const tones = (id, b) => { const [lo, hi] = rg(id), c = chord(b), r = []; for (let p = lo; p <= hi; p++) if (c.includes(pcOf(p))) r.push(p); return r; };
+  const nearest = (id, b, prev, avoid) => { const c = tones(id, b); if (!c.length) return prev; if (prev == null) return c[c.length >> 1];
+    const cost = (x) => Math.abs(x - prev) + (avoid && (x - prev) * avoid > 0 ? 3 : 0); return c.slice().sort((x, y) => cost(x) - cost(y) || x - y)[0]; };
+  const rootAt = (b) => { const bp = o.bassAt(b); return bp != null ? bp : chord(b)[0]; };
+
+  // question cells: rhythm in beats, contour in steps of the scale; the record's own motif becomes the first one
+  const CELLS = [[[1.5, 0.5, 1, 1, 2], [0, 1, 2, 1, 0]], [[1, 1, 0.5, 0.5, 1, 2], [0, -1, 0, 1, 2, 1]], [[2, 1, 1, 2], [0, 2, 1, 0]],
+    [[0.5, 0.5, 1, 2, 1, 1], [0, 1, 2, 3, 2, 1]], [[1, 0.5, 0.5, 2, 2], [0, 1, 0, -1, 0]]];
+  const mo = o.motif && o.motif.degrees && o.motif.degrees.length >= 3 ? o.motif : null;
+  if (mo) { const rh = [], ct = []; let sum = 0;
+    for (let i = 0; i < mo.degrees.length && i < 6 && sum < 6; i++) { const d = clamp(Math.round((mo.rhythm[i] || 1) * 2) / 2, 0.5, 2); rh.push(d); ct.push(mo.degrees[i] - mo.degrees[0]); sum += d; }
+    if (rh.length >= 3) CELLS[0] = [rh, ct]; }
+  const vary = (cell, k) => { let rh = cell[0].slice(), ct = cell[1].slice(); const r = rng(hash(seed, 'vary' + k)), kind = Math.floor(r() * 4);
+    if (kind === 0) rh = rh.slice(0, -1).reverse().concat(rh.slice(-1));                       // the rhythm backwards, the landing kept
+    else if (kind === 1) { const i = 1 + Math.floor(r() * (ct.length - 1)); ct[i] += r() < 0.5 ? -1 : 1; } // a neighbour tone
+    else if (kind === 2) { rh = [0.5].concat(rh); ct = [null].concat(ct); rh[rh.length - 1] = Math.max(0.5, rh[rh.length - 1] - 0.5); } // starts later
+    else { let i = 0; ct.forEach((c, j) => { if (c > ct[i]) i = j; }); ct[i] += 1; }             // the peak reaches higher
+    return [rh, ct]; };
+  const phrase = (id, start, cell, k, anchor, base, invert, thin) => { if (!has(id)) return anchor;
+    const [rh, ct] = vary(cell, k), n = rh.length, peak = Math.max(...ct.filter((c) => c != null)); let t = start, m = anchor;
+    for (let i = 0; i < n; i++) { const d = rh[i], c = ct[i]; if (c == null || (thin && d < 1)) { t += d * P; continue; }
+      m = step(id, anchor, invert ? -c : c); if (i === n - 1) m = nearest(id, Math.floor(t / BT), m);
+      const arc = Math.sin(Math.PI * (i + 0.5) / n);
+      push(id, t, d * P * (d < 2 ? 0.92 : 0.98), m, base - 6 + arc * 14 + (c === peak ? 5 : 0) - (i === n - 1 ? 6 : 0) + (R() * 6 - 3), 'long'); t += d * P; }
+    return m; };
+  // a held voice: it keeps a shared tone, takes the nearest tone of a new chord, moves against another voice, and lets a note hang
+  const lastDir = (id, b) => { if (!has(id)) return 0; const ns = out[id].notes.filter((n) => n.t >= (b - 1) * BT && n.t < (b + 1) * BT); return ns.length > 1 ? ns[ns.length - 1].m - ns[0].m : 0; };
+  const hold = (id, b0, b1, base, prev, against, art) => { if (!has(id)) return prev; let m = prev;
+    for (let b = b0; b < b1; b++) { const nw = chord(b), t = b * BT;
+      if (m != null && b > b0 && !nw.includes(pcOf(m)) && nw.some((x) => [1, 2].includes(pcOf(m - x))) && R() < 0.8) {
+        let res = step(id, m, -1); if (!nw.includes(pcOf(res))) res = nearest(id, b, res); const h = Math.floor(NB / 2) * P;
+        push(id, t, h, m, base + 8, art); push(id, t + h, BT - h, res, base - 4, art); m = res; continue; }   // leans in, sighs out
+      if (m != null && b > b0 && nw.includes(pcOf(m)) && R() < 0.55) { push(id, t, R() < 0.4 ? BT - P : BT, m, base - 2, art); continue; }
+      const d = against && b > b0 ? (lastDir(against, b) < 0 ? 1 : -1) : 0;
+      m = nearest(id, b, m, d ? -d : 0); push(id, t, BT - 20, m, base + (R() * 6 - 3), art); }
+    return m; };
+  // the celli walk: the root, then a step against the violins or a fifth that leads on
+  const walk = (b0, b1, base, prev, upper) => { const id = 'vc'; if (!has(id)) return prev; let m = prev; const [lo, hi] = rg(id), h = Math.floor(NB / 2) * P;
+    for (let b = b0; b < b1; b++) { const root = rootAt(b), nxt = rootAt(b + 1); const cand = []; for (let p = lo; p <= hi; p++) if (pcOf(p) === root) cand.push(p);
+      if (!cand.length) continue; const r = cand.sort((x, y) => Math.abs(x - (m == null ? (lo + hi) / 2 : m)) - Math.abs(y - (m == null ? (lo + hi) / 2 : m)))[0];
+      push(id, b * BT, h - 30, r, base + 4 + (R() * 6 - 3)); const up = upper ? lastDir(upper, b) : 0;
+      if (R() < 0.5) { const tg = []; for (let x = r - 2; x <= r + 2; x++) if (x !== r && sc.includes(pcOf(x)) && pcOf(x) !== nxt && x >= lo && x <= hi) tg.push(x);
+        tg.sort((x, y) => ((x - r) * up <= 0 ? 0 : 1) - ((y - r) * up <= 0 ? 0 : 1) || Math.abs(x - r) - Math.abs(y - r));
+        push(id, b * BT + h, BT - h - 30, tg.length ? tg[0] : r, base - 2 + (R() * 6 - 3)); }
+      else { const f = r + 7 <= hi ? r + 7 : r - 5; push(id, b * BT + h, P - 20, f, base - 4); if (h + P < BT) push(id, b * BT + h + P, BT - h - P - 20, step(id, f, up > 0 ? -1 : 1), base - 6); }
+      m = r; }
+    return m; };
+  const roots = (id, b0, b1, base) => { if (!has(id)) return; const [lo, hi] = rg(id); for (let b = b0; b < b1; b++) { let p = lo; while (pcOf(p) !== rootAt(b) && p < lo + 12) p++; if (p + 12 <= hi && p < lo + 5) p += 12; push(id, b * BT, BT - 20, p, base); } };
+  const eighths = (id, b0, b1, base, rise, pitch) => { if (!has(id)) return; for (let b = b0; b < b1; b++) { const m = pitch(b); for (let q = 0; q < NB * 2; q++) push(id, b * BT + q * P / 2, P / 2 - 40, m, base + rise(b, q) * (q % 2 ? 0.85 : 1), 'short'); } };
+
+  const top = has('vln1') ? 'vln1' : 'vln2', second = has('vln1') && has('vln2') ? 'vln2' : null, mid = 'vla', low = 'vc', ANS = Math.round(NB * 1.5) * P;
+  const last = {}; const nr = (id, b) => (last[id] != null ? last[id] : has(id) ? nearest(id, b, null) : null);
+  const runs = []; for (let b = 0; b < NBARS; b++) { const X = o.texAt(b), r = runs[runs.length - 1]; if (r && r.X === X) r.z = b + 1; else runs.push({ X, a: b, z: b + 1 }); }
+  const seen = {}; let k = 0;
+  runs.forEach((run, ri) => { const X = run.X, occ = (seen[X] = (seen[X] || 0) + 1), L = run.z - run.a, nPh = Math.ceil(L / 4), e = clamp(o.energyAt(run.a), 0, 1), base = 40 + 40 * e;
+    Object.keys(out).forEach((id) => out[id].dyn.push({ t: run.a * BT, v: clamp(Math.round(48 + 50 * e), 20, 127) }));   // one calm value per part, no fader rides
+    for (let ph = 0, p0 = run.a; p0 < run.z; ph++, p0 += 4) { const p1 = Math.min(run.z, p0 + 4), rep = ph % 4; k++;
+      let singing = false; if (o.leadAt) for (let b = p0; b < p1; b++) if (o.leadAt(b)) singing = true;
+      if (X === 'soft') {
+        last[low] = hold(low, p0, p1, base - 6 + Math.min(ph, 2) * 2, nr(low, p0));
+        if (ph >= 1) last[mid] = hold(mid, p0, p1, base - 6, nr(mid, p0), low);
+        if (ph >= 2 && ph === nPh - 1 && !singing) { last[top] = phrase(top, p0 * BT, CELLS[0], k, nearest(top, p0, last[top]), base, false, true);
+          last[mid] = phrase(mid, p0 * BT + ANS, CELLS[0], k + 50, nearest(mid, p0 + 1, last[mid]), base - 4, true); }
+        else if (ph >= 2) last[top] = hold(top, p0 + 2, p1, base - 8, nr(top, p0));
+        if (ph % 2 === 0 && has('hn')) push('hn', p0 * BT, BT * 2 - 20, nearest('hn', p0, last.hn), base - 14), last.hn = nearest('hn', p0, last.hn);
+      } else if (X === 'verse' || X === 'answer') {
+        const swap = X === 'answer' || occ % 2 === 0, [caller, answerer, holder] = swap ? [top, mid, low] : [mid, low, top];
+        const cell = CELLS[(swap ? [3, 0, 3, 4] : [1, 4, 1, 2])[rep]];
+        roots('cb', p0, p1, base - 14);
+        if (ph === 0 && occ === 1 && X === 'verse') { last[low] = phrase(low, p0 * BT, cell, k, nearest(low, p0, last[low]), base); last[low] = hold(low, p0 + 2, p1, base - 4, last[low]); continue; }
+        if (singing) { [low, mid, top].forEach((id) => { last[id] = hold(id, p0, p1, base - 10, nr(id, p0)); }); continue; }
+        last[caller] = phrase(caller, p0 * BT, cell, k, nearest(caller, p0, last[caller]), base);
+        last[answerer] = phrase(answerer, p0 * BT + ANS, cell, k + 100, nearest(answerer, p0 + 1, last[answerer]), base - 4, true);
+        if (rep % 2 === 1) last[holder] = hold(holder, p0, p1, base - 8, nr(holder, p0), caller);
+        else if (holder !== low) last[holder] = hold(holder, p0 + 2, p1, base - 10, nr(holder, p0));
+        else last[low] = walk(p0, p1, base - 8, last[low], null);
+        if (second && rep % 2 === 1) last[second] = hold(second, p0, p1, base - 12, nr(second, p0), top);
+      } else if (X === 'contrast') {
+        if (ph % 2 === 1 && !singing) last[top] = phrase(top, p0 * BT, CELLS[2], k, nearest(top, p0, last[top]), base - 2);
+        else last[top] = hold(top, p0, p1, base - 6, nr(top, p0), low, 'trem');
+        last[mid] = hold(mid, p0, p1, base - 8, nr(mid, p0), top, 'trem'); if (second) last[second] = hold(second, p0, p1, base - 10, nr(second, p0), mid);
+        last[low] = walk(p0, p1, base - 8, last[low], top); roots('cb', p0, p1, base - 12);
+        if (has('hn')) { last.hn = nearest('hn', p0, last.hn); push('hn', p0 * BT, BT * 2 - 20, last.hn, base - 10); }
+      } else if (X === 'build') {
+        const grow = (b, q) => -10 + 22 * ((b - run.a) * NB * 2 + q) / Math.max(1, L * NB * 2);   // a crescendo written into every note
+        eighths(low, p0, p1, base, grow, (b) => { last[low] = nearest(low, b, last[low] != null ? last[low] : rg(low)[0] + 5); return last[low]; });
+        eighths(mid, p0, p1, base - 4, grow, (b) => { last[mid] = nearest(mid, b, nr(mid, b)); return last[mid]; });
+        last[top] = hold(top, p0, p1, base - 4, nr(top, p0), low); if (second) last[second] = hold(second, p0, p1, base - 8, nr(second, p0), top);
+        roots('cb', p0, p1, base - 8);
+        if (p1 === run.z && has(top)) { let m = last[top]; const t = (p1 - 1) * BT + Math.floor(NB / 2) * P; for (let i = 0; i < 4; i++) { m = step(top, m, 1); push(top, t + i * P / 2, P / 2 - 20, m, base + 2 + i * 3); } last[top] = m; }
+      } else if (X === 'full') {
+        const cell = CELLS[[0, 2, 4, 0][rep]];
+        last[low] = walk(p0, p1, base - 4, last[low], top); roots('cb', p0, p1, base - 8);
+        last[top] = phrase(top, p0 * BT, cell, k, nearest(top, p0, last[top] != null ? last[top] : rg(top)[0] + 8), base - (singing ? 6 : 0), false, singing);
+        last[mid] = phrase(mid, p0 * BT + ANS, cell, k + 200, nearest(mid, p0 + 1, nr(mid, p0)), base - 4, true);
+        last[mid] = hold(mid, p0 + 3, p1, base - 6, last[mid]);
+        if (second) last[second] = hold(second, p0, p1, base - 6, nr(second, p0), top);
+        if (has('hn') && ph % 2 === 0) { last.hn = nearest('hn', p0, last.hn); push('hn', p0 * BT, BT * 2 - 20, last.hn, base - 8); }
+        if (rep === 3 && p1 - p0 === 4 && has(top)) { let m = last[top]; const t = (p1 - 1) * BT + Math.floor(NB / 2) * P; for (let i = 0; i < 4; i++) { m = step(top, m, 1); push(top, t + i * P / 2, P / 2 - 20, m, base + 2 + i * 3); } last[top] = m; }
+      } else if (X === 'break') {
+        if (L >= 8) { const half = run.a + Math.floor(L / 2), quiet = run.z - 2;   // half almost silent, then a breath in, then two bars of silence
+          if (p1 <= half) { if (p1 === half || p1 + 4 > half) last[mid] = hold(mid, p0, p1, base, nr(mid, p0)); }
+          else { last[top] = hold(top, p0, Math.min(p1, quiet), base, nr(top, p0)); last[low] = hold(low, Math.min(p0 + 2, quiet), Math.min(p1, quiet), base - 4, nr(low, p0));
+            if (p1 >= quiet) last[mid] = hold(mid, Math.max(p0, quiet - 2), Math.min(p1, quiet), base, nr(mid, p0)); } }
+        else { last[top] = hold(top, p0, p1, base - 6, nr(top, p0)); last[mid] = hold(mid, p0, p1, base - 6, nr(mid, p0)); last[low] = hold(low, p0 + 2, p1, base - 8, nr(low, p0)); }
+      } else { // outro: thinner and thinner, the celli take it home
+        if (ph < nPh - 1) { last[mid] = hold(mid, p0, p1, base, nr(mid, p0)); last[low] = hold(low, p0, p1, base - 2, nr(low, p0)); roots('cb', p0, p1, base - 12);
+          if (ph === 0) last[top] = phrase(top, p0 * BT, CELLS[2], k, nearest(top, p0, last[top]), base - 4); }
+        else { last[low] = hold(low, p0, p1 - 1, base - 6, nr(low, p0));
+          if (has(low) && ri === runs.length - 1) { const [lo] = rg(low); let p = lo; while (pcOf(p) !== (o.tonic || 0) % 12) p++; push(low, (p1 - 1) * BT, BT - 60, p, base - 10); }
+          else last[low] = hold(low, p1 - 1, p1, base - 8, last[low]); }
+      }
+    } });
+
+  // nobody climbs over the voice above at the same moment; held notes of the same pitch tie over the bar line
+  [['vln2', 'vln1'], ['vla', 'vln2'], ['vc', 'vla']].forEach(([id, up]) => { if (!has(id) || !has(up) || (id === 'vla' && up === 'vln2' && second == null && top !== 'vln2')) return;
+    out[id].notes.forEach((n) => { const u = out[up].notes.find((x) => x.t <= n.t && n.t < x.t + x.dur); if (u && n.m > u.m && n.m - 12 >= rg(id)[0]) n.m -= 12; }); });
   Object.keys(out).forEach((id) => { const ns = out[id].notes.sort((a, b) => a.t - b.t), keep = [];
-    ns.forEach((n) => { const l = keep[keep.length - 1]; if (l && l.art === 'long' && n.art === 'long' && l.m === n.m && l.t + l.dur >= n.t - 40 && n.t % BT === 0) { l.dur = n.t + n.dur - l.t; return; } keep.push(n); });
-    if (id === 'vln2' || id === 'vla') for (let i = 0; i < keep.length - 1; i++) { const a = keep[i], b = keep[i + 1], gap = Math.abs(b.m - a.m);
-      if (a.art === 'long' && b.art === 'long' && (gap === 3 || gap === 4) && a.dur >= BT - 40 && b.t === a.t + a.dur + 20 && R() < 0.6) { const st = stepTo(a.m, b.m); if (st != null) { a.dur -= P; keep.splice(i + 1, 0, { t: a.t + a.dur + 20, dur: P - 40, m: st, v: a.v - 6, art: 'long' }); i++; } } }
+    ns.forEach((n) => { const l = keep[keep.length - 1]; if (l && l.art === n.art && n.art !== 'short' && l.m === n.m && l.t + l.dur >= n.t - 40 && n.t % BT === 0 && l.dur >= BT - 60) { l.dur = n.t + n.dur - l.t; return; } keep.push(n); });
     out[id].notes = keep; });
-  // a new chord is felt: the first note of every voice on a chord change is played a little harder
-  for (let b = 1; b < o.bars; b++) { const a2 = (o.chordAt(b - 1) || []).slice().sort().join(), c2 = (o.chordAt(b) || []).slice().sort().join(); if (!c2 || a2 === c2) continue;
-    Object.values(out).forEach((tr) => tr.notes.forEach((n) => { if (Math.abs(n.t - b * BT) < 30) n.v = clamp(n.v + 12, 20, 127); })); }
   return out;
 };
 
