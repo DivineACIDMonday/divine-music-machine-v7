@@ -4046,7 +4046,7 @@ $('#bpm').hidden = S.tempo !== 'own'; $('#bpm').value = S.bpm; $('#bpm').onchang
 const STEP = PPQ / 4, RHY = [['machine', 'Rhythm: Machine'], ['every', 'Rhythm: Every N bars'], ['speed', 'Rhythm: Speeding up'], ['slow', 'Rhythm: Slowing down'], ['draw', 'Rhythm: Draw my own']];
 function bpmNow() { const sc0 = S.scenes[0]; return S.tempo === 'own' ? S.bpm : (sc0.genre === 'cinematic' ? 96 : E.GENRES[ENGINE_GENRE(sc0.genre)].def); }
 const secOf = (txt) => { const m = String(txt || '').trim().match(/^(\d+)(?::(\d{1,2}))?$/); return m ? (m[2] != null ? +m[1] * 60 + +m[2] : +m[1]) : 0; };   // 2:30 or 150
-const fmt = (sec) => Math.floor(sec / 60) + ':' + String(Math.round(sec % 60)).padStart(2, '0');
+const fmt = (sec) => { const r = Math.round(sec); return Math.floor(r / 60) + ':' + String(r % 60).padStart(2, '0'); };
 function barsOf(si) { const sc = S.scenes[si]; if (sc && sc.time && secOf(sc.time)) return Math.max(1, Math.round(secOf(sc.time) * bpmNow() / 240)); return sceneBars(); }  // a time you give wins: bars = seconds x bpm / 240
 function sceneBars() { const lines = S.lyrics.split('\n').filter((l) => l.trim() && !/^\s*\[.*\]\s*$/.test(l)).length, n = S.scenes.length;
   return lines ? Math.max(S.len, Math.ceil((lines * 4.5 + 8) / n / 8) * 8) : S.len; }
@@ -4164,7 +4164,7 @@ function beatAs(notes, kind, f, r) {
 function makeAll() {
   const sc0 = S.scenes[0], bpm = bpmNow();
   const first = E.newSong(ENGINE_GENRE(sc0.genre), { seed: E.hash(S.seed, 'key') }), anyMinor = S.scenes.some((sc) => Object.values(sc.slots).some((s) => s.feel && FEELS[s.feel].minor));
-  const key = { root: first.key.root, scale: anyMinor && first.key.scale === 'major' ? 'minor' : first.key.scale };
+  const key = S.forceKey ? Object.assign({}, S.forceKey) : { root: first.key.root, scale: anyMinor && first.key.scale === 'major' ? 'minor' : first.key.scale };   // the Burp Machine can hand in its own key
   const bars0 = sceneBars(); // words need room: the scenes grow until every line can breathe
   const tracks = {}, markers = [], EN = S.scenes.map(sceneEnergy); let at = 0;
   const put = (part, label, plug, notes, song) => { const k = part + '|' + label + '|' + plug; const tr = tracks[k] = tracks[k] || { part, label, plug, notes: [], scenes: new Set() };
@@ -4176,13 +4176,16 @@ function makeAll() {
     const engine = { beat: E.renderSong(song, 'beat'), bass: E.renderSong(song, 'bass'), chords: E.renderSong(song, 'chords').concat(E.renderSong(song, 'pad')), melody: E.renderSong(song, 'melody'), answer: E.renderSong(song, 'answer') };
     SLOTS.forEach(([part, pname]) => { const sl = sc.slots[part] || {}; if (!sl.inst || sl.inst === 'silent') return;
       const r = E.rng(E.hash(seed, 'feel', part)), f = sl.feel ? FEELS[sl.feel] : null, inst = INST[part][sl.inst] || null; let notes = engine[part];
+      if (sl.src && ENGINE_GENRE(sl.src) !== ENGINE_GENRE(sc.genre)) { const os = songFor(sl.src, E.hash(seed, 'src', part), bpm, key, bars, type); notes = part === 'chords' ? E.renderSong(os, 'chords').concat(E.renderSong(os, 'pad')) : E.renderSong(os, part); }   // this place borrows another genre's playing
       if (part === 'beat' && BEAT_GENRE[sl.inst]) { const bs = songFor(BEAT_GENRE[sl.inst], E.hash(seed, 'beat'), bpm, key, bars, type); notes = beatAs(E.renderSong(bs, 'beat'), sl.inst, f, r); }
       if ((part === 'melody' || part === 'answer') && inst && notes.length < bars * 1.5) { const ms = songFor('synthwave', E.hash(seed, 'mel', part), bpm, key, bars, 'chorus'); ms.sections = [{ id: 'c', type: 'chorus', bars }]; const alt = E.renderSong(ms, part); if (alt.length > notes.length) notes = alt; } // you asked for this instrument: it gets a real line
       if (part === 'bass' && sl.inst === 'acid') { const bs = songFor('acid', E.hash(seed, 'acid'), bpm, key, bars, type); notes = E.renderSong(bs, 'bass'); }
       if (part === 'chords' && sl.inst === 'strings') notes = strings(engine.chords, engine.bass, bars, type, f ? f.e : energy, key, E.hash(seed, 'str'));
       if (part === 'bass' && inst && inst[3]) notes = legato(notes, false);
       notes = feel(notes, part, f, inst, r);
-      const hits = hitsOf(sl, bars); if (hits) notes = applyRhythm(part, notes, hits, bars, sl.inst);
+      let hits = hitsOf(sl, bars);
+      if (!hits && sl.rhFrom && engine[sl.rhFrom] && sl.rhFrom !== part) { const w = win(sl, bars); hits = [...new Set(engine[sl.rhFrom].map((n) => Math.round(n.t / STEP)))].filter((x) => x >= w.a && x < w.z).sort((a, b) => a - b); }   // or borrows another place's rhythm
+      if (hits) notes = applyRhythm(part, notes, hits, bars, sl.inst);
       if (!f && inst && inst[1]) notes = fold(notes, inst[1], inst[2]);
       notes = joint(part, notes, si, EN, bars, key, r);
       notes = shapeNotes(part, notes, sl, bars, key);

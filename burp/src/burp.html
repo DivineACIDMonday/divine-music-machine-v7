@@ -1,0 +1,71 @@
+<style>
+#app{display:none!important}
+#burp{max-width:640px;margin:0 auto;padding:24px 16px 40px;display:flex;flex-direction:column;align-items:center;gap:18px;text-align:center}
+#burp .logo{font-size:30px}
+#burpBtn{width:190px;height:190px;border-radius:50%;border:2px solid #5C4A22;background:radial-gradient(circle at 35% 30%,#3A3020,#1E1A10 70%);color:var(--gold);font:italic 700 34px "Bodoni 72",Didot,"Playfair Display",Georgia,serif;cursor:pointer;box-shadow:0 0 0 6px #131824,0 0 40px #E7B65C22;transition:transform .12s}
+#burpBtn:hover{transform:scale(1.03)}#burpBtn:active{transform:scale(.97)}
+#burpBtn[disabled]{opacity:.6;cursor:wait}
+#bInfo{color:var(--mu);font-size:15px;min-height:22px}
+#bInfo b{color:var(--tx);font-weight:600}
+#bParts{width:100%;display:flex;flex-direction:column;gap:8px}
+#bParts .pr{display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:center;text-align:left}
+#bParts .pr span{color:var(--mu)}
+#bDl{display:flex;flex-wrap:wrap;gap:10px;justify-content:center}
+</style>
+<div id="burp">
+  <header style="width:100%"><div class="logo serif">Divine <i>Burp</i> Machine</div><div class="grow"></div><a class="back" href="/">← all machines</a></header>
+  <button id="burpBtn" title="Press for a whole new track">BURP</button>
+  <div id="bInfo">One press, one whole track. Never the same twice.</div>
+  <div id="bParts" hidden></div>
+  <div id="bDl" hidden><button class="btn big" id="bZip">Download all (zip)</button><button class="btn" id="bFull">Full MIDI only</button></div>
+  <div class="muted small" id="bNote" hidden>Choose a plugin per part, or leave it plain MIDI. The track stays the same when you switch.</div>
+</div>
+<script>
+(function () {
+  ls.set = function () {};   // the Burp Machine never touches what you saved in the Director
+  const B = { hist: [], count: 0, plug: { beat: 'gm', bass: 'plain', chords: 'plain', melody: 'plain', answer: 'plain' } };
+  try { B.hist = JSON.parse(localStorage.getItem('burp-hist') || '[]'); B.count = +localStorage.getItem('burp-count') || 0; const pl = JSON.parse(localStorage.getItem('burp-plug') || 'null'); if (pl) B.plug = pl; } catch (e) { /* private window */ }
+  const keep = () => { try { localStorage.setItem('burp-hist', JSON.stringify(B.hist.slice(-300))); localStorage.setItem('burp-count', String(B.count)); localStorage.setItem('burp-plug', JSON.stringify(B.plug)); } catch (e) { /* private window */ } };
+  const PARTS = [['beat', 'Beat'], ['bass', 'Bass'], ['chords', 'Chords'], ['melody', 'Melody'], ['answer', 'Answer']];
+  const G = GENRES.map((g) => g[0]), PK = ['melody', 'chords', 'answer', 'bass', 'beat'];
+  // everything is open: any genre next to any genre, rules of one place on another, sometimes, never always
+  function roll(seed) { const r = E.rng(seed), pick = (a) => a[Math.floor(r() * a.length)], chance = (p) => r() < p;
+    const n = 3 + Math.floor(r() * 6), total = 120 + r() * 240, w = Array.from({ length: n }, () => 0.4 + r()), ws = w.reduce((a, b) => a + b, 0);
+    const scenes = w.map((x) => { const sc = { genre: pick(G), seed: Math.floor(r() * 2147483647), time: fmt(Math.max(12, total * x / ws)), slots: {} };
+      PK.forEach((p) => { if (!chance({ beat: 0.82, bass: 0.82, chords: 0.6, melody: 0.65, answer: 0.35 }[p])) { sc.slots[p] = {}; return; }
+        const sl = sc.slots[p] = { inst: chance(0.3) ? 'machine' : pick(Object.keys(INST[p])), feel: chance(0.7) ? pick(Object.keys(FEELS)) : '' };
+        if (chance(0.35)) sl.src = pick(G);                                                    // play like another genre
+        const rr = r(); if (rr < 0.12) { sl.rh = pick(['every', 'speed', 'slow']); sl.n = pick([1, 2, 3, 4, 5, 7, 8]); }
+        else if (rr < 0.2) { sl.rh = 'draw'; const pat = Array.from({ length: 16 }, (_, i) => (i % 4 === 0 ? r() < 0.7 : r() < 0.22)); sl.ed = { add: [], del: [] }; sl.pat = pat; }
+        else if (rr < 0.32) sl.rhFrom = pick(PK.filter((q) => q !== p));                       // borrow another place's rhythm
+        if (chance(0.33)) sl.sw = pick(['grow', 'fade', 'arc']);
+        if (p !== 'beat' && chance(0.25)) sl.shape = pick(['rise', 'fall', 'stay']);
+        if (chance(0.18)) sl.in = 1 + 4 * Math.floor(r() * 3);
+        if (chance(0.12)) sl.out = 8 + 4 * Math.floor(r() * 4); });
+      if (!PK.some((p) => sc.slots[p].inst)) sc.slots.beat = { inst: 'machine' };
+      return sc; });
+    return { scenes, bpm: 70 + Math.floor(r() * 101), key: { root: Math.floor(r() * 12), scale: pick(['minor', 'minor', 'major']) } }; }
+  const print = (t) => t.scenes.map((s) => s.genre).join('>') + '|' + t.key.root + t.key.scale + '|' + Math.round(t.bpm / 6);
+  function build(t) { S.scenes = JSON.parse(JSON.stringify(t.scenes)); S.lyrics = ''; S.tempo = 'own'; S.bpm = t.bpm; S.forceKey = t.key; S.seed = t.seed;
+    S.scenes.forEach((sc) => { PK.forEach((p) => { const sl = sc.slots[p]; if (!sl.inst) return; sl.plug = B.plug[p];
+      if (sl.pat) { const bars = barsOf(S.scenes.indexOf(sc)); for (let b = 0; b < bars; b++) sl.pat.forEach((on, i) => { if (on) sl.ed.add.push(b * 16 + i); }); delete sl.pat; } }); });
+    const R = makeAll(), merged = {};
+    R.tracks.forEach((tr) => { const m = merged[tr.part] = merged[tr.part] || { name: PARTS.find((x) => x[0] === tr.part)[1], part: tr.part, notes: [], scenes: new Set() }; m.notes.push(...tr.notes); });
+    R.tracks = PARTS.map(([p]) => merged[p]).filter(Boolean).map((m) => Object.assign(m, { notes: m.notes.sort((a, b) => a.t - b.t) }));
+    R.markers = R.markers.map((m, i) => ({ t: m.t, text: 'Part ' + (i + 1) })); S.res = R; return R; }
+  function show(R) { const secs = Math.round(R.total / BAR * 240 / R.bpm);
+    $('#bInfo').innerHTML = '<b>Track ' + String(B.count).padStart(4, '0') + '</b>  ·  ' + fmt(secs) + '  ·  ' + R.bpm + ' bpm';
+    const box = $('#bParts'); box.innerHTML = '';
+    R.tracks.forEach((t) => { const d = document.createElement('div'); d.className = 'pr'; const l = document.createElement('span'); l.textContent = t.name;
+      d.append(l, sel(plugOpts(t.part), B.plug[t.part], (v) => { B.plug[t.part] = v; keep(); build(B.cur); })); box.append(d); });
+    $('#bParts').hidden = false; $('#bDl').hidden = false; $('#bNote').hidden = false; }
+  $('#burpBtn').onclick = () => { $('#burpBtn').disabled = true;
+    setTimeout(() => { let t, tries = 0; do { t = roll(E.newSeed() ^ Date.now()); t.seed = E.newSeed(); tries++; } while (B.hist.includes(print(t)) && tries < 50);   // never a track you already had
+      B.hist.push(print(t)); B.count++; B.cur = t; keep(); show(build(t)); $('#burpBtn').disabled = false; }, 30); };
+  const name = () => 'DM_Burp_' + String(B.count).padStart(4, '0') + '_' + S.res.bpm + 'bpm_' + E.keyName(S.res.key).replace(/\s/g, '');
+  $('#bFull').onclick = () => saveBlob(new Blob([full()], { type: 'audio/midi' }), name() + '_Full.mid');
+  $('#bZip').onclick = () => { const files = [{ name: name() + '_Full.mid', data: full() }];
+    S.res.tracks.forEach((t, i) => files.push({ name: String(i + 1).padStart(2, '0') + '_' + t.name + (B.plug[t.part] !== 'plain' && B.plug[t.part] !== 'gm' ? '_for_' + safe(E.PLUGINS[B.plug[t.part]].name) : '') + '.mid', data: E.writeMidi([{ name: t.name, channel: t.part === 'beat' ? 9 : 0, notes: t.notes }], { bpm: S.res.bpm, meter: '4/4', title: t.name, markers: S.res.markers }) }));
+    saveBlob(zip(files), name() + '.zip'); };
+})();
+</script>
