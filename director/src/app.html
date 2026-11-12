@@ -40,14 +40,14 @@ input[type=number]{background:#0F131C;border:1px solid var(--line);border-radius
 .scene{flex:0 0 min(360px,88vw);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:9px}
 .scene h3{margin:0;font-size:17px;font-style:italic;display:flex;align-items:center;gap:8px}
 .scene h3 .x:first-of-type{margin-left:auto}.scene h3 .x{background:none;border:1px solid var(--line);border-radius:8px;color:var(--mu);cursor:pointer;padding:3px 9px;min-height:30px}
-.slot{display:grid;grid-template-columns:70px 1fr;gap:6px;align-items:start}
+.slot{display:grid;grid-template-columns:70px minmax(0,1fr);gap:6px;align-items:start}
 .slot .nm{color:var(--mu);font-size:13.5px;padding-top:8px}
-.slot .ch{display:flex;flex-wrap:wrap;gap:6px}
+.slot .ch{display:flex;flex-wrap:wrap;gap:6px;min-width:0}
 .slot .ch select{flex:1 1 92px;min-width:0}
 [hidden]{display:none!important}
-.rhy{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%}
+.rhy{display:flex;flex-wrap:wrap;gap:6px;align-items:center;width:100%;min-width:0}
 .rhy input{width:58px}
-.sw{width:100%;overflow-x:auto;padding-bottom:4px}
+.sw{flex:1 1 100%;width:100%;max-width:100%;min-width:0;overflow-x:auto;padding-bottom:4px}
 .strip{position:relative;height:34px;background:repeating-linear-gradient(90deg,#3C4A66 0,#3C4A66 1px,transparent 1px,transparent calc(var(--bw) * 4)),repeating-linear-gradient(90deg,#1b2232 0,#1b2232 calc(var(--bw) - 2px),#0F131C calc(var(--bw) - 2px),#0F131C var(--bw));border-radius:4px;cursor:pointer}
 .strip i{position:absolute;top:0;bottom:0;width:2px;background:var(--gold);border-radius:1px;pointer-events:none}
 .grid16{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;width:100%}
