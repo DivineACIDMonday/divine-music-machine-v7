@@ -4003,7 +4003,13 @@ function drawScenes() {
       if (!SLOTS.some(([p]) => sc.slots[p] && sc.slots[p].inst)) {   // an empty scene: the shuffle sets it up for you, a genre and three to five places with a feeling
         const pick = (a) => a[Math.floor(r() * a.length)]; sc.genre = pick(GENRES)[0];
         const want = ['beat', 'bass', 'chords', 'melody', 'answer'].slice(0, 3 + Math.floor(r() * 3));
-        SLOTS.forEach(([p]) => { sc.slots[p] = want.includes(p) ? { inst: r() < 0.4 ? 'machine' : pick(Object.keys(INST[p])), feel: r() < 0.75 ? pick(Object.keys(FEELS)) : '' } : {}; }); }
+        const bars = pick([8, 16, 16, 24, 32]); sc.time = fmt(bars * 240 / bpmNow());   // a length too
+        SLOTS.forEach(([p]) => { if (!want.includes(p)) { sc.slots[p] = {}; return; }
+          const sl = sc.slots[p] = { inst: r() < 0.4 ? 'machine' : pick(Object.keys(INST[p])), feel: r() < 0.75 ? pick(Object.keys(FEELS)) : '' };
+          if (r() < 0.3) { sl.rh = pick(['every', 'speed', 'slow']); sl.n = pick([1, 2, 4, 5, 8]); }                 // and now and then a rhythm,
+          if (r() < 0.4) sl.sw = pick(['grow', 'fade', 'arc']);                                                       // a swell,
+          if (p !== 'beat' && r() < 0.3) sl.shape = pick(['rise', 'fall', 'stay']);                                  // a shape,
+          if (p !== 'beat' && r() < 0.25) sl.in = 1 + 4 * Math.floor(r() * (bars / 8)); }); }                         // or a late entry
       save(); drawScenes(); make(false); }; h.append(sh);
     if (S.scenes.length > 1) { const x = document.createElement('button'); x.className = 'x'; x.textContent = 'Remove'; x.onclick = () => { S.scenes.splice(i, 1); save(); drawScenes(); }; h.append(x); }
     d.append(h);
