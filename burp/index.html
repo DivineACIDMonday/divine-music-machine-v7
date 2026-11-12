@@ -4342,14 +4342,15 @@ drawScenes();
     const totalBars = Math.max(48, Math.round((120 + r() * 240) * bpm / 240 / 8) * 8), n = 3 + Math.floor(r() * 6);
     let left = totalBars; const lens = []; for (let i = 0; i < n; i++) { const share = i === n - 1 ? left : Math.max(8, Math.round(left / (n - i) * (0.6 + r() * 0.8) / 8) * 8); lens.push(Math.min(share, left - 8 * (n - i - 1))); left -= lens[i]; }
     if (lens[0] > 16) { lens[1] += lens[0] - 16; lens[0] = 16; }   // the opening is short, so the beat is never far away
-    const scenes = []; let prev = null;
+    const scenes = []; let prev = null, breath = false;
     lens.forEach((L, i) => { let sc;
       if (!prev) { sc = { genre: pick(G), slots: {} }; PK.forEach((p) => { sc.slots[p] = {}; }); ['chords', pick(['bass', 'beat'])].forEach((p) => { sc.slots[p] = slotNew(p, r, pick, chance); sc.slots[p].sw = 'grow'; }); }   // the opening: a few places, growing
       else { sc = JSON.parse(JSON.stringify(prev)); if (chance(0.6)) sc.genre = pick(G);                     // the next part inherits, and changes two or three things
         const ch = PK.slice().sort(() => r() - 0.5).slice(0, 2 + Math.floor(r() * 2));
         ch.forEach((p) => { sc.slots[p] = sc.slots[p].inst && p !== 'beat' && chance(0.35) ? {} : slotNew(p, r, pick, chance); }); }   // once the beat is in, it stays (it may change)
       if (!sc.slots.chords.inst) sc.slots.chords = Object.assign(slotNew('chords', r, pick, chance), { inst: pick(['pad', 'strings', 'organ', 'machine']), rh: undefined, rhFrom: undefined });   // glue: always harmony
-      if (i >= 1 && !sc.slots.beat.inst) sc.slots.beat = slotNew('beat', r, pick, chance);   // the beat is there by the second part at the latest
+      if (i >= 1 && !sc.slots.beat.inst) sc.slots.beat = slotNew('beat', r, pick, chance);
+      if (i >= 1 && !sc.slots.melody.inst) { if (!breath && i > 1 && i < n - 1 && chance(0.35)) breath = true; else sc.slots.melody = slotNew('melody', r, pick, chance); }   // the melody sings from the second part on; one part may be a breath without it   // the beat is there by the second part at the latest
       if (sc.slots.answer.inst && !sc.slots.melody.inst) sc.slots.answer = {};                              // an answer needs a melody to answer
       if (!sc.slots.bass.inst && !sc.slots.beat.inst) sc.slots.bass = slotNew('bass', r, pick, chance);   // and always a floor, also at the end
       prev = sc;
