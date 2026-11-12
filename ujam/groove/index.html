@@ -3948,23 +3948,23 @@ E.orchestra = function (o) {
   const push = (id, t, dur, m, v, art) => { if (out[id] && m != null) out[id].notes.push({ t: Math.round(t), dur: Math.max(30, Math.round(dur)), m, v: clamp(Math.round(v), 20, 127), art }); };
   // the countermelody: the motif, slower and noble, starting every four bars; without a motif a line that walks through the chord tones
   const motif = o.motif && o.motif.degrees && o.motif.degrees.length ? o.motif : null;
-  let mPos = 0, mLine = 0;
-  const counter = (b, t0, v, lo, hi) => {
+  let mPos = 0, mLine = 0; const CV = o.ranges.vln1 ? 'vln1' : 'vln2'; // without first violins the second violins carry the countermelody
+  const counter = (b, t0, v, lo, hi) => { if (CV === 'vln2') { lo = o.ranges.vln2[0]; hi = o.ranges.vln2[1] + 5; }
     if (motif) {
       if (b % 4 === 0) { mPos = 0; mLine = t0; }
       const rh = motif.rhythm.map((x) => x * 2 * P), total = rh.reduce((a, x) => a + x, 0); if (!total) return;
       let t = mLine, k = 0; while (t < t0 + BT && k < motif.degrees.length) { const d = rh[k];
         if (t >= t0) { const base = 12 * Math.floor((lo + hi) / 24); let m = fold(base + o.tonic + sc[((motif.degrees[k] % 7) + 7) % 7] + 12 * Math.floor(motif.degrees[k] / 7), lo, hi);
           const ch = o.chordAt(Math.floor(t / BT)) || []; if (t % P === 0 && !ch.includes(m % 12)) { const fix = [m - 1, m + 1, m - 2, m + 2].find((x) => ch.includes(((x % 12) + 12) % 12) && x >= lo && x <= hi); if (fix != null) m = fix; }
-          push('vln1', t, Math.min(d, t0 + BT - t) - 20, m, v, 'long'); }
+          push(CV, t, Math.min(d, t0 + BT - t) - 20, m, v, 'long'); }
         t += d; k++; }
       return;
     }
     const ch = o.chordAt(b) || []; if (!ch.length) return;
-    const a = near(ch[(b + 1) % ch.length], lo, hi, prev.vln1); prev.vln1 = a; const half = Math.floor(NB / 2) * P;
-    push('vln1', t0, half - 20, a, v, 'long');
+    const a = near(ch[(b + 1) % ch.length], lo, hi, prev[CV]); prev[CV] = a; const half = Math.floor(NB / 2) * P;
+    push(CV, t0, half - 20, a, v, 'long');
     const nxt = o.chordAt(b + 1) || ch, target = near(nxt[0], lo, hi, a), st = target != null && target !== a ? stepTo(a, target) : null;
-    push('vln1', t0 + half, BT - half - 20, st != null ? st : a, v - 6, 'long');
+    push(CV, t0 + half, BT - half - 20, st != null ? st : a, v - 6, 'long');
   };
   for (let b = 0; b < o.bars; b++) {
     const pcs = o.chordAt(b); if (!pcs || !pcs.length) continue;
@@ -3978,11 +3978,18 @@ E.orchestra = function (o) {
     if (rg('cb')) held.cb = prev.cb = near(bp, rg('cb')[0], rg('cb')[1], prev.cb);
     const fifth = (id) => (held[id] == null ? null : near((bp + 7) % 12, rg(id)[0], rg(id)[1], held[id]));
     const eighths = (id, m, m2, vv, art, accent) => { for (let q = 0; q < NB * 2; q++) push(id, t0 + q * P / 2, P / 2 - 40, q % 2 && m2 != null ? m2 : m, vv * (q % 2 === 0 ? 1 : 0.82) + (accent ? q * 1.5 : 0), art); };
-    const dyn = (id, a, z) => { if (!out[id]) return; out[id].dyn.push({ t: t0, v: clamp(a, 20, 127) }); if (z !== a) out[id].dyn.push({ t: t0 + BT * 0.75, v: clamp(z, 20, 127) }); };
-    const long = (id, vv, art) => push(id, t0, BT - 20, held[id], vv, art || 'long');
+    const ph = (b % 4) / 3, dyn = (id, a, z) => { if (!out[id]) return; a = a - 10 + ph * 12; z = z - 4 + ph * 14; out[id].dyn.push({ t: t0, v: clamp(Math.round(a), 20, 127) }); out[id].dyn.push({ t: t0 + BT * 0.8, v: clamp(Math.round(z), 20, 127) }); }; // every 4-bar phrase swells
+    const long = (id, vv, art) => { if (id === 'vln2' && (!art || art === 'long') && rg('vln2')) return line(vv); push(id, t0, BT - 20, held[id], vv, art || 'long'); };
+    // the second violins sing a slow line of their own: half notes through the chord, a step towards the next bar, never 4 tones for a whole song
+    const line = (vv) => { const [lo, hi] = rg('vln2'), up = Math.floor(b / 4) % 2 === 0, ch = pcs.slice().sort((x, y) => x - y);
+      let a = held.vln2; const alt = ch.map((pc) => near(pc, lo, hi, a)).filter((x) => x != null && x !== a).sort((x, y) => Math.abs(x - a) - Math.abs(y - a));
+      if (b % 2 === 1 && alt.length) a = (up ? alt.find((x) => x > a) : alt.find((x) => x < a)) || alt[0];
+      const nx = o.chordAt(b + 1) || pcs, tgt = near(nx[0], lo, hi, a), st = tgt != null && tgt !== a ? stepTo(a, tgt) : null, half = Math.floor(NB / 2) * P;
+      push('vln2', t0, half - 20, a, vv, 'long'); push('vln2', t0 + half, BT - half - 20, st != null && R() < 0.7 ? st : a, vv - 4, 'long'); prev.vln2 = a; };
+    const rest = X === 'verse' && b % 8 >= 6; // the orchestra breathes: two bars of every eight the upper strings are silent in a verse
     if (X === 'soft') { long('vln2', v - 14); long('vla', v - 14); long('vc', v - 10); if (e > 0.3) long('cb', v - 16); if (b % 4 === 0) push('hn', t0, BT * 2 - 20, held.hn, v - 18, 'long');
       ['vln2', 'vla', 'vc', 'cb', 'hn'].forEach((id) => dyn(id, v - 30, v - 12)); }
-    else if (X === 'verse') { long('vln2', v - 10); eighths('vla', held.vla, fifth('vla'), v - 8, 'short');
+    else if (X === 'verse') { if (!rest) { long('vln2', v - 10); eighths('vla', held.vla, fifth('vla'), v - 8, 'short'); }
       for (let q = 0; q < NB; q += NB === 3 ? 3 : 2) push('vc', t0 + q * P, P - 40, held.vc, v - 4, 'pizz'); long('cb', v - 14);
       ['vln2', 'vla', 'vc', 'cb'].forEach((id) => dyn(id, v - 12, v - 12)); }
     else if (X === 'answer') { ['vln2', 'vla'].forEach((id) => { for (let q = 0; q < NB; q += 2) push(id, t0 + (q + 0.5) * P, P / 2 - 30, held[id], v - 4, 'short'); if (NB === 3) push(id, t0 + 1.5 * P, P / 2 - 30, held[id], v - 8, 'short'); });
@@ -3993,7 +4000,9 @@ E.orchestra = function (o) {
     else if (X === 'build') { long('vln2', v - 6, 'trem'); eighths('vla', held.vla, held.vla, v - 6, 'short', true); eighths('vc', held.vc, held.vc, v - 4, 'short', true); long('cb', v - 8);
       if (b === o.bars - 1 || o.texAt(b + 1) !== 'build') push('hn', t0, BT - 20, held.hn, v, 'long');
       ['vln2', 'vla', 'vc', 'cb', 'hn'].forEach((id) => dyn(id, v - 20 + (b % 4) * 8, v - 6 + (b % 4) * 8)); }
-    else if (X === 'full') { counter(b, t0, v + 6, rg('vln1') ? rg('vln1')[0] : 67, rg('vln1') ? rg('vln1')[1] : 88); long('vln2', v); long('vla', v - 4); long('vc', v); long('cb', v - 4);
+    else if (X === 'full') { counter(b, t0, v + 6, rg('vln1') ? rg('vln1')[0] : 67, rg('vln1') ? rg('vln1')[1] : 88); if (CV !== 'vln2') long('vln2', v);
+      for (let q = 1; q < NB; q += 2) push('vla', t0 + q * P, P / 2 - 20, held.vla, v + 6, 'short'); // stabs with the backbeat: the strings answer the snare
+      push('vc', t0, BT - 20, held.vc, v, 'long'); long('cb', v - 4);
       push('hn', t0, P - 40, held.hn, v + 8, 'short'); push('hn', t0 + P, BT - P - 20, held.hn, v - 6, 'long');
       ['vln1', 'vln2', 'vla', 'vc', 'cb', 'hn'].forEach((id) => dyn(id, v + 4, v + 4)); }
     else if (X === 'break') { long('vln2', v - 20); long('vla', v - 22); if (b % 2 === 0) push('vc', t0, BT * 2 - 20, held.vc, v - 20, 'long');
@@ -4007,6 +4016,9 @@ E.orchestra = function (o) {
     if (id === 'vln2' || id === 'vla') for (let i = 0; i < keep.length - 1; i++) { const a = keep[i], b = keep[i + 1], gap = Math.abs(b.m - a.m);
       if (a.art === 'long' && b.art === 'long' && (gap === 3 || gap === 4) && a.dur >= BT - 40 && b.t === a.t + a.dur + 20 && R() < 0.6) { const st = stepTo(a.m, b.m); if (st != null) { a.dur -= P; keep.splice(i + 1, 0, { t: a.t + a.dur + 20, dur: P - 40, m: st, v: a.v - 6, art: 'long' }); i++; } } }
     out[id].notes = keep; });
+  // a new chord is felt: the first note of every voice on a chord change is played a little harder
+  for (let b = 1; b < o.bars; b++) { const a2 = (o.chordAt(b - 1) || []).slice().sort().join(), c2 = (o.chordAt(b) || []).slice().sort().join(); if (!c2 || a2 === c2) continue;
+    Object.values(out).forEach((tr) => tr.notes.forEach((n) => { if (Math.abs(n.t - b * BT) < 30) n.v = clamp(n.v + 12, 20, 127); })); }
   return out;
 };
 
