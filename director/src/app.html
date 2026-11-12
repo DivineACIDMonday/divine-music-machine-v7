@@ -50,7 +50,9 @@ input[type=text]{background:#0F131C;border:1px solid var(--line);border-radius:9
 .rhy input{width:58px}
 .sw{flex:1 1 100%;width:100%;max-width:100%;min-width:0;overflow-x:auto;padding-bottom:4px}
 .strip{position:relative;height:34px;background:repeating-linear-gradient(90deg,#3C4A66 0,#3C4A66 1px,transparent 1px,transparent calc(var(--bw) * 4)),repeating-linear-gradient(90deg,#1b2232 0,#1b2232 calc(var(--bw) - 2px),#0F131C calc(var(--bw) - 2px),#0F131C var(--bw));border-radius:4px;cursor:pointer}
-.strip i{position:absolute;top:0;bottom:0;width:2px;background:var(--gold);border-radius:1px;pointer-events:none}
+.strip b.off{position:absolute;top:0;bottom:0;background:rgba(11,14,20,.72);pointer-events:none}
+.strip u{position:absolute;bottom:0;background:#5C4A22;opacity:.8;pointer-events:none}
+.strip i{position:absolute;bottom:0;width:2px;background:var(--gold);border-radius:1px;pointer-events:none}
 .grid16{display:grid;grid-template-columns:repeat(16,1fr);gap:2px;width:100%}
 .grid16 button{height:24px;border:1px solid var(--line);border-radius:4px;background:#0F131C;cursor:pointer;padding:0;min-height:0}
 .grid16 button.on{background:var(--gold);border-color:var(--gold)}
@@ -171,7 +173,7 @@ function drawScenes() {
       if (sl.inst) {
         c.append(sel(Object.entries(FEELS).map(([k, v]) => [k, v.n]), sl.feel, (v) => { sl.feel = v; save(); }, 'any feeling'));
         c.append(sel(plugOpts(part), sl.plug || (part === 'beat' ? 'gm' : 'plain'), (v) => { sl.plug = v; save(); }));
-        c.append(rhythmBox(sl, barsOf(i)));
+        c.append(rhythmBox(sl, barsOf(i), part));
       }
       r.append(n, c); d.append(r); });
     box.append(d);
@@ -201,26 +203,57 @@ function baseHits(sl, bars) { const m = sl.rh || 'machine', n = E.clamp(Math.rou
     while (t < tot - 1e-9) { h.push(Math.round(t * 4) / 4); const x = Math.min(1, (m === 'speed' ? t : tot - t) / (tot * top)), gap = A * Math.pow(Z / A, Math.pow(x, 1.8));  /* calm for a long time, then faster and faster */
       t += gap >= 16 ? Math.max(16, Math.round(gap / 16) * 16) : [8, 4, 2, 1, 0.5, 0.25].find((q) => q <= gap) || 0.25; } }
   return h; }
-function hitsOf(sl, bars) { if (!sl.rh || sl.rh === 'machine') return null; const tot = bars * 16, ed = sl.ed || { add: [], del: [] };
-  const stop = sl.rh === 'speed' && +sl.stop > 0 ? (+sl.stop) * 16 : Infinity;   // stop at bar: the roll ends where you say
-  const set = new Set(baseHits(sl, bars).filter((x) => !ed.del.includes(x) && x < stop)); ed.add.forEach((x) => { if (x < tot) set.add(x); }); return [...set].sort((a, b) => a - b); }
-function rhythmBox(sl, bars) { const box = document.createElement('div'); box.className = 'rhy';
-  const s = sel(RHY, sl.rh || 'machine', (v) => { sl.rh = v; sl.ed = { add: [], del: [] }; save(); drawScenes(); }); s.style.flex = '1 1 160px'; box.append(s);
-  if (['every', 'speed', 'slow'].includes(sl.rh)) { const lb = document.createElement('span'); lb.className = 'muted small'; lb.textContent = sl.rh === 'every' ? 'every' : sl.rh === 'speed' ? 'start every' : 'end every';
-    const inp = document.createElement('input'); inp.type = 'number'; inp.min = 1; inp.max = 64; inp.value = sl.n || 4; const lb2 = document.createElement('span'); lb2.className = 'muted small'; lb2.textContent = 'bars';
-    inp.onchange = () => { sl.n = E.clamp(Math.round(+inp.value || 4), 1, 64); sl.ed = { add: [], del: [] }; save(); drawScenes(); }; box.append(lb, inp, lb2);
-    if (sl.rh === 'speed') { const l3 = document.createElement('span'); l3.className = 'muted small'; l3.textContent = 'stop after bar'; const st2 = document.createElement('input'); st2.type = 'number'; st2.min = 1; st2.max = bars; st2.placeholder = 'end'; st2.value = sl.stop || '';
-      st2.title = 'Empty: it goes on until the end of the scene, as fast as it can'; st2.onchange = () => { sl.stop = +st2.value > 0 ? Math.round(+st2.value) : ''; save(); drawScenes(); }; box.append(l3, st2); } }
-  const hits = hitsOf(sl, bars);
-  if (hits) { const st = document.createElement('div'); st.className = 'strip'; st.style.setProperty('--bw', (100 / bars) + '%'); st.style.width = Math.max(bars * 16, 300) + 'px'; const sw = document.createElement('div'); sw.className = 'sw'; sw.append(st); st.title = 'Click a stripe to switch it off, click an empty place to add one';
-    hits.forEach((x) => { const i = document.createElement('i'); i.style.left = (x / (bars * 16) * 100) + '%'; st.append(i); });
-    st.onclick = (ev) => { const r0 = st.getBoundingClientRect(), pos = (ev.clientX - r0.left) / r0.width * bars * 16, near = hits.find((x) => Math.abs(x - pos) <= Math.max(1.5, bars * 16 / r0.width * 4));
+// in and out: the bars where a place plays (1 based, out is the last bar it plays); swell and shape follow that window
+function win(sl, bars) { const i = +sl.in > 0 ? Math.min(bars, Math.round(+sl.in)) : 1, o0 = +sl.out > 0 ? Math.round(+sl.out) : (+sl.stop > 0 ? Math.round(+sl.stop) : bars), o = Math.max(i, Math.min(bars, o0));
+  return { a: (i - 1) * 16, z: o * 16 }; }   // in 16th steps
+function hitsOf(sl, bars) { if (!sl.rh || sl.rh === 'machine') return null; const tot = bars * 16, ed = sl.ed || { add: [], del: [] }, w = win(sl, bars);
+  const set = new Set(baseHits(sl, bars).filter((x) => !ed.del.includes(x))); ed.add.forEach((x) => { if (x < tot) set.add(x); });
+  return [...set].filter((x) => x >= w.a && x < w.z).sort((a, b) => a - b); }
+const SWELL = [['machine', 'Swell: Machine'], ['grow', 'Swell: Growing'], ['fade', 'Swell: Fading'], ['arc', 'Swell: Swell and fall']];
+const SHAPE = [['machine', 'Shape: Machine'], ['rise', 'Shape: Rising'], ['fall', 'Shape: Falling'], ['stay', 'Shape: Stay']];
+function swellAt(sl, x) { const m = sl.sw || 'machine'; return m === 'grow' ? 0.35 + 0.65 * x : m === 'fade' ? 1 - 0.65 * x : m === 'arc' ? 0.35 + 0.65 * Math.sin(Math.PI * x) : 1; }   // 0.35 .. 1
+function numIn(label, val, ph, max, on) { const l = document.createElement('span'); l.className = 'muted small'; l.textContent = label; const inp = document.createElement('input'); inp.type = 'number'; inp.min = 1; inp.max = max; inp.placeholder = ph; inp.value = val || '';
+  inp.onchange = () => on(+inp.value > 0 ? Math.round(+inp.value) : ''); return [l, inp]; }
+function rhythmBox(sl, bars, part) { const box = document.createElement('div'); box.className = 'rhy'; const redo = () => { save(); drawScenes(); };
+  const s = sel(RHY, sl.rh || 'machine', (v) => { sl.rh = v; sl.ed = { add: [], del: [] }; redo(); }); s.style.flex = '1 1 150px'; box.append(s);
+  if (['every', 'speed', 'slow'].includes(sl.rh)) box.append(...numIn(sl.rh === 'every' ? 'every' : sl.rh === 'speed' ? 'start every' : 'end every', sl.n || 4, '4', 64, (v) => { sl.n = v || 4; sl.ed = { add: [], del: [] }; redo(); }), Object.assign(document.createElement('span'), { className: 'muted small', textContent: 'bars' }));
+  const row2 = document.createElement('div'); row2.className = 'rhy';
+  const sw = sel(SWELL, sl.sw || 'machine', (v) => { sl.sw = v; redo(); }); sw.style.flex = '1 1 130px'; row2.append(sw);
+  if (part !== 'beat') { const sh = sel(SHAPE, sl.shape || 'machine', (v) => { sl.shape = v; redo(); }); sh.style.flex = '1 1 130px'; row2.append(sh); }
+  row2.append(...numIn('in at bar', sl.in, '1', bars, (v) => { sl.in = v; redo(); }), ...numIn('out after', sl.out || sl.stop, String(bars), bars, (v) => { sl.out = v; sl.stop = ''; redo(); }));
+  box.append(row2);
+  // the strip: where it plays, and how hard (the height); hits can be clicked on and off
+  const hits = hitsOf(sl, bars), w = win(sl, bars), tot = bars * 16, st = document.createElement('div'); st.className = 'strip'; st.style.setProperty('--bw', (100 / bars) + '%'); st.style.width = Math.max(bars * 16, 300) + 'px';
+  const wrap = document.createElement('div'); wrap.className = 'sw'; wrap.append(st);
+  const off = (l, r) => { const d = document.createElement('b'); d.className = 'off'; d.style.left = (l / tot * 100) + '%'; d.style.width = ((r - l) / tot * 100) + '%'; st.append(d); };
+  if (w.a > 0) off(0, w.a); if (w.z < tot) off(w.z, tot);
+  if (hits) hits.forEach((x) => { const i = document.createElement('i'); i.style.left = (x / tot * 100) + '%'; i.style.height = Math.round(swellAt(sl, (x - w.a) / Math.max(1, w.z - w.a)) * 100) + '%'; st.append(i); });
+  else for (let b0 = w.a / 16; b0 < w.z / 16; b0++) { const i = document.createElement('u'); i.style.left = (b0 / bars * 100) + '%'; i.style.width = (100 / bars) + '%'; i.style.height = Math.round(swellAt(sl, (b0 * 16 + 8 - w.a) / Math.max(1, w.z - w.a)) * 100) + '%'; st.append(i); }
+  if (hits) st.onclick = (ev) => { const r0 = st.getBoundingClientRect(), pos = (ev.clientX - r0.left) / r0.width * tot, near = hits.find((x) => Math.abs(x - pos) <= Math.max(1.5, tot / r0.width * 4));
       sl.ed = sl.ed || { add: [], del: [] };
       if (near != null) { if (sl.ed.add.includes(near)) sl.ed.add = sl.ed.add.filter((x) => x !== near); else sl.ed.del.push(near); }
       else { const q = Math.round(pos / 4) * 4; if (sl.ed.del.includes(q)) sl.ed.del = sl.ed.del.filter((x) => x !== q); else sl.ed.add.push(q); }   // a new hit lands on the nearest beat
-      save(); drawScenes(); };
-    const hint = document.createElement('span'); hint.className = 'muted small'; hint.textContent = sl.rh === 'draw' ? bars + ' bars (' + fmt(bars * 240 / bpmNow()) + '), empty. Click where you want a hit, click a stripe to take it away.' : bars + ' bars (' + fmt(bars * 240 / bpmNow()) + '). Click a stripe to switch it off, click an empty place to add one.'; box.append(sw, hint); }
-  return box; }
+      redo(); };
+  else st.style.cursor = 'default';
+  const hint = document.createElement('span'); hint.className = 'muted small';
+  hint.textContent = bars + ' bars (' + fmt(bars * 240 / bpmNow()) + '). ' + (hits ? (sl.rh === 'draw' && !hits.length ? 'Empty: click where you want a hit. ' : '') + 'Click a stripe to switch it off, an empty place to add one. ' : 'The machine picks the notes, the height shows how hard. ') + 'Grey: not playing.';
+  box.append(wrap, hint); return box; }
+// swell, shape, in and out, after the machine and the rhythm made the notes
+function shapeNotes(part, notes, sl, bars, key) {
+  const w = win(sl, bars), A = w.a * STEP, Z = w.z * STEP, len = Math.max(1, Z - A), sc = E.scalePcs(key), snap = (p) => { for (let d = 0; d < 12; d++) { if (sc.includes(((p + d) % 12 + 12) % 12)) return p + d; if (sc.includes(((p - d) % 12 + 12) % 12)) return p - d; } return p; };
+  let out = notes.filter((n) => n.t >= A && n.t < Z).map((n) => Object.assign({}, n, { d: Math.min(n.d, Z - n.t) }));
+  const x = (n) => (n.t - A) / len;
+  if (sl.sw && sl.sw !== 'machine') out.forEach((n) => { n.v = E.clamp(Math.round(n.v * (0.5 + 0.6 * swellAt(sl, x(n)))), 14, 124); });   // every note a bit harder (or softer) than the one before
+  if (part !== 'beat' && sl.shape && sl.shape !== 'machine' && out.length) {
+    if (sl.shape === 'rise' || sl.shape === 'fall') { const dir = sl.shape === 'rise' ? 1 : -1;
+      if (part === 'chords') { const on = {}; out.forEach((n) => { (on[n.t] = on[n.t] || []).push(n); });   // the chords open up (or close in): one voice, then two, move by an octave
+        Object.values(on).forEach((g) => { const k = x(g[0]), m = k > 0.66 ? 2 : k > 0.33 ? 1 : 0; g.sort((p1, p2) => p1.p - p2.p); for (let j = 0; j < m && j < g.length - 1; j++) { const nt = dir > 0 ? g[g.length - 1 - j] : g[j]; nt.p += dir * 12; } }); }
+      else out.forEach((n) => { n.p = snap(n.p + dir * Math.round(x(n) * (part === 'bass' ? 7 : 12))); }); }   // a slow climb (or a slow sinking), on the scale
+    if (sl.shape === 'stay') { if (part === 'chords') { const t0 = out[0].t, first = out.filter((n) => n.t === t0).map((n) => n.p), on = [...new Set(out.map((n) => n.t))];
+        out = on.flatMap((t) => { const v = out.find((n) => n.t === t).v, d = Math.min(...out.filter((n) => n.t === t).map((n) => n.d)); return first.map((p) => ({ t, d, p, v })); }); }   // one chord held as tension
+      else { const cnt = {}; out.forEach((n) => { cnt[n.p] = (cnt[n.p] || 0) + n.d; }); const p = +Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a])[0]; out.forEach((n) => { n.p = p; }); } }   // one tone: a drone, a hypnotic repeat
+  }
+  return out; }
 // the rhythm decides when; the machine still decides what: the pitch that sounds there, the drum that fits
 function applyRhythm(part, notes, hits, bars, instKey) {
   const T = hits.map((x) => x * STEP), end = bars * BAR;
@@ -298,6 +331,7 @@ function makeAll() {
       const hits = hitsOf(sl, bars); if (hits) notes = applyRhythm(part, notes, hits, bars, sl.inst);
       if (!f && inst && inst[1]) notes = fold(notes, inst[1], inst[2]);
       notes = joint(part, notes, si, EN, bars, key, r);
+      notes = shapeNotes(part, notes, sl, bars, key);
       const label = inst ? inst[0] : 'machine', plug = sl.plug || (part === 'beat' ? 'gm' : 'plain');
       put(part, label, plug, notes.filter((n) => n.t < bars * BAR), song); });
     at += bars * BAR; });
