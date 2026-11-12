@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Direct your own track scene by scene: choose the genre and the instruments with a feeling, leave the rest open and the machine fills it in. MIDI for your plugins. By Divine Monday.">
+<meta name="author" content="Divine Monday"><meta name="copyright" content="© 2026 Divine Monday. All rights reserved.">
+<meta name="theme-color" content="#0B0E14">
+<link rel="icon" href="/divine-music-machine-v7/favicon.svg">
+<title>Divine Director</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@1,600&display=swap" rel="stylesheet">
+<style>
+:root{color-scheme:dark;--bg:#0B0E14;--card:#131824;--card2:#1A2030;--line:#263044;--tx:#EDE6D8;--mu:#9AA3B2;--gold:#E7B65C}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:radial-gradient(1100px 520px at 50% -180px,#1C2338 0,var(--bg) 62%) fixed,var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+#app{max-width:1180px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.serif{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif}
+header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:6px 0}
+.logo{font-size:28px;font-weight:700;letter-spacing:.3px;line-height:1.1}
+.logo i{color:var(--gold)}
+.tag{font:12px/1.2 ui-monospace,Menlo,Consolas,monospace;color:var(--mu);border:1px solid var(--line);border-radius:6px;padding:4px 7px}
+.grow{flex:1 1 20px}
+.back{color:var(--mu);text-decoration:none;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.st{font-size:21px;font-style:italic}
+.muted{color:var(--mu);font-size:14px}.small{font-size:13px}
+button,select{font:inherit;color:inherit}
+.btn{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:9px 14px;cursor:pointer;min-height:42px}
+.btn:hover{border-color:#3C4A66}
+.btn.big{background:linear-gradient(180deg,#2A2416,#1E1A10);border-color:#5C4A22;color:var(--gold);font-weight:600}
+.row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+.lbl{color:var(--mu);font-size:14px;min-width:56px}
+select{background:#0F131C;border:1px solid var(--line);border-radius:9px;padding:7px 9px;min-height:38px;max-width:100%}
+select.open{color:var(--mu)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.seg button{background:transparent;border:0;color:var(--mu);padding:9px 13px;cursor:pointer;min-height:40px}
+.seg button[aria-pressed=true]{background:#2A2416;color:var(--gold)}
+input[type=number]{background:#0F131C;border:1px solid var(--line);border-radius:9px;padding:7px 9px;min-height:38px;width:84px;color:var(--tx);font:inherit}
+.scenes{display:flex;gap:12px;overflow-x:auto;padding-bottom:6px;align-items:stretch}
+.scene{flex:0 0 min(360px,88vw);background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:9px}
+.scene h3{margin:0;font-size:17px;font-style:italic;display:flex;align-items:center;gap:8px}
+.scene h3 .x{margin-left:auto;background:none;border:1px solid var(--line);border-radius:8px;color:var(--mu);cursor:pointer;padding:3px 9px;min-height:30px}
+.slot{display:grid;grid-template-columns:70px 1fr;gap:6px;align-items:start}
+.slot .nm{color:var(--mu);font-size:13.5px;padding-top:8px}
+.slot .ch{display:flex;flex-wrap:wrap;gap:6px}
+.slot .ch select{flex:1 1 92px;min-width:0}
+.add{flex:0 0 70px;border:1px dashed var(--line);border-radius:12px;background:none;color:var(--gold);font-size:30px;cursor:pointer}
+.add:hover{border-color:var(--gold)}
+.joint{align-self:center;color:var(--mu);font-size:22px;flex:none}
+.tracks{display:flex;flex-direction:column;gap:6px}
+.trk{display:flex;gap:10px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:6px;font-size:14px}
+.trk b{min-width:180px}
+.bar{height:10px;flex:1 1 200px;display:flex;gap:2px}
+.bar span{flex:1;border-radius:3px;background:#222a3a}
+.bar span.on{background:#5C4A22}
+footer{color:var(--mu);font-size:13px;text-align:center;padding:10px}
+@media (max-width:560px){.logo{font-size:23px}}
+</style></head>
+<body><div id="app">
+<header>
+  <div class="logo serif">Divine <i>Director</i></div>
+  <span class="tag">beta</span>
+  <div class="grow"></div>
+  <a class="back" href="/">← all machines</a>
+</header>
+
+<section class="card">
+  <div class="row">
+    <span class="lbl">Tempo</span><div class="seg" id="tempoMode"><button data-v="auto" aria-pressed="true">Machine</button><button data-v="own" aria-pressed="false">Mine</button></div><input type="number" id="bpm" min="60" max="200" value="110" hidden>
+    <span class="lbl">Length</span><div class="seg" id="lenSeg"><button data-v="8" aria-pressed="false">Short</button><button data-v="16" aria-pressed="true">Medium</button><button data-v="32" aria-pressed="false">Long</button></div>
+  </div>
+  <span class="muted small">Every scene gets a genre and five places. Choose an instrument and a feeling, or leave a place open and the machine fills it in, in the style of the scene. Silent keeps a place empty.</span>
+</section>
+
+<div class="scenes" id="scenes"></div>
+
+<section class="card">
+  <div class="row"><button class="btn big" id="make">Make it</button><button class="btn" id="again" hidden>Again, new ideas</button><span class="muted small" id="info"></span></div>
+  <div class="tracks" id="tracks"></div>
+  <div class="row" id="dl" hidden><button class="btn big" id="dlZip">Download all (zip)</button><button class="btn" id="dlFull">Full MIDI only</button>
+    <span class="muted small">In Studio One: drag the Full MIDI in, every place gets its own track, the scenes are markers.</span></div>
+</section>
+
+<footer>© 2026 Divine Monday · <a href="https://divineacidmonday.github.io/divine-music-machine-v7/legal/" style="color:inherit">Impressum · Datenschutz</a></footer>
+</div>
+<script>
+/*ENGINES*/
+</script>
+<script>
+const E = window.DMM, PPQ = E.PPQ, BAR = PPQ * 4, $ = (q) => document.querySelector(q);
+const ls = { get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* private window */ } } };
+
+// ---------- what you can choose ----------
+const GENRES = [['cinematic', 'Cinematic']].concat(E.GENRE_ORDER.map((g) => [g, E.GENRES[g].name]));
+const ENGINE_GENRE = (g) => (g === 'cinematic' ? 'ambient' : g);
+const SLOTS = [['melody', 'Melody'], ['chords', 'Chords'], ['answer', 'Answer'], ['bass', 'Bass'], ['beat', 'Beat']];
+// instruments: a register, and whether they sing long lines
+const INST = {
+  melody: { lead: ['Synth lead', 60, 84], piano: ['Piano', 57, 84], guitar: ['Guitar', 52, 76, 0], cello: ['Cello', 38, 62, 1], violins: ['Violins', 62, 88, 1], flute: ['Flute', 62, 91, 1], brass: ['Brass', 52, 74, 1], bells: ['Bells', 72, 96, 0] },
+  chords: { pad: ['Pad', 48, 72, 1], piano: ['Piano', 48, 76, 0], strings: ['Strings', 0, 0, 1], guitar: ['Guitar', 45, 69, 0], organ: ['Organ', 48, 72, 1], stabs: ['Stabs', 55, 76, 0] },
+  bass: { synth: ['Synth bass', 28, 48, 0], sub: ['Sub bass', 24, 40, 1], acid: ['Acid 303', 28, 52, 0], electric: ['Electric bass', 28, 52, 0], celli: ['Cello and basses', 28, 52, 1], reese: ['Reese', 24, 43, 1] },
+  beat: { genre: ['Genre beat'], breakbeat: ['Breakbeat'], four: ['Four on the floor'], halftime: ['Halftime'], jungle: ['Jungle'], taiko: ['Taiko'], hands: ['Hand percussion'] }
+};
+INST.answer = INST.melody;
+const BEAT_GENRE = { breakbeat: 'breakbeat', four: 'house', halftime: 'triphop', jungle: 'dnb', taiko: 'triphop', hands: 'chillout' };
+// feelings: energy of the scene, register, legato, how sparse, how hard
+const FEELS = {
+  deep: { n: 'Deep', e: 0.35, reg: -10, leg: 1, thin: 0.45, vel: -6 },
+  menacing: { n: 'Menacing', e: 0.6, reg: -8, leg: 0, thin: 0.6, vel: 6, acc: 1, minor: 1 },
+  dark: { n: 'Dark', e: 0.45, reg: -6, leg: 1, thin: 0.3, vel: -4, minor: 1 },
+  sweeping: { n: 'Sweeping', e: 0.8, reg: 0, leg: 1, thin: 0.2, vel: 6, arc: 1 },
+  dreamy: { n: 'Dreamy', e: 0.3, reg: 7, leg: 1, thin: 0.45, vel: -14 },
+  aggressive: { n: 'Aggressive', e: 1, reg: 5, leg: 0, thin: 0, vel: 18, stac: 1, acc: 1, minor: 1 },
+  tight: { n: 'Tight', e: 0.8, reg: 0, leg: 0, thin: 0.1, vel: 4, stac: 1, even: 1 },
+  playful: { n: 'Playful', e: 0.7, reg: 4, leg: 0, thin: 0.15, vel: 0, stac: 1, wobble: 1 },
+  soft: { n: 'Soft', e: 0.25, reg: 0, leg: 1, thin: 0.4, vel: -22 },
+  epic: { n: 'Epic', e: 0.95, reg: 0, leg: 1, thin: 0, vel: 14, dbl: 1, arc: 1 }
+};
+const plugOpts = (part) => E.pluginsFor(part === 'beat' ? 'beat' : part).map((k) => [k, E.PLUGINS[k].name]);
+
+// ---------- state ----------
+const blank = () => ({ genre: 'cinematic', slots: { melody: {}, chords: {}, answer: {}, bass: {}, beat: {} } });
+const S = { tempo: ls.get('dir-tempo', 'auto'), bpm: ls.get('dir-bpm', 110), len: ls.get('dir-len', 16), scenes: ls.get('dir-scenes', null) || [blank()], seed: E.newSeed(), res: null };
+const save = () => { ls.set('dir-scenes', S.scenes); ls.set('dir-tempo', S.tempo); ls.set('dir-bpm', S.bpm); ls.set('dir-len', S.len); };
+
+function sel(opts, val, onch, openLabel) {
+  const s = document.createElement('select'); if (openLabel) opts = [['', openLabel]].concat(opts);
+  opts.forEach(([v, n]) => { const o = document.createElement('option'); o.value = v; o.textContent = n; if (v === (val || '')) o.selected = true; s.append(o); });
+  s.className = s.value ? '' : 'open'; s.onchange = () => { s.className = s.value ? '' : 'open'; onch(s.value); }; return s;
+}
+function drawScenes() {
+  const box = $('#scenes'); box.innerHTML = '';
+  S.scenes.forEach((sc, i) => {
+    if (i) { const j = document.createElement('div'); j.className = 'joint'; j.textContent = '›'; j.title = 'The machine makes the connection'; box.append(j); }
+    const d = document.createElement('div'); d.className = 'scene';
+    const h = document.createElement('h3'); h.className = 'serif'; h.textContent = 'Scene ' + (i + 1);
+    if (S.scenes.length > 1) { const x = document.createElement('button'); x.className = 'x'; x.textContent = 'Remove'; x.onclick = () => { S.scenes.splice(i, 1); save(); drawScenes(); }; h.append(x); }
+    d.append(h);
+    const g = document.createElement('div'); g.className = 'slot'; const gn = document.createElement('span'); gn.className = 'nm'; gn.textContent = 'Genre';
+    const gc = document.createElement('div'); gc.className = 'ch'; gc.append(sel(GENRES, sc.genre, (v) => { sc.genre = v; save(); })); g.append(gn, gc); d.append(g);
+    SLOTS.forEach(([part, name]) => { const sl = sc.slots[part] = sc.slots[part] || {};
+      const r = document.createElement('div'); r.className = 'slot'; const n = document.createElement('span'); n.className = 'nm'; n.textContent = name;
+      const c = document.createElement('div'); c.className = 'ch';
+      const inst = Object.entries(INST[part]).map(([k, v]) => [k, v[0]]).concat([['silent', 'Silent']]);
+      c.append(sel(inst, sl.inst, (v) => { sl.inst = v; save(); drawScenes(); }, 'open'));
+      if (sl.inst && sl.inst !== 'silent') {
+        c.append(sel(Object.entries(FEELS).map(([k, v]) => [k, v.n]), sl.feel, (v) => { sl.feel = v; save(); }, 'any feeling'));
+        c.append(sel(plugOpts(part), sl.plug || (part === 'beat' ? 'gm' : 'plain'), (v) => { sl.plug = v; save(); }));
+      }
+      r.append(n, c); d.append(r); });
+    box.append(d);
+  });
+  const a = document.createElement('button'); a.className = 'add'; a.textContent = '+'; a.title = 'Add a scene';
+  a.onclick = () => { const last = S.scenes[S.scenes.length - 1]; const nw = blank(); nw.genre = last.genre; S.scenes.push(nw); save(); drawScenes(); $('#scenes').scrollLeft = 1e6; };
+  box.append(a);
+}
+function segInit(id, get, set) { const b = document.querySelectorAll(id + ' button'); const draw = () => b.forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.v === String(get()))));
+  b.forEach((x) => { x.onclick = () => { set(x.dataset.v); save(); draw(); }; }); draw(); }
+segInit('#tempoMode', () => S.tempo, (v) => { S.tempo = v; $('#bpm').hidden = v !== 'own'; });
+segInit('#lenSeg', () => S.len, (v) => { S.len = +v; });
+$('#bpm').hidden = S.tempo !== 'own'; $('#bpm').value = S.bpm; $('#bpm').oninput = () => { S.bpm = E.clamp(+$('#bpm').value || 110, 60, 200); save(); };
+
+// ---------- the machine ----------
+const rngOf = (...k) => E.rng(E.hash(S.seed, ...k));
+function typeOf(e) { return e <= 0.3 ? 'break' : e <= 0.5 ? 'verse' : e <= 0.72 ? 'build' : e <= 0.9 ? 'chorus' : 'drop'; }
+function sceneEnergy(sc) { const es = Object.values(sc.slots).filter((s) => s.inst && s.inst !== 'silent' && s.feel).map((s) => FEELS[s.feel].e);
+  if (!es.length) return sc.genre === 'cinematic' || sc.genre === 'ambient' ? 0.4 : 0.75; return Math.max(...es) * 0.7 + es.reduce((a, b) => a + b, 0) / es.length * 0.3; }
+function songFor(genre, seed, bpm, key, bars, type) { const s = E.newSong(ENGINE_GENRE(genre), { seed }); s.bpm = bpm; s.bpmAuto = false; s.keyAuto = false; s.key = Object.assign({}, key); s.meter = '4/4';
+  s.sections = bars > 8 && type !== 'break' ? [{ id: 'a', type: type === 'drop' || type === 'chorus' ? 'build' : 'verse', bars: 8 }, { id: 'b', type, bars: bars - 8 }].map((x, i) => (bars >= 16 && i === 0 && type === 'verse' ? Object.assign(x, { type: 'intro' }) : x)) : [{ id: 'a', type, bars }];
+  return s; }
+const median = (a) => { const s = a.slice().sort((x, y) => x - y); return s.length ? s[s.length >> 1] : 60; };
+function fold(notes, lo, hi) { if (!notes.length) return notes; const mid = median(notes.map((n) => n.p)), c = (lo + hi) / 2; let sh = Math.round((c - mid) / 12) * 12;
+  return notes.map((n) => { let p = n.p + sh; while (p < lo) p += 12; while (p > hi) p -= 12; return Object.assign({}, n, { p }); }); }
+function legato(notes, poly) { const on = [...new Set(notes.map((n) => n.t))].sort((a, b) => a - b), nx = {}; on.forEach((t, i) => { nx[t] = on[i + 1]; });
+  return notes.map((n) => { const end = nx[n.t]; return Object.assign({}, n, { d: end ? Math.min(Math.max(n.d, end - n.t - 10), PPQ * (poly ? 8 : 4)) : Math.max(n.d, PPQ * 2) }); }); }
+// a feeling changes the notes: register, length, how many, how hard
+function feel(notes, part, f, inst, r) {
+  if (!f) return notes; let out = notes.slice();
+  if (f.thin) out = out.filter((n) => { const inBar = n.t % BAR; if (inBar === 0) return true; const weak = n.t % PPQ !== 0 ? 1 : n.t % (PPQ * 2) !== 0 ? 0.5 : 0.25; return r() > f.thin * weak; });
+  if (part !== 'beat') {
+    if (inst && inst[1]) out = fold(out, inst[1] + (f.reg < 0 ? 0 : Math.round(f.reg / 2)), inst[2] + (f.reg > 0 ? 0 : Math.round(f.reg / 2)));
+    else if (f.reg) out = out.map((n) => Object.assign({}, n, { p: n.p + (Math.abs(f.reg) >= 6 ? Math.sign(f.reg) * 12 : 0) }));
+    if (f.leg || (inst && inst[3])) out = legato(out, part === 'chords');
+    if (f.stac) out = out.map((n) => Object.assign({}, n, { d: Math.min(n.d, PPQ / 2 - 20) }));
+    if (f.dbl && (part === 'melody' || part === 'chords')) out = out.concat(out.filter((n) => n.p + 12 <= 100 && part === 'melody').map((n) => Object.assign({}, n, { p: n.p + 12, v: n.v - 14 })));
+  }
+  out = out.map((n) => { let v = n.v + f.vel; if (f.acc && n.t % (PPQ * 2) === 0) v += 10; if (f.even) v = (v + 90) / 2; if (f.wobble) v += (r() - 0.5) * 24;
+    if (f.arc) { const ph = (n.t % (BAR * 4)) / (BAR * 4); v += Math.sin(Math.PI * ph) * 14 - 6; } return Object.assign({}, n, { v: E.clamp(Math.round(v), 12, 124) }); });
+  return out.sort((a, b) => a.t - b.t);
+}
+// strings for the chords: the orchestra that listens, three voices, from the chords of the scene
+function strings(chords, bass, bars, type, energy, key, seed) {
+  const sc = key.scale === 'major' ? [0, 4, 7] : [0, 3, 7], home = sc.map((x) => (x + key.root) % 12), PC = []; let last = home;
+  for (let b = 0; b < bars; b++) { const s = new Set(chords.filter((n) => n.t >= b * BAR && n.t < (b + 1) * BAR).map((n) => n.p % 12)); if (s.size >= 2) last = [...s]; PC[b] = last; } // a bar without chords keeps the last ones
+  const pcs = (b) => PC[Math.max(0, Math.min(bars - 1, b))];
+  const bl = (b) => { const ns = bass.filter((n) => n.t >= b * BAR && n.t < (b + 1) * BAR); return ns.length ? Math.min(...ns.map((n) => n.p)) % 12 : null; };
+  const tex = { intro: 'soft', verse: 'verse', build: 'build', chorus: 'full', drop: 'full', break: 'break', outro: 'outro' }[type] || 'verse';
+  const r = E.orchestra({ bars, barTicks: BAR, ppq: PPQ, beats: 4, chordAt: pcs, bassAt: bl, texAt: (b) => (b < 4 && tex !== 'break' ? 'soft' : tex), energyAt: () => energy, tonic: key.root, minor: key.scale !== 'major', motif: null, ids: ['vln2', 'vla', 'vc'], ranges: { vln2: [62, 79], vla: [53, 69], vc: [41, 57] }, seed });
+  return ['vln2', 'vla', 'vc'].flatMap((id) => r[id].notes.map((n) => ({ t: n.t, d: n.dur, p: n.m, v: n.v })));
+}
+function beatAs(notes, kind, f, r) {
+  if (kind === 'taiko') notes = notes.filter((n) => n.lane !== 4 && n.lane !== 5 || r() < 0.15).map((n) => Object.assign({}, n, { lane: n.lane <= 1 ? 0 : n.lane <= 3 ? 2 : n.lane === 7 ? 7 : 6, v: n.lane <= 1 ? Math.min(124, n.v + 12) : n.v }));
+  if (kind === 'hands') notes = notes.map((n) => Object.assign({}, n, { lane: [6, 6, 3, 3, 4, 5, 6, 7][n.lane] != null ? [6, 6, 3, 3, 4, 5, 6, 7][n.lane] : n.lane }));
+  return notes;
+}
+function makeAll() {
+  const sc0 = S.scenes[0], g0 = E.GENRES[ENGINE_GENRE(sc0.genre)], bpm = S.tempo === 'own' ? S.bpm : (sc0.genre === 'cinematic' ? 96 : g0.def);
+  const first = E.newSong(ENGINE_GENRE(sc0.genre), { seed: E.hash(S.seed, 'key') }), anyMinor = S.scenes.some((sc) => Object.values(sc.slots).some((s) => s.feel && FEELS[s.feel].minor));
+  const key = { root: first.key.root, scale: anyMinor && first.key.scale === 'major' ? 'minor' : first.key.scale };
+  const tracks = {}, markers = [], bars = S.len; let at = 0;
+  const put = (part, label, plug, notes, song) => { const k = part + '|' + label + '|' + plug; const tr = tracks[k] = tracks[k] || { part, label, plug, notes: [], scenes: new Set() };
+    const mapped = E.applyMask(song, part, notes, plug, { mode: 'instrument' }); mapped.forEach((n) => tr.notes.push(Object.assign({}, n, { t: n.t + at }))); tr.scenes.add(markers.length - 1); };
+  S.scenes.forEach((sc, si) => {
+    const energy = sceneEnergy(sc), type = typeOf(energy), seed = E.hash(S.seed, 'scene', si), song = songFor(sc.genre, seed, bpm, key, bars, type);
+    song.parts.beat.plugin = 'gm';
+    markers.push({ t: at, text: 'Scene ' + (si + 1) + ': ' + (GENRES.find((g) => g[0] === sc.genre) || ['', sc.genre])[1] });
+    const engine = { beat: E.renderSong(song, 'beat'), bass: E.renderSong(song, 'bass'), chords: E.renderSong(song, 'chords').concat(E.renderSong(song, 'pad')), melody: E.renderSong(song, 'melody'), answer: E.renderSong(song, 'answer') };
+    SLOTS.forEach(([part, pname]) => { const sl = sc.slots[part] || {}; if (sl.inst === 'silent') return;
+      const r = rngOf('feel', si, part), f = sl.feel ? FEELS[sl.feel] : null, inst = sl.inst ? INST[part][sl.inst] : null; let notes = engine[part];
+      if (part === 'beat' && sl.inst && sl.inst !== 'genre') { const bs = songFor(BEAT_GENRE[sl.inst], E.hash(seed, 'beat'), bpm, key, bars, type); notes = beatAs(E.renderSong(bs, 'beat'), sl.inst, f, r); }
+      if ((part === 'melody' || part === 'answer') && sl.inst && notes.length < bars * 1.5) { const ms = songFor('synthwave', E.hash(seed, 'mel', part), bpm, key, bars, 'chorus'); ms.sections = [{ id: 'c', type: 'chorus', bars }]; const alt = E.renderSong(ms, part); if (alt.length > notes.length) notes = alt; } // you asked for this instrument: it gets a real line
+      if (part === 'bass' && sl.inst === 'acid') { const bs = songFor('acid', E.hash(seed, 'acid'), bpm, key, bars, type); notes = E.renderSong(bs, 'bass'); }
+      if (part === 'chords' && sl.inst === 'strings') notes = strings(engine.chords, engine.bass, bars, type, f ? f.e : energy, key, E.hash(seed, 'str'));
+      if (part === 'bass' && inst && inst[3]) notes = legato(notes, false);
+      notes = feel(notes, part, f, inst, r);
+      if (!f && inst && inst[1]) notes = fold(notes, inst[1], inst[2]);
+      const label = inst ? inst[0] : 'machine', plug = sl.plug || (part === 'beat' ? 'gm' : 'plain');
+      put(part, label, plug, notes.filter((n) => n.t < bars * BAR), song); });
+    at += bars * BAR; });
+  const order = { beat: 0, bass: 1, chords: 2, melody: 3, answer: 4 };
+  const list = Object.values(tracks).filter((t) => t.notes.length).sort((a, b) => order[a.part] - order[b.part]).map((t) => ({ name: SLOTS.find((s) => s[0] === t.part)[1] + (t.label !== 'machine' ? ' (' + t.label + ')' : '') + (t.plug !== 'plain' && t.plug !== 'gm' ? ' for ' + E.PLUGINS[t.plug].name : ''), notes: t.notes, scenes: t.scenes, part: t.part }));
+  return { tracks: list, markers, bpm, key, total: at, n: S.scenes.length };
+}
+function make(fresh) {
+  if (fresh) S.seed = E.newSeed();
+  S.res = makeAll(); const R = S.res;
+  $('#info').textContent = R.n + (R.n === 1 ? ' scene, ' : ' scenes, ') + Math.round(R.total / BAR) + ' bars, ' + R.bpm + ' bpm, ' + E.keyName(R.key);
+  const box = $('#tracks'); box.innerHTML = '';
+  R.tracks.forEach((t) => { const d = document.createElement('div'); d.className = 'trk'; const b = document.createElement('b'); b.textContent = t.name; const bar = document.createElement('div'); bar.className = 'bar';
+    for (let i = 0; i < R.n; i++) { const s = document.createElement('span'); if (t.scenes.has(i)) s.className = 'on'; bar.append(s); } d.append(b, bar); box.append(d); });
+  $('#dl').hidden = false; $('#again').hidden = false;
+}
+const title = () => 'DM_Director_' + Math.round(S.res.bpm) + 'bpm_' + E.keyName(S.res.key).replace(/\s/g, '');
+const full = () => E.writeMidi(S.res.tracks.map((t, i) => ({ name: t.name, channel: t.part === 'beat' ? 9 : i % 9, notes: t.notes })), { bpm: S.res.bpm, meter: '4/4', title: 'Divine Director', markers: S.res.markers });
+function saveBlob(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.append(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }
+const CRC = (() => { const t = new Uint32Array(256); for (let n = 0; n < 256; n++) { let c = n; for (let k = 0; k < 8; k++) c = c & 1 ? 0xEDB88320 ^ (c >>> 1) : c >>> 1; t[n] = c >>> 0; } return t; })();
+function crc32(b) { let c = 0xFFFFFFFF; for (let i = 0; i < b.length; i++) c = CRC[(c ^ b[i]) & 255] ^ (c >>> 8); return (c ^ 0xFFFFFFFF) >>> 0; }
+function zip(files) {
+  const enc = new TextEncoder(), parts = [], cen = []; let off = 0;
+  const u16 = (v) => [v & 255, (v >>> 8) & 255], u32 = (v) => [v & 255, (v >>> 8) & 255, (v >>> 16) & 255, (v >>> 24) & 255];
+  files.forEach((f) => { const nm = enc.encode(f.name), crc = crc32(f.data), sz = f.data.length;
+    const loc = [].concat(u32(0x04034b50), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(sz), u32(sz), u16(nm.length), u16(0));
+    parts.push(new Uint8Array(loc), nm, f.data);
+    cen.push(new Uint8Array([].concat(u32(0x02014b50), u16(20), u16(20), u16(0x0800), u16(0), u16(0), u16(0x21), u32(crc), u32(sz), u32(sz), u16(nm.length), u16(0), u16(0), u16(0), u16(0), u32(0), u32(off))), nm);
+    off += loc.length + nm.length + sz; });
+  const cs = cen.reduce((a, b) => a + b.length, 0);
+  const end = new Uint8Array([].concat(u32(0x06054b50), u16(0), u16(0), u16(files.length), u16(files.length), u32(cs), u32(off), u16(0)));
+  return new Blob(parts.concat(cen, [end]), { type: 'application/zip' });
+}
+const safe = (t) => String(t).normalize('NFKD').replace(/[^\w#.+ ()-]/g, '').replace(/\s+/g, '_');
+$('#make').onclick = () => make(true); $('#again').onclick = () => make(true);
+$('#dlFull').onclick = () => saveBlob(new Blob([full()], { type: 'audio/midi' }), title() + '_Full.mid');
+$('#dlZip').onclick = () => { const files = [{ name: title() + '_Full.mid', data: full() }];
+  S.res.tracks.forEach((t, i) => files.push({ name: String(i + 1).padStart(2, '0') + '_' + safe(t.name) + '.mid', data: E.writeMidi([{ name: t.name, channel: t.part === 'beat' ? 9 : 0, notes: t.notes }], { bpm: S.res.bpm, meter: '4/4', title: t.name, markers: S.res.markers }) }));
+  saveBlob(zip(files), title() + '.zip'); };
+drawScenes();
+</script>
+/*SUITE*/
+</body></html>
