@@ -4179,7 +4179,7 @@ function makeAll() {
       const r = E.rng(E.hash(seed, 'feel', part)), f = sl.feel ? FEELS[sl.feel] : null, inst = INST[part][sl.inst] || null; let notes = engine[part];
       if (sl.src && ENGINE_GENRE(sl.src) !== ENGINE_GENRE(sc.genre)) { const os = songFor(sl.src, E.hash(seed, 'src', part), bpm, key, bars, type); notes = part === 'chords' ? E.renderSong(os, 'chords').concat(E.renderSong(os, 'pad')) : E.renderSong(os, part); }   // this place borrows another genre's playing
       if (part === 'beat' && BEAT_GENRE[sl.inst]) { const bs = songFor(BEAT_GENRE[sl.inst], E.hash(seed, 'beat'), bpm, key, bars, type); notes = beatAs(E.renderSong(bs, 'beat'), sl.inst, f, r); }
-      if ((part === 'melody' || part === 'answer') && inst && notes.length < bars * 1.5) { const ms = songFor('synthwave', E.hash(seed, 'mel', part), bpm, key, bars, 'chorus'); ms.sections = [{ id: 'c', type: 'chorus', bars }]; const alt = E.renderSong(ms, part); if (alt.length > notes.length) notes = alt; } // you asked for this instrument: it gets a real line
+      if ((part === 'melody' || part === 'answer') && (inst || (S.motif && part === 'melody')) && notes.length < bars * 1.5) { const ms = songFor('synthwave', E.hash(seed, 'mel', part), bpm, key, bars, 'chorus'); ms.sections = [{ id: 'c', type: 'chorus', bars }]; const alt = E.renderSong(ms, part); if (alt.length > notes.length) notes = alt; } // you asked for this instrument: it gets a real line
       if (part === 'bass' && sl.inst === 'acid') { const bs = songFor('acid', E.hash(seed, 'acid'), bpm, key, bars, type); notes = E.renderSong(bs, 'bass'); }
       if (part === 'chords' && sl.inst === 'strings') notes = strings(engine.chords, engine.bass, bars, type, f ? f.e : energy, key, E.hash(seed, 'str'));
       if (part === 'bass' && inst && inst[3]) notes = legato(notes, false);
@@ -4341,13 +4341,15 @@ drawScenes();
     const bpm = 70 + Math.floor(r() * 101), key = { root: Math.floor(r() * 12), scale: pick(['minor', 'minor', 'major']) };
     const totalBars = Math.max(48, Math.round((120 + r() * 240) * bpm / 240 / 8) * 8), n = 3 + Math.floor(r() * 6);
     let left = totalBars; const lens = []; for (let i = 0; i < n; i++) { const share = i === n - 1 ? left : Math.max(8, Math.round(left / (n - i) * (0.6 + r() * 0.8) / 8) * 8); lens.push(Math.min(share, left - 8 * (n - i - 1))); left -= lens[i]; }
+    if (lens[0] > 16) { lens[1] += lens[0] - 16; lens[0] = 16; }   // the opening is short, so the beat is never far away
     const scenes = []; let prev = null;
     lens.forEach((L, i) => { let sc;
       if (!prev) { sc = { genre: pick(G), slots: {} }; PK.forEach((p) => { sc.slots[p] = {}; }); ['chords', pick(['bass', 'beat'])].forEach((p) => { sc.slots[p] = slotNew(p, r, pick, chance); sc.slots[p].sw = 'grow'; }); }   // the opening: a few places, growing
       else { sc = JSON.parse(JSON.stringify(prev)); if (chance(0.6)) sc.genre = pick(G);                     // the next part inherits, and changes two or three things
         const ch = PK.slice().sort(() => r() - 0.5).slice(0, 2 + Math.floor(r() * 2));
-        ch.forEach((p) => { sc.slots[p] = sc.slots[p].inst && chance(0.35) ? {} : slotNew(p, r, pick, chance); }); }
+        ch.forEach((p) => { sc.slots[p] = sc.slots[p].inst && p !== 'beat' && chance(0.35) ? {} : slotNew(p, r, pick, chance); }); }   // once the beat is in, it stays (it may change)
       if (!sc.slots.chords.inst) sc.slots.chords = Object.assign(slotNew('chords', r, pick, chance), { inst: pick(['pad', 'strings', 'organ', 'machine']), rh: undefined, rhFrom: undefined });   // glue: always harmony
+      if (i >= 1 && !sc.slots.beat.inst) sc.slots.beat = slotNew('beat', r, pick, chance);   // the beat is there by the second part at the latest
       if (sc.slots.answer.inst && !sc.slots.melody.inst) sc.slots.answer = {};                              // an answer needs a melody to answer
       if (i === n - 1 && n > 2) { PK.forEach((p) => { if (sc.slots[p].inst && p !== 'chords' && p !== 'bass' && chance(0.5)) sc.slots[p] = {}; }); ['chords', 'bass'].forEach((p) => { if (sc.slots[p].inst) sc.slots[p].sw = 'fade'; }); }   // the end thins out
       if (!sc.slots.bass.inst && !sc.slots.beat.inst) sc.slots.bass = slotNew('bass', r, pick, chance);   // and always a floor, also at the end
@@ -4361,7 +4363,7 @@ drawScenes();
       if (sl.pat) { const bars = barsOf(S.scenes.indexOf(sc)); for (let b = 0; b < bars; b++) sl.pat.forEach((on, i) => { if (on) sl.ed.add.push(b * 16 + i); }); delete sl.pat; } }); });
     const R = makeAll(), merged = {};
     R.tracks.forEach((tr) => { const m = merged[tr.part] = merged[tr.part] || { name: PARTS.find((x) => x[0] === tr.part)[1], part: tr.part, notes: [], scenes: new Set() }; m.notes.push(...tr.notes); });
-    R.tracks = PARTS.map(([p]) => merged[p]).filter(Boolean).map((m) => Object.assign(m, { notes: m.notes.sort((a, b) => a.t - b.t) }));
+    R.tracks = PARTS.map(([p]) => merged[p]).filter((m) => m && (m.part !== 'answer' || m.notes.length >= R.total / BAR / 2))   // an answer that hardly speaks is left out.map((m) => Object.assign(m, { notes: m.notes.sort((a, b) => a.t - b.t) }));
     R.markers = R.markers.filter((m, i) => !S.scenes[i].cont).map((m, i) => ({ t: m.t, text: 'Part ' + (i + 1) }));
     const sc7 = E.scalePcs(R.key), triad = [0, 2, 4].map((d) => sc7[d]);   // the end: one last chord on the home tone, so it lands
     R.tracks.forEach((tr) => { tr.notes.forEach((x) => { x.v = E.clamp(x.v, 40, 120); });
