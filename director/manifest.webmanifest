@@ -1,0 +1,31 @@
+{
+ "name": "Divine Director",
+ "short_name": "DM Director",
+ "description": "Direct your own track scene by scene: pick a genre and a feeling, leave the rest open and the machine fills it in. MIDI for your plugins. By Divine Monday.",
+ "id": "/divine-music-machine-v7/director/",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#0B0E14",
+ "theme_color": "#0B0E14",
+ "icons": [
+  {
+   "src": "/divine-music-machine-v7/icons/director-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/divine-music-machine-v7/icons/director-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/divine-music-machine-v7/icons/director-maskable.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}

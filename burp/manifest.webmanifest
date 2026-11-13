@@ -1,0 +1,31 @@
+{
+ "name": "Divine Burp Supreme",
+ "short_name": "DM Burp",
+ "description": "One button, one whole track, never the same twice. MIDI for your plugins. By Divine Monday.",
+ "id": "/divine-music-machine-v7/burp/",
+ "start_url": "./",
+ "scope": "./",
+ "display": "standalone",
+ "background_color": "#0B0E14",
+ "theme_color": "#0B0E14",
+ "icons": [
+  {
+   "src": "/divine-music-machine-v7/icons/burp-192.png",
+   "sizes": "192x192",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/divine-music-machine-v7/icons/burp-512.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "any"
+  },
+  {
+   "src": "/divine-music-machine-v7/icons/burp-maskable.png",
+   "sizes": "512x512",
+   "type": "image/png",
+   "purpose": "maskable"
+  }
+ ]
+}
