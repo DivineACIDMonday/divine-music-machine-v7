@@ -6372,13 +6372,16 @@ const DMS = (() => {
     if (/clap/.test(n)) return 'clap'; if (/tom|conga|bongo|taiko/.test(n)) return 'tom'; if (/crash|ride|cym/.test(n)) return 'crash';
     if (/open|half/.test(n)) return 'hat_open'; if (/hh|hat|pedal|shak|tamb|maraca/.test(n)) return 'hat_closed'; if (/rim|perc|block|wood|bell|cow|tick|click/.test(n)) return 'perc';
     if (/808|sub|boom/.test(n)) return 'kick_2'; if (/kick|bd|bass/.test(n)) return 'kick_1'; if (/sn|snare/.test(n)) return 'snare_1'; return null; }
+  // a drum by its General MIDI note
+  function gm(n) { return n === 35 || n === 36 ? 'kick_1' : n === 38 || n === 40 ? 'snare_1' : n === 37 ? 'perc' : n === 39 ? 'clap' : n === 42 || n === 44 || n === 54 || n === 70 || n === 69 ? 'hat_closed' : n === 46 ? 'hat_open'
+    : [41, 43, 45, 47, 48, 50, 60, 61, 62, 63, 64].includes(n) ? 'tom' : [49, 51, 52, 53, 55, 57, 59].includes(n) ? 'crash' : 'perc'; }
   function chip() { const hd = document.querySelector('header'); if (!hd || document.getElementById('dmsChip')) return;
     const b = document.createElement('button'); b.id = 'dmsChip'; b.type = 'button'; b.className = 'tag';
     b.style.cssText = 'cursor:pointer;background:transparent;font:12px/1.2 ui-monospace,Menlo,Consolas,monospace;color:inherit;border:1px solid currentColor;opacity:.75;border-radius:6px;padding:4px 7px';
     const say = () => { b.textContent = on ? 'Sounds: Divine Monday' : 'Sounds: sketch'; b.title = on ? 'The preview plays the recorded Divine Monday sound pack. Click for the plain sketch sounds.' : 'The preview plays plain sketch sounds. Click for the Divine Monday sound pack.'; };
     b.onclick = () => { on = !on; try { localStorage.setItem('dm-sounds', on ? 'on' : 'off'); } catch (e) { /* fine */ } say(); }; say(); hd.append(b); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', chip); else chip();
-  return { drum, tone, warm, ready, byName, get on() { return on; } };
+  return { drum, tone, warm, ready, byName, gm, get on() { return on; } };
 })();
 /*/DMSOUND*/
 function drum(li, t, v) {
