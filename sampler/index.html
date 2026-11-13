@@ -61,6 +61,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px}
 <section class="card" id="soundsCard" hidden>
   <p class="st serif">2. Sounds</p>
   <div class="muted small">Every place starts with a sound from the Divine pack, so you hear something right away. Drop your own sound on a place to use it instead. Pitched sounds: one note is enough; put the note in the file name (for example <b>bass_C2.wav</b>), otherwise it counts as C3.</div>
+  <div class="row"><span class="muted">Sound pack</span><select id="pack"><option value="dm">Divine Monday: recorded, dark and warm</option><option value="calc">Divine: plain, made by the machine</option></select></div>
   <div id="tracks"></div>
 </section>
 
@@ -73,7 +74,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px}
 <section class="card">
   <p class="st serif">The Divine sound pack</p>
   <div class="muted small">Every sound in the pack is made by the Sampler itself, free to use in anything you make. Take them along to your own DAW:</div>
-  <div class="row"><button class="btn" id="dlPack">Download the Divine pack (WAV)</button></div>
+  <div class="row"><button class="btn" id="dlPack">Download the sound pack (WAV)</button></div>
   <p class="st serif" style="font-size:18px">Looking for other sounds?</p>
   <div class="muted small">You need <b>one shots</b>: one single sound, not a loop. Search for words like <i>kick one shot</i>, <i>bass one shot</i> or <i>piano C3</i>. Always check the licence before you release something.</div>
   <div class="links" id="links"></div>
@@ -142,6 +143,20 @@ const NEED = { kick_1: 'a low, short thump', kick_2: 'a low, long boom', snare_1
   bass: 'one low note, short', acid: 'one low note, short', sub: 'one deep low note', keys: 'one piano or keys note', organ: 'one sustained note', pad: 'one soft, long note', lead: 'one clear note', pluck: 'one short plucked note', bell: 'one bright bell note', strings: 'one string note' };
 const SEARCH = { kick_1: 'kick', kick_2: '808 kick', snare_1: 'snare', snare_2: 'snare', clap: 'clap', hat_closed: 'closed hihat', hat_open: 'open hihat', perc: 'rimshot', crash: 'crash cymbal', tom: 'tom', bass: 'bass one shot', acid: '303 bass one shot', sub: 'sub bass one shot', keys: 'piano C3', organ: 'organ C3', pad: 'pad C3', lead: 'synth lead C3', pluck: 'pluck C3', bell: 'bell C3', strings: 'strings C3' };
 const fsLink = (q) => 'https://freesound.org/search/?q=' + encodeURIComponent(q + ' one shot') + '&f=' + encodeURIComponent('duration:[0 TO 2] license:"Creative Commons 0"');
+/* ---------- the Divine Monday pack: recorded by Divine Monday in Phase Plant, loaded only when used ---------- */
+const DM = { drums: ['kick_1', 'kick_2', 'snare_1', 'snare_2', 'clap', 'hat_closed', 'hat_open', 'perc', 'crash', 'tom'],
+  tones: { bass: [24, 30, 36, 42, 48], sub: [24, 30, 36, 42], keys: [36, 42, 48, 54, 60, 66, 72, 78], pad: [36, 42, 48, 54, 60, 66], lead: [48, 54, 60, 66, 72, 78], pluck: [60, 66, 72, 78, 84, 90] } };
+const DMC = {}, DMP = {};
+function dmName(kind, sound, p) { if (kind === 'drums') return DM.drums.includes(sound) ? { name: sound, root: null } : null;
+  const rs = DM.tones[sound]; if (!rs) return null; const r = rs.reduce((b, x) => Math.abs(x - p) < Math.abs(b - p) ? x : b, rs[0]);   // the nearest recorded note
+  return { name: sound + '_' + noteName(r).replace('#', 's'), root: r }; }
+function dmLoad(name) { return DMP[name] = DMP[name] || fetch('dm/' + name + '.wav').then((r) => { if (!r.ok) throw new Error('missing ' + name); return r.arrayBuffer(); })
+  .then((b) => ac().decodeAudioData(b)).then((ab) => { DMC[name] = { data: ab.getChannelData(0), rate: ab.sampleRate }; }).catch(() => { delete DMP[name]; }); }
+async function prep(list) { if (S.pack !== 'dm') return; const need = new Set();
+  list.forEach(([t, sl, p]) => { if (sl && !sl.own) { const d = dmName(t.kind, sl.sound, p); if (d && !DMC[d.name]) need.add(d.name); } });
+  if (need.size) { const o = $('#renderInfo'), was = o.textContent; o.textContent = 'Loading the Divine Monday sounds...'; await Promise.all([...need].map(dmLoad)); o.textContent = was; } }
+const slotOf = (t, n) => t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0];
+const prepSong = () => { const l = []; S.tracks.forEach((t) => { if (!t.mute) t.notes.forEach((n) => l.push([t, slotOf(t, n), n.p])); }); return prep(l); };
 const PCACHE = {}; const packBuf = (kind, key) => (PCACHE[key] = PCACHE[key] || (kind === 'drums' ? PACK.drums[key][1]() : PACK.tones[key][2]()));
 
 /* ---------- what each track of the MIDI needs ---------- */
@@ -157,7 +172,7 @@ function roleOf(tr) { const n = tr.name.toLowerCase(), ps = tr.notes.map((x) => 
   if (/answer|bell|motif/.test(n)) return { kind: 'tones', sound: /bell/.test(n) ? 'bell' : 'pluck' };
   const poly = tr.notes.length / new Set(tr.notes.map((x) => x.t)).size; return { kind: 'tones', sound: poly > 1.6 ? 'keys' : 'lead' }; }
 
-const S = { song: null, tracks: [], ctx: null, playing: null };
+const S = { song: null, tracks: [], ctx: null, playing: null, pack: (() => { try { return localStorage.getItem('sampler-pack') || 'dm'; } catch (e) { return 'dm'; } })() };
 const NOTE = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
 function rootFromName(name) { const m = name.replace(/\.[a-z0-9]+$/i, '').match(/(?:^|[_\s-])([A-Ga-g])(s|#|b)?(-?\d)(?![\d])/), mm = name.match(/(?:^|[_\s-])(\d{2,3})(?:\.[a-z0-9]+)?$/i);
   if (m) return 12 * (+m[3] + 2) + NOTE[m[1].toLowerCase()] + (m[2] === 's' || m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);   // Studio One names: C3 = 60
@@ -188,7 +203,7 @@ function drawTracks() { const box = $('#tracks'); box.innerHTML = '';
       const list = t.kind === 'drums' ? PACK.drums : PACK.tones, nm = list[sl.sound][0];
       nd.innerHTML = '<b></b><span></span>'; nd.firstChild.textContent = t.kind === 'drums' ? 'Note ' + sl.note + ': ' + nm.split(',')[0] : 'Every note'; nd.lastChild.textContent = 'needs ' + NEED[sl.sound];
       const ch = document.createElement('div'); ch.className = 'ch';
-      const s = document.createElement('select'); Object.entries(list).forEach(([k, x]) => { const o = document.createElement('option'); o.value = k; o.textContent = 'Divine: ' + x[0]; if (k === sl.sound) o.selected = true; s.append(o); });
+      const s = document.createElement('select'); Object.entries(list).forEach(([k, x]) => { const o = document.createElement('option'); o.value = k; o.textContent = (S.pack === 'dm' && dmName(t.kind, k, 60) ? 'Divine Monday: ' : 'Divine: ') + x[0]; if (k === sl.sound) o.selected = true; s.append(o); });
       s.onchange = () => { sl.sound = s.value; drawTracks(); }; if (sl.own) s.disabled = true;
       const pv = document.createElement('button'); pv.className = 'ib'; pv.textContent = 'Hear'; pv.title = 'Hear this sound'; pv.onclick = () => audition(t, sl);
       const dz = document.createElement('label'); dz.className = 'dz' + (sl.own ? ' has' : ''); dz.textContent = sl.own ? sl.own.name + (t.kind === 'tones' ? ' (root ' + noteName(sl.own.root) + ')' : '') : 'Drop your own sound here';
@@ -206,16 +221,17 @@ function drawTracks() { const box = $('#tracks'); box.innerHTML = '';
 const NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], noteName = (m) => NN[m % 12] + (Math.floor(m / 12) - 2);
 
 /* ---------- playing: every note becomes a buffer source, pitched by speed ---------- */
-function srcOf(t, sl) { if (sl.own) return { data: sl.own.data, rate: sl.own.rate, root: sl.own.root }; const kind = t.kind;
+function srcOf(t, sl, p) { if (sl.own) return { data: sl.own.data, rate: sl.own.rate, root: sl.own.root, rel: 0.12 }; const kind = t.kind;
+  if (S.pack === 'dm') { const d = dmName(kind, sl.sound, p), x = d && DMC[d.name]; if (x) return { data: x.data, rate: x.rate, root: d.root, rel: 0.4 }; }
   return kind === 'drums' ? { data: packBuf('drums', sl.sound), rate: SR, root: null } : { data: packBuf('tones', sl.sound), rate: SR, root: PACK.tones[sl.sound][1] }; }
 const BUFS = new WeakMap(); function bufFor(ctx, s) { let m = BUFS.get(ctx); if (!m) BUFS.set(ctx, m = new Map()); let b = m.get(s.data); if (!b) { b = ctx.createBuffer(1, s.data.length, s.rate); b.getChannelData(0).set(s.data); m.set(s.data, b); } return b; }
 function scheduleNote(ctx, out, t, n, when, from) {
-  const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const s = srcOf(t, sl), b = bufFor(ctx, s);
+  const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const s = srcOf(t, sl, n.p), b = bufFor(ctx, s);
   const src = ctx.createBufferSource(); src.buffer = b; if (s.root != null) src.playbackRate.value = Math.pow(2, (n.p - s.root) / 12);
   const g = ctx.createGain(), v = Math.pow(n.v / 127, 1.4) * t.vol * (t.kind === 'drums' ? 0.9 : 0.55), st = when + n.s - from;
   if (t.kind === 'drums') { g.gain.value = v; src.connect(g); g.connect(out); src.start(Math.max(st, ctx.currentTime || 0)); return; }
-  const end = st + Math.max(0.05, n.e - n.s); g.gain.setValueAtTime(v, st); g.gain.setValueAtTime(v, end); g.gain.linearRampToValueAtTime(0, end + 0.12);
-  src.connect(g); g.connect(out); src.start(st); src.stop(end + 0.15); }
+  const end = st + Math.max(0.05, n.e - n.s); g.gain.setValueAtTime(v, st); g.gain.setValueAtTime(v, end); g.gain.linearRampToValueAtTime(0, end + (s.rel || 0.12));
+  src.connect(g); g.connect(out); src.start(st); src.stop(end + (s.rel || 0.12) + 0.03); }
 function master(ctx) { const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -10; comp.ratio.value = 4; comp.attack.value = 0.003; comp.release.value = 0.2; const g = ctx.createGain(); g.gain.value = 0.9; comp.connect(g); g.connect(ctx.destination); return comp; }
 function stop() { if (!S.playing) return; S.playing.srcs.forEach((x) => { try { x.disconnect(); } catch (e) { /* gone */ } }); clearInterval(S.playing.iv); cancelAnimationFrame(S.playing.raf); S.playing = null; $('#play').textContent = 'Play'; }
 function play(from) { stop(); const ctx = ac(); ctx.resume(); const out = master(ctx), when = ctx.currentTime + 0.1, all = [];
@@ -225,16 +241,16 @@ function play(from) { stop(); const ctx = ac(); ctx.resume(); const out = master
   pump(); P.iv = setInterval(pump, 100); $('#play').textContent = 'Stop';
   const tick = () => { if (S.playing !== P) return; drawTime(Math.max(0, ctx.currentTime - when + from)); P.raf = requestAnimationFrame(tick); }; tick(); }
 function drawTime(s) { const L = S.song ? S.song.length - 2 : 0; $('#time').textContent = fmt(Math.min(s, L)) + ' / ' + fmt(L); $('#barFill').style.width = (L ? Math.min(100, s / L * 100) : 0) + '%'; }
-function audition(t, sl) { const ctx = ac(); ctx.resume(); const out = master(ctx), n = t.kind === 'drums' ? { p: sl.note, v: 110, s: 0, e: 0.5 } : { p: 60, v: 100, s: 0, e: 1.2 };
+async function audition(t, sl) { ac().resume(); await prep([[t, sl, t.kind === 'drums' ? sl.note : 60]]); const ctx = ac(); ctx.resume(); const out = master(ctx), n = t.kind === 'drums' ? { p: sl.note, v: 110, s: 0, e: 0.5 } : { p: 60, v: 100, s: 0, e: 1.2 };
   scheduleNote(ctx, out, { kind: t.kind, vol: 1, slots: [Object.assign({}, sl, { note: n.p })] }, n, ctx.currentTime + 0.02, 0); }
 
 /* ---------- rendering to WAV, also per track ---------- */
 // rendering in plain code: every note mixed straight into the output, pitched by reading faster or slower; quick even for long tracks
-async function render(only, fixed) { const L = S.song.length, N = Math.ceil(L * SR), mix = new Float32Array(N);
+async function render(only, fixed) { await prepSong(); if (only != null) await prep(S.tracks[only].notes.map((n) => [S.tracks[only], slotOf(S.tracks[only], n), n.p])); const L = S.song.length, N = Math.ceil(L * SR), mix = new Float32Array(N);
   S.tracks.forEach((t, i) => { if (!((only == null && !t.mute) || only === i)) return;
-    t.notes.forEach((n) => { const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const s = srcOf(t, sl), src = s.data;
+    t.notes.forEach((n) => { const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const s = srcOf(t, sl, n.p), src = s.data;
       const step = (s.root != null ? Math.pow(2, (n.p - s.root) / 12) : 1) * s.rate / SR, v = Math.pow(n.v / 127, 1.4) * t.vol * (t.kind === 'drums' ? 0.9 : 0.55);
-      const i0 = Math.round(n.s * SR), hold = t.kind === 'drums' ? Infinity : Math.max(0.05, n.e - n.s) * SR, rel = 0.12 * SR;
+      const i0 = Math.round(n.s * SR), hold = t.kind === 'drums' ? Infinity : Math.max(0.05, n.e - n.s) * SR, rel = (s.rel || 0.12) * SR;
       for (let k = 0, pos = 0; i0 + k < N && pos < src.length - 1; k++, pos += step) { let g = v; if (k > hold) { g *= 1 - (k - hold) / rel; if (g <= 0) break; }
         const j = pos | 0, f = pos - j; mix[i0 + k] += (src[j] + (src[j + 1] - src[j]) * f) * g; } }); });
   let pk = 0; for (let i = 0; i < N; i++) { const x = Math.abs(mix[i]); if (x > pk) pk = x; }
@@ -262,15 +278,19 @@ md.onclick = () => mf.click(); md.onkeydown = (e) => { if (e.key === 'Enter' || 
 ['dragover', 'dragenter'].forEach((ev) => md.addEventListener(ev, (e) => { e.preventDefault(); md.classList.add('on'); }));
 ['dragleave', 'drop'].forEach((ev) => md.addEventListener(ev, () => md.classList.remove('on')));
 md.addEventListener('drop', (e) => { e.preventDefault(); const f = e.dataTransfer.files[0]; if (f) takeMidi(f); });
-$('#play').onclick = () => { if (S.playing) stop(); else play(0); };
-$('#bar').onclick = (e) => { if (!S.song) return; const r = $('#bar').getBoundingClientRect(); play(Math.max(0, (e.clientX - r.left) / r.width * (S.song.length - 2))); };
+$('#play').onclick = async () => { if (S.playing) stop(); else { ac().resume(); await prepSong(); play(0); } };
+$('#bar').onclick = (e) => { if (!S.song) return; const r = $('#bar').getBoundingClientRect(); const at = Math.max(0, (e.clientX - r.left) / r.width * (S.song.length - 2)); prepSong().then(() => play(at)); };
 $('#dlWav').onclick = async () => { const b = $('#dlWav'); b.disabled = true; $('#renderInfo').textContent = 'Rendering the mix...'; try { const ab = await render(); saveBlob(new Blob([wav(ab)], { type: 'audio/wav' }), base() + '.wav'); $('#renderInfo').textContent = 'Done: ' + fmt(ab.duration) + ' as WAV.'; } catch (e) { $('#renderInfo').textContent = 'Rendering failed: ' + e.message; } b.disabled = false; };
 $('#dlStems').onclick = async () => { const b = $('#dlStems'); b.disabled = true; const files = [];
   try { $('#renderInfo').textContent = 'Rendering the mix...'; const m = await render(); files.push({ name: '00_Mix.wav', data: wav(m) });   // stems keep the balance of the mix
     for (let i = 0; i < S.tracks.length; i++) { $('#renderInfo').textContent = 'Rendering stem ' + (i + 1) + ' of ' + S.tracks.length + '...'; const ab = await render(i, m.gain); files.push({ name: String(i + 1).padStart(2, '0') + '_' + S.tracks[i].name.replace(/[^\w.+-]+/g, '_') + '.wav', data: wav(ab) }); }
     saveBlob(zip(files), base() + '_Stems.zip'); $('#renderInfo').textContent = 'Done: the mix and ' + S.tracks.length + ' stems.'; }
   catch (e) { $('#renderInfo').textContent = 'Rendering failed: ' + e.message; } b.disabled = false; };
-$('#dlPack').onclick = () => { const files = []; Object.keys(PACK.drums).forEach((k) => files.push({ name: 'drums/' + k + '.wav', data: monoWav(packBuf('drums', k)) }));
+$('#pack').value = S.pack; $('#pack').onchange = () => { S.pack = $('#pack').value; try { localStorage.setItem('sampler-pack', S.pack); } catch (e) { /* fine */ } stop(); if (S.song) drawTracks(); };
+$('#dlPack').onclick = async () => { const files = [];
+  if (S.pack === 'dm') { const names = DM.drums.map((k) => ['drums/', k]).concat(Object.entries(DM.tones).flatMap(([k, rs]) => rs.map((r) => ['tones/', k + '_' + noteName(r).replace('#', 's')])));
+    for (const [dir, n] of names) { const r = await fetch('dm/' + n + '.wav'); if (r.ok) files.push({ name: dir + n + '.wav', data: new Uint8Array(await r.arrayBuffer()) }); }
+    saveBlob(zip(files), 'Divine_Monday_Sound_Pack.zip'); return; } Object.keys(PACK.drums).forEach((k) => files.push({ name: 'drums/' + k + '.wav', data: monoWav(packBuf('drums', k)) }));
   Object.entries(PACK.tones).forEach(([k, x]) => files.push({ name: 'tones/' + k + '_' + noteName(x[1]).replace('#', 's') + '.wav', data: monoWav(packBuf('tones', k)) }));
   saveBlob(zip(files), 'Divine_Sound_Pack.zip'); };
 $('#links').innerHTML = [['Freesound (free, filter on CC0)', 'https://freesound.org/'], ['99Sounds', 'https://99sounds.org/'], ['SampleFocus', 'https://samplefocus.com/'], ['Looperman (mostly loops)', 'https://www.looperman.com/']].map(([n, u]) => '<a href="' + u + '" target="_blank" rel="noopener">' + n + '</a>').join('');
