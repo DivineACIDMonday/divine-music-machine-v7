@@ -27,7 +27,7 @@
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{margin:0;background:radial-gradient(1100px 520px at 50% -180px,#1C2338 0,var(--bg) 62%) fixed,var(--bg);color:var(--tx);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-#app{max-width:980px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+#rain{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:50}#app{max-width:980px;margin:0 auto;padding:16px;display:flex;flex-direction:column;gap:16px}
 .serif{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif}
 header{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:6px 0}
 .logo{font-size:28px;font-weight:700;line-height:1.1}.logo i{color:var(--gold)}
@@ -65,7 +65,7 @@ input[type=range]{accent-color:var(--gold)}
 footer{color:var(--mu);font-size:13px;text-align:center;padding:10px}
 @media (max-width:560px){.slot{grid-template-columns:1fr}.logo{font-size:23px}}
 </style></head>
-<body><div id="app">
+<body><canvas id="rain" aria-hidden="true"></canvas><div id="app">
 <header><div class="logo serif">Divine <i>Sampler</i></div><span class="tag">beta</span><div class="grow"></div><div class="lang" id="lang"><button data-l="en">EN</button><button data-l="nl">NL</button><button data-l="de">DE</button></div><a class="back" href="/" data-t="back">← all machines</a></header>
 
 <section class="card">
@@ -579,7 +579,24 @@ function play(from) { stop(); const ctx = ac(); ctx.resume(); const out = master
   let k = 0; const P = { srcs: [out], from, when }; S.playing = P;
   const pump = () => { const horizon = ctx.currentTime - when + from + 0.4; while (k < all.length && all[k][1].s < horizon) { scheduleNote(ctx, out, all[k][0], all[k][1], when, from); k++; } if (k >= all.length && ctx.currentTime - when + from > S.song.length) stop(); };   // a little ahead, never all at once
   pump(); P.iv = setInterval(pump, 100); $('#play').textContent = T('stop');
-  const tick = () => { if (S.playing !== P) return; drawTime(Math.max(0, ctx.currentTime - when + from)); P.raf = requestAnimationFrame(tick); }; tick(); }
+  let vi = 0; const tick = () => { if (S.playing !== P) return; const now = Math.max(0, ctx.currentTime - when + from); drawTime(now);
+    while (vi < all.length && all[vi][1].s <= now) { rainNote(all[vi][0], all[vi][1]); vi++; }   // every note that sounds rises up the screen
+    P.raf = requestAnimationFrame(tick); }; tick(); rainRun(); }
+/* ---------- upward rain while it plays: every note a drop rising from the bottom, coloured by its part ---------- */
+const RAIN = { cv: null, x: null, drops: [], on: false, still: window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches };
+const RAINCOL = { drums: '#E7B65C', bass: '#E8875A', acid: '#E8875A', sub: '#E07F6A', keys: '#8CC5A0', organ: '#8CC5A0', pad: '#7FB3E0', strings: '#7FB3E0', lead: '#9B8FE0', pluck: '#E07FA8', bell: '#E07FA8' };
+function rainNote(t, n) { if (RAIN.still || RAIN.drops.length > 600) return; const w = innerWidth, h = innerHeight, sl = t.kind === 'drums' ? null : t.slots[0];
+  const col = t.kind === 'drums' ? RAINCOL.drums : RAINCOL[sl.sound] || '#EDE6D8', v = n.v / 127;
+  const x = t.kind === 'drums' ? Math.random() * w : Math.max(10, Math.min(w - 10, (n.p - 24) / 72 * w + (Math.random() - 0.5) * 40));   // notes sit left to right by pitch, drums anywhere
+  for (let i = 0, k = t.kind === 'drums' ? 1 : 2; i < k; i++) RAIN.drops.push({ x: x + (i ? (Math.random() - 0.5) * 60 : 0), y: h + 10 + i * 30, vy: 1.3 + v * 2.6 + Math.random(), len: 18 + v * 40, w: t.kind === 'drums' ? 3 : 4.5, col, a: 0.55 + v * 0.4 }); }
+function rainRun() { if (RAIN.on || RAIN.still) return; RAIN.on = true; const cv = RAIN.cv = $('#rain'), x = RAIN.x = cv.getContext('2d');
+  const step = () => { const dpr = devicePixelRatio || 1, w = innerWidth, h = innerHeight; if (cv.width !== w * dpr || cv.height !== h * dpr) { cv.width = w * dpr; cv.height = h * dpr; }
+    x.setTransform(dpr, 0, 0, dpr, 0, 0); x.clearRect(0, 0, w, h); x.lineCap = 'round'; x.shadowBlur = 8;
+    RAIN.drops = RAIN.drops.filter((d) => { d.y -= d.vy; d.vy *= 1.004; if (d.y + d.len < -10) return false;
+      const g = x.createLinearGradient(d.x, d.y, d.x, d.y + d.len); g.addColorStop(0, d.col); g.addColorStop(1, 'rgba(0,0,0,0)');
+      x.globalAlpha = d.a * Math.min(1, (d.y + d.len) / (h * 0.25)); x.strokeStyle = g; x.shadowColor = d.col; x.lineWidth = d.w; x.beginPath(); x.moveTo(d.x, d.y); x.lineTo(d.x, d.y + d.len); x.stroke(); return true; });
+    x.globalAlpha = 1; if (S.playing || RAIN.drops.length) requestAnimationFrame(step); else { RAIN.on = false; x.clearRect(0, 0, w, h); } };
+  requestAnimationFrame(step); }
 function drawTime(s) { const L = S.song ? S.song.length - 2 : 0; $('#time').textContent = fmt(Math.min(s, L)) + ' / ' + fmt(L); $('#barFill').style.width = (L ? Math.min(100, s / L * 100) : 0) + '%'; }
 async function audition(t, sl) { ac().resume(); await prep([[t, sl, t.kind === 'drums' ? sl.note : 60]]); const ctx = ac(); ctx.resume(); const out = master(ctx), n = t.kind === 'drums' ? { p: sl.note, v: 110, s: 0, e: 0.5 } : { p: 60, v: 100, s: 0, e: 1.2 };
   scheduleNote(ctx, out, { kind: t.kind, vol: 1, slots: [Object.assign({}, sl, { note: n.p })] }, n, ctx.currentTime + 0.02, 0); }
