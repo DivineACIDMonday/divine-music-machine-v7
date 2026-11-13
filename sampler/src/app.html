@@ -626,7 +626,7 @@ function lufs(L, R, sr) { const kw = (x) => { const o = new Float32Array(x.lengt
   const ld = (m) => -0.691 + 10 * Math.log10(m), g1 = ms.filter((m) => ld(m) > -70); if (!g1.length) return -70;
   const rel = ld(g1.reduce((s, m) => s + m, 0) / g1.length) - 10, g2 = g1.filter((m) => ld(m) > rel); return ld(g2.reduce((s, m) => s + m, 0) / g2.length); }
 function finish(ab) { const L = ab.getChannelData(0), R = ab.getChannelData(1), sr = ab.sampleRate, n = L.length, now = lufs(L, R, sr);
-  const g = Math.min(Math.pow(10, (-14 - now) / 20), 8), ceil = 0.89, look = Math.round(0.005 * sr), rel = Math.exp(-1 / (0.12 * sr));
+  const g = Math.min(Math.pow(10, (-14 - now) / 20), 8), ceil = 0.79, look = Math.round(0.005 * sr), rel = Math.exp(-1 / (0.12 * sr));
   const need = new Float32Array(n); for (let i = 0; i < n; i++) { const pk = Math.max(Math.abs(L[i]), Math.abs(R[i])) * g; need[i] = pk > ceil ? ceil / pk : 1; }
   const mn = new Float32Array(n); for (let i = 0; i < n; i++) mn[i] = need[i]; for (let i = n - 2; i >= 0; i--) mn[i] = Math.min(need[i], mn[i + 1] + (1 - mn[i + 1]) / look);   // ramp down before a peak
   let env = 1; const L2 = new Float32Array(n), R2 = new Float32Array(n);
