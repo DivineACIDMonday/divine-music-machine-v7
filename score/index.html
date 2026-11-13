@@ -1002,6 +1002,15 @@ function render() {
 }
 window.SCOREAPP = { st, render, deliver, loadTrack, fileName };
 render();
+/*BURPDOM*//* Burp: any feeling, now and then two mixed, a fresh score, tension drawn by the machine */
+(function () { if (typeof st === 'undefined' || typeof S === 'undefined') return; const R = (a) => a[Math.floor(Math.random() * a.length)];
+  function burp() { const k = R(S.STYLE_ORDER); st.sc = S.freshScore(k, { name: 'Burp' }); const x = st.sc;
+    if (Math.random() < 0.4) { const o = R(S.STYLE_ORDER.filter((q) => q !== k)); x.mix = o; if (S.MIXES) x.mixMode = R(Object.keys(S.MIXES)); }
+    st.sel = 0; render(); try { setHint('Burp: ' + S.STYLES[k].name + (x.mix ? ' with ' + S.STYLES[x.mix].name : '') + '. Listen, or press Burp again.'); } catch (e) { /* no hint */ } }
+  const add = () => { if (document.getElementById('burpBtn')) return; const a = document.getElementById('newScore'); if (!a) return;
+    const b = document.createElement('button'); b.id = 'burpBtn'; b.type = 'button'; b.className = a.className; b.textContent = 'Burp'; b.style.fontWeight = '700'; b.title = 'Burp: any feeling, sometimes two mixed, a whole new score'; b.onclick = burp; a.after(b); };
+  new MutationObserver(add).observe(document.body, { childList: true, subtree: true }); add(); })();
+/*/BURPDOM*/
 })();
 
 </script>

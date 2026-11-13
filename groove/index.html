@@ -6737,6 +6737,31 @@ function openListen() {
   requestAnimationFrame(loop);
 }
 window.DMMAPP = { titleSel, st, AU, laneDiff, spiralBeat, randomFeel, newBeatSameStructure, randomizeMix, buildLaneFile, deliverLanes, moveSectionTo, shownMat, copyBeatToType, selBar, editTarget, packSong, unpackSong, songLink, shareSong, openListen, allDeliverParts, downloadMp3, renderSongAudio, encodeMp3, mp3Name, change, newVersion, rollAll, rollStructure, editable, varySection, followStandard, resolvedNow, playSection, undo, redo, render, newSong, openDeliver, openLibrary, deliverFiles, buildPartFile, fileName, handleFiles, applyImport, saveFiles, makeZip, setGenre, toMachine, openSaveLib, takeOver, setMode, skip, startPlay, stopAll };
+/*BURPKIT*/
+/* Burp: one press, everything this machine can do thrown open: genres per layer, a feeling, a story, a chord style, a form, a tempo, new ideas */
+(function () {
+  if (typeof D === 'undefined' || typeof st === 'undefined') return;
+  const R = (a) => a[Math.floor(Math.random() * a.length)], groove = /Groove/.test(document.title) || (typeof GROOVE !== 'undefined' && GROOVE);
+  function burp() {
+    const G = D.GENRE_ORDER || D.GENRE_ALL, beat = R(G), mel = groove || Math.random() < 0.4 ? beat : R(G), acc = groove || Math.random() < 0.4 ? beat : R(G);
+    const sg = D.surpriseSong({ beat, melody: mel, acc, feel: R(Object.keys(D.SONG_FEELS)), story: R(Object.keys(D.SONG_STORIES)), name: 'Burp' });
+    if (!groove && D.CHORD_NAMES && Math.random() < 0.7) sg.chordStyle = R(Object.keys(D.CHORD_NAMES).filter((k) => k !== 'auto'));
+    if (!groove && D.FORMS && Math.random() < 0.6) sg.form = R(Object.keys(D.FORMS).filter((k) => k !== 'auto'));
+    const g = D.GENRES[beat]; if (g.bpm && Math.random() < 0.5) sg.bpm = g.bpm[0] + Math.floor(Math.random() * (g.bpm[1] - g.bpm[0] + 1));
+    for (const p in sg.parts) if (Math.random() < 0.5) sg.parts[p].seed = D.newSeed();
+    if (typeof makeSong === 'function' && typeof openSurprise === 'function') makeSong(beat, { sg });   // the Studio
+    else { stopAll(true); Object.assign(st, { boot: false, held: false, loop: false, adding: false, song: sg, hist: [], fut: [], view: 'overview', fresh: false });
+      st.sec = Math.max(0, sg.sections.findIndex((x) => x.type === 'verse' || x.type === 'chorus')); saveSession(); render(); }
+    try { toast('Burp: ' + g.name + (mel !== beat ? ' + ' + D.GENRES[mel].name + ' melody' : '') + (acc !== beat ? ' + ' + D.GENRES[acc].name + ' chords' : '')); } catch (e) { /* no toast here */ }
+  }
+  window.dmBurp = burp;
+  const add = () => { if (document.getElementById('burpBtn')) return;
+    const a = document.getElementById('rollAll') || document.getElementById('rollStructure') || document.querySelector('button[aria-label="Surprise me"]'); if (!a) return;
+    const b = document.createElement('button'); b.id = 'burpBtn'; b.className = a.className.replace('structdice', ''); b.type = 'button'; b.textContent = 'Burp';
+    b.title = 'Burp: one press, everything this machine can do thrown open into a whole new song'; b.style.fontWeight = '700'; b.onclick = burp; a.after(b); };
+  new MutationObserver(add).observe(document.body, { childList: true, subtree: true }); add();
+})();
+/*/BURPKIT*/
 })();
 
 </script>
@@ -6753,4 +6778,5 @@ function fix(){busy=false;var l=null;for(var q=0;q<LOGO.length&&!l;q++)l=[].slic
   else{var w=document.createElement('div');w.className='dm-row';w.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:6px 0;justify-content:'+(ps.textAlign==='center'||ps.alignItems==='center'?'center':'flex-start');P.insertBefore(w,l);w.appendChild(l);w.appendChild(a);l.style.margin='0';}}
  document.querySelectorAll(HIDE).forEach(function(e){if(!e.classList.contains('dm-suite'))e.style.display='none';});}
 new MutationObserver(function(){if(!busy){busy=true;requestAnimationFrame(fix);}}).observe(document.documentElement,{childList:true,subtree:true});fix();})();</script>
+
 </body></html>

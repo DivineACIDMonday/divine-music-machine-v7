@@ -515,4 +515,15 @@ function fix(){busy=false;var l=null;for(var q=0;q<LOGO.length&&!l;q++)l=[].slic
   else{var w=document.createElement('div');w.className='dm-row';w.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:6px 0;justify-content:'+(ps.textAlign==='center'||ps.alignItems==='center'?'center':'flex-start');P.insertBefore(w,l);w.appendChild(l);w.appendChild(a);l.style.margin='0';}}
  document.querySelectorAll(HIDE).forEach(function(e){if(!e.classList.contains('dm-suite'))e.style.display='none';});}
 new MutationObserver(function(){if(!busy){busy=true;requestAnimationFrame(fix);}}).observe(document.documentElement,{childList:true,subtree:true});fix();})();</script>
+<!--BURPDOM--><script>/* Burp: everything this machine can choose, thrown open, then made */
+(function () { const $q = (q) => document.querySelector(q), R = (n) => Math.floor(Math.random() * n);
+  function burp(cfg) { (cfg.dice || []).forEach((q) => { const b = $q(q); if (b && !b.disabled && b.offsetParent !== null) b.click(); });
+    (cfg.selects || []).forEach((q) => { const s = $q(q); if (s && !s.disabled && s.options.length > 1) { s.selectedIndex = R(s.options.length); s.dispatchEvent(new Event('change', { bubbles: true })); } });
+    (cfg.groups || []).forEach((q) => { const bs = [...document.querySelectorAll(q)].filter((b) => !b.disabled && b.offsetParent !== null); if (bs.length) bs[R(bs.length)].click(); });
+    (cfg.toggles || []).forEach((q) => { const b = $q(q); if (b && !b.disabled && Math.random() < 0.5) b.click(); });
+    if (cfg.make) setTimeout(() => { const m = $q(cfg.make); if (m && !m.disabled) m.click(); }, 400); }
+  window.dmBurpDom = (cfg) => { const a = $q(cfg.anchor); if (!a || $q('#burpBtn')) return; const b = document.createElement('button'); b.id = 'burpBtn'; b.type = 'button'; b.className = cfg.cls || a.className.replace(/\bbig\b/, '').trim(); b.textContent = 'Burp';
+    b.title = cfg.title || 'Burp: one press, everything this machine can choose thrown open, then made'; b.style.fontWeight = '700'; b.onclick = () => burp(cfg); a.after(b); };
+})();
+dmBurpDom({ anchor: '#make', cls: 'btn big', dice: ['#sdice', '#mood', '#ndice', '#rdice'], selects: ['#key', '#tempo'], groups: ['#len button', '#beatFrom button'], toggles: ['#voiceOn'], make: '#make' });</script><!--/BURPDOM-->
 </body></html>

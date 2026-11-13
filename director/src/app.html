@@ -96,7 +96,7 @@ footer{color:var(--mu);font-size:13px;text-align:center;padding:10px}
 </section>
 
 <section class="card">
-  <div class="row"><button class="btn big" id="make">Make it</button><button class="btn" id="again" hidden>Again, new ideas</button><span class="muted small" id="info"></span></div>
+  <div class="row"><button class="btn big" id="make">Make it</button><button class="btn big" id="burpAll" title="Burp: a random number of scenes, each set up by the dice, made at once">Burp</button><button class="btn" id="again" hidden>Again, new ideas</button><span class="muted small" id="info"></span></div>
   <div class="tracks" id="tracks"></div>
   <div class="row" id="dl" hidden><button class="btn big" id="dlZip">Download all (zip)</button><button class="btn" id="dlFull">Full MIDI only</button><button class="btn" id="dlSvp" hidden>Synthesizer V project</button><button class="btn" id="dlXml" hidden>MusicXML</button>
     <span class="muted small">In Studio One: drag the Full MIDI in, every place gets its own track, the scenes are markers.</span></div>
@@ -149,15 +149,8 @@ function sel(opts, val, onch, openLabel) {
   opts.forEach(([v, n]) => { const o = document.createElement('option'); o.value = v; o.textContent = n; if (v === (val || '')) o.selected = true; s.append(o); });
   s.className = s.value ? '' : 'open'; s.onchange = () => { s.className = s.value ? '' : 'open'; onch(s.value); }; return s;
 }
-function drawScenes() {
-  const box = $('#scenes'); box.innerHTML = '';
-  S.scenes.forEach((sc, i) => {
-    if (i) { const j = document.createElement('div'); j.className = 'joint'; j.textContent = '›'; j.title = 'The machine makes the connection'; box.append(j); }
-    const d = document.createElement('div'); d.className = 'scene';
-    const h = document.createElement('h3'); h.className = 'serif'; h.textContent = 'Scene ' + (i + 1);
-    const sh = document.createElement('button'); sh.className = 'x'; sh.textContent = 'Shuffle'; sh.title = 'New ideas for this scene only. An empty scene gets set up for you';
-    sh.onclick = () => { sc.seed = E.newSeed(); const r = E.rng(sc.seed);
-      if (!SLOTS.some(([p]) => sc.slots[p] && sc.slots[p].inst)) {   // an empty scene: the shuffle sets it up for you, a genre and three to five places with a feeling
+function setupScene(sc) { const r = E.rng(sc.seed);   // an empty scene set up by the dice: genre, length, places, feelings, now and then a gesture
+      {
         const pick = (a) => a[Math.floor(r() * a.length)]; sc.genre = pick(GENRES)[0];
         const want = ['beat', 'bass', 'chords', 'melody', 'answer'].slice(0, 3 + Math.floor(r() * 3));
         const bars = pick([8, 16, 16, 24, 32]); sc.time = fmt(bars * 240 / bpmNow());   // a length too
@@ -167,6 +160,16 @@ function drawScenes() {
           if (r() < 0.4) sl.sw = pick(['grow', 'fade', 'arc']);                                                       // a swell,
           if (p !== 'beat' && r() < 0.3) sl.shape = pick(['rise', 'fall', 'stay']);                                  // a shape,
           if (p !== 'beat' && r() < 0.25) sl.in = 1 + 4 * Math.floor(r() * (bars / 8)); }); }                         // or a late entry
+}
+function drawScenes() {
+  const box = $('#scenes'); box.innerHTML = '';
+  S.scenes.forEach((sc, i) => {
+    if (i) { const j = document.createElement('div'); j.className = 'joint'; j.textContent = '›'; j.title = 'The machine makes the connection'; box.append(j); }
+    const d = document.createElement('div'); d.className = 'scene';
+    const h = document.createElement('h3'); h.className = 'serif'; h.textContent = 'Scene ' + (i + 1);
+    const sh = document.createElement('button'); sh.className = 'x'; sh.textContent = 'Shuffle'; sh.title = 'New ideas for this scene only. An empty scene gets set up for you';
+    sh.onclick = () => { sc.seed = E.newSeed(); const r = E.rng(sc.seed);
+      if (!SLOTS.some(([p]) => sc.slots[p] && sc.slots[p].inst)) setupScene(sc);
       save(); drawScenes(); make(false); }; h.append(sh);
     if (S.scenes.length > 1) { const x = document.createElement('button'); x.className = 'x'; x.textContent = 'Remove'; x.onclick = () => { S.scenes.splice(i, 1); save(); drawScenes(); }; h.append(x); }
     d.append(h);
@@ -436,7 +439,8 @@ function zip(files) {
   return new Blob(parts.concat(cen, [end]), { type: 'application/zip' });
 }
 const safe = (t) => String(t).normalize('NFKD').replace(/[^\w#.+ ()-]/g, '').replace(/\s+/g, '_');
-$('#make').onclick = () => make(false); $('#again').onclick = () => make(true);
+$('#make').onclick = () => make(false);
+$('#burpAll').onclick = () => { const n = 2 + Math.floor(Math.random() * 5); S.scenes = Array.from({ length: n }, () => { const sc = blank(); setupScene(sc); return sc; }); save(); drawScenes(); make(false); }; $('#again').onclick = () => make(true);
 $('#dlFull').onclick = () => saveBlob(new Blob([full()], { type: 'audio/midi' }), title() + '_Full.mid');
 const enc = (t) => new TextEncoder().encode(t);
 $('#dlSvp').onclick = () => saveBlob(new Blob([S.vocal.svp], { type: 'application/json' }), title() + '_Vocal.svp');
