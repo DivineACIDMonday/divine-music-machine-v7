@@ -151,7 +151,7 @@ function dmName(kind, sound, p) { if (kind === 'drums') return DM.drums.includes
   const rs = DM.tones[sound]; if (!rs) return null; const r = rs.reduce((b, x) => Math.abs(x - p) < Math.abs(b - p) ? x : b, rs[0]);   // the nearest recorded note
   return { name: sound + '_' + noteName(r).replace('#', 's'), root: r }; }
 function dmLoad(name) { return DMP[name] = DMP[name] || fetch('dm/' + name + '.wav').then((r) => { if (!r.ok) throw new Error('missing ' + name); return r.arrayBuffer(); })
-  .then((b) => ac().decodeAudioData(b)).then((ab) => { DMC[name] = { data: ab.getChannelData(0), rate: ab.sampleRate }; }).catch(() => { delete DMP[name]; }); }
+  .then((b) => ac().decodeAudioData(b)).then((ab) => { DMC[name] = { data: ab.getChannelData(0), dataR: ab.getChannelData(ab.numberOfChannels > 1 ? 1 : 0), rate: ab.sampleRate }; }).catch(() => { delete DMP[name]; }); }
 async function prep(list) { if (S.pack !== 'dm') return; const need = new Set();
   list.forEach(([t, sl, p]) => { if (sl && !sl.own) { const d = dmName(t.kind, sl.sound, p); if (d && !DMC[d.name]) need.add(d.name); } });
   if (need.size) { const o = $('#renderInfo'), was = o.textContent; o.textContent = 'Loading the Divine Monday sounds...'; await Promise.all([...need].map(dmLoad)); o.textContent = was; } }
@@ -178,10 +178,9 @@ function rootFromName(name) { const m = name.replace(/\.[a-z0-9]+$/i, '').match(
   if (m) return 12 * (+m[3] + 2) + NOTE[m[1].toLowerCase()] + (m[2] === 's' || m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);   // Studio One names: C3 = 60
   if (mm && +mm[1] < 128) return +mm[1]; return 60; }
 function ac() { return S.ctx = S.ctx || new (window.AudioContext || window.webkitAudioContext)(); }
-async function decodeFile(f) { const b = await f.arrayBuffer(); const ab = await ac().decodeAudioData(b.slice(0)); const ch = ab.getChannelData(0), out = new Float32Array(ab.length);
-  for (let c = 0; c < ab.numberOfChannels; c++) { const d = ab.getChannelData(c); for (let i = 0; i < ab.length; i++) out[i] += d[i] / ab.numberOfChannels; }   // mono, at its own rate
-  let pk = 0; for (let i = 0; i < out.length; i++) pk = Math.max(pk, Math.abs(out[i])); if (pk > 0) { const g = 0.89 / pk; for (let i = 0; i < out.length; i++) out[i] *= g; }   // every sound arrives at the same strength
-  return { data: out, rate: ab.sampleRate, name: f.name, secs: ab.duration }; }
+async function decodeFile(f) { const b = await f.arrayBuffer(); const ab = await ac().decodeAudioData(b.slice(0)); const out = new Float32Array(ab.getChannelData(0)), outR = new Float32Array(ab.getChannelData(ab.numberOfChannels > 1 ? 1 : 0));   // stereo, at its own rate
+  let pk = 0; for (let i = 0; i < out.length; i++) pk = Math.max(pk, Math.abs(out[i]), Math.abs(outR[i])); if (pk > 0) { const g = 0.89 / pk; for (let i = 0; i < out.length; i++) { out[i] *= g; outR[i] *= g; } }   // every sound arrives at the same strength
+  return { data: out, dataR: outR, rate: ab.sampleRate, name: f.name, secs: ab.duration }; }
 
 function loadSong(buf, fname) {
   const song = parseMidi(buf); S.song = song;
@@ -221,10 +220,10 @@ function drawTracks() { const box = $('#tracks'); box.innerHTML = '';
 const NN = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'], noteName = (m) => NN[m % 12] + (Math.floor(m / 12) - 2);
 
 /* ---------- playing: every note becomes a buffer source, pitched by speed ---------- */
-function srcOf(t, sl, p) { if (sl.own) return { data: sl.own.data, rate: sl.own.rate, root: sl.own.root, rel: 0.12 }; const kind = t.kind;
-  if (S.pack === 'dm') { const d = dmName(kind, sl.sound, p), x = d && DMC[d.name]; if (x) return { data: x.data, rate: x.rate, root: d.root, rel: 0.4 }; }
-  return kind === 'drums' ? { data: packBuf('drums', sl.sound), rate: SR, root: null } : { data: packBuf('tones', sl.sound), rate: SR, root: PACK.tones[sl.sound][1] }; }
-const BUFS = new WeakMap(); function bufFor(ctx, s) { let m = BUFS.get(ctx); if (!m) BUFS.set(ctx, m = new Map()); let b = m.get(s.data); if (!b) { b = ctx.createBuffer(1, s.data.length, s.rate); b.getChannelData(0).set(s.data); m.set(s.data, b); } return b; }
+function srcOf(t, sl, p) { if (sl.own) return { data: sl.own.data, dataR: sl.own.dataR || sl.own.data, rate: sl.own.rate, root: sl.own.root, rel: 0.12 }; const kind = t.kind;
+  if (S.pack === 'dm') { const d = dmName(kind, sl.sound, p), x = d && DMC[d.name]; if (x) return { data: x.data, dataR: x.dataR, rate: x.rate, root: d.root, rel: 0.4 }; }
+  const d = packBuf(kind, sl.sound); return { data: d, dataR: d, rate: SR, root: kind === 'drums' ? null : PACK.tones[sl.sound][1] }; }
+const BUFS = new WeakMap(); function bufFor(ctx, s) { let m = BUFS.get(ctx); if (!m) BUFS.set(ctx, m = new Map()); let b = m.get(s.data); if (!b) { b = ctx.createBuffer(2, s.data.length, s.rate); b.getChannelData(0).set(s.data); b.getChannelData(1).set(s.dataR || s.data); m.set(s.data, b); } return b; }
 function scheduleNote(ctx, out, t, n, when, from) {
   const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const s = srcOf(t, sl, n.p), b = bufFor(ctx, s);
   const src = ctx.createBufferSource(); src.buffer = b; if (s.root != null) src.playbackRate.value = Math.pow(2, (n.p - s.root) / 12);
@@ -246,16 +245,16 @@ async function audition(t, sl) { ac().resume(); await prep([[t, sl, t.kind === '
 
 /* ---------- rendering to WAV, also per track ---------- */
 // rendering in plain code: every note mixed straight into the output, pitched by reading faster or slower; quick even for long tracks
-async function render(only, fixed) { await prepSong(); if (only != null) await prep(S.tracks[only].notes.map((n) => [S.tracks[only], slotOf(S.tracks[only], n), n.p])); const L = S.song.length, N = Math.ceil(L * SR), mix = new Float32Array(N);
+async function render(only, fixed) { await prepSong(); if (only != null) await prep(S.tracks[only].notes.map((n) => [S.tracks[only], slotOf(S.tracks[only], n), n.p])); const L = S.song.length, N = Math.ceil(L * SR), mix = new Float32Array(N), mixR = new Float32Array(N);
   S.tracks.forEach((t, i) => { if (!((only == null && !t.mute) || only === i)) return;
-    t.notes.forEach((n) => { const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const s = srcOf(t, sl, n.p), src = s.data;
+    t.notes.forEach((n) => { const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const s = srcOf(t, sl, n.p), src = s.data, srcR = s.dataR || src;
       const step = (s.root != null ? Math.pow(2, (n.p - s.root) / 12) : 1) * s.rate / SR, v = Math.pow(n.v / 127, 1.4) * t.vol * (t.kind === 'drums' ? 0.9 : 0.55);
       const i0 = Math.round(n.s * SR), hold = t.kind === 'drums' ? Infinity : Math.max(0.05, n.e - n.s) * SR, rel = (s.rel || 0.12) * SR;
       for (let k = 0, pos = 0; i0 + k < N && pos < src.length - 1; k++, pos += step) { let g = v; if (k > hold) { g *= 1 - (k - hold) / rel; if (g <= 0) break; }
-        const j = pos | 0, f = pos - j; mix[i0 + k] += (src[j] + (src[j + 1] - src[j]) * f) * g; } }); });
-  let pk = 0; for (let i = 0; i < N; i++) { const x = Math.abs(mix[i]); if (x > pk) pk = x; }
-  const g = fixed != null ? fixed : pk > 0.89 ? 0.89 / pk : 1; if (g !== 1) for (let i = 0; i < N; i++) mix[i] *= g;   // never clips: the loudest moment sits just under the top
-  return { length: N, duration: N / SR, numberOfChannels: 2, sampleRate: SR, gain: g, getChannelData: () => mix }; }
+        const j = pos | 0, f = pos - j; mix[i0 + k] += (src[j] + (src[j + 1] - src[j]) * f) * g; mixR[i0 + k] += (srcR[j] + (srcR[j + 1] - srcR[j]) * f) * g; } }); });
+  let pk = 0; for (let i = 0; i < N; i++) { const x = Math.max(Math.abs(mix[i]), Math.abs(mixR[i])); if (x > pk) pk = x; }
+  const g = fixed != null ? fixed : pk > 0.89 ? 0.89 / pk : 1; if (g !== 1) for (let i = 0; i < N; i++) { mix[i] *= g; mixR[i] *= g; }   // never clips: the loudest moment sits just under the top
+  return { length: N, duration: N / SR, numberOfChannels: 2, sampleRate: SR, gain: g, getChannelData: (c) => c ? mixR : mix }; }
 function wav(ab) { const n = ab.length, ch = ab.numberOfChannels, buf = new ArrayBuffer(44 + n * ch * 2), d = new DataView(buf); let p = 0;
   const w = (s) => { for (const c of s) d.setUint8(p++, c.charCodeAt(0)); }, u32 = (v) => { d.setUint32(p, v, true); p += 4; }, u16 = (v) => { d.setUint16(p, v, true); p += 2; };
   w('RIFF'); u32(36 + n * ch * 2); w('WAVE'); w('fmt '); u32(16); u16(1); u16(ch); u32(ab.sampleRate); u32(ab.sampleRate * ch * 2); u16(ch * 2); u16(16); w('data'); u32(n * ch * 2);
