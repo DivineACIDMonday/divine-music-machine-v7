@@ -184,7 +184,7 @@ async function decodeFile(f) { const b = await f.arrayBuffer(); const ab = await
 
 function loadSong(buf, fname) {
   const song = parseMidi(buf); S.song = song;
-  S.tracks = song.tracks.map((tr) => { const r = roleOf(tr), t = { name: tr.name, notes: tr.notes, kind: r.kind, vol: 0.8, mute: false };
+  S.tracks = song.tracks.map((tr) => { const r = roleOf(tr), t = { name: tr.name, notes: tr.notes, kind: r.kind, vol: r.sound === 'pad' ? 0.4 : 0.8, mute: false };   // a pad fills a lot: it starts softer
     if (r.kind === 'drums') { t.slots = [...new Set(tr.notes.map((n) => n.p))].sort((a, b) => a - b).map((p) => ({ note: p, sound: DRUM_OF(p), own: null })); }
     else t.slots = [{ sound: r.sound, own: null }];
     return t; });
