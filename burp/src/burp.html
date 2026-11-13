@@ -27,10 +27,10 @@
   try { B.hist = JSON.parse(localStorage.getItem('burp-hist') || '[]'); B.count = +localStorage.getItem('burp-count') || 0; const pl = JSON.parse(localStorage.getItem('burp-plug') || 'null'); if (pl) B.plug = pl; } catch (e) { /* private window */ }
   const keep = () => { try { localStorage.setItem('burp-hist', JSON.stringify(B.hist.slice(-300))); localStorage.setItem('burp-count', String(B.count)); localStorage.setItem('burp-plug', JSON.stringify(B.plug)); } catch (e) { /* private window */ } };
   const PARTS = [['beat', 'Beat'], ['bass', 'Bass'], ['chords', 'Chords'], ['melody', 'Melody'], ['answer', 'Answer']];
-  const G = GENRES.map((g) => g[0]), PK = ['melody', 'chords', 'answer', 'bass', 'beat'];
+  const G = GENRES.map((g) => g[0]), PK = ['melody', 'chords', 'answer', 'bass', 'beat']; let GG = G;
   // everything is open: any genre next to any genre, rules of one place on another, sometimes, never always
   function slotNew(p, r, pick, chance) { const sl = { inst: chance(0.3) ? 'machine' : pick(Object.keys(INST[p])), feel: chance(0.7) ? pick(Object.keys(FEELS)) : '' };
-    if (chance(0.35)) sl.src = pick(G);                                                                     // play like another genre
+    if (chance(0.35)) sl.src = pick(GG);                                                                     // play like another genre
     const rr = r(); if (rr < 0.12) { sl.rh = pick(['every', 'speed', 'slow']); sl.n = p === 'beat' && sl.rh === 'every' ? 1 : pick([1, 2, 3, 4, 5, 7, 8]); }   // a beat never thins to one hit in many bars
     else if (rr < 0.2) { sl.rh = 'draw'; sl.ed = { add: [], del: [] }; sl.pat = Array.from({ length: 16 }, (_, i) => (i % 4 === 0 ? r() < 0.7 : r() < 0.22)); }
     else if (rr < 0.32) sl.rhFrom = p === 'beat' ? 'bass' : pick(PK.filter((q) => q !== p));                                        // borrow another place's rhythm
@@ -40,14 +40,15 @@
     return sl; }
   // everything is open, and still one piece: glue in every part, one thread from part to part, a form with a start and an end
   function roll(seed) { const r = E.rng(seed), pick = (a) => a[Math.floor(r() * a.length)], chance = (p) => r() < p;
-    const bpm = 70 + Math.floor(r() * 101), key = { root: Math.floor(r() * 12), scale: pick(['minor', 'minor', 'major']) };
+    const FG = G.includes(window.BURP_GENRE) ? window.BURP_GENRE : null; GG = FG ? [FG] : G;   // a genre asked for from outside (the Sampler): every part in it, at its own tempo
+    const bpm = FG ? Math.round((FG === 'cinematic' ? 96 : E.GENRES[ENGINE_GENRE(FG)].def) + (r() - 0.5) * 8) : 70 + Math.floor(r() * 101), key = { root: Math.floor(r() * 12), scale: pick(['minor', 'minor', 'major']) };
     const totalBars = Math.max(48, Math.round((120 + r() * 240) * bpm / 240 / 8) * 8), n = 3 + Math.floor(r() * 6);
     let left = totalBars; const lens = []; for (let i = 0; i < n; i++) { const share = i === n - 1 ? left : Math.max(8, Math.round(left / (n - i) * (0.6 + r() * 0.8) / 8) * 8); lens.push(Math.min(share, left - 8 * (n - i - 1))); left -= lens[i]; }
     if (lens[0] > 16) { lens[1] += lens[0] - 16; lens[0] = 16; }   // the opening is short, so the beat is never far away
     const scenes = []; let prev = null, breath = false;
     lens.forEach((L, i) => { let sc;
-      if (!prev) { sc = { genre: pick(G), slots: {} }; PK.forEach((p) => { sc.slots[p] = {}; }); ['chords', pick(['bass', 'beat'])].forEach((p) => { sc.slots[p] = slotNew(p, r, pick, chance); sc.slots[p].sw = 'grow'; }); }   // the opening: a few places, growing
-      else { sc = JSON.parse(JSON.stringify(prev)); if (chance(0.6)) sc.genre = pick(G);                     // the next part inherits, and changes two or three things
+      if (!prev) { sc = { genre: pick(GG), slots: {} }; PK.forEach((p) => { sc.slots[p] = {}; }); ['chords', pick(['bass', 'beat'])].forEach((p) => { sc.slots[p] = slotNew(p, r, pick, chance); sc.slots[p].sw = 'grow'; }); }   // the opening: a few places, growing
+      else { sc = JSON.parse(JSON.stringify(prev)); if (chance(0.6)) sc.genre = pick(GG);                     // the next part inherits, and changes two or three things
         const ch = PK.slice().sort(() => r() - 0.5).slice(0, 2 + Math.floor(r() * 2));
         if (chance(0.5)) PK.forEach((p) => { const sl = sc.slots[p]; if (!sl.inst) return; if (sl.rh === 'speed' || sl.rh === 'slow') { delete sl.rh; delete sl.n; } delete sl.sw; delete sl.in; });   // what carries over sometimes keeps its gesture too
         ch.forEach((p) => { sc.slots[p] = sc.slots[p].inst && p !== 'beat' && chance(0.35) ? {} : slotNew(p, r, pick, chance); }); }   // once the beat is in, it stays (it may change)
