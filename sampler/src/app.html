@@ -493,10 +493,13 @@ const DM2 = { drums: [['kick_1', 'kick_1', 'Kick, Army of Me'], ['kick_2', 'kick
   tones: [['bass', 'bass', 'Bass, Army of Me', [24, 30, 36, 42, 48]], ['keys', 'keys', 'Keys, Nina', [36, 42, 48, 54, 60, 66, 72, 78]], ['pluck', 'pluck', 'Pluck, *glim', [60, 66, 72, 78, 84, 90]], ['mallet', 'bell', 'Mallet, *hammer', [48, 54, 60, 66, 72, 78]]] };
 const DM2W = { en: { deep: 'deep blue', rev: 'Revolution', closed: 'closed', glim: 'Glimmer', gold: 'Gold', lady: 'The chic lady', hammer: 'golden hammer' }, nl: { deep: 'diep blauw', rev: 'Revolutie', closed: 'dicht', glim: 'Glinster', gold: 'Goud', lady: 'De sjieke dame', hammer: 'gouden hamertje' },
   de: { deep: 'tiefblau', rev: 'Revolution', closed: 'geschlossen', glim: 'Glitzer', gold: 'Gold', lady: 'Die schicke Dame', hammer: 'goldener Hammer' } };
+// the pack choice is shared with all apps of the suite (key dm-pack): pack, plus the mix made here
+const SHARED = (() => { let v = null; try { v = JSON.parse(localStorage.getItem('dm-pack') || 'null'); } catch (e) { /* fine */ } return v && ['dm1', 'dm2', 'mix'].includes(v.pack) ? { pack: v.pack, mix: v.mix || {} } : { pack: 'dm1', mix: {} }; })();
+function saveShared() { SHARED.pack = S.pack; if (S.pack === 'mix') S.tracks.forEach((t) => t.slots.forEach((sl) => { if (sl.base && sl.pick) SHARED.mix[sl.base] = sl.pick; })); try { localStorage.setItem('dm-pack', JSON.stringify(SHARED)); } catch (e) { /* fine */ } }
 const DM2_DEF = { kick_1: 'kick_1', kick_2: 'kick_4', snare_1: 'snare_1', snare_2: 'snare_2', clap: 'clap', hat_closed: 'hat_closed', hat_open: 'hat_open', perc: 'perc_2', crash: 'hat_open', tom: 'kick_2', bass: 'bass', acid: 'bass', keys: 'keys', organ: 'keys', pluck: 'pluck', bell: 'mallet', lead: 'mallet' };   // sub, pad and strings stay with pack 1
 const dm2Entry = (k) => DM2.drums.concat(DM2.tones).find((x) => x[0] === k);
 const dm2Name = (e) => e[2].replace(/\*(\w+)/g, (m, w) => (DM2W[S.lang] || DM2W.en)[w] || DM2W.en[w]);
-const defPick = (gen) => S.pack === 'dm2' && DM2_DEF[gen] ? 'dm2:' + DM2_DEF[gen] : 'dm1:' + gen;
+const defPick = (gen) => S.pack === 'mix' && SHARED.mix[gen] ? SHARED.mix[gen] : S.pack === 'dm2' && DM2_DEF[gen] ? 'dm2:' + DM2_DEF[gen] : 'dm1:' + gen;
 const genOf = (pick) => { const [pk, k] = pick.split(':'); return pk === 'dm1' ? k : (dm2Entry(k) || [k, k])[1]; };
 const pickName = (pick) => { const [pk, k] = pick.split(':'); return pk === 'dm1' ? nameOf(k) : dm2Name(dm2Entry(k)); };
 function dmFile(kind, sl, p) { const [pk, k] = (sl.pick || 'dm1:' + sl.sound).split(':');
@@ -530,7 +533,7 @@ function roleOf(tr) { const n = tr.name.toLowerCase(), ps = tr.notes.map((x) => 
   if (/answer|bell|motif/.test(n)) return { kind: 'tones', sound: /bell/.test(n) ? 'bell' : 'pluck' };
   const poly = tr.notes.length / new Set(tr.notes.map((x) => x.t)).size; return { kind: 'tones', sound: poly > 1.6 ? 'keys' : 'lead' }; }
 
-const S = { song: null, tracks: [], ctx: null, playing: null, pack: (() => { try { return ['dm1', 'dm2', 'mix'].includes(localStorage.getItem('sampler-pack2')) ? localStorage.getItem('sampler-pack2') : 'dm1'; } catch (e) { return 'dm1'; } })() };   // always the Divine Monday pack; the plain sounds only fill in while it loads
+const S = { song: null, tracks: [], ctx: null, playing: null, pack: SHARED.pack };   // always the Divine Monday pack; the plain sounds only fill in while it loads
 const NOTE = { c: 0, d: 2, e: 4, f: 5, g: 7, a: 9, b: 11 };
 function rootFromName(name) { const m = name.replace(/\.[a-z0-9]+$/i, '').match(/(?:^|[_\s-])([A-Ga-g])(s|#|b)?(-?\d)(?![\d])/), mm = name.match(/(?:^|[_\s-])(\d{2,3})(?:\.[a-z0-9]+)?$/i);
   if (m) return 12 * (+m[3] + 2) + NOTE[m[1].toLowerCase()] + (m[2] === 's' || m[2] === '#' ? 1 : m[2] === 'b' ? -1 : 0);   // Studio One names: C3 = 60
@@ -566,7 +569,7 @@ function drawTracks() { const box = $('#tracks'); box.innerHTML = '';
       if (S.pack === 'mix') { const g1 = grp('Divine Monday 1: Mediocre Diarrhea'), g2 = grp('Divine Monday 2: Dictatorship of the Good'); Object.keys(list).forEach((k) => opt(g1, 'dm1:' + k, nameOf(k))); d2.forEach((e) => opt(g2, 'dm2:' + e[0], dm2Name(e))); }
       else if (S.pack === 'dm2') { d2.forEach((e) => opt(s, 'dm2:' + e[0], dm2Name(e))); if (sl.pick.startsWith('dm1:')) opt(s, sl.pick, 'Mediocre Diarrhea: ' + nameOf(sl.sound)); }
       else Object.keys(list).forEach((k) => opt(s, 'dm1:' + k, nameOf(k)));
-      s.onchange = () => { sl.pick = s.value; sl.sound = genOf(sl.pick); drawTracks(); }; if (sl.own) s.disabled = true;
+      s.onchange = () => { sl.pick = s.value; sl.sound = genOf(sl.pick); saveShared(); drawTracks(); }; if (sl.own) s.disabled = true;
       const pv = document.createElement('button'); pv.className = 'ib'; pv.textContent = T('hear'); pv.title = T('hearT'); pv.onclick = () => audition(t, sl);
       const dz = document.createElement('label'); dz.className = 'dz' + (sl.own ? ' has' : ''); dz.textContent = sl.own ? sl.own.name + (t.kind === 'tones' ? ' (' + T('root') + ' ' + noteName(sl.own.root) + ')' : '') : T('dropOwn');
       const fi = document.createElement('input'); fi.type = 'file'; fi.accept = 'audio/*,.wav,.mp3,.ogg,.flac,.aif,.aiff'; fi.hidden = true; dz.append(fi);
@@ -693,7 +696,7 @@ $('#dlStems').onclick = async () => { const b = $('#dlStems'); b.disabled = true
     for (let i = 0; i < S.tracks.length; i++) { $('#renderInfo').textContent = T('rStem', i + 1, S.tracks.length); const ab = await render(i, m.gain); files.push({ name: String(i + 1).padStart(2, '0') + '_' + S.tracks[i].name.replace(/[^\w.+-]+/g, '_') + '.wav', data: wav(ab) }); }
     saveBlob(zip(files), base() + '_Stems.zip'); $('#renderInfo').textContent = T('doneStems', S.tracks.length); }
   catch (e) { $('#renderInfo').textContent = T('rFail') + ' ' + e.message; } b.disabled = false; };
-$('#pack').value = S.pack; $('#pack').onchange = () => { S.pack = $('#pack').value; try { localStorage.setItem('sampler-pack2', S.pack); } catch (e) { /* fine */ } stop();
+$('#pack').value = S.pack; $('#pack').onchange = () => { S.pack = $('#pack').value; saveShared(); stop();
   if (S.pack !== 'mix') S.tracks.forEach((t) => t.slots.forEach((sl) => { sl.pick = defPick(sl.base); sl.sound = genOf(sl.pick); })); if (S.song) drawTracks(); };
 $('#dlPack').onclick = async () => { const files = [], two = S.pack !== 'dm1', one = S.pack !== 'dm2';
   if (two) { for (const e of DM2.drums) { const r = await fetch('dm2/' + e[0] + '.wav'); if (r.ok) files.push({ name: (one ? 'DM2_Dictatorship_of_the_Good/' : '') + 'drums/' + e[0] + '.wav', data: new Uint8Array(await r.arrayBuffer()) }); }
