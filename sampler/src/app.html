@@ -514,7 +514,7 @@ function dmName(kind, sound, p) { if (kind === 'drums') return DM.drums.includes
 function dmLoad(name) { return DMP[name] = DMP[name] || fetch(name + '.wav').then((r) => { if (!r.ok) throw new Error('missing ' + name); return r.arrayBuffer(); })
   .then((b) => ac().decodeAudioData(b)).then((ab) => { DMC[name] = { data: ab.getChannelData(0), dataR: ab.getChannelData(ab.numberOfChannels > 1 ? 1 : 0), rate: ab.sampleRate }; }).catch(() => { delete DMP[name]; }); }
 async function prep(list) { const need = new Set();
-  list.forEach(([t, sl, p]) => { if (sl && !sl.own) { const d = dmFile(t.kind, sl, p); if (d && !DMC[d.name]) need.add(d.name); } });
+  list.forEach(([t, sl, p]) => { if (sl && !sl.own) { const d = dmFile(t.kind, sl, deep(t, sl, p)); if (d && !DMC[d.name]) need.add(d.name); } });
   if (need.size) { const o = $('#renderInfo'), was = o.textContent; o.textContent = T('loading'); await Promise.all([...need].map(dmLoad)); o.textContent = was; } }
 const slotOf = (t, n) => t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0];
 const prepSong = () => { const l = []; S.tracks.forEach((t) => { if (!t.mute) t.notes.forEach((n) => l.push([t, slotOf(t, n), n.p])); }); return prep(l); };
@@ -591,9 +591,11 @@ function srcOf(t, sl, p) { if (sl.own) return { data: sl.own.data, dataR: sl.own
   { const d = dmFile(kind, sl, p), x = d && DMC[d.name]; if (x) return { data: x.data, dataR: x.dataR, rate: x.rate, root: d.root, rel: 0.4 }; }
   const d = packBuf(kind, sl.sound); return { data: d, dataR: d, rate: SR, root: kind === 'drums' ? null : PACK.tones[sl.sound][1] }; }
 const BUFS = new WeakMap(); function bufFor(ctx, s) { let m = BUFS.get(ctx); if (!m) BUFS.set(ctx, m = new Map()); let b = m.get(s.data); if (!b) { b = ctx.createBuffer(2, s.data.length, s.rate); b.getChannelData(0).set(s.data); b.getChannelData(1).set(s.dataR || s.data); m.set(s.data, b); } return b; }
+// a bass stays deep: notes above the recording fold down an octave
+const deep = (t, sl, p) => { if (t.kind === 'drums' || !sl || sl.own || !/^(bass|acid|sub)$/.test(sl.sound)) return p; const top = sl.sound === 'sub' ? 47 : 53; while (p > top) p -= 12; return p; };
 function scheduleNote(ctx, out, t, n, when, from) {
-  const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const s = srcOf(t, sl, n.p), b = bufFor(ctx, s);
-  const src = ctx.createBufferSource(); src.buffer = b; if (s.root != null) src.playbackRate.value = Math.pow(2, (n.p - s.root) / 12);
+  const sl = t.kind === 'drums' ? t.slots.find((x) => x.note === n.p) : t.slots[0]; if (!sl) return; const pp = deep(t, sl, n.p), s = srcOf(t, sl, pp), b = bufFor(ctx, s);
+  const src = ctx.createBufferSource(); src.buffer = b; if (s.root != null) src.playbackRate.value = Math.pow(2, (pp - s.root) / 12);
   const g = ctx.createGain(), v = Math.pow(n.v / 127, 1.4) * t.vol * partGain(t, sl), st = when + n.s - from;
   if (t.kind === 'drums') { g.gain.value = v; src.connect(g); g.connect(out); src.start(Math.max(st, ctx.currentTime || 0)); return; }
   const end = st + Math.max(0.05, n.e - n.s); g.gain.setValueAtTime(v, st); g.gain.setValueAtTime(v, end); g.gain.linearRampToValueAtTime(0, end + (s.rel || 0.12));
