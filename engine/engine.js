@@ -2269,6 +2269,18 @@ E.twoBarBreak = function (song, lanes, pk) {
   if (choice < 0.5) { if (Kk[10] && !Kk[11] && !(S[11] >= 60)) Kk[11] = Math.round(Kk[10] * 0.85); else if (!Kk[7] && !(S[8] >= 80)) Kk[7] = 78; }
   else { if (Kk[10] && !Kk[11] && !(S[11] >= 60)) { Kk[11] = Kk[10]; Kk[10] = 0; } if (!S[15]) S[15] = 46; }
 };
+// the phoenix bar (step 1): a crash, a kick that restarts off the grid, open hats on the offbeats, the counter voice turned around, a snare run into the next bar.
+// Step 2 keeps only the turned counter voice, so the base comes back gently
+E.phoenix = function (song, sec, inBar, lanes, step) {
+  const N = 16, P = lanes[PC], r = rng(hash(song.seed, 'phoenix', sec.type));
+  if (P) { const was = P.slice(); P.fill(0); was.forEach((v, s) => { if (v) { const t = (N - 1 - s + 2) % N; if (!(lanes[K][t] >= 80) && !(lanes[SN][t] >= 80)) P[t] = clamp(v + (step === 1 ? 12 : 4), 30, 118); } });
+    if (!was.some(Boolean) && step === 1) [3, 7, 11, 14].forEach((s) => { if (!(lanes[K][s] >= 80) && !(lanes[SN][s] >= 80)) P[s] = 70; }); }
+  if (step !== 1) return;
+  if (lanes[CR]) lanes[CR][0] = Math.max(lanes[CR][0], 108);
+  lanes[K][0] = Math.max(lanes[K][0], 112); const ks = [3, 5, 7].find((s) => !lanes[K][s] && !(lanes[SN][s] >= 60)); if (ks != null && r.chance(0.8)) lanes[K][ks] = 88;
+  if (lanes[OH] && lanes[HH]) [2, 6, 10].forEach((s) => { if (!(lanes[SN][s] >= 80)) { lanes[OH][s] = 80; lanes[HH][s] = 0; lanes[HH][s + 1] = 0; } });
+  [13, 14, 15].forEach((s, i) => { if (!lanes[SN][s]) lanes[SN][s] = 54 + i * 14; });
+};
 E.renderBar = function (song, part, gbar, res, opts) {
   const at = E.sectionAt(song, gbar); if (!at) return [];
   const { s: sec, inBar, i: si } = at;
@@ -2377,6 +2389,12 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (machine && song.arr && !isLastOfSec && type !== 'break' && type !== 'fill' && !stopTime && !(sec.bars >= 12 && inBar % 8 === 7)) E.stutter(song, si, sec, inBar, lanes, N, type); // a little stutter where the genre trips
     E.laneFxApply(song, sec, inBar, lanes, N);
     if (machine && N === 16) E.beatJourney(song, sec, inBar, lanes, type, nextSec, alone);
+    if (machine && N === 16 && !opts.noPhoenix && gbar >= 2 && !['break', 'build', 'fill', 'outro'].includes(type)) { // the phoenix: after a silence the beat comes back reinvented, fresh but familiar, then settles into its base
+      const cnt = (b) => { try { const x = E.renderBar(song, 'beat', b, res, { lanes: true, noPhoenix: true }); return x && x.lanes ? x.lanes.reduce((t, l) => t + (l ? l.filter(Boolean).length : 0), 0) : 0; } catch (e) { return 99; } };
+      const here = lanes.reduce((t, l) => t + (l ? l.filter(Boolean).length : 0), 0), p1 = cnt(gbar - 1);
+      if (here >= 8 && p1 < here * 0.65 && p1 <= here - 4) E.phoenix(song, sec, inBar, lanes, 1);
+      else if (here >= 8 && !(p1 < here * 0.65 && p1 <= here - 4)) { const p2 = cnt(gbar - 2); if (p2 < here * 0.65 && p2 <= here - 4) E.phoenix(song, sec, inBar, lanes, 2); }
+    }
     if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
     if (E.STOPS.includes(fk)) { if (fk === 'hit' || fk === 'half' || !sec.fill) E.stopLanes(lanes, fk, N); else E.applyFill(song, lanes, fk, N, r); } // a stop stays a stop, whatever the mixer adds
     E.muteLanes(sec, inBar, lanes);
