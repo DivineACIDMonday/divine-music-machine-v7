@@ -6567,9 +6567,37 @@ function finalPh(c, x, K, s) {
   return P(c, x, Object.assign({ key: K, tpl: tok, mel: { type: 'hold' }, inten: soft ? .5 : 1, dyn: soft ? .35 : .85, final: 1, tex: 'block', btex: 'held', sec: 'Coda', ctr: false }, s || {}, soft ? { inten: .5, dyn: .35 } : {}));
 }
 
+/* ----- the journey: the bow of the whole piece (measured on Bolero, the Farewell, Rachmaninoff, La Valse, Les Elemens):
+   rise from a whisper to a storm, fade out until two violins are left, waves, a long quiet that explodes, or a collapse that is reborn.
+   A sudden piano after a forte now and then, and a breath of silence one or two times a minute */
+const ARCS = {
+  rise: p => .08 + .9 * Math.pow(p, 1.5),
+  fade: p => Math.max(.08, .9 - .85 * p),
+  wave: p => .48 - .4 * Math.cos(2 * Math.PI * p * 1.5),
+  explode: p => p < .6 ? .14 + .14 * p / .6 : p < .66 ? .99 : .9 - .35 * (p - .66) / .34,
+  collapse: p => p < .62 ? .25 + .72 * p / .62 : p < .74 ? .06 : .12 + .82 * (p - .74) / .26,
+};
+const ARC_OF = { heroic: ['rise', 'explode'], tender: ['wave', 'fade'], mysterious: ['collapse', 'explode'], joyful: ['wave', 'rise'], melancholy: ['fade', 'wave'], stormy: ['explode', 'collapse'], dreamy: ['wave', 'fade'], solemn: ['rise', 'wave'] };
+Y.ARCS = Object.keys(ARCS);
+function journey(c, x, o) {
+  const P = c.phrases; if (P.length < 3) return;
+  const r = mkRng(x.seed * 7 + 13), opts = (o.arc && ARCS[o.arc]) ? [o.arc] : (ARC_OF[o.feel] || Object.keys(ARCS)), arc = opts[Math.floor(r() * opts.length)];
+  c.arc = arc; const T = c.t || P[P.length - 1].t1;
+  P.forEach((ph, i) => { const p = ((ph.t0 + ph.t1) / 2) / T; ph.dyn = clamp(.3 * ph.dyn + .7 * ARCS[arc](p), .05, .99); ph.arcP = p;
+    if (arc === 'fade') ph.leave = clamp((p - .4) / .6, 0, 1); });
+  // a sudden piano after a forte, so the ear wakes up
+  for (let i = 1; i < P.length - 1; i++) if (P[i - 1].dyn > .72 && !P[i].final && r() < .3) { P[i].dyn = .14 + r() * .1; P[i].subito = 1; }
+  // breaths: about one or two a minute, where the music changes most
+  const secs = (T / PPQ) * 60 / x.tempo, want = Math.max(1, Math.round(secs / 60 * 1.4));
+  const cand = P.slice(0, -1).map((ph, i) => ({ i, d: Math.abs(P[i + 1].dyn - ph.dyn) + r() * .2 })).sort((a, b) => b.d - a.d);
+  cand.slice(0, want).forEach(({ i }) => { P[i].breath = 1; });
+  // the listener's guard: always one real whisper and one real climax
+  const lo = P.reduce((a, b) => (b.dyn < a.dyn ? b : a)), hi = P.reduce((a, b) => (b.dyn > a.dyn ? b : a));
+  if (lo.dyn > .2) lo.dyn = .16; if (hi.dyn < .9) hi.dyn = .95;
+}
 function shapeDyn(c) { /* wider dynamics, and a quieter phrase before each climax */
   const P = c.phrases;
-  P.forEach(p => { p.dyn = clamp(.5 + (p.dyn - .5) * 1.35, .1, .98); });
+  P.forEach(p => { p.dyn = clamp(.5 + (p.dyn - .5) * 1.5, .05, .99); });
   for (let i = 1; i < P.length; i++) {
     const a = P[i - 1], b = P[i];
     if (b.dyn >= .8 && a.dyn >= .62 && !a.final && b.dyn - a.dyn < .2) a.dyn = Math.max(.35, b.dyn - .32);
@@ -7609,16 +7637,29 @@ function perform(c, parts) {
     }
     return clamp(v + (ROLEOFF[role] || 0), .05, 1);
   };
+  // breaths: the last beat of a breathing phrase is held a little longer and left silent
+  c.phrases.forEach(ph => { if (ph.breath) { const b = Math.floor(ph.t1 / PPQ) - 1; if (b >= 0 && b < f.length) f[b] *= 2.1; } });
+  const W2 = new Float64Array(totalBeats + 1); for (let b = 0; b < totalBeats; b++) W2[b + 1] = W2[b] + f[b] * PPQ; W.set(W2);
+  // the orchestra tells the story: a whisper is a solo with its bass, quiet is strings and the lead, loud is everybody; in a fading piece the players leave one by one
+  const LEAVE = ['timp', 'tba', 'btbn', 'tbn', 'tpt', 'picc', 'hn', 'bsn', 'cl', 'ob', 'fl', 'pno', 'cb', 'vla', 'vc'];
+  const plays = (ph, inst, role) => {
+    if (ph.leave && LEAVE.indexOf(inst.id) >= 0 && LEAVE.indexOf(inst.id) < Math.round(ph.leave * LEAVE.length)) return false;
+    const d = ph.dyn; if (role === 'mel') return true;
+    if (d < .24) return role === 'bass' && (inst.id === 'vc' || inst.id === 'cb' || inst.id === 'bsn' || inst.id === 'pno');
+    if (d < .45) return !['brass', 'timp', 'dbl', 'col'].includes(role) && !['tpt', 'tbn', 'btbn', 'tba', 'timp', 'picc'].includes(inst.id);
+    if (d < .68) return role !== 'timp' || ph.dyn > .6;
+    return true; };
   const tracks = [];
   const tempoMs = 60000 / x.tempo / PPQ;
   for (const inst of INST) {
-    const L = parts[inst.id];
+    const L = (parts[inst.id] || []).filter(n => plays(n.ph, inst, n.role) && !(n.ph.breath && n.t >= n.ph.t1 - PPQ));
+    L.forEach(n => { if (n.ph.breath && n.t + n.dur > n.ph.t1 - PPQ) n.dur = Math.max(PPQ / 4, n.ph.t1 - PPQ - n.t); });
     if (!L.length) continue;
     const notes = [], cc = [], ks = [];
     L.forEach(n => {
       const ph = n.ph, beatPos = (n.t % c.bar) / PPQ;
       const lv = lvl(ph, n.t, n.role);
-      let v = 28 + 84 * lv + (beatPos === 0 ? 8 : beatPos === 2 && c.meter === 4 ? 3 : (n.t % PPQ) ? -5 : 0) + (r() * 8 - 4);
+      let v = 14 + 106 * lv + (beatPos === 0 ? 8 : beatPos === 2 && c.meter === 4 ? 3 : (n.t % PPQ) ? -5 : 0) + (r() * 8 - 4);
       if (n.art === 'short' || n.art === 'pizz') v += 5;
       if (n.acc) v += n.acc;
       if (n.roll) v = 50 + 60 * lv * (0.6 + 0.4 * ((n.t - ph.t0) / Math.max(1, ph.t1 - ph.t0)));
@@ -7804,6 +7845,7 @@ function compose(o) {
   const st = ERAS[era];
   c.style = { melLo: st.melLo, melHi: st.melHi, melC: st.melC, appog: st.appog, avoid: st.avoid ? new Set(st.avoid) : null, bLo: 36, bHi: 57, bC: 46 };
   F[form](c, x);
+  journey(c, x, o);
   shapeDyn(c);
   genBass(c);
   genMel(c);
