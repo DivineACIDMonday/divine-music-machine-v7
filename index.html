@@ -2861,6 +2861,8 @@ E.beatJourney = function (song, sec, inBar, lanes, type, nextSec, alone) {
       const big = type === 'drop' || type === 'chorus', drop = on >= 14 ? (big ? 1 : 2) + r.int(big ? 2 : 3) : on >= 12 && !big ? 1 + r.int(2) : 0; for (let k = 0; k < drop && out.length; k++) H[out.splice(r.int(out.length), 1)[0]] = 0; }
     const top = Math.max(...H, 0); if (top) for (let s = 0; s < N; s++) if (H[s]) H[s] = clamp(Math.round(top * (s % 4 === 0 ? 1 : s % 4 === 2 ? 0.86 : 0.58) + (r.int(7) - 3)), 22, 127);
     if (lanes[OH] && !calm && (pk[0] === 'V' || pk[0] === 'F') && !lanes[OH].some(Boolean) && !(lanes[SN][14] >= 80)) { lanes[OH][14] = 84; H[14] = 0; H[15] = 0; } }
+  E.counterVoice(song, sec, inBar, lanes, type, alone, pk);
+  E.twoBarBreak(song, lanes, pk);
   if (type === 'build' && sec.bars >= 4) { const k = inBar / sec.bars; // thin to full
     if (k < 0.5) { for (let s = 1; s < N; s += 2) { if (H) H[s] = 0; if (lanes[SN][s] < 60) lanes[SN][s] = 0; } if (lanes[K2]) lanes[K2].fill(0); }
     else if (H && k >= 0.75) for (let s = 1; s < N; s += 2) if (!H[s]) H[s] = 40 + Math.round(30 * k); }
@@ -2874,6 +2876,33 @@ E.beatJourney = function (song, sec, inBar, lanes, type, nextSec, alone) {
   if (k < kickIn) { lanes[K] = lanes[K].map((v, s) => (s === 0 ? v : 0)); if (lanes[K2]) lanes[K2].fill(0); }
   if (lanes[PC] && k < kickIn) lanes[PC].fill(0);
   if (H && k < snareIn) for (let s = 1; s < N; s += 2) H[s] = 0;
+};
+// the second hand: a playful counter voice on the perc lane, its own cell per genre (A on bars 1 3 5 7, B on 2 and 6, a turn on 4, a roll into 8);
+// soft or half in a verse, full in a drop or chorus, growing through a build, silent in a break. It steps aside for a strong kick or snare
+E.COUNTER = { breakbeat: ['..x...x..x....x.', '..x..x...x..x...'], dnb: ['...x..x....x.x..', '...x.x.....x..x.'], hiphop: ['......x.......x.', '...x..x.......x.'], triphop: ['...x.......x....', '...x.....x.x....'],
+  funk: ['..x.x..x..x.x..x', '..x..x.x..x..x.x'], house: ['...x..x...x..x..', '...x..x..x...x..'], techno: ['..x..x..x..x..x.', '.x..x..x..x..x..'], minimal: ['..x..x..x..x..x.', '..x..x....x..x..'],
+  dubtechno: ['......x.......x.', '......x....x....'], trance: ['...x...x...x...x', '...x...x..x....x'], garage: ['...x..x....x..x.', '...x.....x.x..x.'], ebm: ['x..x..x.x..x..x.', 'x..x..x...x..x..'],
+  synthwave: ['......x.......x.', '...x..x.......x.'], newwave: ['......x.......x.', '...x..x....x....'], acid: ['..x..x..x..x..x.', '..x..x..x...x.x.'], eurodance: ['..x...x...x...x.', '..x...x..x....x.'],
+  club: ['...x..x...x..x..', '...x..x..x....x.'], chillout: ['...x......x..x..', '...x....x.....x.'], dub: ['......x.....x...', '......x.......x.'], divine: ['...x..x...x.....', '...x.....x..x...'],
+  blues: ['......x.......x.', '......x.....x...'], songwriter: ['......x.......x.', '...x..........x.'], free: ['...x......x.....', '...x..x.......x.'] };
+E.counterVoice = function (song, sec, inBar, lanes, type, alone, pk) {
+  const cells = E.COUNTER[song.genre], P = lanes[PC]; if (!cells || !P || type === 'break' || type === 'fill') return;
+  if (P.filter(Boolean).length > 3) return; // the genre already plays its own percussion here
+  let lvl = type === 'drop' || type === 'chorus' ? 1 : type === 'build' ? (inBar / sec.bars >= 0.5 ? 0.8 : 0) : type === 'verse' || type === 'prechorus' ? 0.55 : (type === 'intro' || type === 'outro') && alone ? (type === 'intro' ? inBar / sec.bars : 1 - (inBar + 1) / sec.bars) >= 0.25 ? 0.5 : 0 : 0;
+  if (!lvl) return;
+  const kind = pk[0], cell = (kind === 'B' ? cells[1] : cells[0]).split(''), r = rng(hash(song.seed, 'counter', sec.type, pk));
+  if (kind === 'V') { const s2 = [13, 15].find((s) => cell[s] === '.'); if (s2 != null) cell[s2] = 'x'; }
+  if (kind === 'F') for (let s = 12; s < 16; s++) cell[s] = 'x';
+  const half = lvl < 0.6; let k = 0;
+  cell.forEach((c, s) => { if (c !== 'x') return; k++; if (half && k % 2 === 0) return; if (lanes[K][s] >= 80 || lanes[SN][s] >= 80 || lanes[CP] && lanes[CP][s] >= 80) return;
+    P[s] = clamp(Math.round((s % 4 === 2 ? 74 : 62) * lvl + (kind === 'F' ? (s - 11) * 6 : 0) + r.int(9) - 4), 26, 112); });
+};
+// a real break breathes over two bars: in bar two the kick falls a little different, the way a sampled break does
+E.TWO_BAR = { breakbeat: 1, dnb: 1, hiphop: 1, triphop: 1, funk: 1 };
+E.twoBarBreak = function (song, lanes, pk) {
+  if (!E.TWO_BAR[song.genre] || pk !== 'B') return; const Kk = lanes[K], S = lanes[SN], choice = rng(hash(song.seed, 'twobar'))() ;
+  if (choice < 0.5) { if (Kk[10] && !Kk[11] && !(S[11] >= 60)) Kk[11] = Math.round(Kk[10] * 0.85); else if (!Kk[7] && !(S[8] >= 80)) Kk[7] = 78; }
+  else { if (Kk[10] && !Kk[11] && !(S[11] >= 60)) { Kk[11] = Kk[10]; Kk[10] = 0; } if (!S[15]) S[15] = 46; }
 };
 E.renderBar = function (song, part, gbar, res, opts) {
   const at = E.sectionAt(song, gbar); if (!at) return [];
