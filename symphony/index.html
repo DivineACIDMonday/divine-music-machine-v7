@@ -2476,6 +2476,11 @@ function surprise(choice) {
   S.inst = new Set((fe.preset && S.era === fe.era ? fe.preset : Y.PRESETS[S.era]).concat(S.bfo ? fe.bfo : [])); store.set('inst', [...S.inst]);
   S.key = R(fe.keys); store.set('key', S.key); $('key').value = S.key;
   S.mvFeels = null;
+  // a few musicians and maybe the conductor under an influence; most stay clean so it holds together
+  { const ids = Y.INFL.map(i => i.id).filter(k => k !== 'clean'); S.inf = {};
+    S.inst.forEach(id => { if (Math.random() < .3) S.inf[id] = R(ids); });
+    S.cond = Math.random() < .5 ? 'clean' : R(ids); store.set('inf', S.inf); store.set('cond', S.cond);
+    S.occ = null; S.arc = null; store.set('occ', null); store.set('arc', null); drawCond(); drawOcc(); }
   if (type === 'symphony') {
     S.form = 'symphony';
     S.mvFeels = Y.feelArc(['fast', 'slow', 'dance', 'fast'], fid, mix);
@@ -2966,5 +2971,5 @@ new MutationObserver(function(){if(!busy){busy=true;requestAnimationFrame(fix);}
   window.dmBurpDom = (cfg) => { const a = $q(cfg.anchor); if (!a || $q('#burpBtn')) return; const b = document.createElement('button'); b.id = 'burpBtn'; b.type = 'button'; b.className = cfg.cls || a.className.replace(/\bbig\b/, '').trim(); b.textContent = 'Burp';
     b.title = cfg.title || 'Burp: one press, everything this machine can choose thrown open, then made'; b.style.fontWeight = '700'; b.onclick = () => burp(cfg); a.after(b); };
 })();
-dmBurpDom({ anchor: '#surpriseTop', cls: 'btn gold big', title: 'Burp: a random symphony or suite, any feeling, era, key, orchestra and form, composed at once', dice: ['#surpriseTop'] });</script><!--/BURPDOM-->
+dmBurpDom({ anchor: '#surpriseTop', cls: 'btn gold big', title: 'Burp: a random symphony or suite, any feeling, era, key, orchestra and form, composed at once', dice: ['#surpriseTop'], make: '#smGo' });</script><!--/BURPDOM-->
 </body></html>
