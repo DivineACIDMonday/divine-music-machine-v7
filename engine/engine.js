@@ -2226,6 +2226,9 @@ E.beatJourney = function (song, sec, inBar, lanes, type, nextSec, alone) {
       const big = type === 'drop' || type === 'chorus', drop = on >= 14 ? (big ? 2 : 3) + r.int(big ? 2 : 3) : on >= 12 ? 1 + r.int(2) : on >= 10 && !big ? 1 : 0; for (let k = 0; k < drop && out.length; k++) H[out.splice(r.int(out.length), 1)[0]] = 0; }
     const top = Math.max(...H, 0); if (top) for (let s = 0; s < N; s++) if (H[s]) H[s] = clamp(Math.round(top * (s % 4 === 0 ? 1 : s % 4 === 2 ? 0.84 : 0.5) + (r.int(7) - 3)), 22, 127);
     if (lanes[OH] && !calm && (pk[0] === 'V' || pk[0] === 'F') && !lanes[OH].some(Boolean) && !(lanes[SN][14] >= 80)) { lanes[OH][14] = 84; H[14] = 0; H[15] = 0; } }
+  if (song.genre === 'dnb') { // the avalanche: the break keeps rolling softly, and at the end of a phrase it hits a rock and splinters
+    if (type === 'break' && H && H.filter(Boolean).length < 6) { for (let s = 0; s < N; s++) if (!H[s]) H[s] = s % 4 === 2 ? 58 : s % 2 ? 34 : 44; if (!lanes[K][0]) lanes[K][0] = 84; }
+    if (pk[0] === 'F' && (type === 'drop' || type === 'chorus')) { lanes[K][10] = 124; if (lanes[CR]) lanes[CR][10] = 118; [11, 12, 13, 14, 15].forEach((s, i) => { lanes[SN][s] = 70 + i * 10; if (H) H[s] = 0; }); } }
   E.counterVoice(song, sec, inBar, lanes, type, alone, pk);
   E.twoBarBreak(song, lanes, pk);
   if (type === 'build' && sec.bars >= 4) { const k = inBar / sec.bars; // thin to full
@@ -2322,10 +2325,12 @@ E.FLAVOR = {
   // acid (Nugfeering, Still Raving): one chord for ages, the 303 line is the song: sixteenths of root, octave, fifth, seventh and third, accents and slides, a hypnotic loop
   acid(song, part, notes, x) { const { N, lb, type, inBar } = x, ST = E.STEP, big = type === 'chorus' || type === 'drop', root = song.key.root;
     if (part === 'bass') { let r = root; while (r < 33) r += 12; while (r > 44) r -= 12; const R = rng(hash(song.seed, 'tb303', type === 'build' ? 'chorus' : type)), iv = [0, 0, 12, 7, 10, 3, 0, 5, 12, 0, 15, 7], out = [];
-      for (let st = 0; st < N; st++) { if (st % 4 !== 0 && R.chance(0.22)) continue; const p = r + R.pick(iv), acc = st % 4 === 0 ? R.chance(0.6) : R.chance(0.25), slide = R.chance(0.2); out.push({ t: st * ST, d: slide ? ST + 24 : ST - 18, p, v: acc ? 120 : 84 }); }
+      const A2 = rng(hash(song.seed, 'tb303acc', type, Math.floor(inBar / 8))); // the accents move every phrase: the line keeps pushing
+      for (let st = 0; st < N; st++) { if (st % 4 !== 0 && R.chance(0.07)) continue; const p = r + R.pick(iv), acc = st % 4 === 0 ? A2.chance(0.75) : A2.chance(0.38), slide = R.chance(0.24); out.push({ t: st * ST, d: slide ? ST + 26 : ST - 16, p, v: acc ? 124 : 92 }); }
       return out; }
-    if (part === 'chords') { if (lb !== 0) return []; const v = E.voice({ root, q: song.key.scale === 'major' ? 'M' : 'm' }, null, 52, 68); return v.map((p) => ({ t: 0, d: ST * 2, p, v: 66 })); }
+    if (part === 'chords') { const v = E.voice({ root, q: song.key.scale === 'major' ? 'M' : 'm7' }, null, 52, 70); if (!big) return lb === 0 ? v.map((p) => ({ t: 0, d: ST * 2, p, v: 70 })) : []; return [2, 7, 10].flatMap((s, i) => v.map((p) => ({ t: s * ST, d: ST - 10, p, v: i === 0 ? 96 : 84 }))); } // rave stabs in the drop
     if (part === 'pad') return big ? [{ t: 0, d: x.BT - 30, p: 48 + ((root + 12 - 48 % 12) % 12), v: 52 }] : [];
+    if (part === 'melody' && big) { let r = root; while (r < 45) r += 12; while (r > 56) r -= 12; const R = rng(hash(song.seed, 'tb303', 'chorus')), iv = [0, 0, 12, 7, 10, 3, 0, 5, 12, 0, 15, 7], out = []; for (let st = 0; st < N; st++) { if (st % 4 !== 0 && R.chance(0.07)) continue; out.push({ t: st * ST, d: ST - 16, p: r + R.pick(iv), v: st % 4 === 0 ? 100 : 80 }); } return out; } // the 303 doubled an octave up: the drop stands like a wall
     if (part === 'melody' || part === 'answer') { if (!big) return []; const home = (song.key.scale === 'major' ? [0, 4, 7] : [0, 3, 7]).map((iv) => (root + iv) % 12); return notes.filter((n, i) => i % 2 === 0).map((n) => { let p = n.p, d = 99; for (const pc of home) for (const o of [-12, 0, 12]) { const q = n.p - (((n.p - pc) % 12) + 12) % 12 + o; if (Math.abs(q - n.p) < Math.abs(d)) d = q - n.p; } return Object.assign({}, n, { p: n.p + d }); }); } // only the home chord: the 303 keeps the floor
     return notes; },
   // techno (The Bells, Crispy Bacon): no chord changes at all; a rolling one note bass, a short sequence that grows a note every phrase, everything pulling towards one point
@@ -2347,7 +2352,10 @@ E.FLAVOR = {
     return notes; },
   // drum and bass (Walking Wounded, King of the Beats): long sub notes under the break, liquid chords that hold, hard or soft
   dnb(song, part, notes, x) { const { chord: c, lb, BT } = x, ST = E.STEP; if (!c) return notes;
-    if (part === 'bass') { let r = c.root; while (r < 31) r += 12; while (r > 42) r -= 12; return lb % 2 ? [{ t: 0, d: 9 * ST, p: r, v: 108 }, { t: 10 * ST, d: 6 * ST - 20, p: r + 7, v: 96 }] : [{ t: 0, d: BT - 30, p: r, v: 110 }]; }
+    if (part === 'bass') { let r = c.root; while (r < 31) r += 12; while (r > 42) r -= 12; const k = x.inBar % 8;
+      if (k === 7) return [{ t: 0, d: 3 * ST, p: r, v: 124 }, { t: 6 * ST, d: ST, p: r + 12, v: 110 }, { t: 7 * ST, d: ST, p: r + 7, v: 104 }, { t: 10 * ST, d: 2 * ST, p: r, v: 120 }]; // the rock: it hits, it splinters
+      const cell = lb % 2 ? [[0, 0, 3], [3, 0, 2], [6, 7, 2], [8, 0, 3], [11, 12, 2], [14, 10, 2]] : [[0, 0, 3], [3, 0, 3], [6, 12, 2], [8, 0, 2], [10, 7, 3], [13, 0, 3]];
+      return cell.map(([st, iv, d], i) => ({ t: st * ST, d: d * ST - 16, p: r + iv, v: i === 0 ? 116 : 100 })); } // the avalanche keeps rolling
     if (part === 'chords') { const v = E.ext(c, 52, 72); return v ? v.map((p) => ({ t: 0, d: BT - 30, p, v: 66 })) : notes; }
     return notes; },
   // blues (The Thrill Is Gone, Mannish Boy): dominant sevenths, a walking boogie bass, blue notes bent from below, space between the phrases
@@ -2375,7 +2383,7 @@ E.FLAVOR = {
 E.flavorTime = function (song, part, notes, sec, inBar) {
   const g = song.genre; if (!song.arr || !notes.length || !(g === 'hiphop' || g === 'house' || g === 'breakbeat' || g === 'triphop' || g === 'blues' || g === 'punk' || g === 'newwave')) return notes; const ST = E.STEP;
   if (g === 'newwave') return notes.map((n) => { const q = Math.round(n.t / ST) * ST; return Math.abs(n.t - q) > 8 ? Object.assign({}, n, { t: q + (n.t > q ? 6 : -6) }) : n; }); // designed: straight, machine tight
-  if (g === 'punk') return part === 'beat' ? notes.map((n) => (n.lane === SN || n.lane === K || n.lane === CR ? Object.assign({}, n, { v: Math.min(127, n.v + 14) }) : n)) : notes; // loud on purpose
+  if (g === 'punk') { if (part !== 'beat') return notes.map((n) => Object.assign({}, n, { v: Math.min(127, n.v + 10) })); const out = notes.map((n) => (n.lane === SN || n.lane === K || n.lane === CR ? Object.assign({}, n, { v: Math.min(127, n.v + 18) }) : n.lane === HH || n.lane === OH ? Object.assign({}, n, { v: Math.min(127, Math.max(n.v, 100)) }) : n)); if ((sec.type === 'chorus' || sec.type === 'drop') && inBar % 2 === 0 && !out.some((n) => n.lane === CR && n.t < 30)) out.push({ t: 0, d: ST, lane: CR, v: 118 }); return out; } // loud on purpose, a crash every other bar in the chorus
   if (g === 'blues') return notes.map((n) => { const st = Math.round(n.t / ST); return st % 4 === 2 ? Object.assign({}, n, { t: n.t + 72 }) : st % 2 === 1 ? Object.assign({}, n, { t: n.t + 40 }) : n; }); // the shuffle: the offbeat waits for the triplet
   if (g === 'triphop') return notes.map((n) => { const st = Math.round(n.t / ST); let t = n.t + (st % 2 === 1 ? 30 : st % 4 === 2 ? 18 : 0); if (part === 'beat' && n.lane === SN && n.v >= 70) t += 10; return t === n.t ? n : Object.assign({}, n, { t }); }); // Bristol drags
   if (g === 'breakbeat') return part === 'beat' ? notes.map((n) => (n.lane === SN && n.v >= 80 ? Object.assign({}, n, { v: Math.min(127, n.v + 14) }) : n)) : notes;
@@ -2409,7 +2417,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   // the arrangement of this section: layers, harmony, who leads, how it ends (new songs; the machine's parts only)
   const A = song.arr && !bo && !lastBar ? E.arrangeOf(song, si) : null;
   const alone = part === 'beat' && E.beatAlone(song); // a beat on its own (the groove machines): nobody else carries the silent bars, so it travels by its own layers instead
-  const mach = !!A && choice !== true && E.machineish(song, sec, part) && !alone;
+  const mach = !!A && choice !== true && E.machineish(song, sec, part) && !alone && song.genre !== 'punk' && !((song.genre === 'acid' || song.genre === 'dnb') && type === 'intro'); // punk does not build up: everybody in, from bar one; acid and drum and bass roll from the first bar
   const endK = song.arr && !lastBar && !bo ? E.endingOf(song, si, inBar) : null;
   if (mach && ((A.enter[part] || 0) > inBar || A.exit[part] != null && inBar >= A.exit[part])) return opts.lanes ? { lanes: mat.lanes.map((l) => l.map(() => 0)) } : [];
   if (mach && (A.only && !A.only.includes(part) || part === 'beat' && A.noBeat || A.drumsUntil && inBar < A.drumsUntil && part !== 'beat')) return opts.lanes ? { lanes: mat.lanes.map((l) => l.map(() => 0)) } : [];
@@ -2434,7 +2442,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (mach && type === 'intro' && A.recipe && A.recipe !== 'hats') { const core = res('chorus').beat; const nl = core && E.introLanes(song, core.lanes, A.recipe, inBar, sec.bars, N, rng(hash(song.seed, 'intro', sec.id))); if (nl) { lanes = nl; E.muteLanes(sec, inBar, lanes); shaped = true; } }
     if (machine && alone && (type === 'intro' || type === 'outro') && sec.bars >= 4) { const core = (res('drop') || {}).beat || (res('chorus') || {}).beat; if (core && core.lanes && !E.isEmpty('beat', core)) { lanes = core.lanes.map((l) => l.slice()); E.muteLanes(sec, inBar, lanes); shaped = true; } } // alone, the intro is the drop's beat, built up layer by layer
     if (machine && !shaped) { // the machine follows the energy of the song: calm sections thinner, a break keeps a soft pulse and the kick comes back at its end
-      E.shapeDensity(song, { lanes }, type);
+      if (song.genre !== 'punk') E.shapeDensity(song, { lanes }, type);
       if (type === 'break') { E.breakPulse(song, { lanes }, { lanes: mat.lanes }); if (nextSec && sec.bars >= 4 && inBar >= sec.bars - 2) { const last = inBar === sec.bars - 1; (last ? [0, N / 4, N / 2, 3 * N / 4] : [0, N / 2]).forEach((x) => { lanes[K][x] = Math.max(lanes[K][x], last ? 96 : 78); }); } }
     }
     if (lastBar) { // ending: one clean hit on the one
@@ -3020,7 +3028,7 @@ E.liftOf = function (song) {
   return { from: li, by: r.pick([1, 2, 2]) };
 };
 // raw: harder accents, pushes, a sharper edge. 0 is as smooth as before
-E.RAW_DEFAULT = { punk: 0.8, ebm: 0.7, breakbeat: 0.8, acid: 0.6, house: 0.45, trance: 0.4, eurodance: 0.45, techno: 0.5, triphop: 0.45, hiphop: 0.55, newwave: 0.4, blues: 0.35, free: 0.4, dnb: 0.55, garage: 0.45, dub: 0.35, synthwave: 0.35, funk: 0.55, dubtechno: 0.3, minimal: 0.35, ambient: 0.15, chillout: 0.3, club: 0.45, divine: 0.45, songwriter: 0.3 };
+E.RAW_DEFAULT = { punk: 1, ebm: 0.7, breakbeat: 0.8, acid: 0.6, house: 0.45, trance: 0.4, eurodance: 0.45, techno: 0.5, triphop: 0.45, hiphop: 0.55, newwave: 0.4, blues: 0.35, free: 0.4, dnb: 0.55, garage: 0.45, dub: 0.35, synthwave: 0.35, funk: 0.55, dubtechno: 0.3, minimal: 0.35, ambient: 0.15, chillout: 0.3, club: 0.45, divine: 0.45, songwriter: 0.3 };
 E.rawNotes = function (song, part, notes, gbar, N, BT, still, boost) {
   const x = clamp((song.raw || 0) + (boost || 0), 0, 1); if (!x || !notes.length) return notes;
   const r = rng(hash(song.seed, 'raw', part, gbar));
