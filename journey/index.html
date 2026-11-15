@@ -3951,6 +3951,36 @@ E.PLUGINS = {
 E.pluginsFor = (part) => Object.keys(E.PLUGINS).filter((k) => E.PLUGINS[k].parts.includes(part));
 E.isUjam = (k) => !!(E.PLUGINS[k] && E.PLUGINS[k].family);
 // fold a line into a range by whole octaves, keeping its shape
+/* ---------- the orchestra, one instrument at a time: BBC Symphony Orchestra Discover and Berlin Free Orchestra ----------
+   Any instrument can play any part (a piccolo bass is allowed): the notes move by octaves into the instrument's own range,
+   a solo instrument plays one line (the top, or the bottom for a bass), a section a few notes, a keyboard or harp the whole chord.
+   BBC: long and short by key switch (the lowest keys), dynamics on CC1. Berlin: its own default articulation, dynamics on CC1. */
+E.ORCH_LIBS = { bbc: 'BBC Discover', berlin: 'Berlin Free Orchestra' };
+E.ORCH_INST = {
+  bbc: [['vln1', 'Violins 1', 55, 100, 3, 1], ['vln2', 'Violins 2', 55, 96, 3, 1], ['vla', 'Violas', 48, 88, 3, 1], ['vc', 'Celli', 36, 76, 3, 1], ['cb', 'Basses', 28, 60, 2, 1],
+    ['picc', 'Piccolo', 74, 108, 1, 1], ['fl', 'Flutes a3', 60, 96, 3, 1], ['ob', 'Oboes a3', 58, 91, 3, 1], ['cl', 'Clarinets a3', 50, 91, 3, 1], ['bn', 'Bassoons a3', 34, 75, 3, 1],
+    ['hn', 'Horns a4', 41, 77, 4, 1], ['tp', 'Trumpets a3', 54, 82, 3, 1], ['tbn', 'Tenor Trombones a3', 40, 72, 3, 1], ['btbn', 'Bass Trombones', 34, 67, 2, 1], ['tuba', 'Tuba', 28, 58, 1, 1],
+    ['harp', 'Harp', 24, 103, 6, 0], ['cel', 'Celeste', 60, 108, 6, 0], ['timp', 'Timpani', 40, 57, 1, 0], ['mar', 'Marimba', 45, 96, 4, 0], ['xyl', 'Xylophone', 65, 108, 2, 0],
+    ['glock', 'Glockenspiel', 79, 108, 2, 0], ['bells', 'Tubular Bells', 60, 77, 2, 0], ['pno', 'Piano', 21, 108, 8, 0]],
+  berlin: [['vln1', 'Violins a8 (1st)', 55, 100, 3, 0], ['vln2', 'Violins a8 (2nd)', 55, 96, 3, 0], ['vla', 'Violas a5', 48, 88, 3, 0], ['vc', 'Celli a5', 36, 76, 3, 0], ['cb', 'Basses a4', 28, 60, 2, 0],
+    ['ww', 'Woodwind ensemble', 48, 96, 4, 0], ['picc', 'Solo piccolo flute', 74, 108, 1, 0], ['fl', 'Solo flute', 60, 96, 1, 0], ['ob', 'Solo oboe', 58, 91, 1, 0], ['eh', 'Solo English horn', 52, 81, 1, 0],
+    ['cl', 'Solo clarinet', 50, 91, 1, 0], ['bcl', 'Solo bass clarinet', 34, 77, 1, 0], ['bn', 'Solo bassoon', 34, 75, 1, 0], ['cbn', 'Solo contrabassoon', 22, 53, 1, 0],
+    ['br', 'Brass ensemble', 34, 82, 4, 0], ['tps', 'Trumpets a3', 54, 82, 3, 0], ['hns', 'French horns a4', 41, 77, 4, 0], ['tbns', 'Trombones a3', 40, 72, 3, 0],
+    ['tp', 'Solo trumpet', 54, 82, 1, 0], ['hn', 'Solo French horn', 41, 77, 1, 0], ['tbn', 'Solo trombone', 40, 72, 1, 0], ['tuba', 'Solo tuba', 28, 58, 1, 0],
+    ['timp', 'Timpani', 40, 57, 1, 0], ['bells', 'Tubular bells', 60, 77, 2, 0], ['glock', 'Glockenspiel', 79, 108, 2, 0], ['vib', 'Vibraphone', 53, 89, 4, 0], ['mar', 'Marimba', 45, 96, 4, 0], ['xyl', 'Xylophone', 65, 108, 2, 0]] };
+for (const lib in E.ORCH_INST) for (const [id, name, lo, hi, poly, ks] of E.ORCH_INST[lib])
+  E.PLUGINS[lib + '_' + id] = { name: E.ORCH_LIBS[lib] + ': ' + name, parts: ['bass', 'chords', 'pad', 'melody', 'answer'], orch: lib, inst: { id, name, lo, hi, poly, ks: !!ks } };
+E.orchLine = function (song, part, notes, pl) {
+  const I = pl.inst, low = part === 'bass', groups = [], out = [], cc = [{ t: 0, c: 11, v: 110 }]; let art = null;
+  const fold = (p) => { while (p < I.lo) p += 12; while (p > I.hi) p -= 12; return p < I.lo ? I.lo : p; };
+  notes.filter((n) => n.p != null && !n.ks).slice().sort((a, b) => a.t - b.t || a.p - b.p).forEach((n) => { const g = groups[groups.length - 1]; if (g && n.t - g.t < 30) g.n.push(n); else groups.push({ t: n.t, n: [n] }); });
+  for (const g of groups) { const ps = g.n.map((n) => n.p).sort((a, b) => a - b), pick = low ? ps.slice(0, I.poly) : ps.slice(-I.poly), d = Math.max(...g.n.map((n) => n.d)), v = Math.round(g.n.reduce((a, n) => a + n.v, 0) / g.n.length);
+    const played = [...new Set(pick.map(fold))];
+    if (I.ks) { const a = d >= E.PPQ * 0.75 ? 0 : 1; if (a !== art) { art = a; out.push({ t: Math.max(0, g.t - 10), d: 10, p: a, v: 100 }); } }
+    cc.push({ t: Math.max(0, g.t - 2), c: 1, v: Math.max(30, Math.min(127, 34 + Math.round(v * 0.7))) });
+    played.forEach((p) => out.push({ t: g.t, d: Math.max(30, d), p, v })); }
+  out.cc = cc; return out;
+};
 function foldInto(notes, lo, hi) {
   if (!notes.length) return notes;
   const ps = notes.map((n) => n.p); const mn = Math.min(...ps), mx = Math.max(...ps);
@@ -4089,6 +4119,7 @@ E.bmRoles = function (song, sec, inBar, lanes, N, type, fill) {
 E.applyMask = function (song, part, notes, pluginKey, settings) {
   settings = settings || {};
   const pl = E.PLUGINS[pluginKey] || E.PLUGINS.plain;
+  if (pl.orch && pl.inst && part !== 'beat') return E.orchLine(song, part, notes, pl);
   const oct = (settings.octave || 0) * 12;
   if (part === 'beat' && pl.loops && settings.mode === 'player') return E.beatLoops(song, notes, pl.loops);
   if (part === 'beat' && pl.loops) return E.bmHits(song, notes, settings.title != null ? settings.title : (E.titleOf ? E.titleOf('beat', pluginKey) : ''));
@@ -4182,7 +4213,7 @@ E.writeMidi = function (tracks, meta) {
     const nm = str(tr.name || 'Track');
     ev.push({ t: 0, b: [0xff, 0x03].concat(vlq(nm.length), nm) });
     const ch = (tr.channel || 0) & 15;
-    for (const c of tr.cc || []) ev.push({ t: Math.max(0, Math.round(c.t)), b: [0xb0 | ch, c.c & 127, clamp(Math.round(c.v), 0, 127)], o: 0 }); // controllers, for the orchestra: articulation and dynamics
+    for (const c of tr.cc || (tr.notes && tr.notes.cc) || []) ev.push({ t: Math.max(0, Math.round(c.t)), b: [0xb0 | ch, c.c & 127, clamp(Math.round(c.v), 0, 127)], o: 0 }); // controllers, for the orchestra: articulation and dynamics
     for (const n of oneAtATime(tr.notes)) {
       const p = clamp(Math.round(n.p), 0, 127), v = clamp(Math.round(n.v), 1, 127), t = Math.max(0, Math.round(n.t)), d = Math.max(1, Math.round(n.d));
       ev.push({ t, b: [0x90 | ch, p, v], o: 1 });

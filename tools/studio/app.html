@@ -97,8 +97,8 @@ const ALL_PARTS = ['beat', 'bass', 'chords', 'pad', 'melody', 'answer'];
 // the orchestra on the pad and the chords: Berlin Free Orchestra and BBC Symphony Orchestra Discover,
 // written the way the Symphony Machine and the Journey speak to them: a string section, every voice of the chord in its own range,
 // held notes long, short chords short, the dynamics on CC1, the articulation on CC70 (Berlin) or a key switch (BBC)
-D.PLUGINS.berlin = { name: 'Berlin Free Orchestra', parts: ['pad', 'chords'], orch: 'berlin' };
-D.PLUGINS.bbc = { name: 'BBC Symphony Orchestra Discover', parts: ['pad', 'chords'], orch: 'bbc' };
+D.PLUGINS.berlin = { name: 'Berlin Free Orchestra: Full strings', parts: ['pad', 'chords', 'melody', 'answer', 'bass'], orch: 'berlin' };
+D.PLUGINS.bbc = { name: 'BBC Discover: Full strings', parts: ['pad', 'chords', 'melody', 'answer', 'bass'], orch: 'bbc' };
 const ORCH = [
   { id: 'vln1', bbc: 'Violins 1', berlin: 'Violins a8 (1st)', lo: 67, hi: 88, n: 4, voice: 'top' },
   { id: 'vln2', bbc: 'Violins 2', berlin: 'Violins a8 (2nd)', lo: 60, hi: 81, n: 4, voice: 'upper' },
@@ -884,7 +884,7 @@ function fileName(sg, part, no, plugin, ver) { const pl = plugin && plugin !== '
 function buildPart(sg, part, ver) {
   const plugin = sg.parts[part].plugin; let notes = D.renderSong(sg, part, { polished: true });
   if (sg.voice && (part === 'pad' || part === 'chords')) notes = notes.map((n) => (n.ks ? n : Object.assign({}, n, { p: voiceFold(n.p), v: Math.round(n.v * 0.78) }))); // room for a voice: the harmony sits low and soft
-  if (D.PLUGINS[plugin] && D.PLUGINS[plugin].orch) return D.writeMidi(orchTracks(sg, part, notes, plugin), { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
+  if (D.PLUGINS[plugin] && D.PLUGINS[plugin].orch && !D.PLUGINS[plugin].inst) return D.writeMidi(orchTracks(sg, part, notes, plugin), { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
   const masked = D.applyMask(sg, part, notes, plugin, { octave: 0, roles: {}, mode: ver ? ver.toLowerCase() : undefined });
   const tt = titleFor(part, plugin), name = PART_NAMES[part] + (plugin !== 'plain' && plugin !== 'gm' ? ' for ' + D.PLUGINS[plugin].name + (tt ? ' ' + tt : '') + (ver ? ' ' + ver : '') : '');
   return D.writeMidi([{ name, channel: part === 'beat' ? 9 : 0, notes: masked }], { bpm: sg.bpm, meter: sg.meter, title: sg.name + ' ' + PART_NAMES[part], markers: markers(sg) });
