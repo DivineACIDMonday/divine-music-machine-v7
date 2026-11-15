@@ -2309,8 +2309,8 @@ E.beatJourney = function (song, sec, inBar, lanes, type, nextSec, alone) {
   const N = 16, H = lanes[HH], pk = E.phraseKey(inBar), r = rng(hash(song.seed, 'journey', sec.type, pk)), calm = type === 'intro' || type === 'outro' || type === 'break';
   if (H) { const on = H.filter(Boolean).length;
     if (on >= 10) { const out = []; for (let s = 1; s < N; s += 2) if (H[s] && !(lanes[SN][s] >= 80)) out.push(s);
-      const big = type === 'drop' || type === 'chorus', drop = on >= 14 ? (big ? 1 : 2) + r.int(big ? 2 : 3) : on >= 12 && !big ? 1 + r.int(2) : 0; for (let k = 0; k < drop && out.length; k++) H[out.splice(r.int(out.length), 1)[0]] = 0; }
-    const top = Math.max(...H, 0); if (top) for (let s = 0; s < N; s++) if (H[s]) H[s] = clamp(Math.round(top * (s % 4 === 0 ? 1 : s % 4 === 2 ? 0.86 : 0.58) + (r.int(7) - 3)), 22, 127);
+      const big = type === 'drop' || type === 'chorus', drop = on >= 14 ? (big ? 2 : 3) + r.int(big ? 2 : 3) : on >= 12 ? 1 + r.int(2) : on >= 10 && !big ? 1 : 0; for (let k = 0; k < drop && out.length; k++) H[out.splice(r.int(out.length), 1)[0]] = 0; }
+    const top = Math.max(...H, 0); if (top) for (let s = 0; s < N; s++) if (H[s]) H[s] = clamp(Math.round(top * (s % 4 === 0 ? 1 : s % 4 === 2 ? 0.84 : 0.5) + (r.int(7) - 3)), 22, 127);
     if (lanes[OH] && !calm && (pk[0] === 'V' || pk[0] === 'F') && !lanes[OH].some(Boolean) && !(lanes[SN][14] >= 80)) { lanes[OH][14] = 84; H[14] = 0; H[15] = 0; } }
   E.counterVoice(song, sec, inBar, lanes, type, alone, pk);
   E.twoBarBreak(song, lanes, pk);
@@ -2344,9 +2344,10 @@ E.counterVoice = function (song, sec, inBar, lanes, type, alone, pk) {
   const kind = pk[0], cell = (kind === 'B' ? cells[1] : cells[0]).split(''), r = rng(hash(song.seed, 'counter', sec.type, pk));
   if (kind === 'V') { const s2 = [13, 15].find((s) => cell[s] === '.'); if (s2 != null) cell[s2] = 'x'; }
   if (kind === 'F') for (let s = 12; s < 16; s++) cell[s] = 'x';
+  if (lvl >= 1) { const other = (kind === 'B' ? cells[0] : cells[1]).split(''), add = other.map((c, s) => (c === 'x' && cell[s] === '.' ? s : -1)).filter((s) => s >= 0); if (add.length) cell[add[r.int(add.length)]] = 'x'; } // in the big moments the second hand plays a little more
   const half = lvl < 0.6; let k = 0;
   cell.forEach((c, s) => { if (c !== 'x') return; k++; if (half && k % 2 === 0) return; if (lanes[K][s] >= 80 || lanes[SN][s] >= 80 || lanes[CP] && lanes[CP][s] >= 80) return;
-    P[s] = clamp(Math.round((s % 4 === 2 ? 74 : 62) * lvl + (kind === 'F' ? (s - 11) * 6 : 0) + r.int(9) - 4), 26, 112); });
+    P[s] = clamp(Math.round((s % 4 === 2 ? 82 : 70) * lvl + (kind === 'F' ? (s - 11) * 6 : 0) + r.int(9) - 4), 26, 112); });
 };
 // a real break breathes over two bars: in bar two the kick falls a little different, the way a sampled break does
 E.TWO_BAR = { breakbeat: 1, dnb: 1, hiphop: 1, triphop: 1, funk: 1 };
