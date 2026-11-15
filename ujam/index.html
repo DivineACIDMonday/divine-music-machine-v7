@@ -3104,8 +3104,33 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (song.genre === 'divine' && part !== 'beat' && part !== 'pad' && !bo) notes = notes.map((n) => Object.assign({}, n, { v: Math.min(127, Math.round(n.v * 1.12 + 4)) })); // Divine Monday plays with a bit more bite
   if (part === 'pad' && song.genre === 'divine' && !bo && !lastBar && song.parts.pad.mode !== 'off' && !(E.partIsOff && E.partIsOff(sec, inBar, part))) notes = notes.concat(E.lightC(song, inBar, res(si).ctxChords && res(si).ctxChords.bars[lb], si));
   if (part !== 'beat' && (notes.length || part === 'answer') && song.arr && !bo && !lastBar && E.machineish(song, sec, part) && !stopTime) notes = E.band(song, si, sec, inBar, part, notes, res, gbar, N, BT, type, nextSec, isLastOfSec);
+  if (opts.preFeel) return notes;
+  if (part !== 'beat' && !opts.noHook && !bo && !lastBar && song.arr && E.machineish(song, sec, part) && !E.streamOf(song) && !E.beachOf(song) && notes.length) { // the hook: the same place plays the same music, so it can be remembered
+    const ref = E.hookRef(song, gbar, part);
+    if (ref !== gbar) { let rn = null; try { rn = E.renderBar(song, part, ref, res, Object.assign({}, opts, { noHook: true, preFeel: true })); } catch (e) { rn = null; }
+      if (rn && rn.length) { const lift = E.liftOf(song), rsi = E.sectionAt(song, ref).i; notes = rn.map((n) => Object.assign({}, n, { p: n.p + (lift && si >= lift.from && rsi < lift.from && n.p != null && part !== 'beat' ? lift.by : 0) })); } } }
+  if (part === 'melody' && !opts.noHook && !bo && !lastBar && notes.length && (type === 'chorus' || type === 'drop') && E.machineish(song, sec, part)) { const up = E.chorusUp(song, res); if (up) notes = notes.map((n) => Object.assign({}, n, { p: n.p + up })); } // the chorus always lifts
   const felt = E.applyFeel(song, part, notes, gbar, opts);
   return mach && part !== 'beat' && E.streamOf(song) ? E.streamCalm(song, part, felt) : felt;
+};
+// which bar a tonal part copies, so a hook comes back: a chorus or drop plays like the first one; chords, bass and pad in a verse play like the first verse;
+// inside a section bars 5 to 7 of a phrase play like bars 1 to 3 and the next phrase like the first. The last bar of a phrase and of a section stays its own: the ending, the answer
+E.hookRef = function (song, gbar, part) {
+  for (let guard = 0; guard < 6; guard++) { const at = E.sectionAt(song, gbar); if (!at) return gbar; const { s: sec, inBar, i: si } = at, k = inBar % 8;
+    if (k === 7 || inBar === sec.bars - 1) return gbar;
+    const cross = sec.type === 'chorus' || sec.type === 'drop' || (sec.type === 'verse' && part !== 'melody' && part !== 'answer');
+    if (cross) { const fi = song.sections.findIndex((x) => x.type === sec.type); if (fi >= 0 && fi < si && song.sections[fi].bars > inBar && !(inBar === song.sections[fi].bars - 1)) { gbar = E.sectionStart(song, fi) + inBar; continue; } }
+    if (inBar >= 8) { gbar -= 8; continue; }
+    if (k >= 4) { gbar -= 4; continue; }
+    return gbar; }
+  return gbar;
+};
+// the chorus melody sits higher than the verse; if the machine wrote it lower or level, it goes up an octave (when it stays singable)
+E.chorusUp = function (song, res) {
+  const v = (res('verse') || {}).melody, c = (res('chorus') || {}).melody || (res('drop') || {}).melody; if (!v || !c || !v.notes || !c.notes || !v.notes.length || !c.notes.length) return 0;
+  const avg = (m) => m.notes.reduce((a, n) => a + n.p, 0) / m.notes.length, hi = Math.max(...c.notes.map((n) => n.p));
+  if (avg(c) >= avg(v) + 2) return 0;
+  return hi + 12 <= 88 ? 12 : 0; // an octave keeps every note in the key
 };
 // the foundation: one bass note at a time, and the root on the one (styles that live on the offbeat keep their offbeat)
 E.OFFBEAT_BASS = ['offbeat', 'rolling', 'euro', 'minimal', 'tech', 'organ', 'garage', 'acid'];
