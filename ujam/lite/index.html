@@ -3030,9 +3030,12 @@ E.FLAVOR = {
     const v = E.voice(c, null, 52, 72); let p9 = v[v.length - 1]; while (p9 % 12 !== (c.root + 2) % 12) p9++; const col = lb === song.L - 1 ? E.voice({ root: c.root, q: 'sus4' }, null, 52, 72) : v.concat(p9 <= 77 ? [p9] : []);
     if (big) { const out = []; for (let s = 0; s < N; s += 2) { const p = col[(s / 2) % col.length]; out.push({ t: s * ST, d: 2 * ST - 12, p, v: s % 4 === 0 ? 88 : 74 }); } return out.concat(notes.filter((n) => n.p < 52 || false)); }
     return notes.length ? (() => { const d = Math.max(...notes.map((n) => n.d)), t0 = Math.min(...notes.map((n) => n.t)), vel = notes[0].v; return col.map((p) => ({ t: t0, d, p, v: vel })); })() : notes; },
-  hiphop(song, part, notes, x) { const { chord: c, pk, lb } = x, ST = E.STEP; if (!c) return notes;
-    if (part === 'chords') { const v = E.ext(c, 52, 70); if (!v || !notes.length) return notes; const ts = [...new Set(notes.map((n) => n.t))], d0 = Math.max(...notes.map((n) => n.d)); return ts.flatMap((t) => v.map((p) => ({ t, d: d0, p, v: 78 }))); }
-    if (part === 'melody' || part === 'answer') { const r = rng(hash(song.seed, 'lean', pk, part)); return notes.map((n) => (Math.round(n.t / ST) % 4 === 0 && n.t > 0 && r.chance(0.35) ? Object.assign({}, n, { t: n.t + ST, d: Math.max(ST, n.d - ST) }) : n)); } // leaning off the beat
+  hiphop(song, part, notes, x) { const { chord: c, pk, lb, type } = x, ST = E.STEP; if (!c) return notes; const big = type === 'chorus' || type === 'drop'; // the words lead: the music is a loop around them, sparse and subtle
+    if (part === 'chords') { const v = E.ext(c, 52, 68); if (!v) return notes; if (!big && lb % 2) return []; return (big ? [0, 10] : [0]).flatMap((s) => v.slice(0, 3).map((p) => ({ t: s * ST, d: 2 * ST - 10, p, v: big ? 70 : 60 }))); } // a sample stab, not a band
+    if (part === 'pad') return big ? notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.6) })) : [];
+    if (part === 'answer') return big ? notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.8) })) : []; // the verse belongs to the rapper
+    if (part === 'melody') { const r = rng(hash(song.seed, 'lean', pk, part)); const loop = notes.filter((n) => n.t < 8 * ST); // a short riff that loops, like the sample in Gravel Pit
+      const two = loop.concat(loop.map((n) => Object.assign({}, n, { t: n.t + 8 * ST }))); return two.map((n) => { const lean = Math.round(n.t / ST) % 4 === 0 && n.t > 0 && r.chance(0.3); return Object.assign({}, n, { t: n.t + (lean ? ST : 0), d: Math.max(ST - 10, Math.min(n.d, 3 * ST) - (lean ? ST : 0)), v: Math.round(n.v * (big ? 0.85 : 0.7)) }); }); }
     return notes; }
 };
 // timing per genre, after the feel: hiphop swings like an MPC and lays back (snare and bass late, a kick now and then drunk), house swings lightly, breakbeat bites
@@ -3079,7 +3082,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (mach && part === 'pad' && (A.harm === 'none' || A.harm === 'stabs' || A.harm === 'full' && !A.padToo && song.parts.chords.mode !== 'off')) return [];
   if (mach && (part === 'melody' || part === 'answer') && A.lead === 'chords') return [];
   if (mach && part === 'answer' && A.lead === 'riff') return [];
-  if (mach && part === 'melody' && lb % 2 === 1 && song.L >= 2 && E.callResponse(song)) return []; // call and answer: the melody calls, the answer fills the bar after
+  if (mach && part === 'melody' && lb % 2 === 1 && song.L >= 2 && E.callResponse(song) && song.genre !== 'hiphop') return []; // hiphop loops like a sample: nobody waits for anybody // call and answer: the melody calls, the answer fills the bar after
   if (part === 'beat') {
     let lanes = mat.lanes.map((l) => l.slice());
     E.muteLanes(sec, inBar, lanes); // the lane mixer: lanes you switched off in this bar stay silent
@@ -3231,7 +3234,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (song.genre === 'divine' && part !== 'beat' && part !== 'pad' && !bo) notes = notes.map((n) => Object.assign({}, n, { v: Math.min(127, Math.round(n.v * 1.12 + 4)) })); // Divine Monday plays with a bit more bite
   if (part === 'pad' && song.genre === 'divine' && !bo && !lastBar && song.parts.pad.mode !== 'off' && !(E.partIsOff && E.partIsOff(sec, inBar, part))) notes = notes.concat(E.lightC(song, inBar, res(si).ctxChords && res(si).ctxChords.bars[lb], si));
   if (part !== 'beat' && (notes.length || part === 'answer') && song.arr && !bo && !lastBar && E.machineish(song, sec, part) && !stopTime) notes = E.band(song, si, sec, inBar, part, notes, res, gbar, N, BT, type, nextSec, isLastOfSec);
-  if (part !== 'beat' && E.FLAVOR[song.genre] && !bo && !lastBar && song.arr && E.machineish(song, sec, part) && notes.length && !E.CALM_TYPES.includes(type)) { try { notes = E.FLAVOR[song.genre](song, part, notes, { type, inBar, lb, N, BT, si, chord: res(si).ctxChords && res(si).ctxChords.bars[lb], pk: E.phraseKey(inBar) }) || notes; } catch (e) { /* the plain version stays */ } } // each genre its own character
+  if (part !== 'beat' && E.FLAVOR[song.genre] && !bo && !lastBar && song.arr && E.machineish(song, sec, part) && notes.length && !['intro', 'break', 'outro'].includes(type)) { try { notes = E.FLAVOR[song.genre](song, part, notes, { type, inBar, lb, N, BT, si, chord: res(si).ctxChords && res(si).ctxChords.bars[lb], pk: E.phraseKey(inBar) }) || notes; } catch (e) { /* the plain version stays */ } } // each genre its own character
   if (opts.preFeel) return notes;
   if (part !== 'beat' && !opts.noHook && !bo && !lastBar && song.arr && E.machineish(song, sec, part) && !E.streamOf(song) && !E.beachOf(song) && notes.length) { // the hook: the same place plays the same music, so it can be remembered
     const ref = E.hookRef(song, gbar, part);
