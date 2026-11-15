@@ -265,6 +265,9 @@ JP.ARTS = [
   A('symphony', 'Variations', [0.3, 0.2, 0.3, 0.1, 0, 0], 100), A('symphony', 'Rondo', [0.7, 0.6, 0.5, 0, -0.3, 0], 126), A('symphony', 'Sonata allegro', [0.4, 0.6, 0.2, 0.4, 0.3, 0], 132),
   A('symphony', 'Minuet', [0.6, 0.1, 0.4, 0, -0.3, 0], 112, { meter: 3 }), A('symphony', 'Adagio', [0, -0.9, 0.5, 0.2, 0.1, 0], 60),
 ];
+// the Studio genres hidden until their deep upgrade stay out of the journey too (they come back when they are upgraded)
+JP.HIDDEN_STUDIO = ['Trance', 'Eurodance', 'EBM', 'UK garage', 'Dub', 'Funk and disco', 'Dub techno', 'Minimal techno', 'Ambient', 'Chillout', 'Club', 'Divine Monday', 'Singer songwriter', 'Free flow']; // same list as E.HIDDEN_GENRES in the engine
+JP.ARTS = JP.ARTS.filter((a) => !(a.machine === 'studio' && JP.HIDDEN_STUDIO.includes(a.name)));
 JP.dist = (a, b) => JP.DIMS.reduce((s, d) => s + (a[d] - b[d]) ** 2 * (d === 'world' ? 1.2 : 1), 0);
 
 // ---------- the rack ----------
@@ -1247,7 +1250,11 @@ E.breakdownOf = function (song) {
 E.callResponse = (song) => !!E.GENRES[song.genre].call || E.formOf(song) === 'chant';
 
 E.GENRE_ORDER = ['divine', 'techno', 'minimal', 'dubtechno', 'house', 'club', 'acid', 'trance', 'eurodance', 'breakbeat', 'dnb', 'garage', 'ebm', 'triphop', 'chillout', 'ambient', 'hiphop', 'dub', 'newwave', 'synthwave', 'funk', 'punk', 'blues', 'songwriter'];
-E.GENRE_ALL = ['free'].concat(E.GENRE_ORDER);
+// hidden until their deep upgrade (Nov 2026): they stay in the motor, so old songs open and other machines can still borrow them, they just are not offered
+E.HIDDEN_GENRES = ['divine', 'free', 'minimal', 'dubtechno', 'club', 'trance', 'eurodance', 'garage', 'ebm', 'chillout', 'ambient', 'dub', 'funk', 'songwriter'];
+E.GENRE_ORDER_FULL = E.GENRE_ORDER.slice();
+E.GENRE_ORDER = E.GENRE_ORDER_FULL.filter((g) => !E.HIDDEN_GENRES.includes(g));
+E.GENRE_ALL = E.GENRE_ORDER.slice();
 E.TYPES = {
   intro: { name: 'Intro', energy: 0.35, color: 'yellow' },
   verse: { name: 'Verse', energy: 0.6, color: 'violet' },

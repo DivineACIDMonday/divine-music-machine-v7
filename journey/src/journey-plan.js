@@ -78,6 +78,9 @@ JP.ARTS = [
   A('symphony', 'Variations', [0.3, 0.2, 0.3, 0.1, 0, 0], 100), A('symphony', 'Rondo', [0.7, 0.6, 0.5, 0, -0.3, 0], 126), A('symphony', 'Sonata allegro', [0.4, 0.6, 0.2, 0.4, 0.3, 0], 132),
   A('symphony', 'Minuet', [0.6, 0.1, 0.4, 0, -0.3, 0], 112, { meter: 3 }), A('symphony', 'Adagio', [0, -0.9, 0.5, 0.2, 0.1, 0], 60),
 ];
+// the Studio genres hidden until their deep upgrade stay out of the journey too (they come back when they are upgraded)
+JP.HIDDEN_STUDIO = ['Trance', 'Eurodance', 'EBM', 'UK garage', 'Dub', 'Funk and disco', 'Dub techno', 'Minimal techno', 'Ambient', 'Chillout', 'Club', 'Divine Monday', 'Singer songwriter', 'Free flow']; // same list as E.HIDDEN_GENRES in the engine
+JP.ARTS = JP.ARTS.filter((a) => !(a.machine === 'studio' && JP.HIDDEN_STUDIO.includes(a.name)));
 JP.dist = (a, b) => JP.DIMS.reduce((s, d) => s + (a[d] - b[d]) ** 2 * (d === 'world' ? 1.2 : 1), 0);
 
 // ---------- the rack ----------
