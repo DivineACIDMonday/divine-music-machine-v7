@@ -1548,6 +1548,50 @@ function phrasing(c, parts) {
     for (let i = 0; i < L.length; i++) { const n = L[i], nx = L[i + 1]; if (!nx || nx.t - (n.t + n.dur) >= PPQ / 2) { n.lift = Math.min(n.lift || 1, .88); n.acc = (n.acc || 0) - 5; } }
   });
 }
+/* ================= under the influence: every musician and the conductor play in their own state =================
+   Each state is a way of playing: timing (ahead, behind, wandering), dynamics, length, and habits (a wrong neighbour note that corrects itself,
+   a loop it cannot leave, an entry it misses). Clean is the reference. The conductor bends the tempo and the dynamics of everybody.
+   The chain of command (conductor, concertmaster, first cello, basses, timpani): the clearest head leads and holds the ensemble together;
+   at every phrase start the drift is reset. When nobody can lead, the piece collapses once and is reborn from one held note.
+   p: push in ticks (minus is ahead), j: jitter, dr: drift over a phrase, v: velocity offset, vj: velocity jitter, ex: dynamic expansion (below 1 squeezes),
+   d: length factor, acc: chance of an accent, sev: how far gone (0 clean, 1 lost) */
+const INFL = {
+  clean: { name: 'Clean', sev: 0 },
+  coffee: { name: 'Coffee', p: -10, j: 4, d: .82, v: 5, acc: .12, sev: .15 },
+  sugar: { name: 'Sugar', p: -6, j: 6, v: 8, acc: .15, crash: 1, sev: .25 },
+  energy: { name: 'Energy drink', p: -16, j: 8, d: .75, v: 8, acc: .2, sev: .35 },
+  nicotine: { name: 'Nicotine', p: -4, j: 4, d: .9, v: 2, sev: .1 },
+  ibuprofen: { name: 'Ibuprofen', j: 3, ex: .55, d: 1.08, v: -4, sev: .1 },
+  alcohol: { name: 'Alcohol', j: 26, dr: 40, vj: 14, d: 1.1, wrong: .07, slide: .12, sev: .6 },
+  champagne: { name: 'Champagne', p: -6, j: 14, v: 6, d: .8, acc: .18, slide: .05, sev: .35 },
+  absinthe: { name: 'Absinthe', j: 30, dr: 50, vj: 18, wrong: .08, oct: .05, sev: .7 },
+  cannabis: { name: 'Cannabis', p: 28, j: 10, v: -8, d: 1.2, ex: .8, sev: .4 },
+  xtc: { name: 'XTC', p: -4, j: 8, v: 10, ex: 1.35, swell: 1, loop: .1, d: 1.1, sev: .5 },
+  cocaine: { name: 'Cocaine', p: -22, rush: 30, j: 8, v: 12, acc: .3, d: .8, sev: .6 },
+  meth: { name: 'Meth', p: -14, j: 10, v: 8, loop: .35, acc: .25, d: .7, sev: .8 },
+  ketamine: { name: 'Ketamine', p: 40, j: 30, v: -14, d: 1.5, drop: .3, late: 1, sev: .8 },
+  opium: { name: 'Opium', p: 34, j: 16, dr: 30, v: -12, d: 1.4, ex: .7, drop: .12, sev: .65 },
+  hangover: { name: 'Hangover', p: 18, j: 12, v: -10, cap: 78, d: 1.05, sev: .4 },
+  jetlag: { name: 'Jetlag', p: 24, dr: 30, j: 10, v: -6, sev: .35 },
+  phone: { name: 'Smartphone', j: 8, miss: .45, late: 1, sev: .55 },
+  love: { name: 'In love', p: 10, j: 6, v: 4, d: 1.25, swell: 1, orn: .18, ex: 1.15, sev: .2 },
+  heartbroken: { name: 'Heartbroken', p: 20, j: 10, v: -8, d: 1.2, swell: 1, ex: 1.2, sev: .35 },
+  angry: { name: 'Angry', p: -8, j: 8, v: 12, acc: .4, ex: 1.4, d: .75, sev: .4 },
+  hateful: { name: 'Hateful', p: -4, j: 6, v: 10, acc: .35, d: .65, wrong: .03, sev: .45 },
+  happy: { name: 'Happy', p: -4, j: 5, v: 6, d: .9, acc: .12, orn: .08, sev: .1 },
+  playful: { name: 'Playful', p: -2, j: 10, v: 4, d: .7, acc: .2, orn: .12, sev: .25 },
+  stressed: { name: 'Stressed', p: -12, rush: 20, j: 12, v: 4, d: .7, acc: .2, loop: .08, sev: .45 },
+  nervous: { name: 'Nervous', j: 18, v: -10, vj: 12, d: .85, miss: .08, sev: .35 },
+  sleepy: { name: 'Sleepy', p: 30, j: 12, v: -14, d: 1.15, ex: .6, drop: .08, sev: .4 },
+  proud: { name: 'Proud', p: 4, j: 4, v: 10, d: 1.05, acc: .15, ex: 1.15, sev: .1 },
+  lonely: { name: 'Lonely', p: 14, j: 8, v: -10, d: 1.2, drop: .1, sev: .3 },
+  hungry: { name: 'Hungry', p: -8, j: 10, v: 2, d: .8, miss: .05, sev: .3 },
+};
+Y.INFL = Object.keys(INFL).map(k => ({ id: k, name: INFL[k].name, sev: INFL[k].sev }));
+const strH = s => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+// who leads: the clearest head in the chain of command
+function leaderOf(x, has) { const chain = [['conductor', x.cond], ['vln1', x.inf.vln1], ['vc', x.inf.vc], ['cb', x.inf.cb], ['timp', x.inf.timp]];
+  let best = null; for (const [who, st] of chain) { if (who !== 'conductor' && !has(who)) continue; const sv = (INFL[st || 'clean'] || INFL.clean).sev; if (best == null || sv < best.sv - .05) best = { who, sv, st: st || 'clean' }; if (sv === 0) break; } return best || { who: 'conductor', sv: 0, st: 'clean' }; }
 function perform(c, parts) {
   phrasing(c, parts);
   const x = c.x, era = ERAS[x.era], r = mkRng(x.seed * 3 + 99);
@@ -1589,6 +1633,20 @@ function perform(c, parts) {
     }
     return clamp(v + (ROLEOFF[role] || 0), .05, 1);
   };
+  // the conductor's state bends the tempo for everybody; the smartphone makes him look away now and then
+  const CI = INFL[x.cond] || INFL.clean, cr = mkRng(strH(x.seed + ':cond:' + x.cond));
+  c.phrases.forEach((ph, i) => { const b0 = Math.floor(ph.t0 / PPQ), b1 = Math.floor(ph.t1 / PPQ); let k = 1;
+    if (CI.p) k *= 1 + CI.p / 400; if (CI.rush) k *= 1 - CI.rush / 900 * (i % 3);
+    if (CI.dr || CI.j > 20) k *= 1 + Math.sin(i * 1.7 + cr() * 3) * .09;
+    if (x.cond === 'phone') { ph.phone = cr() < .35 && !ph.final; }
+    for (let b = b0; b < b1 && b < f.length; b++) f[b] *= k; });
+  // after the conductor looks up from the phone: a short hold and everybody falls in again
+  if (x.cond === 'phone') c.phrases.forEach((ph, i) => { if (ph.phone && c.phrases[i + 1] && !c.phrases[i + 1].phone) { const b = Math.floor(ph.t1 / PPQ) - 1; if (b >= 0 && b < f.length) f[b] *= 1.8; } });
+  const has = id => parts[id] && parts[id].length, lead = leaderOf(x, has), hold = 1 - lead.sv * .65; c.leader = lead;
+  // nobody can lead: one collapse, and a rebirth from a single held note
+  const chaos = INST.filter(i => has(i.id)).reduce((a, i) => a + (INFL[x.inf[i.id] || 'clean'] || INFL.clean).sev, 0) / Math.max(1, INST.filter(i => has(i.id)).length);
+  if (lead.sv >= .5 && c.phrases.length > 4) { const ci = Math.floor(c.phrases.length * .6); c.phrases[ci].collapse = 1; if (c.phrases[ci + 1]) c.phrases[ci + 1].rebirth = 1; }
+  const dynEx = CI.ex || 1;
   // breaths: the last beat of a breathing phrase is held a little longer and left silent
   c.phrases.forEach(ph => { if (ph.breath) { const b = Math.floor(ph.t1 / PPQ) - 1; if (b >= 0 && b < f.length) f[b] *= 2.1; } });
   const W2 = new Float64Array(totalBeats + 1); for (let b = 0; b < totalBeats; b++) W2[b + 1] = W2[b] + f[b] * PPQ; W.set(W2);
@@ -1601,11 +1659,12 @@ function perform(c, parts) {
     if (d < .45) return !['brass', 'timp', 'dbl', 'col'].includes(role) && !['tpt', 'tbn', 'btbn', 'tba', 'timp', 'picc'].includes(inst.id);
     if (d < .68) return role !== 'timp' || ph.dyn > .6;
     return true; };
-  const tracks = [];
+  const tracks = [], hist = {}, prevEnd = {};
   const tempoMs = 60000 / x.tempo / PPQ;
   for (const inst of INST) {
     const L = (parts[inst.id] || []).filter(n => plays(n.ph, inst, n.role) && !(n.ph.breath && n.t >= n.ph.t1 - PPQ));
     L.forEach(n => { if (n.ph.breath && n.t + n.dur > n.ph.t1 - PPQ) n.dur = Math.max(PPQ / 4, n.ph.t1 - PPQ - n.t); });
+    const IR = mkRng(strH(x.seed + ':' + inst.id + ':' + (x.inf[inst.id] || 'clean'))); hist[inst.id] = []; prevEnd[inst.id] = 0;
     if (!L.length) continue;
     const notes = [], cc = [], ks = [];
     L.forEach(n => {
@@ -1623,7 +1682,33 @@ function perform(c, parts) {
       if (n.lift) d = Math.max(40, Math.round(d * n.lift));
       if (inst.ks && n.art === 'long' && x.early) { const sh = Math.round(x.early / tempoMs); t1 = Math.max(OFF / 2, t1 - sh); }
       if (n.art !== 'long' || !inst.ks) t1 += Math.round(r() * 6 - 3);
-      notes.push({ t: t1, dur: d, m: n.m, v, art: inst.ks ? n.art : 'long' });
+      // under the influence
+      const st = x.inf[inst.id] || 'clean', I = INFL[st] || INFL.clean, ir = IR, pp = clamp((n.t - ph.t0) / Math.max(1, ph.t1 - ph.t0), 0, 1);
+      let m = n.m, extra = [];
+      if (st !== 'clean' || x.cond !== 'clean' || ph.collapse) {
+        const loose = (ph.phone ? 1.8 : 1) * (ph.collapse ? 3 : 1) * (ph.rebirth ? .3 : 1) * (inst.id === lead.who ? .5 : 1) / Math.max(.45, hold);
+        t1 += Math.round(((I.p || 0) + (I.rush || 0) * -pp + (I.dr || 0) * Math.sin(pp * Math.PI + ir() * 2)) * loose + (ir() * 2 - 1) * (I.j || 0) * loose + (CI.j ? (ir() * 2 - 1) * CI.j * .5 : 0));
+        if (I.crash && n.t > c.t * .55) { v -= 18; t1 += 14; }
+        v += (I.v || 0) + (ir() * 2 - 1) * (I.vj || 0); if (I.ex) v = 64 + (v - 64) * I.ex; v = 64 + (v - 64) * dynEx;
+        if (I.swell) v += 14 * Math.sin(pp * Math.PI) - 4; if (I.acc && ir() < I.acc) v += 22; if (I.cap) v = Math.min(v, I.cap);
+        if (I.d) d = Math.max(30, Math.round(d * I.d));
+        if (I.drop && ir() < I.drop && n.role !== 'mel') return; // drifts away
+        const entry = !prevEnd[inst.id] || n.t - prevEnd[inst.id] > PPQ * 2;
+        if (I.miss && entry && ir() < I.miss) { prevEnd[inst.id] = n.t + n.dur; return; } // missed the entry
+        if (I.late && entry) t1 += Math.round(PPQ * (.2 + ir() * .5));
+        if (I.wrong && ir() < I.wrong) { const nb = m + (ir() < .5 ? -1 : 1); extra.push({ t: t1, dur: Math.round(d * .35), m: nb, v: Math.round(v * .9), art: 'short' }); t1 += Math.round(d * .35); d = Math.max(30, Math.round(d * .65)); } // a wrong neighbour that corrects itself
+        if (I.slide && ir() < I.slide && d > PPQ / 2) extra.push({ t: t1 - 40, dur: 40, m: m - 2, v: Math.round(v * .7), art: 'short' });
+        if (I.orn && ir() < I.orn && d >= PPQ) extra.push({ t: t1, dur: Math.round(PPQ / 8), m: m + 2, v: Math.round(v * .85), art: 'short' }), t1 += Math.round(PPQ / 8);
+        if (I.oct && ir() < I.oct) m += ir() < .5 ? 12 : -12;
+        if (I.loop && ir() < I.loop && hist[inst.id].length >= 3) { const h = hist[inst.id].slice(-3); h.forEach((q, k) => extra.push({ t: t1 + k * Math.round(PPQ / 4), dur: Math.round(PPQ / 4) - 10, m: q, v: Math.round(v * .9), art: 'short' })); } // stuck in a loop
+      }
+      if (ph.rebirth && n.t - ph.t0 < c.bar && inst.id !== lead.who && lead.who !== 'conductor') return; // the rebirth starts from one player
+      if (chaos > .45 && n.role === 'ctr') return; // the listener's guard: in chaos the counter lines step back, the tune stays clear
+      if (chaos > .45 && n.role === 'mel') v += 8;
+      v = Math.round(clamp(v, 12, 127)); prevEnd[inst.id] = n.t + n.dur; hist[inst.id].push(m);
+      extra.forEach(e => { if (e.m >= inst.lo - 2 && e.m <= inst.hi + 2) notes.push(Object.assign(e, { t: Math.max(OFF / 2, e.t), art: inst.ks ? e.art : 'long' })); });
+      if (m < inst.lo - 12 || m > inst.hi + 12) m = n.m;
+      notes.push({ t: Math.max(OFF / 2, t1), dur: d, m, v, art: inst.ks ? n.art : 'long' });
     });
     notes.sort((a, b) => a.t - b.t || a.m - b.m);
     // one articulation per onset, keyswitch before each change
@@ -1645,7 +1730,8 @@ function perform(c, parts) {
       c.phrases.forEach(ph => {
         const rl = role[ph.idx] || 'inner';
         for (let t = ph.t0; t < ph.t1; t += PPQ / 2) {
-          const v = Math.round(clamp(14 + 108 * lvl(ph, t, rl), 1, 127));
+          const I2 = INFL[x.inf[inst.id] || 'clean'] || INFL.clean, q = clamp((t - ph.t0) / Math.max(1, ph.t1 - ph.t0), 0, 1); let vv = 14 + 108 * lvl(ph, t, rl); vv = 64 + (vv - 64) * (I2.ex || 1) * dynEx + (I2.v || 0) + (I2.swell ? 14 * Math.sin(q * Math.PI) - 4 : 0); if (I2.cap) vv = Math.min(vv, I2.cap); if (I2.crash && t > c.t * .55) vv -= 18;
+          const v = Math.round(clamp(vv, 1, 127));
           if (v !== lastV) { cc.push({ t: warp(t), c: 1, v }); lastV = v; }
         }
       });
@@ -1793,6 +1879,9 @@ function compose(o) {
   const meter = o.meter || FORMS[form].meter;
   const seed = (o.seed >>> 0) || 1;
   const x = { era, form, K, E, meter, tempo: o.tempo || FORMS[form].tempo, len: clamp(o.len || 2, 1, 3), seed, r: mkRng(seed), rubato: o.rubato == null ? 1 : o.rubato, early: o.early == null ? 40 : o.early, scherzo: o.scherzo, solo: o.solo, feel: FEELINGS[o.feel] || null, feelId: FEELINGS[o.feel] ? o.feel : null };
+  { const keys = Object.keys(INFL), rr = mkRng(strH(seed + ':inf')); const raw = o.influence || {}; x.inf = {};
+    for (const i of INST) { let st = raw === 'random' ? keys[Math.floor(rr() * keys.length)] : (raw[i.id] || raw.all || 'clean'); if (st === 'random') st = keys[Math.floor(rr() * keys.length)]; x.inf[i.id] = INFL[st] ? st : 'clean'; }
+    let cd = o.conductor || 'clean'; if (cd === 'random') cd = keys[Math.floor(rr() * keys.length)]; x.cond = INFL[cd] ? cd : 'clean'; }
   const c = new Comp(x);
   const st = ERAS[era];
   c.style = { melLo: st.melLo, melHi: st.melHi, melC: st.melC, appog: st.appog, avoid: st.avoid ? new Set(st.avoid) : null, bLo: 36, bHi: 57, bC: 46 };
@@ -1811,6 +1900,7 @@ function compose(o) {
   res.title = (o.title || FORMS[form].name) + ' in ' + keyName(K);
   res.keyName = keyName(K);
   res.feel = o.feel || null;
+  res.influence = Object.assign({}, x.inf); res.conductor = x.cond; res.leader = c.leader; res.arc = c.arc;
   res._c = c;
   return res;
 }
