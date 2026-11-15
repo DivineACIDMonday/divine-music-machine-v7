@@ -2139,7 +2139,7 @@ E.TRIP = { triphop: [0.55, 0.25, ['echo', 'chop', 'kick2']], dnb: [0.15, 0.5, ['
 E.CALM_TYPES = ['intro', 'verse', 'break', 'outro'];
 E.stutter = function (song, si, sec, inBar, lanes, N, type) {
   const T = E.TRIP[song.genre]; if (!T || !T[2].length || N !== 16 || (inBar % 4 !== 1 && inBar % 4 !== 3)) return null; // on bar 2 or 4 of a phrase, never all the time
-  const r = rng(hash(song.seed, 'stutter', si, inBar)); if (!r.chance(E.CALM_TYPES.includes(type) ? T[0] : T[1])) return null;
+  const r = rng(hash(song.seed, 'stutter', sec.type, inBar % 8)); if (!r.chance(E.CALM_TYPES.includes(type) ? T[0] : T[1])) return null;
   const g = r.pick(T[2]), S = lanes[SN], Kk = lanes[K], H = lanes[HH];
   if (g === 'echo') { const li = [SN, CP].find((x) => lanes[x] && [12, 4, 8].some((s) => lanes[x][s] >= 60)); if (li == null) return null; const E2 = lanes[li], at = [12, 4, 8].find((s) => E2[s] >= 60); const d = r.chance(0.6) ? 1 : 2; if (!E2[at + d] && !Kk[at + d]) E2[at + d] = Math.round(E2[at] * 0.6); if (d === 1 && r.chance(0.4) && at + 2 < N && !E2[at + 2] && !Kk[at + 2]) E2[at + 2] = Math.round(E2[at] * 0.4); } // tsak tsak: the snare answers itself
   else if (g === 'kick2') { const ks = []; for (let s = 1; s < N - 2; s++) if (Kk[s] >= 70 && !Kk[s + 1] && !(S[s + 1] >= 60)) ks.push(s); if (!ks.length) return null; const s = r.pick(ks); Kk[s + 1] = Math.round(Kk[s] * 0.75); } // a double kick
@@ -2299,6 +2299,33 @@ E.band = function (song, si, sec, inBar, part, notes, res, gbar, N, BT, type, ne
   if (acc.size && part !== 'pad') notes.forEach((n) => { const s = Math.round(n.t / ST); if (acc.has(s)) n.v = Math.min(127, n.v + 6); else if (s % 2 === 1) n.v = Math.max(20, n.v - 4); });
   return notes;
 };
+E.beatAlone = (song) => E.PARTS.every((p) => p === 'beat' || !song.parts[p] || song.parts[p].mode === 'off');
+// where a bar stands in its phrase of eight: the same place plays the same way, so a groove loops and the changes land where the ear waits for them
+E.phraseKey = (inBar) => { const k = inBar % 8, ph = Math.floor(inBar / 8); return k === 7 ? 'F' + ph : k === 3 ? 'V' + ph : k % 2 ? 'B' : 'A'; };
+// the beat's own journey, so it never sits still or stands like a wall:
+// hats breathe (accents on the beat, soft sixteenths, a few left out, the same way in the same place of the phrase), an open hat lifts the turn of bar 4 and 8;
+// a beat on its own builds its intro layer by layer and lets the layers go in the outro; a build grows from thin to full
+E.beatJourney = function (song, sec, inBar, lanes, type, nextSec, alone) {
+  const N = 16, H = lanes[HH], pk = E.phraseKey(inBar), r = rng(hash(song.seed, 'journey', sec.type, pk)), calm = type === 'intro' || type === 'outro' || type === 'break';
+  if (H) { const on = H.filter(Boolean).length;
+    if (on >= 10) { const out = []; for (let s = 1; s < N; s += 2) if (H[s] && !(lanes[SN][s] >= 80)) out.push(s);
+      const big = type === 'drop' || type === 'chorus', drop = on >= 14 ? (big ? 1 : 2) + r.int(big ? 2 : 3) : on >= 12 && !big ? 1 + r.int(2) : 0; for (let k = 0; k < drop && out.length; k++) H[out.splice(r.int(out.length), 1)[0]] = 0; }
+    const top = Math.max(...H, 0); if (top) for (let s = 0; s < N; s++) if (H[s]) H[s] = clamp(Math.round(top * (s % 4 === 0 ? 1 : s % 4 === 2 ? 0.86 : 0.58) + (r.int(7) - 3)), 22, 127);
+    if (lanes[OH] && !calm && (pk[0] === 'V' || pk[0] === 'F') && !lanes[OH].some(Boolean) && !(lanes[SN][14] >= 80)) { lanes[OH][14] = 84; H[14] = 0; H[15] = 0; } }
+  if (type === 'build' && sec.bars >= 4) { const k = inBar / sec.bars; // thin to full
+    if (k < 0.5) { for (let s = 1; s < N; s += 2) { if (H) H[s] = 0; if (lanes[SN][s] < 60) lanes[SN][s] = 0; } if (lanes[K2]) lanes[K2].fill(0); }
+    else if (H && k >= 0.75) for (let s = 1; s < N; s += 2) if (!H[s]) H[s] = 40 + Math.round(30 * k); }
+  if (alone && type === 'verse') { // alone, the verse holds back so the drop can open up: eighth hats, no ghosts, no second kick
+    if (H) for (let s = 1; s < N; s += 2) H[s] = 0; lanes[SN] = lanes[SN].map((v) => (v && v < 60 ? 0 : v)); if (lanes[K2]) lanes[K2].fill(0); }
+  if (!alone || !(type === 'intro' || type === 'outro') || sec.bars < 4) return;
+  const k = type === 'intro' ? inBar / sec.bars : 1 - (inBar + 1) / sec.bars; // 0 = barest, towards 1 = almost full
+  const snareIn = 0.5, kickIn = 0.25;
+  if (k < snareIn) { lanes[SN] = lanes[SN].map(() => 0); if (lanes[CP]) lanes[CP] = lanes[CP].map(() => 0); }
+  else lanes[SN] = lanes[SN].map((v) => (v && v < 60 ? 0 : v)); // the snare comes, the ghosts wait for the drop
+  if (k < kickIn) { lanes[K] = lanes[K].map((v, s) => (s === 0 ? v : 0)); if (lanes[K2]) lanes[K2].fill(0); }
+  if (lanes[PC] && k < kickIn) lanes[PC].fill(0);
+  if (H && k < snareIn) for (let s = 1; s < N; s += 2) H[s] = 0;
+};
 E.renderBar = function (song, part, gbar, res, opts) {
   const at = E.sectionAt(song, gbar); if (!at) return [];
   const { s: sec, inBar, i: si } = at;
@@ -2316,13 +2343,14 @@ E.renderBar = function (song, part, gbar, res, opts) {
   // material you made for this one section always plays there
   if (!bo && choice !== true && !E.ownOf(song, sec, part) && !E.partActive(song, part, type, inBar, sec.bars) && !lastBar) return [];
   const lb = inBar % song.L;
-  const r = rng(hash(song.seed, part, gbar));
+  const r = part === 'beat' ? rng(hash(song.seed, part, sec.type, E.phraseKey(inBar))) : rng(hash(song.seed, part, gbar)); // the beat's dice follow the phrase, not the bar
   const nextSec = song.sections[si + 1];
   const isLastOfSec = inBar === sec.bars - 1;
   let notes = [];
   // the arrangement of this section: layers, harmony, who leads, how it ends (new songs; the machine's parts only)
   const A = song.arr && !bo && !lastBar ? E.arrangeOf(song, si) : null;
-  const mach = !!A && choice !== true && E.machineish(song, sec, part);
+  const alone = part === 'beat' && E.beatAlone(song); // a beat on its own (the groove machines): nobody else carries the silent bars, so it travels by its own layers instead
+  const mach = !!A && choice !== true && E.machineish(song, sec, part) && !alone;
   const endK = song.arr && !lastBar && !bo ? E.endingOf(song, si, inBar) : null;
   if (mach && ((A.enter[part] || 0) > inBar || A.exit[part] != null && inBar >= A.exit[part])) return opts.lanes ? { lanes: mat.lanes.map((l) => l.map(() => 0)) } : [];
   if (mach && (A.only && !A.only.includes(part) || part === 'beat' && A.noBeat || A.drumsUntil && inBar < A.drumsUntil && part !== 'beat')) return opts.lanes ? { lanes: mat.lanes.map((l) => l.map(() => 0)) } : [];
@@ -2345,6 +2373,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     const machine = E.machineish(song, sec, 'beat'); // the machine's own material (or an untouched copy) keeps its touches
     let shaped = false;
     if (mach && type === 'intro' && A.recipe && A.recipe !== 'hats') { const core = res('chorus').beat; const nl = core && E.introLanes(song, core.lanes, A.recipe, inBar, sec.bars, N, rng(hash(song.seed, 'intro', sec.id))); if (nl) { lanes = nl; E.muteLanes(sec, inBar, lanes); shaped = true; } }
+    if (machine && alone && (type === 'intro' || type === 'outro') && sec.bars >= 4) { const core = (res('drop') || {}).beat || (res('chorus') || {}).beat; if (core && core.lanes && !E.isEmpty('beat', core)) { lanes = core.lanes.map((l) => l.slice()); E.muteLanes(sec, inBar, lanes); shaped = true; } } // alone, the intro is the drop's beat, built up layer by layer
     if (machine && !shaped) { // the machine follows the energy of the song: calm sections thinner, a break keeps a soft pulse and the kick comes back at its end
       E.shapeDensity(song, { lanes }, type);
       if (type === 'break') { E.breakPulse(song, { lanes }, { lanes: mat.lanes }); if (nextSec && sec.bars >= 4 && inBar >= sec.bars - 2) { const last = inBar === sec.bars - 1; (last ? [0, N / 4, N / 2, 3 * N / 4] : [0, N / 2]).forEach((x) => { lanes[K][x] = Math.max(lanes[K][x], last ? 96 : 78); }); } }
@@ -2370,7 +2399,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (inBar === 0 && (type === 'chorus' || type === 'drop' || type === 'build' && song.genre === 'techno') && lanes[CR]) lanes[CR][0] = 104;
     else if (lanes[CR] && machine) lanes[CR] = lanes[CR].map(() => 0);
     // groove: ghost notes, soft snares around the backbeat
-    if (E.grooveOf(song, sec).ghosts) { const g = rng(hash('ghost', song.seed, gbar)); for (let s2 = 1; s2 < N; s2++) { if (lanes[SN][s2] || lanes[CP][s2] || s2 % 2 === 0) continue; const near = lanes[SN][s2 + 1] >= 80 || lanes[SN][s2 - 1] >= 80 || lanes[CP][s2 + 1] >= 80; if (near ? g.chance(0.7) : g.chance(0.18)) lanes[SN][s2] = 30 + g.int(10); } }
+    if (E.grooveOf(song, sec).ghosts) { const g = rng(hash('ghost', song.seed, sec.type, E.phraseKey(inBar))); for (let s2 = 1; s2 < N; s2++) { if (lanes[SN][s2] || lanes[CP][s2] || s2 % 2 === 0) continue; const near = lanes[SN][s2 + 1] >= 80 || lanes[SN][s2 - 1] >= 80 || lanes[CP][s2 + 1] >= 80; if (near ? g.chance(0.7) : g.chance(0.18)) lanes[SN][s2] = 30 + g.int(10); } }
     // the fill you chose into the next section (auto: the machine's own, only before a new kind of section)
     const dflt = song.dgm ? 'none' : 'auto'; // the groove machine adds nothing by itself: a fill only where you choose one
     let fk = isLastOfSec && nextSec ? sec.fill || dflt : dflt;
@@ -2404,12 +2433,14 @@ E.renderBar = function (song, part, gbar, res, opts) {
     if (machine && type === 'break' && E.trainOf(song) && N === 16 && lanes[HH] && !lanes[HH].some(Boolean)) for (let s = 2; s < N; s += 4) lanes[HH][s] = 34 + ((s * 7 + inBar) % 10); // the wheels keep turning in the break, softly
     if (machine && song.arr && !isLastOfSec && type !== 'break' && type !== 'fill' && !stopTime && !(sec.bars >= 12 && inBar % 8 === 7)) E.stutter(song, si, sec, inBar, lanes, N, type); // a little stutter where the genre trips
     E.laneFxApply(song, sec, inBar, lanes, N);
+    if (machine && N === 16) E.beatJourney(song, sec, inBar, lanes, type, nextSec, alone);
     if (stopTime) E.stopLanes(lanes, 'hit', N); // stop time: one hit per bar
     if (E.STOPS.includes(fk)) { if (fk === 'hit' || fk === 'half' || !sec.fill) E.stopLanes(lanes, fk, N); else E.applyFill(song, lanes, fk, N, r); } // a stop stays a stop, whatever the mixer adds
     E.muteLanes(sec, inBar, lanes);
     if (opts.lanes) return { lanes }; // the grid asks what this bar really plays
     lanes.forEach((l, li) => l.forEach((v, s) => { if (v > 0) notes.push({ t: s * E.STEP, d: E.STEP, lane: li, v }); }));
     if (playedRoll) notes.push(...E.playedRoll(song, gbar, sec.bars - inBar === 1, N));
+    if (machine && N === 16 && (type === 'build' || type === 'prechorus') && isLastOfSec && nextSec && (nextSec.type === 'drop' || nextSec.type === 'chorus')) notes = notes.filter((n) => n.t < (N - 1) * E.STEP - 6); // one breath of silence, then the drop hits
     if (machine && song.arr && song.genre === 'triphop') notes.forEach((n) => { if (n.lane === SN && n.v >= 80) n.t += 14; }); // laid back: the trip hop snare comes a little late
     if (machine && song.arr && E.dnbOn(song) && !E.CALM_TYPES.includes(type)) notes.forEach((n) => { if (Math.round(n.t / E.STEP) % 2 === 1) n.t += 12; }); // the break swings a little, like a sampled break
   } else if (lastBar && !bo) { // ending: everyone lands together on the one
@@ -2453,7 +2484,7 @@ E.renderBar = function (song, part, gbar, res, opts) {
   if (part !== 'beat' && endK && E.STOPS.includes(endK) && song.arr && E.machineish(song, sec, part)) notes = E.stopNotes(part, notes, endK, BT); // the band stops with the drums
   if (part !== 'beat' && song.arr) { const lift = E.liftOf(song); if (lift && si >= lift.from) notes = notes.map((n) => Object.assign({}, n, { p: n.p + lift.by })); } // the last chorus a step higher
   if (part !== 'beat' && stopTime) notes = E.stopNotes(part, notes, 'hit', BT); // stop time: the band hits the one with the drums
-  if (song.arr && song.raw && !bo && !lastBar) notes = E.rawNotes(song, part, notes, type + ':' + inBar + ':' + sec.bars, N, BT, isLastOfSec && !!nextSec && (!!endK || !!sec.fill && sec.fill !== 'auto' && sec.fill !== 'none'), A && A.boost);
+  if (song.arr && song.raw && !bo && !lastBar) notes = E.rawNotes(song, part, notes, type + ':' + (part === 'beat' ? E.phraseKey(inBar) : inBar) + ':' + sec.bars, N, BT, isLastOfSec && !!nextSec && (!!endK || !!sec.fill && sec.fill !== 'auto' && sec.fill !== 'none'), A && A.boost);
   if (mach && part === 'melody' && A.grow && notes.length && (A.grow >= 2 || song.sections.map((x) => x.type).lastIndexOf(sec.type) === si) && !['blues', 'songwriter', 'hiphop', 'punk', 'ambient', 'dub', 'triphop', 'acid', 'dubtechno', 'minimal'].includes(song.genre)) notes = notes.concat(notes.map((n) => Object.assign({}, n, { p: n.p + 12, v: Math.round(n.v * 0.7) })).filter((n) => n.p <= 96)); // the last big chorus: the lead doubled an octave up
   if (mach && part === 'melody' && notes.length) { // the journey and the echoes
     if (E.hypnoOf(song)) notes = E.hypnoJourney(song, sec, inBar, notes, N);
