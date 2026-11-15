@@ -102,6 +102,27 @@ svg.hall{width:100%;height:auto;display:block;user-select:none}
 .check b{color:var(--ww)}
 footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 .hide{display:none!important}
+.occs{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.occ{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;text-align:left;color:var(--tx);font:inherit;cursor:pointer;min-height:44px;display:flex;flex-direction:column;gap:3px}
+.occ b{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif;font-size:17px}
+.occ small{color:var(--mu);font-size:12.5px;line-height:1.35}
+.occ:hover{border-color:#5A464C}
+.occ[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#2C2124}
+.infbox{background:var(--card2);border:1px solid var(--gold);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.grp{display:flex;flex-direction:column;gap:6px}
+.grp h4{margin:0;font-size:13px;font-weight:600;color:#AE9E90}
+.chips.sm .chip{min-height:36px;padding:6px 10px}
+.seat text.inf{font:600 10px system-ui,sans-serif;fill:#130E11}
+.seat.off text.inf{fill:#C9B8AA}
+.seat.picked path{stroke:var(--tx);stroke-width:3}
+details.more>summary{cursor:pointer;font-size:20px;list-style:none;min-height:30px}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"+ ";color:var(--gold)}
+details.more[open]>summary::before{content:"- "}
+.sub{display:flex;flex-direction:column;gap:12px;padding-top:12px;border-top:1px dashed var(--line)}
+.crew{font-size:14px;line-height:1.6}
+.crew b{color:var(--gold)}
+
 .modal{position:fixed;inset:0;background:rgba(8,5,7,.72);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
 .modal .box{background:var(--card);border:1px solid #5A464C;border-radius:16px;padding:20px;max-width:640px;width:100%;max-height:92vh;overflow:auto;display:flex;flex-direction:column;gap:16px}
 .modal h4{margin:0 0 8px;font:600 15px system-ui;color:var(--mu)}
@@ -152,23 +173,57 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 </header>
 
 <section class="hero">
-  <span class="opt" style="width:100%">Your orchestra <span class="seg" id="lib"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span>
   <button class="btn gold big" id="surpriseTop">⚄ Surprise me</button>
-  <span class="muted">One click: the machine picks feeling, era, key, orchestra and form, and composes. Or choose everything yourself below.</span>
+  <span class="muted">One click and the machine picks everything. Or set three things below and press Conduct.</span>
 </section>
 
-<section class="step" id="s0">
-  <div class="sh"><span class="num serif">1</span><span class="st serif">What should it feel like?</span><span class="muted">One tap sets era, key, form, orchestra and tempo for that feeling. Change anything after.</span></div>
+<section class="step" id="sWho">
+  <div class="sh"><span class="num serif">1</span><span class="st serif">Who plays</span><span class="muted">Tap a seat to switch it on or off. Or give each musician an influence.</span></div>
+  <div class="go"><span class="seg" id="seatMode"><button data-v="on">On or off</button><button data-v="inf">Give an influence</button></span><button class="btn" id="allClean">Everybody clean</button><button class="btn" id="allRandom">Random influences</button></div>
+  <div class="orch">
+    <svg class="hall" id="hall" viewBox="0 0 640 380" role="group" aria-label="Orchestra seating"></svg>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="infbox hide" id="infBox"></div>
+      <div class="presets" id="presets"></div>
+      <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Timpani</span><span><i style="background:var(--kb)"></i>Piano</span></div>
+      <div class="count" id="count"></div>
+      <label class="opt" id="bfoW"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
+      <div id="bfoBox" class="hide"><div class="muted small" style="margin-bottom:6px">Only in Berlin Free Orchestra. Feelings pick fitting ones for you.</div><div class="chips" id="bfoChips"></div></div>
+      <div class="muted small">The era preset is chosen for you when you pick an era. Change anything you like after that.</div>
+    </div>
+  </div>
+</section>
+
+<section class="step" id="sCond">
+  <div class="sh"><span class="num serif">2</span><span class="st serif">The conductor</span><span class="muted">A mood or an influence. A clear head keeps everyone together.</span></div>
+  <div id="condBox"></div>
+</section>
+
+<section class="step" id="sOcc">
+  <div class="sh"><span class="num serif">3</span><span class="st serif">The occasion</span><span class="muted">What is the music for? This picks the form and the story.</span></div>
+  <div class="occs" id="occs"></div>
+  <div class="go"><span class="muted">Era</span><div class="chips" id="eraChips"></div></div>
+  <div class="go">
+    <button class="btn gold big" id="compose">Conduct</button>
+    <button class="btn" id="surprise" title="Random feeling, era, key, orchestra and form, then compose">⚄ Surprise me</button>
+    <span class="muted" id="status"></span>
+  </div>
+</section>
+
+<details class="step more" id="more">
+  <summary class="serif">More: feeling, era cards, form, key, tempo, sound</summary>
+  <div class="go"><span class="opt" style="width:100%">Your orchestra <span class="seg" id="lib"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span></div>
+  <div class="go"><button class="btn" id="voiceOn" aria-pressed="false" title="The orchestra accompanies a singer: the high melody instruments rest, the rest plays lower and softer">Room for a voice</button><span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span></div>
+<div class="sub" id="s0">
+  <div class="sh"><span class="st serif">What should it feel like?</span><span class="muted">One tap sets era, key, form, orchestra and tempo for that feeling. Change anything after.</span></div>
   <div class="feels" id="feels"></div>
-</section>
-
-<section class="step" id="s1">
-  <div class="sh"><span class="num serif">2</span><span class="st serif">Choose an era</span><span class="muted">The era sets harmony, ornaments, orchestra and how freely the time breathes.</span></div>
+</div>
+<div class="sub" id="s1">
+  <div class="sh"><span class="st serif">Choose an era</span><span class="muted">The era sets harmony, ornaments, orchestra and how freely the time breathes.</span></div>
   <div class="grid eras" id="eras"></div>
-</section>
-
-<section class="step" id="s2">
-  <div class="sh"><span class="num serif">3</span><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
+</div>
+<div class="sub" id="s2">
+  <div class="sh"><span class="st serif">Choose a form</span><span class="muted">Every form is built from real phrases, cadences and key changes.</span></div>
   <div class="grid forms" id="forms"></div>
   <div id="suitePanel" class="hide">
     <div class="mozart"><b class="serif" style="font-size:18px">Your suite</b><span class="muted small">lock keeps a part when you compose again · ⧉ makes an exact copy · ✕ removes it</span></div>
@@ -186,32 +241,11 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
     <label class="opt">Seed <input type="number" id="seed" min="1" max="999999" style="width:110px"><button class="btn" id="dice" title="New seed" aria-label="New seed">⚄</button></label>
     <label class="opt"><input type="checkbox" id="keep"> Keep this seed</label>
   </div>
-</section>
+</div>
+</details>
 
-<section class="step" id="s3">
-  <div class="sh"><span class="num serif">4</span><span class="st serif">Seat your orchestra</span><span class="muted">Tap a section to switch it on or off. Each one becomes its own MIDI track.</span></div>
-  <div class="orch">
-    <svg class="hall" id="hall" viewBox="0 0 640 380" role="group" aria-label="Orchestra seating"></svg>
-    <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="presets" id="presets"></div>
-      <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Timpani</span><span><i style="background:var(--kb)"></i>Piano</span></div>
-      <div class="count" id="count"></div>
-      <label class="opt" id="bfoW"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
-      <div id="bfoBox" class="hide"><div class="muted small" style="margin-bottom:6px">Only in Berlin Free Orchestra. Feelings pick fitting ones for you.</div><div class="chips" id="bfoChips"></div></div>
-      <div class="muted small">The era preset is chosen for you when you pick an era. Change anything you like after that.</div>
-    </div>
-  </div>
-</section>
-
-<section class="step" id="s4">
-  <div class="sh"><span class="num serif">5</span><span class="st serif">Get it</span><span class="muted">One MIDI track per instrument, with articulation switching, CC1 dynamics and CC11 expression.</span></div>
-  <div class="go">
-    <button class="btn gold" id="compose">Compose</button>
-    <button class="btn" id="surprise" title="Random feeling, era, key, orchestra and form, then compose">⚄ Surprise me</button>
-    <button class="btn" id="voiceOn" aria-pressed="false" title="The orchestra accompanies a singer: the high melody instruments rest, the rest plays lower and softer">Room for a voice</button>
-    <span class="opt">MIDI for <span class="seg" id="target"><button data-v="bbc">BBC Discover</button><button data-v="berlin">Berlin Free</button><button data-v="any">Any synth</button></span></span>
-    <span class="muted" id="status"></span>
-  </div>
+<section class="step" id="s4" style="display:none">
+  <div class="sh"><span class="st serif">Your piece</span><span class="muted">One MIDI track per instrument, with articulation switching, CC1 dynamics and CC11 expression.</span></div>
   <div class="result" id="result">
     <div class="tabs" id="mvTabs"></div>
     <div class="strip" id="strip"><span class="head" id="head"></span></div>
@@ -2470,9 +2504,10 @@ function drawEras() {
   Object.entries(Y.ERAS).forEach(([id, e]) => {
     const b = document.createElement('button'); b.className = 'pick'; b.setAttribute('aria-pressed', S.era === id);
     b.innerHTML = '<span class="yr">' + e.years + '</span><h3 class="serif">' + e.name + '</h3><p>' + e.blurb + '</p>';
-    b.onclick = () => { S.era = id; store.set('era', id); S.inst = new Set(Y.PRESETS[id]); store.set('inst', [...S.inst]); drawEras(); drawHall(); drawSuite(); };
+    b.onclick = () => { S.era = id; store.set('era', id); S.inst = new Set(Y.PRESETS[id]); store.set('inst', [...S.inst]); drawEras(); drawEraChips(); drawHall(); drawSuite(); };
     $('eras').appendChild(b);
   });
+  drawEraChips();
 }
 /* forms */
 function drawForms() {
@@ -2591,17 +2626,20 @@ function drawHall() {
   h += seat('pno', 'M22 40 h92 a10 10 0 0 1 10 10 v26 a10 10 0 0 1 -10 10 h-92 a10 10 0 0 1 -10 -10 v-26 a10 10 0 0 1 10 -10 z', 68, 63, 'Piano');
   svg.innerHTML = h;
   svg.querySelectorAll('.seat').forEach(g => {
-    const tog = () => { const id = g.dataset.id; if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); };
+    const tog = () => { const id = g.dataset.id; if (S.seatMode === 'inf') { S.pickSeat = S.pickSeat === id ? null : id; drawHall(); return; } if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); };
     g.onclick = tog; g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } };
   });
+  if (S.pickSeat) { const pg = svg.querySelector('.seat[data-id="' + S.pickSeat + '"]'); if (pg) pg.classList.add('picked'); }
+  [...$('seatMode').children].forEach(b => b.setAttribute('aria-pressed', b.dataset.v === S.seatMode));
+  drawInfBox();
   $('count').textContent = S.inst.size + ' sections on, so ' + S.inst.size + ' MIDI tracks.';
   $('bfoOn').checked = S.bfo; $('bfoBox').classList.toggle('hide', !S.bfo);
   const bc = $('bfoChips'); bc.innerHTML = '';
   Y.EXTRAS.forEach(id => { const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', S.inst.has(id)); b.innerHTML = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + FAMHEX[fam(id)] + ';margin-right:6px"></span>' + IM[id].name; b.onclick = () => { if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); }; bc.appendChild(b); });
 }
 function seat(id, d, tx, ty, label) {
-  const on = S.inst.has(id), col = FAMHEX[fam(id)];
-  return '<g class="seat' + (on ? '' : ' off') + '" data-id="' + id + '" tabindex="0" role="switch" aria-checked="' + on + '" aria-label="' + IM[id].name + '"><title>' + IM[id].name + '</title><path d="' + d + '" fill="' + col + '"/><text x="' + tx + '" y="' + (ty + 4) + '" text-anchor="middle">' + label + '</text></g>';
+  const on = S.inst.has(id), col = FAMHEX[fam(id)], inf = S.inf[id] && S.inf[id] !== 'clean' ? S.inf[id] : null;
+  return '<g class="seat' + (on ? '' : ' off') + '" data-id="' + id + '" tabindex="0" role="switch" aria-checked="' + on + '" aria-label="' + IM[id].name + '"><title>' + IM[id].name + '</title><path d="' + d + '" fill="' + col + '"/><text x="' + tx + '" y="' + (ty + (inf ? -1 : 4)) + '" text-anchor="middle">' + label + '</text>' + (inf ? '<text class="inf" x="' + tx + '" y="' + (ty + 11) + '" text-anchor="middle">' + INAME[inf] + '</text>' : '') + '</g>';
 }
 function fam(id) { const g = IM[id].grp; return g === 'str' ? 'str' : g === 'ww' ? 'ww' : g === 'br' ? 'br' : g === 'perc' ? 'perc' : 'kb'; }
 function initBfo() { $('bfoOn').onchange = e => { S.bfo = e.target.checked; store.set('bfo', S.bfo); if (!S.bfo) Y.EXTRAS.forEach(id => S.inst.delete(id)); else { const fe = Y.FEELINGS[S.feel]; if (fe) fe.bfo.forEach(id => S.inst.add(id)); } store.set('inst', [...S.inst]); drawHall(); }; }
@@ -2611,6 +2649,98 @@ function drawPresets() {
   P.forEach(([n, k]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.onclick = () => { if (k === 'berlin') { S.bfo = true; store.set('bfo', true); } S.inst = new Set(Y.PRESETS[k || S.era]); store.set('inst', [...S.inst]); drawHall(); }; $('presets').appendChild(b); });
 }
 
+/* who plays, the conductor, the occasion */
+const GROUPS = [['A clear head', ['clean']], ['Moods', ['happy', 'playful', 'proud', 'love', 'heartbroken', 'lonely', 'angry', 'hateful', 'stressed', 'nervous', 'sleepy', 'hungry']],
+  ['Daily habits', ['coffee', 'sugar', 'energy', 'nicotine', 'ibuprofen', 'phone', 'jetlag', 'hangover']], ['Party', ['alcohol', 'champagne', 'absinthe', 'cannabis', 'xtc', 'cocaine', 'meth', 'ketamine', 'opium']]];
+const INAME = {}; Y.INFL.forEach(i => INAME[i.id] = i.name); INAME.random = 'Random';
+const OCC = [
+  ['union', 'Union', 'Two lives tie together.', 'aria', 'wave', 'tender'],
+  ['farewell', 'Farewell', 'Saying goodbye, slowly letting go.', 'variations', 'fade', 'melancholy'],
+  ['newbegin', 'New beginning', 'A door opens, the light comes in.', 'overture', 'rise', 'joyful'],
+  ['power', 'Change of power', 'A new ruler walks in.', 'march', 'rise', 'solemn'],
+  ['victory', 'Victory', 'We won. Everybody knows it.', 'sonata', 'explode', 'heroic'],
+  ['fireworks', 'Fireworks', 'Sparks and bangs in the night sky.', 'overture', 'explode', 'joyful'],
+  ['water', 'Journey over water', 'Waves, wind and a far shore.', 'rondo', 'wave', 'dreamy'],
+  ['dance', 'Dance', 'Turning, holding, letting go.', 'waltz', 'wave', 'joyful'],
+  ['feast', 'Feast', 'Long tables, full glasses.', 'rondo', 'rise', 'joyful'],
+  ['hunger', 'Hunger', 'Empty plates and a growling want.', 'canon', 'explode', 'mysterious'],
+  ['chase', 'Chase', 'Someone runs, someone follows.', 'sonata', 'explode', 'stormy'],
+  ['ritual', 'Ritual', 'Old steps, repeated with care.', 'canon', 'rise', 'solemn'],
+  ['harvest', 'Harvest', 'The work is done, the fields are full.', 'minuet', 'wave', 'joyful'],
+  ['protest', 'Protest', 'Many voices, one demand.', 'march', 'collapse', 'stormy'],
+  ['storm', 'Storm', 'The sky breaks open.', 'overture', 'collapse', 'stormy'],
+  ['encounter', 'Encounter', 'Two strangers meet.', 'aria', 'wave', 'tender'],
+  ['awaken', 'Awakening', 'Eyes open, the world returns.', 'variations', 'rise', 'dreamy'],
+  ['justbecause', 'Just because', 'No reason. The machine decides.', null, null, null],
+];
+S.inf = store.get('inf', {}); if (S.inf === 'random') S.inf = {};
+S.cond = store.get('cond', 'clean'); S.occ = store.get('occ', null); S.arc = store.get('arc', null);
+S.seatMode = 'on'; S.pickSeat = null;
+function stateChips(cur, onPick, withRandom) {
+  const box = document.createElement('div'); box.style.cssText = 'display:flex;flex-direction:column;gap:10px';
+  const gs = withRandom ? [['Let chance decide', ['random']]].concat(GROUPS) : GROUPS;
+  gs.forEach(([h, ids]) => {
+    const g = document.createElement('div'); g.className = 'grp'; g.innerHTML = '<h4>' + h + '</h4>';
+    const c = document.createElement('div'); c.className = 'chips sm';
+    ids.forEach(id => { const b = document.createElement('button'); b.className = 'chip'; b.textContent = INAME[id]; b.setAttribute('aria-pressed', cur === id); b.onclick = () => onPick(id); c.appendChild(b); });
+    g.appendChild(c); box.appendChild(g);
+  });
+  return box;
+}
+function drawInfBox() {
+  const box = $('infBox'), id = S.pickSeat;
+  box.classList.toggle('hide', !(S.seatMode === 'inf' && id)); box.innerHTML = '';
+  if (S.seatMode !== 'inf' || !id) return;
+  const top = document.createElement('div'); top.className = 'go';
+  top.innerHTML = '<b class="serif" style="font-size:18px">' + IM[id].name + '</b><span class="grow"></span>';
+  const x = document.createElement('button'); x.className = 'btn'; x.textContent = 'Done'; x.onclick = () => { S.pickSeat = null; drawHall(); };
+  top.appendChild(x); box.appendChild(top);
+  box.appendChild(stateChips(S.inf[id] || 'clean', st => { if (st === 'clean') delete S.inf[id]; else S.inf[id] = st; store.set('inf', S.inf); drawHall(); }, true));
+}
+function initWho() {
+  [...$('seatMode').children].forEach(b => b.onclick = () => { S.seatMode = b.dataset.v; S.pickSeat = null; drawHall(); });
+  $('allClean').onclick = () => { S.inf = {}; store.set('inf', S.inf); drawHall(); };
+  $('allRandom').onclick = () => { S.inf = {}; S.inst.forEach(id => S.inf[id] = 'random'); store.set('inf', S.inf); drawHall(); };
+}
+function drawCond() {
+  const box = $('condBox'); box.innerHTML = '';
+  box.appendChild(stateChips(S.cond, st => { S.cond = st; store.set('cond', st); drawCond(); }, true));
+}
+function drawOcc() {
+  const box = $('occs'); box.innerHTML = '';
+  OCC.forEach(([id, name, blurb]) => {
+    const b = document.createElement('button'); b.className = 'occ'; b.setAttribute('aria-pressed', S.occ === id);
+    b.innerHTML = '<b>' + name + '</b><small>' + blurb + '</small>';
+    b.onclick = () => { if (S.occ === id) { S.occ = null; S.arc = null; store.set('occ', null); store.set('arc', null); drawOcc(); return; } pickOcc(id); };
+    box.appendChild(b);
+  });
+  drawEraChips();
+}
+function applyOcc(o) {
+  const fe = Y.FEELINGS[o[5]];
+  S.form = o[3]; S.feel = o[5]; S.arc = o[4]; S.mvFeels = null; S.tempo = null;
+  if (fe) { S.key = fe.keys[0]; $('key').value = S.key; }
+  store.set('form', S.form); store.set('feel', S.feel); store.set('key', S.key); store.set('arc', S.arc);
+}
+function pickOcc(id) {
+  S.occ = id; store.set('occ', id);
+  const o = OCC.find(q => q[0] === id);
+  if (o[3]) applyOcc(o); else { S.arc = null; store.set('arc', null); }
+  drawOcc(); drawFeels(); drawForms(); syncOpts();
+}
+function drawEraChips() {
+  const box = $('eraChips'); if (!box) return; box.innerHTML = '';
+  Object.entries(Y.ERAS).forEach(([id, e]) => { const b = document.createElement('button'); b.className = 'chip'; b.textContent = e.name; b.title = e.years; b.setAttribute('aria-pressed', S.era === id);
+    b.onclick = () => { S.era = id; store.set('era', id); S.inst = new Set(Y.PRESETS[id]); store.set('inst', [...S.inst]); drawEras(); drawHall(); drawSuite(); }; box.appendChild(b); });
+}
+function crewText(res) {
+  res = res.movements ? res.movements[0] : res; if (!res.influence && res.parts) res = res.parts[0];
+  const who = res.leader && res.leader.who ? (res.leader.who === 'conductor' ? 'the conductor' : 'the ' + IM[res.leader.who].name.toLowerCase()) : 'the conductor';
+  const on = Object.entries(res.influence || {}).filter(([id, st]) => st !== 'clean' && S.inst.has(id));
+  let h = 'Conductor: <b>' + INAME[res.conductor || 'clean'] + '</b>. The orchestra follows ' + who + '. Story: <b>' + (res.arc || 'free') + '</b>.';
+  h += on.length ? '<br>Under the influence: ' + on.map(([id, st]) => IM[id].name + ' <b>' + INAME[st] + '</b>').join(', ') + '.' : '<br>Every musician plays clean.';
+  return h;
+}
 /* compose */
 // room for a voice: the orchestra becomes an accompaniment for a singer (an aria): the high melody instruments rest,
 // the others fold under the voice and play softer
@@ -2630,12 +2760,13 @@ function compose() {
   if (S.form === 'suite' && !S.chain.length) { $('status').textContent = 'Add at least one part to your suite first.'; return; }
   if (!S.keep && !S.first) { S.seed = newSeed(); $('seed').value = S.seed; }
   if (S.form === 'suite') { S.chain.forEach(c => { if (!c.seed || (!c.lock && !S.keep && !S.firstSuite)) c.seed = newSeed(); }); S.firstSuite = false; saveChain(); }
+  if (S.occ === 'justbecause') { const pool = OCC.filter(q => q[3]); applyOcc(pool[Math.floor(Math.random() * pool.length)]); S.arc = null; drawFeels(); drawForms(); syncOpts(); }
   S.first = false;
   $('status').textContent = 'Composing…'; $('compose').disabled = true;
   setTimeout(() => {
     try {
       const t0 = performance.now();
-      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed, feel: c.feel })), feel: S.feel, mvFeels: S.form === 'symphony' ? S.mvFeels : null, solo: S.solo === 'auto' ? null : S.solo });
+      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed, feel: c.feel })), feel: S.feel, mvFeels: S.form === 'symphony' ? S.mvFeels : null, solo: S.solo === 'auto' ? null : S.solo, influence: S.inf, conductor: S.cond, arc: S.arc });
       if (S.voice) forVoice(RES);
       MV = 0;
       $('status').textContent = 'Done in ' + Math.round(performance.now() - t0) + ' ms. Seed ' + S.seed + '.';
@@ -2650,7 +2781,9 @@ function secs(m, ticks) { return ticks / 480 * 60 / m.tempo; }
 function fmt(s) { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
 function fileBase(m) { return ('Divine Symphony ' + m.title + ' ' + m.tempo + ' bpm seed ' + S.seed).replace(/♭/g, 'b').replace(/♯/g, ' sharp').replace(/[^\w .-]+/g, '').replace(/\s+/g, ' ').trim(); }
 function showResult() {
-  $('result').classList.add('on');
+  $('result').classList.add('on'); $('s4').style.display = '';
+  let cw = $('crew'); if (!cw) { cw = document.createElement('div'); cw.id = 'crew'; cw.className = 'crew'; $('result').insertBefore(cw, $('result').firstChild); }
+  cw.innerHTML = crewText(RES);
   const tabs = $('mvTabs'); tabs.innerHTML = '';
   if (RES.movements.length > 1) RES.movements.forEach((m, i) => { const b = document.createElement('button'); b.className = 'btn'; b.innerHTML = (Y.FEELINGS[m.feel] ? fic(m.feel) : '') + m.title.replace('Symphony ', ''); b.setAttribute('aria-pressed', i === MV); if (i === MV) b.style.borderColor = 'var(--gold)'; b.onclick = () => { stop(); MV = i; showResult(); }; tabs.appendChild(b); });
   const m = cur();
@@ -2807,7 +2940,7 @@ $('smX').onclick = closeSM;
 $('sm').onclick = e => { if (e.target.id === 'sm') closeSM(); };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSM(); });
 $('smGo').onclick = () => { closeSM(); surprise({ type: SM.type, main: SM.main, mix: SM.mix.slice() }); };
-drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); initBfo(); drawHall();
+drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); initBfo(); initWho(); drawHall(); drawCond(); drawOcc();
 })();
 </script>
 <script>(function(){try{if(!/\.github\.io$/.test(location.hostname))return;var q=new URLSearchParams({p:location.pathname,t:document.title,s:screen.width+','+screen.height,rnd:Math.random().toString(36).slice(2)});if(document.referrer&&document.referrer.indexOf(location.hostname)<0)q.set('r',document.referrer.split('?')[0]);var u='https://divine-monday.goatcounter.com/count?'+q;if(!(navigator.sendBeacon&&navigator.sendBeacon(u)))new Image().src=u;}catch(e){}})();</script>
