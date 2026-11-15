@@ -62,7 +62,7 @@ canvas.rip{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .gc{text-align:left;padding:16px;border-radius:16px;border:1px solid var(--line);background:var(--bg);font-size:16px;font-weight:700}
 .gc small{display:block;font-weight:500;font-size:13px;color:var(--soft);margin-top:4px}
 .barplay{position:absolute;right:-6px;top:-8px;width:26px;height:26px;border-radius:50%;border:2px solid var(--card);background:var(--ink);color:var(--onink);font-size:10px;line-height:1;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:2}.barplay:hover{transform:scale(1.1)}
-.gc:hover{border-color:var(--ink)}.gc.diy{border:1.5px dashed var(--accent);color:var(--accent)}.gc.diy small{color:var(--soft)}.shl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin-right:6px;vertical-align:middle}
+.gc:hover{border-color:var(--ink)}.gc.own{border:1.5px solid var(--ink)}.gc.diy{border:1.5px dashed var(--accent);color:var(--accent)}.gc.diy small{color:var(--soft)}.shl{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--soft);margin-right:6px;vertical-align:middle}
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:var(--onink);border-radius:14px;padding:12px 16px;display:flex;gap:12px;align-items:center;font-size:14px;z-index:40;max-width:92vw}
 .toast button{border:none;background:var(--onink);color:var(--ink);border-radius:8px;height:32px;padding:0 10px;font-weight:700}
 .spin{cursor:pointer;border:none;background:transparent;padding:0}
@@ -4048,8 +4048,8 @@ function makeSong(genre, opts) {
     for (const p of PARTS) { sg.parts[p].mode = 'yours'; for (const ty of types) D.setUser(sg, p, ty, D.emptyMat(p, sg)); }
   }
   sg.raw = VARIATION.gentle; sg.studioVar = 'gentle'; for (const p of PARTS) { const k = store.get(KP + 'plug-' + p, null); if (k && D.pluginsFor(p).includes(k)) sg.parts[p].plugin = k; }
-  st.song = sg; st.hist = []; st.fut = []; st.sec = 0;
-  count((opts.diy ? 'diy/' : opts.sg ? 'surprise/' : 'new/') + (opts.noShadows ? 'none' : genre)); save(); closeStart(); closeSurprise(); render();
+  if (!opts.own) st.guideBuf = null; st.song = sg; st.hist = []; st.fut = []; st.sec = 0;
+  count((opts.own ? 'own/' : opts.diy ? 'diy/' : opts.sg ? 'surprise/' : 'new/') + (opts.noShadows ? 'none' : genre)); save(); closeStart(); closeSurprise(); render();
 }
 function newSongSame() { const sg = song(); const parts = PARTS.filter((p) => sg.parts[p].mode === 'machine'); if (!parts.length) { toast('Every part is DIY or off, so the dice leave them as they are.'); return; } change(() => { sg.beatGen = 2; sg.curVersion = null; for (const p of parts) sg.parts[p].seed = D.newSeed(); }); toast('New ideas for every Machine part. DIY parts stayed.', { label: 'Undo', fn: undo }); }
 function newStructure() { change(() => { song().sections = D.randomStructure(song(), D.newSeed()); st.sec = 0; }); toast('New structure: ' + song().sections.length + ' sections, ' + D.totalBars(song()) + ' bars.', { label: 'Undo', fn: undo }); }
@@ -4204,7 +4204,17 @@ function scheduleBar(sg, bar, t0) {
   for (const p of PARTS) { if (p !== hs && (sg.parts[p].mode === 'off' || st.mode === 'get' && st.solo && st.solo !== p)) continue; let notes; try { notes = p === hs ? shadowNotes(p, bar) : R.bar(p, bar); } catch (e) { console.error(e); continue; } let lastT = -1;
     for (const n of notes) { const t = t0 + Math.max(0, n.t) / tps; if (t < AU.ctx.currentTime) continue; if (p === 'beat') drumLane(n.lane, t, n.v); else tone(p, n.p, t, n.d / tps, n.v);
       if ((p !== 'beat' || (laneDefs()[n.lane] || { fold: 6 }).fold !== 6) && (p !== 'chords' && p !== 'pad' || Math.abs(t - lastT) > 0.02)) addRipple(p, t, n.v, n.lane); lastT = t; } }
+  guideBar(sg, bar, t0);
 }
+// your own voice or melody plays along with the song, bar by bar: a WAV as itself, a MIDI melody as a soft plain tone
+function guideBar(sg, bar, t0) { const G = sg.guide; if (!G || st.guideOff || !AU.ctx || st.mode === 'get' && st.solo) return; const ctx = AU.ctx, len = barSec(sg);
+  if (G.kind === 'wav') { const b = st.guideBuf; if (!b || G.bpm !== sg.bpm) return; const off = bar * len; if (off >= b.duration) return;
+    const src = ctx.createBufferSource(), g = ctx.createGain(); src.buffer = b; g.gain.value = 0.9; src.connect(g); g.connect(AU.master || ctx.destination);
+    const at = Math.max(t0, ctx.currentTime), skip = at - t0; src.start(at, off + skip, Math.max(0.01, len - skip)); track(src, at + len); return; }
+  const tps = sg.bpm / 60 * D.PPQ, BT = D.barTicks(sg);
+  for (const n of G.notes || []) { if (n.t < bar * BT || n.t >= (bar + 1) * BT) continue; const t = t0 + (n.t - bar * BT) / tps, d = Math.max(0.06, n.d / tps); if (t < ctx.currentTime) continue;
+    const o = ctx.createOscillator(), g = ctx.createGain(); o.type = 'triangle'; o.frequency.value = mtof(n.p); o.connect(g); g.connect(AU.master || ctx.destination);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.16, t + 0.02); g.gain.setValueAtTime(0.16, t + d); g.gain.linearRampToValueAtTime(0.0001, t + d + 0.08); o.start(t); o.stop(t + d + 0.1); track(o, t + d + 0.1); } }
 function tick() { const sg = song(), ctx = AU.ctx, tot = D.totalBars(sg); while (AU.nextT < ctx.currentTime + 0.18) { scheduleBar(sg, AU.nextBar, AU.nextT); AU.queue.push({ bar: AU.nextBar, t: AU.nextT, len: barSec(sg) }); AU.nextT += barSec(sg); AU.nextBar = st.mode === 'edit' && AU.wholeSong ? (AU.nextBar + 1) % tot : st.mode === 'edit' && AU.loopBar != null ? D.sectionStart(sg, st.sec) + AU.loopBar : st.mode === 'edit' ? (AU.nextBar + 1 >= D.sectionStart(sg, st.sec) + sg.sections[st.sec].bars ? D.sectionStart(sg, st.sec) : AU.nextBar + 1) : (AU.nextBar + 1) % tot; } AU.queue = AU.queue.filter((q) => q.t + q.len > ctx.currentTime - 1); AU.nodes = AU.nodes.filter((n) => n.end > ctx.currentTime); }
 function frame() {
   if (!AU.playing) return; const now = AU.ctx.currentTime; let cur = null; for (const q of AU.queue) if (q.t <= now) cur = q;
@@ -4784,6 +4794,76 @@ function openMelodyMidi() {
     toast('Your melody from ' + f.name + ' is the melody of this song now (' + Math.round(sg.bpm) + ' bpm). The machine plays around it.'); } });
   document.body.append(inp); inp.click();
 }
+// start from your own file: a MIDI melody or a WAV of your voice. The whole file counts, silence too: where you sing the song holds back
+// (verse, chorus), where you are quiet it opens up (intro, drop, outro). The machine makes every part; you take what you need.
+function openOwnFile() {
+  const inp = h('input', { type: 'file', accept: '.mid,.midi,audio/midi,.wav,.mp3,.aif,.aiff,.flac,.ogg,.m4a,audio/*', style: 'display:none', onchange: () => { const f = inp.files[0]; inp.remove(); if (f) readOwnFile(f); } });
+  document.body.append(inp); inp.click();
+}
+function ownSheet(kids) { closeStart(); document.body.append(h('div', { class: 'start', id: 'start' }, h('div', { class: 'box', role: 'dialog', 'aria-label': 'Your own file' }, kids))); }
+async function readOwnFile(f) {
+  const isMidi = /\.midi?$/i.test(f.name) || /midi/.test(f.type);
+  ownSheet([h('h1', { style: 'margin:0;font-size:26px' }, 'Listening to ' + f.name), h('p', { style: 'color:var(--soft)' }, isMidi ? 'Reading the notes.' : 'Listening to the whole file, silence too. A long file takes a few seconds.')]);
+  await new Promise((r) => setTimeout(r, 40));
+  try {
+    if (isMidi) {
+      const mid = D.parseMidi(await f.arrayBuffer());
+      const tr = mid.tracks.filter((t) => t.notes.length && !t.notes.every((n) => n.ch === 9)); if (!tr.length) throw new Error(f.name + ' has no melody notes.');
+      const med = (t) => { const a = t.notes.map((n) => n.p).sort((x, y) => x - y); return a[a.length >> 1]; };
+      const m = tr.find((t) => /melody|vocal|voice|lead|sing/i.test(t.name || '') && t.notes.length >= 8) || tr.reduce((a, t) => (t.notes.length >= 8 && med(t) > med(a) ? t : a), tr[0]);
+      const notes = m.notes.filter((n) => n.ch !== 9).map((n) => ({ t: n.t, d: n.d, p: n.p, v: n.v || 96 }));
+      ownTempo({ kind: 'midi', name: f.name, notes, bpm: mid.bpm ? Math.round(mid.bpm * 10) / 10 : 0, key: D.detectKey(notes) });
+    } else {
+      const ctx = ensureAudio(); if (!ctx) throw new Error('This browser cannot play audio.');
+      const buf = await ctx.decodeAudioData(await f.arrayBuffer()), n = buf.length, x = new Float32Array(n);
+      for (let c = 0; c < buf.numberOfChannels; c++) { const d = buf.getChannelData(c); for (let i = 0; i < n; i++) x[i] += d[i] / buf.numberOfChannels; }
+      const res = D.analyzeAudio(x, buf.sampleRate, 'melody');
+      ownTempo({ kind: 'wav', name: f.name, buf, x, sr: buf.sampleRate, notes: res.notes, bpm: res.bpm, key: res.notes.length >= 6 ? D.detectKey(res.notes) : null });
+    }
+  } catch (e) { ownSheet([h('h1', { style: 'margin:0;font-size:26px' }, 'That did not work'), h('p', { style: 'color:var(--soft)' }, (e && e.message) || 'This file could not be read.'), h('button', { class: 'ib', onclick: openStart }, '← Back')]); }
+}
+// step two: the tempo decides where the bars fall, so it must be right; the file's own tempo or what the machine heard is filled in
+function ownTempo(o) {
+  const inp = h('input', { type: 'number', min: 50, max: 220, step: 0.1, value: o.bpm || 120, style: 'width:110px;font-size:22px;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)', 'aria-label': 'Tempo in bpm' });
+  ownSheet([h('h1', { style: 'margin:0;font-size:26px' }, 'What is the tempo of your song?'),
+    h('p', { style: 'color:var(--soft);margin:8px 0 14px' }, o.kind === 'midi' ? (o.bpm ? 'This is the tempo in your MIDI file.' : 'Your MIDI file has no tempo. Type the tempo of your song.') : 'The machine heard about ' + (o.bpm || 120) + ' bpm. Type the exact tempo of your song if you know it, so the bars land right. Bar 1 is the very start of your file.'),
+    h('div', { style: 'display:flex;gap:10px;align-items:center;flex-wrap:wrap' }, inp, h('span', null, 'bpm'),
+      h('button', { class: 'big', id: 'own_go', style: 'width:auto;padding:0 26px', onclick: () => { const b = Math.round(D.clamp(+inp.value || 120, 50, 220) * 10) / 10; ownBuild(o, b); } }, 'Make my song')),
+    h('button', { class: 'ib', style: 'margin-top:14px', onclick: openStart }, '← Back')]);
+  setTimeout(() => inp.focus(), 30);
+}
+// sing or quiet, bar by bar; one quiet bar between sung bars is a breath and stays sung
+function ownBars(o, bpm, BT) {
+  const barS = BT / D.PPQ * 60 / bpm;
+  let act;
+  if (o.kind === 'wav') { const per = Math.round(barS * o.sr), nb = Math.max(1, Math.ceil(o.x.length / per)), rms = [];
+    for (let b = 0; b < nb; b++) { let e = 0, c = 0; for (let i = b * per; i < Math.min(o.x.length, (b + 1) * per); i += 4) { e += o.x[i] * o.x[i]; c++; } rms.push(Math.sqrt(e / (c || 1))); }
+    const mx = Math.max(...rms, 1e-9); act = rms.map((r) => r > mx * 0.12 && r > 0.002); }
+  else { const end = Math.max(...o.notes.map((n) => n.t + n.d)), nb = Math.max(1, Math.ceil(end / BT)); act = new Array(nb).fill(false); for (const n of o.notes) for (let b = Math.floor(n.t / BT); b <= Math.floor((n.t + n.d - 1) / BT) && b < nb; b++) act[b] = true; }
+  for (let b = 1; b < act.length - 1; b++) if (!act[b] && act[b - 1] && act[b + 1]) act[b] = true;
+  return act;
+}
+function ownSections(act) {
+  const runs = []; act.forEach((on, b) => { const r = runs[runs.length - 1]; if (r && r.on === on) r.b = b + 1; else runs.push({ on, a: b, b: b + 1 }); });
+  const out = [], id = () => 's' + D.newSeed(); let sung = 0;
+  runs.forEach((r) => { const len = r.b - r.a;
+    if (!r.on) out.push({ id: id(), type: r.a === 0 ? 'intro' : r.b === act.length ? 'outro' : len >= 4 ? 'drop' : len <= 2 ? 'fill' : 'build', bars: len });
+    else if (len >= 16) { const v = Math.floor(len / 4) * 2; out.push({ id: id(), type: 'verse', bars: v }, { id: id(), type: 'chorus', bars: len - v }); sung += 2; }
+    else { out.push({ id: id(), type: sung % 2 ? 'chorus' : 'verse', bars: len }); sung++; } });
+  return out;
+}
+function ownGenre(bpm) { let best = null, bd = 1e9; for (const g of D.GENRE_ALL) { const G = D.GENRES[g]; if (!G || !G.bpm) continue; const [a, b] = G.bpm, d = bpm < a ? a - bpm : bpm > b ? bpm - b : Math.abs(bpm - (a + b) / 2) / 100; if (d < bd) { bd = d; best = g; } } return best || D.GENRE_ALL[0]; }
+function ownBuild(o, bpm) {
+  const genre = ownGenre(bpm), sg = D.freshSong(genre, { name: o.name.replace(/\.[^.]+$/, '').replace(/[^\w ]+/g, ' ').trim().slice(0, 30) || 'Untitled' });
+  sg.bpm = bpm; sg.bpmAuto = false; if (o.key) { sg.key = { root: o.key.root, scale: o.key.scale }; sg.keyAuto = false; }
+  const act = ownBars(o, bpm, D.barTicks(sg)); if (!act.some(Boolean)) { ownSheet([h('h1', { style: 'margin:0;font-size:26px' }, 'Only silence'), h('p', { style: 'color:var(--soft)' }, 'The machine heard no voice or notes in ' + o.name + '.'), h('button', { class: 'ib', onclick: openStart }, '← Back')]); return; }
+  sg.sections = ownSections(act); if (!GROOVE) sg.voice = true;
+  for (const p of PARTS) if (sg.parts[p].mode === 'off' && p !== 'beat') sg.parts[p].mode = 'machine';
+  sg.guide = { kind: o.kind, name: o.name, bpm, bars: act.map((v) => (v ? 1 : 0)), notes: o.kind === 'midi' ? o.notes : null };
+  st.guideBuf = o.kind === 'wav' ? o.buf : null; st.guideOff = false;
+  makeSong(genre, { sg, own: true }); st.mode = 'get'; render();
+  toast('Your song follows ' + o.name + ': ' + Math.round(bpm) + ' bpm, ' + keyName(sg.key) + ', ' + D.GENRES[genre].name + '. Every part is ready; take the ones you need.');
+}
 function openSongFile() { const inp = h('input', { type: 'file', accept: '.json,application/json', style: 'display:none', onchange: async () => { const f = inp.files[0]; if (!f) return; try { const o = JSON.parse(await f.text()), sg = o.song || o; if (!sg.sections || !sg.parts) throw new Error('not a song'); D.ensureTypes && D.ensureTypes(sg); stopAll(); st.song = sg; st.hist = []; st.fut = []; st.sec = 0; st.mode = 'overview'; save(); closeStart(); render(); toast('Opened ' + f.name); } catch (e) { toast('That file is not a Divine song.'); } } }); document.body.append(inp); inp.click(); setTimeout(() => inp.remove(), 60000); }
 
 /* ---------- screen D: get it, with a preview ---------- */
@@ -4813,6 +4893,9 @@ function renderGet() {
         off ? null : h('button', { class: 'ib', 'aria-label': 'Listen to ' + PART_NAMES[p] + ' alone', onclick: () => soloPlay(p) }, AU.playing && st.solo === p ? '■' : '▶'),
         off ? null : h('span', { style: 'display:inline-flex;gap:6px' }, versionsOf(P.plugin, p).map((v) => h('button', { class: 'ib', style: 'font-size:13px', onclick: () => getOne(p, v) }, '↓ ' + (v || 'MIDI'))))),
       w ? h('div', { class: 'warn' }, h('span', null, w), h('button', { onclick: () => { setMode(p, 'machine'); renderGet(); } }, 'Back to Machine')) : null); });
+  const G = sg.guide, voiceRow = G ? h('div', { class: 'part' }, h('div', { class: 'prow' }, h('span', { class: 'dot', style: 'background:var(--ink)' }), h('span', { class: 'nm', style: 'flex:0 0 90px' }, 'Your voice'),
+      (() => { const n = Math.min(tot, PHONE() ? 48 : 96), cells = []; for (let i = 0; i < n; i++) { const b0 = Math.floor(i * tot / n), b1 = Math.max(b0 + 1, Math.floor((i + 1) * tot / n)); let on = false; for (let b = b0; b < b1; b++) if (G.bars[b]) on = true; cells.push(h('span', { style: 'flex:1;height:18px;min-width:0;border-radius:2px;background:' + (on ? 'var(--ink)' : 'var(--track)') })); } return h('div', { style: 'flex:1;display:flex;gap:2px;min-width:0', title: 'Where you sing, from ' + G.name }, cells); })(),
+      h('button', { class: 'ib', 'aria-pressed': String(!st.guideOff), title: G.kind === 'wav' && !st.guideBuf ? 'Load your file again to hear it' : 'Hear your voice with the song', onclick: () => { st.guideOff = !st.guideOff; renderGet(); } }, st.guideOff ? 'Voice off' : G.kind === 'wav' && (!st.guideBuf || G.bpm !== sg.bpm) ? 'Voice: load again' : 'Voice on'))) : null;
   const n = deliverList(sg).length + 1;
   wrap.append(h('div', { class: 'card', style: 'width:100%;display:flex;align-items:center;gap:14px;flex-wrap:wrap' },
       h('button', { class: 'ib', onclick: () => { stopAll(); st.solo = null; st.mode = 'overview'; render(); } }, '← Back'),
@@ -4820,7 +4903,7 @@ function renderGet() {
       h('button', { class: 'ib', style: 'height:56px;padding:0 22px;font-weight:700', 'aria-label': AU.playing && !st.solo ? 'Stop' : 'Play all parts', onclick: playAll }, AU.playing && !st.solo ? '■ Stop' : '▶ Play all'),
       GROOVE ? null : h('button', { class: 'ib', style: 'height:56px;padding:0 18px;' + (sg.voice ? 'background:var(--ink);color:var(--onink);border-color:var(--ink)' : ''), 'aria-pressed': String(!!sg.voice), title: 'Leave room for a singer: melody in intro, drops and breaks, answers in the breaths, a low and soft harmony', onclick: () => { toggleVoice(); renderGet(); } }, 'Room for a voice'),
       h('button', { class: 'big', style: 'width:auto;padding:0 26px', onclick: getAll }, '↓ All ' + n + ' files (one zip)')),
-    h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ Play all hears everything, ▶ on a part listens alone'), rows),
+    h('div', { style: 'width:100%;display:flex;flex-direction:column;gap:10px' }, h('div', { class: 'lab', style: 'padding:0 4px' }, 'Your files · the strip shows where each part plays · tap it to edit that bar · ▶ Play all hears everything, ▶ on a part listens alone'), voiceRow, rows),
     h('div', { class: 'card', style: 'width:100%;font-size:13px;color:var(--soft)' }, GROOVE ? 'Plus a Structure file with every section as a marker. Pick your drum plugin and the hits land on the right keys of that plugin.' : 'Plus a Structure file with every section as a marker. Bass, chords and melody come as plain MIDI unless you pick a plugin; then they land on the right keys of that plugin. UJAM plugins with phrases come twice: Player plays its own phrases on your chords, Instrument plays every note as written.'));
 }
 
@@ -4889,6 +4972,7 @@ function openStart() {
     h('h1', { style: 'margin:0;font-size:28px' }, APP_NAME),
     h('p', { style: 'margin:6px 0 0;color:var(--soft)' }, GROOVE ? 'Pick a genre. The machine makes a whole beat; you shape it.' : 'Pick a genre. The machine makes a whole song; you shape it.'),
     song() ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: closeStart }, '← Back to my song') : last && last.song ? h('button', { class: 'ib', style: 'margin-top:12px', onclick: () => { st.song = last.song; D.ensureTypes && D.ensureTypes(st.song); st.sec = last.sec || 0; clampSec(); closeStart(); render(); } }, 'Continue where you left off') : null,
+    h('button', { class: 'gc own', id: 'g_own', style: 'margin-top:14px;width:100%', onclick: openOwnFile }, 'Start from your own file: MIDI or WAV', h('small', null, GROOVE ? 'Your voice or melody in; the machine makes a whole beat around it. Where you sing it holds back, where you are quiet it opens up.' : 'Your voice or melody in; the machine makes the beat and every tonal part around it. Where you sing it holds back, where you are quiet it opens up.')),
     h('button', { class: 'ib', id: 'g_surprise', style: 'margin-top:12px;font-size:17px;padding:10px 18px;font-weight:700', onclick: openSurprise }, '⚄ Surprise me'),
     h('div', { class: 'gcards' }, [h('button', { class: 'gc diy', id: 'g_diy', onclick: openShadowPick }, 'DIY: start empty', h('small', null, GROOVE ? 'An empty beat; you tap it in' : 'Every part empty; you make it'))].concat(D.GENRE_ALL.map((g) => { const G = D.GENRES[g]; return h('button', { class: 'gc', id: 'g_' + g, onclick: () => makeSong(g) }, G.name, h('small', null, (G.bpm ? G.bpm[0] + ' to ' + G.bpm[1] + ' bpm' : ''))); }))))));
 }
