@@ -2950,6 +2950,7 @@ E.FLAVOR = {
     if (part === 'chords') { const v = E.ext(c, 52, 68); if (!v) return notes; if (!big && lb % 2) return []; return (big ? [0, 10] : [0]).flatMap((s) => v.slice(0, 3).map((p) => ({ t: s * ST, d: 2 * ST - 10, p, v: big ? 70 : 60 }))); } // a sample stab, not a band
     if (part === 'pad') return big ? notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.6) })) : [];
     if (part === 'answer') return big ? notes.map((n) => Object.assign({}, n, { v: Math.round(n.v * 0.8) })) : []; // the verse belongs to the rapper
+    if (part === 'bass') return notes.map((n) => { let p = n.p; while (p < 36) p += 12; while (p > 48) p -= 12; return Object.assign({}, n, { p, d: Math.min(n.d, 2 * ST - 10) }); }); // a punchy bass in the low mids, no rumble: the voice needs the room
     if (part === 'melody') { const r = rng(hash(song.seed, 'lean', pk, part)); const loop = notes.filter((n) => n.t < 8 * ST); // a short riff that loops, like the sample in Gravel Pit
       const two = loop.concat(loop.map((n) => Object.assign({}, n, { t: n.t + 8 * ST }))); return two.map((n) => { const lean = Math.round(n.t / ST) % 4 === 0 && n.t > 0 && r.chance(0.3); return Object.assign({}, n, { t: n.t + (lean ? ST : 0), d: Math.max(ST - 10, Math.min(n.d, 3 * ST) - (lean ? ST : 0)), v: Math.round(n.v * (big ? 0.85 : 0.7)) }); }); }
     return notes; }
@@ -2958,7 +2959,8 @@ E.FLAVOR = {
 E.flavorTime = function (song, part, notes, sec, inBar) {
   const g = song.genre; if (!song.arr || !notes.length || !(g === 'hiphop' || g === 'house' || g === 'breakbeat')) return notes; const ST = E.STEP;
   if (g === 'breakbeat') return part === 'beat' ? notes.map((n) => (n.lane === SN && n.v >= 80 ? Object.assign({}, n, { v: Math.min(127, n.v + 14) }) : n)) : notes;
-  const sw = g === 'hiphop' ? 26 : 9, pk = E.phraseKey(inBar);
+  const sw = g === 'hiphop' ? 36 : 9, pk = E.phraseKey(inBar); // hiphop: the late sixteenth of a real boom bap (about 65 to 35)
+  if (g === 'hiphop' && part === 'beat') { const r = rng(hash(song.seed, 'hhair', sec.type, pk)); notes = notes.filter((n) => !(n.lane === HH && Math.round(n.t / ST) % 2 === 1 && r.chance(0.7))).map((n) => (n.lane === HH || n.lane === OH ? Object.assign({}, n, { v: Math.round(n.v * 0.72) }) : n)); } // fewer, softer hats: the air is for the words
   return notes.map((n) => { const st = Math.round(n.t / ST); let t = n.t + (st % 2 === 1 ? sw : 0);
     if (g === 'hiphop') { if (part === 'beat' && n.lane === SN && n.v >= 70) t += 16; if (part === 'bass') t += 12; if (part === 'beat' && n.lane === K && pk === 'B' && st === 10) t += 40; }
     return t === n.t ? n : Object.assign({}, n, { t }); });
