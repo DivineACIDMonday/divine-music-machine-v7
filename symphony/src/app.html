@@ -756,13 +756,21 @@ $('dlZip').onclick = () => {
 let AC = null, master = null, verb = null, timer = null, playing = false, t0 = 0, queue = [], qi = 0, raf = 0;
 function chain(ctx) {
   const mst = ctx.createGain(); mst.gain.value = .5;
-  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4;
-  const vb = ctx.createConvolver();
-  const len = ctx.sampleRate * 2.6, ir = ctx.createBuffer(2, len, ctx.sampleRate);
-  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  // a gentle glue, no squashing: the orchestra keeps its loud and soft
+  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -8; comp.ratio.value = 2; comp.attack.value = .03; comp.release.value = .4;
+  // less cardboard: a little less low middle, a little more air
+  const box = ctx.createBiquadFilter(); box.type = 'peaking'; box.frequency.value = 380; box.Q.value = .8; box.gain.value = -3.5;
+  const air = ctx.createBiquadFilter(); air.type = 'highshelf'; air.frequency.value = 7000; air.gain.value = 2.5;
+  // a concert hall: a short wait before the walls answer, a tail that darkens as it fades, left and right different
+  const vb = ctx.createConvolver(), SR = ctx.sampleRate, pre = Math.floor(SR * .028);
+  const len = Math.floor(SR * 3.4), ir = ctx.createBuffer(2, len, SR);
+  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); let lp = 0;
+    for (let i = pre; i < len; i++) { const t = (i - pre) / SR, damp = .15 + .8 * Math.min(1, t / 2.2); lp += ((Math.random() * 2 - 1) - lp) * (1 - damp);
+      const early = t < .08 && Math.random() < .004 ? (Math.random() * 2 - 1) * 2.5 : 0;
+      d[i] = (lp * 1.6 + early) * Math.exp(-t / .62); } }
   vb.buffer = ir;
-  const wet = ctx.createGain(); wet.gain.value = .32;
-  mst.connect(comp); mst.connect(vb); vb.connect(wet); wet.connect(comp); comp.connect(ctx.destination);
+  const wet = ctx.createGain(); wet.gain.value = .42;
+  mst.connect(box); box.connect(air); air.connect(comp); mst.connect(vb); vb.connect(wet); wet.connect(comp); comp.connect(ctx.destination);
   return mst;
 }
 function setupAudio() {
@@ -851,7 +859,7 @@ const ORC = (() => {
     const src = AC.createBufferSource(), lp = AC.createBiquadFilter(), gn = AC.createGain();
     src.buffer = b; if (g !== 'perc') src.playbackRate.value = Math.pow(2, (n.m - r) / 12);
     const vel = n.v / 127, pk = GAIN[g] * Math.pow(vel, 1.5) * 2.4;
-    lp.type = 'lowpass'; lp.frequency.value = 1800 + vel * vel * 16000; lp.Q.value = .5;
+    lp.type = 'lowpass'; lp.frequency.value = 4500 + vel * 15000; lp.Q.value = .5;
     const ring = a === 'hit' || a === 'pizz' || a === 'short' || g === 'perc';
     const dur = Math.max(.05, n.d), rel = g === 'pno' ? .35 : ring ? .25 : (/^(vln|svn|vla|vc|cb)$/.test(g) ? .32 : .18);
     const end = ring && g !== 'pno' ? when + b.duration / src.playbackRate.value : when + dur + rel;
