@@ -1638,7 +1638,7 @@ function orchPlan(c, ph) {
   if (lead !== 'bass') addB('vc', [0, -12, 12]); else { addB('vc', [0, 12, -12]); if (I > .4) addB('bsn', [0, 12, -12]); }
   if ((I >= .4 || era === 'baroque') && !choir) addB('cb', [-12, 0]);
   if (era === 'baroque' || I >= .55) addB('bsn', [0, -12, 12]);
-  if (I >= .86 && era !== 'baroque') { addB('tba', [-12, 0]); addB('btbn', [0, -12]); }
+  if (I >= .86) { addB('tba', [-12, 0]); addB('btbn', [0, -12]); }
   if (I >= .55 && era !== 'baroque') addB('cbsn', [-12, 0, -24]);
   if (ph.ctrLine) { const cid = (ph.imit ? ['vc', 'bsn', 'vla', 'hn'] : ['hn', 'vc', 'vla', 'bsn']).find(id => has(id) && !use.has(id) && (id !== 'vc' || has('cb'))); if (cid) { if (cid === 'vc') P.bass = P.bass.filter(b => b.id !== 'vc'); P.ctr.push({ id: cid, pref: [0, -12, 12] }); use.add(cid); } }
   const tex = ph.tex;
@@ -1678,7 +1678,7 @@ function polyPlan(c, ph) {
   if (I >= .55) take(v1, [['ob', [0, -12]], ['fl', [12, 0]]]);
   if (I >= .65) { take(v2, [['cl', [0, -12]], ['ob', [0, -12]]]); take(v3, [['hn', [0, -12]], ['cl', [0, 12]]]); }
   if (I >= .6) take(vb, [['cbsn', [-12, 0]]]);
-  if (I >= .8) { take(v1, [['fl', [12, 0]]]); if (era !== 'baroque') take(vb, [['tba', [-12, 0]], ['btbn', [0, -12]]]); take(v3, [['tbn', [0, -12]]]); }
+  if (I >= .8) { take(v1, [['fl', [12, 0]]]); take(vb, [['tba', [-12, 0]], ['btbn', [0, -12]]]); take(v3, [['tbn', [0, -12]]]); }
   return { vm, poly: 1, timp: E.has('timp') && (I >= .8 || ph.final), tpt: E.has('tpt') && (I >= .85 || ph.final) && !used.has('tpt') };
 }
 function chooseShift(notes, inst, pref) {
@@ -1971,11 +1971,33 @@ function perform(c, parts) {
   const LEAVE = ['timp', 'tba', 'btbn', 'tbn', 'tpt', 'picc', 'hn', 'bsn', 'cl', 'ob', 'fl', 'pno', 'cb', 'vla', 'vc'];
   const plays = (ph, inst, role) => {
     if (ph.leave && LEAVE.indexOf(inst.id) >= 0 && LEAVE.indexOf(inst.id) < Math.round(ph.leave * LEAVE.length)) return false;
+    if (role === 'guest') return true;
     const d = ph.dyn; if (role === 'mel') return true;
     if (d < .24) return role === 'bass' && (inst.id === 'vc' || inst.id === 'cb' || inst.id === 'bsn' || inst.id === 'pno');
     if (d < .45) return !['brass', 'timp', 'dbl', 'col'].includes(role) && !['tpt', 'tbn', 'btbn', 'tba', 'timp', 'picc'].includes(inst.id);
     if (d < .68) return role !== 'timp' || ph.dyn > .6;
     return true; };
+  // every seat you switched on gets to play: an instrument the arrangement left silent joins the loudest phrases in its own way
+  (() => {
+    const loud = c.phrases.slice().sort((a, b) => b.dyn - a.dyn), top = new Set(loud.slice(0, Math.max(1, Math.ceil(loud.length * .4))).map(ph => ph.idx));
+    const src = (ids, role) => { for (const id of ids) { const L = (parts[id] || []).filter(n => n.role === role && top.has(n.ph.idx)); if (L.length) return L; } return []; };
+    const MEL = src(['vln1', 'svn', 'fl', 'ob', 'cl', 'vln2', 'tpt', 'hn', 'pno'], 'mel'), BAS = src(['cb', 'vc', 'bsn', 'pno', 'tba'], 'bass');
+    const fit = (m, inst) => { if (m == null) return null; while (m < inst.lo) m += 12; while (m > inst.hi) m -= 12; return m >= inst.lo ? m : null; };
+    const PH = c.phrases.filter(ph => top.has(ph.idx));
+    for (const inst of INST) {
+      if (!x.E.has(inst.id)) continue;
+      const have = (parts[inst.id] || []).filter(n => plays(n.ph, inst, n.role)).length;
+      if (have >= 4) continue;
+      const out = [], id = inst.id, mid = (inst.lo + inst.hi) / 2;
+      if (id === 'drums') PH.forEach(ph => { for (let t = ph.t0; t < ph.t1; t += c.bar) { out.push({ t, dur: PPQ / 2, m: 40, ph, role: 'guest', art: 'short' });
+        if (t + c.bar >= ph.t1) for (let b = 1; b < c.meter; b++) out.push({ t: t + b * PPQ, dur: PPQ / 4, m: 50, ph, role: 'guest', art: 'short' }); } });
+      else if (id === 'metals') PH.forEach(ph => out.push({ t: ph.t0, dur: PPQ * 2, m: 52, ph, role: 'guest', art: 'long' }));
+      else if (id === 'timp' || id === 'bells') BAS.filter(n => n.t % c.bar === 0).forEach(n => { const m = fit(n.m, inst); if (m != null) out.push({ t: n.t, dur: id === 'bells' ? c.bar : PPQ / 2, m, ph: n.ph, role: 'guest', art: id === 'timp' ? 'short' : 'long' }); });
+      else if (inst.grp === 'perc') MEL.filter(n => n.t % PPQ === 0).forEach(n => { const m = fit(n.m, inst); if (m != null) out.push({ t: n.t, dur: Math.min(n.dur, PPQ), m, ph: n.ph, role: 'guest', art: 'long' }); });
+      else (mid >= 58 ? MEL : BAS).forEach(n => { const m = fit(n.m, inst); if (m != null) out.push({ t: n.t, dur: n.dur, m, ph: n.ph, role: 'guest', art: n.art || 'long' }); });
+      if (out.length) parts[id] = (parts[id] || []).concat(out);
+    }
+  })();
   const tracks = [], hist = {}, prevEnd = {};
   const tempoMs = 60000 / x.tempo / PPQ;
   for (const inst of INST) {
