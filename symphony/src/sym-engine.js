@@ -214,9 +214,13 @@ function contour(n, r, kind, era) {
       case 'up': s = 1; break;
       case 'nb': s = i % 2 ? -1 : 1; break;
       case 'arp': s = i % 3 === 2 ? -2 : 2; break;
+      case 'seq': s = i % 2 ? -1 : 2; break;            // a sequence: up a third, down a step
+      case 'zig': s = i % 3 === 0 ? 3 : -1; break;      // a fourth up, then stepping back down
+      case 'bro': s = i % 4 === 3 ? -4 : 2; break;      // a broken chord that falls back
       default: s = pick(r, [1, -1]);
     }
     if (kind !== 'leap' || i > 0) { if (r() < .26) s *= 2; if (r() < .07) s = 0; }
+    if (era === 'baroque' && Math.abs(s) === 1 && r() < .22) s = Math.sign(s) * pick(r, [3, 4, 5]);
     st.push(s);
   }
   return st;
@@ -629,13 +633,13 @@ F.variations = (c, x) => {
     P(c, x, { key: K, tpl: tB, mel: { type: 'sent', id: 'TB', char: 'lyr' }, inten: .45, dyn: .52, tex: x.era === 'baroque' ? 'continuo' : 'block', sec: 'Theme', noFlavor: 1 })];
   const vars = [];
   vars.push(() => ornRestate(c, x, th, 'fig', { inten: .5, dyn: .55, tex: x.era === 'baroque' ? 'continuo' : 'repeated8', sec: 'Var 1', label: 'Variation 1: ornaments' }));
-  vars.push(() => ornRestate(c, x, th, null, { key: KP, inten: .6, dyn: .5, tex: x.era === 'classical' ? 'syncop' : 'tremolo', sec: 'Var 2', label: 'Variation 2: ' + (KP.m === 'm' ? 'minor' : 'major') }));
+  vars.push(() => ornRestate(c, x, th, 'turn', { key: KP, inten: .6, dyn: .5, tex: x.era === 'classical' ? 'syncop' : 'tremolo', sec: 'Var 2', label: 'Variation 2: ' + (KP.m === 'm' ? 'minor' : 'major') }));
   vars.push(() => ornRestate(c, x, th, null, { inten: .55, dyn: .55, lead: 'bass', tex: 'arpeggio', btex: 'mel', sec: 'Var 3', label: 'Variation 3: melody in the bass' }));
   vars.push(() => ornRestate(c, x, th, 'dot', { inten: .88, dyn: .85, tex: 'march', btex: 'march', char: 'march', fan: 1, sec: 'Var 4', label: 'Variation 4: march' }));
   vars.push(() => ornRestate(c, x, th, 'turn', { inten: .35, dyn: .35, stretch: 2, lead: 'ww', tex: x.era === 'baroque' ? 'continuo' : 'arpeggio', sec: 'Var 5', label: 'Variation 5: adagio' }));
   const n = x.len === 1 ? [0, 1, 3] : x.len === 2 ? [0, 1, 2, 3] : [0, 1, 2, 3, 4];
   n.forEach(i => vars[i]());
-  ornRestate(c, x, th, 'fig', { inten: .95, dyn: .9, lead: 'tutti', tex: x.era === 'baroque' ? 'continuo' : 'repeated8', sec: 'Finale', label: 'Finale' });
+  ornRestate(c, x, th, 'dot', { inten: .95, dyn: .9, lead: 'tutti', tex: x.era === 'baroque' ? 'continuo' : 'repeated8', sec: 'Finale', label: 'Finale' });
   P(c, x, { key: K, tpl: TP(x, 'coda'), mel: { type: 'free', from: 'TH', cad: 'PAC' }, inten: .95, dyn: .9, sec: 'Finale' });
   finalPh(c, x, K);
 };
@@ -922,10 +926,11 @@ function getTheme(c, id, ch, r) {
     const A = pick(r, pool);
     let B = pick(r, A.length >= 4 ? calm : pool); if (B === A) B = pick(r, calm);
     const C = pick(r, pool);
-    const ka = ch2 === 'march' ? pick(r, ['arp', 'leap', 'up']) : pick(r, ['leap', 'leap', 'arp', 'arch', 'nb', 'up']);
+    const bq = x.era === 'baroque';
+    const ka = ch2 === 'march' ? pick(r, bq ? ['arp', 'zig', 'bro'] : ['arp', 'leap', 'up']) : pick(r, bq ? ['seq', 'zig', 'bro', 'arp', 'leap'] : ['leap', 'leap', 'arp', 'arch', 'nb', 'up']);
     th.A = { rh: A, st: contour(A.length, r, ka, x.era) };
-    th.B = { rh: B, st: contour(B.length, r, pick(r, ['down', 'arch', 'leap', 'arp', 'nb']), x.era) };
-    th.C = { rh: C, st: contour(C.length, r, pick(r, ['up', 'arp', 'leap', 'arch']), x.era) };
+    th.B = { rh: B, st: contour(B.length, r, pick(r, bq ? ['seq', 'down', 'bro', 'zig'] : ['down', 'arch', 'leap', 'arp', 'nb']), x.era) };
+    th.C = { rh: C, st: contour(C.length, r, pick(r, bq ? ['seq', 'zig', 'arp', 'bro'] : ['up', 'arp', 'leap', 'arch']), x.era) };
   }
   return th;
 }
@@ -1711,7 +1716,7 @@ function perform(c, parts) {
         const loose = (ph.phone ? 1.8 : 1) * (ph.collapse ? 3 : 1) * (ph.rebirth ? .3 : 1) * (inst.id === lead.who ? .5 : 1) / Math.max(.45, hold);
         t1 += Math.round(((I.p || 0) + (I.rush || 0) * -pp + (I.dr || 0) * Math.sin(pp * Math.PI + ir() * 2)) * loose + (ir() * 2 - 1) * (I.j || 0) * loose + (CI.j ? (ir() * 2 - 1) * CI.j * .5 : 0));
         if (I.crash && n.t > c.t * .55) { v -= 18; t1 += 14; }
-        v += (I.v || 0) + (ir() * 2 - 1) * (I.vj || 0); if (I.ex) v = 64 + (v - 64) * I.ex; v = 64 + (v - 64) * dynEx;
+        v += (I.v || 0) + (ir() * 2 - 1) * (I.vj || 0); { const pv = 14 + 106 * lv; if (I.ex) v = pv + (v - pv) * I.ex; v = pv + (v - pv) * dynEx; }
         if (I.swell) v += 14 * Math.sin(pp * Math.PI) - 4; if (I.acc && ir() < I.acc) v += 22; if (I.cap) v = Math.min(v, I.cap);
         if (I.d) d = Math.max(30, Math.round(d * I.d));
         if (I.drop && ir() < I.drop && n.role !== 'mel') return; // drifts away
@@ -1752,7 +1757,7 @@ function perform(c, parts) {
       c.phrases.forEach(ph => {
         const rl = role[ph.idx] || 'inner';
         for (let t = ph.t0; t < ph.t1; t += PPQ / 2) {
-          const I2 = INFL[x.inf[inst.id] || 'clean'] || INFL.clean, q = clamp((t - ph.t0) / Math.max(1, ph.t1 - ph.t0), 0, 1); let vv = 14 + 108 * lvl(ph, t, rl); vv = 64 + (vv - 64) * (I2.ex || 1) * dynEx + (I2.v || 0) + (I2.swell ? 14 * Math.sin(q * Math.PI) - 4 : 0); if (I2.cap) vv = Math.min(vv, I2.cap); if (I2.crash && t > c.t * .55) vv -= 18;
+          const I2 = INFL[x.inf[inst.id] || 'clean'] || INFL.clean, q = clamp((t - ph.t0) / Math.max(1, ph.t1 - ph.t0), 0, 1); let vv = 14 + 108 * lvl(ph, t, rl); vv = 64 + (vv - 64) * Math.max(.85, (I2.ex || 1) * dynEx) + (I2.v || 0) + (I2.swell ? 14 * Math.sin(q * Math.PI) - 4 : 0); if (I2.cap) vv = Math.min(vv, I2.cap); if (I2.crash && t > c.t * .55) vv -= 18;
           const v = Math.round(clamp(vv, 1, 127));
           if (v !== lastV) { cc.push({ t: warp(t), c: 1, v }); lastV = v; }
         }

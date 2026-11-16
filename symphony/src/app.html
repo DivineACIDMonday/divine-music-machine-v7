@@ -169,6 +169,15 @@ details.more[open]>summary::before{content:"- "}
 .adv small{display:block;color:var(--mu);font-size:12.5px}
 .mozart{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
 .tag a{color:inherit;text-decoration:underline;text-underline-offset:3px}.tag a:hover{color:var(--gold)}
+.stage{display:flex;flex-direction:column;gap:16px}
+.pitcol,.flowcol{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media (min-width:1100px){
+  #app{max-width:1440px}
+  .stage{display:grid;grid-template-columns:minmax(0,600px) minmax(0,1fr);align-items:start}
+  .pitcol{position:sticky;top:12px;max-height:calc(100vh - 24px);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .pitcol .orch{grid-template-columns:1fr}
+  .flowcol .occs{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
+}
 </style>
 </head>
 <body>
@@ -185,6 +194,8 @@ details.more[open]>summary::before{content:"- "}
   <span class="muted">One click and the machine picks everything. Or set three things below and press Conduct.</span>
 </section>
 
+<div class="stage">
+<div class="pitcol">
 <section class="step" id="sOrch">
   <div class="sh"><span class="num serif">1</span><span class="st serif">Choose your orchestra</span><span class="muted">An era brings its own orchestra. Fine-tune the seats in the next step.</span></div>
   <div class="presets" id="presets"></div>
@@ -206,6 +217,8 @@ details.more[open]>summary::before{content:"- "}
   </div>
 </section>
 
+</div>
+<div class="flowcol">
 <section class="step" id="sOcc">
   <div class="sh"><span class="num serif">3</span><span class="st serif">The occasion</span><span class="muted">What is the music for? This picks the form and the story.</span></div>
   <div class="occs" id="occs"></div>
@@ -302,6 +315,8 @@ details.more[open]>summary::before{content:"- "}
     </details>
   </div>
 </section>
+</div>
+</div>
 <footer>© 2026 Divine Monday. All rights reserved. Pure rules of harmony and counterpoint, no AI inside. The preview plays the free VSCO 2 Community Edition samples (CC0) by Versilian Studios. BBC Symphony Orchestra Discover is a product of Spitfire Audio. Berlin Free Orchestra is a product of Orchestral Tools. This app is not affiliated with either of them. · <a href="https://divineacidmonday.github.io/divine-music-machine-v7/legal/" style="color:inherit">Impressum · Datenschutz</a></footer>
 </div>
 <div class="modal hide" id="sm" role="dialog" aria-modal="true" aria-labelledby="smT">
