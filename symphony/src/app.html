@@ -189,6 +189,14 @@ details.more[open]>summary::before{content:"- "}
 .allsame select{min-height:34px;padding:4px 8px;font-size:14px}
 #sWho .go .btn,#sWho .seg button{min-height:34px;padding:5px 11px;font-size:14px}
 .row1 + .stage{margin-top:0}
+.worklbl{font-size:18px;margin-top:6px}
+.works{display:grid;grid-template-columns:repeat(auto-fill,minmax(118px,1fr));gap:8px}
+.work{background:var(--card2);border:1px solid var(--line);border-radius:12px;padding:8px 10px;text-align:left;color:var(--tx);font:inherit;cursor:pointer;min-height:44px;display:flex;flex-direction:column;gap:2px}
+.work b{font-family:"Bodoni 72",Didot,"Bodoni MT","Playfair Display",Georgia,serif;font-size:16px}
+.work small{color:var(--mu);font-size:12px}
+.work[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#2C2124}
+.lenbox input{width:58px;min-height:34px;padding:4px 6px;font-size:15px}
+.lenbox.off{opacity:.4;pointer-events:none}
 </style>
 </head>
 <body>
@@ -235,6 +243,12 @@ details.more[open]>summary::before{content:"- "}
 <section class="step" id="sOcc">
   <div class="sh"><span class="num serif">3</span><span class="st serif">The occasion</span><span class="muted">What is the music for? This picks the form and the story.</span></div>
   <div class="occs" id="occs"></div>
+  <div class="worklbl serif">The work <span class="muted small">optional: without a choice the occasion decides</span></div>
+  <div class="works" id="works"></div>
+  <div class="go lenrow"><span class="worklbl serif">Length</span>
+    <span class="seg" id="lenMode"><button data-v="free">Free</button><button data-v="exact">Exactly</button></span>
+    <span id="lenBox" class="lenbox"><input id="lenMin" type="number" min="0" max="40" inputmode="numeric" aria-label="Minutes"> min <input id="lenSec" type="number" min="0" max="59" inputmode="numeric" aria-label="Seconds"> sec</span>
+  </div>
   <div class="go">
     <button class="btn gold big" id="compose">Conduct</button>
     <button class="btn" id="surprise" title="Random feeling, era, key, orchestra and form, then compose">⚄ Surprise me</button>
@@ -718,6 +732,75 @@ function forVoice(res) {
 S.voice = store.get('voice', false);
 $('voiceOn').setAttribute('aria-pressed', String(S.voice)); if (S.voice) $('voiceOn').classList.add('gold');
 $('voiceOn').onclick = () => { S.voice = !S.voice; store.set('voice', S.voice); $('voiceOn').setAttribute('aria-pressed', String(S.voice)); $('voiceOn').classList.toggle('gold', S.voice); if (RES) { const k = S.keep; S.keep = true; compose(); S.keep = k; } };
+/* the work: real names from composed music; and a length the machine composes within */
+const WORKS = [
+  ['bagatelle', 'Bagatelle', 'a small trifle, about 1 min'], ['prelude', 'Prelude', 'a short opening, about 2 min'], ['nocturne', 'Nocturne', 'a night piece, 3 to 4 min'],
+  ['serenade', 'Serenade', 'evening pieces, about 8 min'], ['rhapsody', 'Rhapsody', 'free and fiery, about 5 min'], ['movement', 'Movement', 'one part, 2 to 5 min'],
+  ['suite', 'Suite', 'a row of parts, 6 to 12 min'], ['symphony', 'Symphony', 'four movements, 15 to 25 min']];
+S.work = store.get('work', null); S.lenMode = store.get('lenMode', 'free'); S.lenMin = store.get('lenMin', 2); S.lenSec = store.get('lenSec', 50);
+function drawWorks() {
+  const box = $('works'); if (!box) return; box.innerHTML = '';
+  WORKS.forEach(([id, name, info]) => { const b = document.createElement('button'); b.className = 'work'; b.setAttribute('aria-pressed', S.work === id);
+    b.innerHTML = '<b>' + name + '</b><small>' + info + '</small>'; b.onclick = () => { S.work = S.work === id ? null : id; store.set('work', S.work); drawWorks(); }; box.appendChild(b); });
+  [...$('lenMode').children].forEach(b => { b.setAttribute('aria-pressed', b.dataset.v === S.lenMode); b.onclick = () => { S.lenMode = b.dataset.v; store.set('lenMode', S.lenMode); drawWorks(); }; });
+  $('lenBox').classList.toggle('off', S.lenMode !== 'exact'); $('lenMin').value = S.lenMin; $('lenSec').value = S.lenSec;
+  $('lenMin').onchange = () => { S.lenMin = Math.max(0, Math.min(40, +$('lenMin').value || 0)); store.set('lenMin', S.lenMin); };
+  $('lenSec').onchange = () => { S.lenSec = Math.max(0, Math.min(59, +$('lenSec').value || 0)); store.set('lenSec', S.lenSec); };
+}
+const SINGLE = f => f && f !== 'suite' && f !== 'symphony';
+// a suite chosen by the Mozart Advisor for this feeling, n parts
+function autoChain(n) {
+  const R = a => a[Math.floor(Math.random() * a.length)], ch = [];
+  for (let i = 0; i < n; i++) { const adv = Y.advise(ch, S.feel), best = adv[0].stars; let opts = adv.filter(a => a.stars >= Math.max(2, best - 1));
+    const fresh = opts.filter(a => !ch.some(c => c.form === a.form)); if (fresh.length) opts = fresh;
+    if (i === n - 1) { const fin = opts.filter(a => Y.CAT[a.form] === 'fast'); if (fin.length) opts = fin; }
+    ch.push({ form: R(opts).form, seed: newSeed(), lock: false }); }
+  const arc = Y.feelArc(ch.map(c => Y.CAT[c.form]), S.feel, []); ch.forEach((c, i) => { c.feel = arc[i]; }); return ch;
+}
+const durOf = res => res.movements.reduce((s, m) => s + (m.end - m.OFF) / 480 * 60 / m.tempo, 0) + (res.movements.length - 1) * 3;
+// build the options for the chosen work, then fit them into the length if one is given
+function genWork(base) {
+  const target = S.lenMode === 'exact' ? S.lenMin * 60 + S.lenSec : 0;
+  let work = S.work;
+  if (!work && target) work = target < 105 ? 'bagatelle' : target < 400 ? 'movement' : target < 900 ? 'suite' : 'symphony';
+  const occForm = SINGLE(S.form) ? S.form : 'aria', o = Object.assign({}, base); let title = null;
+  if (work === 'bagatelle') { o.form = SINGLE(S.form) && S.form !== 'sonata' && S.form !== 'variations' ? S.form : 'minuet'; o.len = 1; title = 'Bagatelle'; }
+  else if (work === 'prelude') { o.form = 'aria'; o.len = 1; o.tempo = (o.tempo || 0) || null; title = 'Prelude'; }
+  else if (work === 'nocturne') { o.form = 'aria'; o.len = 2; o.rubato = Math.max(1.3, o.rubato || 1); title = 'Nocturne'; }
+  else if (work === 'rhapsody') { o.form = 'variations'; o.len = 2; o.rubato = Math.max(1.6, o.rubato || 1); title = 'Rhapsody'; }
+  else if (work === 'movement') { o.form = occForm; o.len = 2; }
+  else if (work === 'serenade') { o.form = 'suite'; o.chain = ['march', 'minuet', 'aria', 'rondo'].map((f, i) => ({ form: f, seed: newSeed(), feel: S.feel })); title = 'Serenade'; }
+  else if (work === 'suite') { o.form = 'suite'; o.chain = autoChain(target ? Math.max(2, Math.min(6, Math.round(target / 140))) : 4); }
+  else if (work === 'symphony') { o.form = 'symphony'; o.mvFeels = Y.feelArc(['fast', 'slow', 'dance', 'fast'], S.feel, []); }
+  const named = r => { if (title) r.movements.forEach(m => { m.title = title + ' in ' + m.keyName; }); return r; };
+  if (!target) return named(Y.generate(o));
+  // fit: try the shapes that suit this work, keep the one closest to the time, then nudge the tempo (at most 15 %)
+  const SING = ['minuet', 'waltz', 'aria', 'march', 'rondo', 'canon', 'fugue', 'overture', 'sonata', 'variations'];
+  const pool = { bagatelle: [o.form, 'minuet', 'waltz', 'canon', 'fugue', 'march', 'rondo'], prelude: ['aria', 'canon', 'fugue'], nocturne: ['aria', 'canon'], rhapsody: ['variations', 'overture'], movement: [occForm].concat(SING) };
+  const cands = [];
+  if (pool[work]) [...new Set(pool[work])].forEach(f => [1, 2, 3].forEach(l => cands.push(Object.assign({}, o, { form: f, len: l }))));
+  else if (work === 'serenade') [3, 4, 5].forEach(n => [1, 2].forEach(l => cands.push(Object.assign({}, o, { len: l, chain: ['march', 'minuet', 'aria', 'waltz', 'rondo'].filter((f, i) => n === 5 || i !== (n === 3 ? 1 : 3) && (n > 3 || i !== 3)).slice(0, n).map(f => ({ form: f, seed: newSeed(), feel: S.feel })) }))));
+  else if (work === 'suite') [2, 3, 4, 5, 6].forEach(n => [1, 2].forEach(l => cands.push(Object.assign({}, o, { len: l, chain: autoChain(n) }))));
+  else if (work === 'symphony') [1, 2, 3].forEach(l => cands.push(Object.assign({}, o, { len: l })));
+  const dur1 = c => { try { return durOf(Y.generate(c)); } catch (e) { return 1e9; } };
+  let best = null;
+  const scan = L => L.forEach(c => { const d = dur1(c), cost = Math.abs(Math.log(d / target)); if (!best || cost < best.cost) best = { c, d, cost }; });
+  scan(cands);
+  // the time comes first: when the chosen work cannot stretch or shrink that far, look wider
+  if (best.cost > Math.log(1.2)) { const more = []; SING.forEach(f => [1, 2, 3].forEach(l => more.push(Object.assign({}, o, { form: f, len: l, chain: null }))));
+    if (target > 900) [7, 8].forEach(n => more.push(Object.assign({}, o, { form: 'suite', len: 3, chain: autoChain(n) })));
+    if (target > 400) { [3, 4, 5, 6].forEach(n => [2, 3].forEach(l => more.push(Object.assign({}, o, { form: 'suite', len: l, chain: autoChain(n) })))); [1, 2, 3].forEach(l => more.push(Object.assign({}, o, { form: 'symphony', len: l, chain: null, mvFeels: Y.feelArc(['fast', 'slow', 'dance', 'fast'], S.feel, []) }))); }
+    scan(more); }
+  const isSuite = best.c.form === 'suite', baseT = isSuite ? 1 : best.c.form === 'symphony' ? (best.c.tempo || 132) : Y.generate(best.c).movements[0].tempo;
+  let mul = 1, res = null, d = best.d;
+  for (let k = 0; k < 4; k++) {
+    mul = Math.max(.8, Math.min(1.25, mul * d / target));
+    const c = isSuite ? Object.assign({}, best.c, { tempoMul: mul }) : Object.assign({}, best.c, { tempo: Math.round(baseT * mul) });
+    res = Y.generate(c); d = durOf(res); if (Math.abs(d - target) <= 2) break;
+  }
+  res.fit = { target, got: d };
+  return named(res);
+}
 function compose() {
   stop();
   if (!S.inst.size) { $('status').textContent = 'Switch on at least one section first.'; return; }
@@ -730,10 +813,10 @@ function compose() {
   setTimeout(() => {
     try {
       const t0 = performance.now();
-      RES = Y.generate({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed, feel: c.feel })), feel: S.feel, mvFeels: S.form === 'symphony' ? S.mvFeels : null, solo: S.solo === 'auto' ? null : S.solo, influence: S.inf, conductor: S.cond, arc: S.arc });
+      RES = genWork({ era: S.era, form: S.form, key: S.key, len: S.len, seed: S.seed, tempo: S.tempo, rubato: S.rub, early: S.early ? 40 : 0, inst: [...S.inst], chain: S.chain.map(c => ({ form: c.form, seed: c.seed, feel: c.feel })), feel: S.feel, mvFeels: S.form === 'symphony' ? S.mvFeels : null, solo: S.solo === 'auto' ? null : S.solo, influence: S.inf, conductor: S.cond, arc: S.arc });
       if (S.voice) forVoice(RES);
       MV = 0;
-      $('status').textContent = 'Done in ' + Math.round(performance.now() - t0) + ' ms. Seed ' + S.seed + '.';
+      $('status').textContent = 'Done in ' + Math.round(performance.now() - t0) + ' ms. Seed ' + S.seed + '.' + (RES.fit ? ' Length ' + fmt(RES.fit.got) + ' (asked ' + fmt(RES.fit.target) + ').' : '');
       showResult(); if (S.form === 'suite') drawSuite();
     } catch (e) { console.error(e); $('status').textContent = 'Something went wrong: ' + e.message; }
     $('compose').disabled = false;
@@ -1052,7 +1135,7 @@ $('smX').onclick = closeSM;
 $('sm').onclick = e => { if (e.target.id === 'sm') closeSM(); };
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSM(); });
 $('smGo').onclick = () => { closeSM(); surprise({ type: SM.type, main: SM.main, mix: SM.mix.slice() }); };
-drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); initBfo(); initWho(); drawHall(); drawCond(); drawOcc();
+drawFeels(); drawEras(); drawForms(); initOpts(); drawPresets(); initBfo(); initWho(); drawHall(); drawCond(); drawOcc(); drawWorks();
 })();
 </script>
 <script>(function(){try{if(!/\.github\.io$/.test(location.hostname))return;var q=new URLSearchParams({p:location.pathname,t:document.title,s:screen.width+','+screen.height,rnd:Math.random().toString(36).slice(2)});if(document.referrer&&document.referrer.indexOf(location.hostname)<0)q.set('r',document.referrer.split('?')[0]);var u='https://divine-monday.goatcounter.com/count?'+q;if(!(navigator.sendBeacon&&navigator.sendBeacon(u)))new Image().src=u;}catch(e){}})();</script>
