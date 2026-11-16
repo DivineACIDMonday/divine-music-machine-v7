@@ -186,6 +186,7 @@ details.more[open]>summary::before{content:"- "}
 .row1 .presets{display:flex;flex-wrap:wrap;gap:8px}
 #sWho{gap:8px;padding:12px 16px}
 #sWho .go{gap:6px}
+.allsame select{min-height:34px;padding:4px 8px;font-size:14px}
 #sWho .go .btn,#sWho .seg button{min-height:34px;padding:5px 11px;font-size:14px}
 .row1 + .stage{margin-top:0}
 </style>
@@ -213,7 +214,7 @@ details.more[open]>summary::before{content:"- "}
 
 <section class="step" id="sWho">
   <div class="sh"><span class="num serif">2</span><span class="st serif">Who plays</span><span class="muted">Tap a seat, or the conductor.</span></div>
-  <div class="go"><span class="seg" id="seatMode"><button data-v="on">On or off</button><button data-v="inf">Give an influence</button></span><button class="btn" id="allClean">Everybody clean</button><button class="btn" id="allRandom">Random influences</button></div>
+  <div class="go"><span class="seg" id="seatMode"><button data-v="on">On or off</button><button data-v="inf">Give an influence</button></span><button class="btn" id="allClean">Everybody clean</button><button class="btn" id="allRandom">Random influences</button><label class="opt allsame">Everybody on <select id="allSame" aria-label="Give the whole orchestra the same influence"></select></label></div>
   <div class="orch">
     <svg class="hall" id="hall" viewBox="0 0 640 396" role="group" aria-label="Orchestra seating"></svg>
     <div style="display:flex;flex-direction:column;gap:12px">
@@ -2782,6 +2783,8 @@ function drawInfBox() {
 function rndState(noClean) { const ids = Y.INFL.map(i => i.id).filter(k => !noClean || k !== 'clean'); return ids[Math.floor(Math.random() * ids.length)]; }
 function initWho() {
   [...$('seatMode').children].forEach(b => b.onclick = () => { S.seatMode = b.dataset.v; S.pickSeat = null; drawHall(); });
+  { const sel = $('allSame'); sel.innerHTML = '<option value="">choose one</option>' + GROUPS.map(([h, ids]) => '<optgroup label="' + h + '">' + ids.map(id => '<option value="' + id + '">' + INAME[id] + '</option>').join('') + '</optgroup>').join('');
+    sel.onchange = () => { const st = sel.value; if (!st) return; S.inf = {}; if (st !== 'clean') S.inst.forEach(id => S.inf[id] = st); store.set('inf', S.inf); S.cond = st; store.set('cond', st); sel.value = ''; drawHall(); }; }
   $('allClean').onclick = () => { S.inf = {}; store.set('inf', S.inf); S.cond = 'clean'; store.set('cond', 'clean'); drawHall(); };
   $('allRandom').onclick = () => { S.inf = {}; S.inst.forEach(id => { const st = rndState(); if (st !== 'clean') S.inf[id] = st; }); store.set('inf', S.inf); S.cond = Math.random() < .5 ? 'clean' : rndState(true); store.set('cond', S.cond); drawHall(); };
 }
