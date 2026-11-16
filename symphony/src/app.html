@@ -626,7 +626,8 @@ const OCC = [
   ['justbecause', 'Just because', 'No reason. The machine decides.', null, null, null],
 ];
 S.inf = store.get('inf', {}); if (S.inf === 'random') S.inf = {};
-S.cond = store.get('cond', 'clean'); S.preset = store.get('preset', null); S.occ = store.get('occ', null); S.arc = store.get('arc', null);
+for (const k in S.inf) if (S.inf[k] === 'random') S.inf[k] = rndState();
+S.cond = store.get('cond', 'clean'); if (S.cond === 'random') S.cond = rndState(); S.preset = store.get('preset', null); S.occ = store.get('occ', null); S.arc = store.get('arc', null);
 S.seatMode = 'on'; S.pickSeat = null;
 function stateChips(cur, onPick, withRandom) {
   const box = document.createElement('div'); box.style.cssText = 'display:flex;flex-direction:column;gap:10px';
@@ -649,13 +650,15 @@ function drawInfBox() {
   top.innerHTML = '<b class="serif" style="font-size:18px">' + (isC ? 'The conductor' : IM[id].name) + '</b><span class="grow"></span>';
   const x = document.createElement('button'); x.className = 'btn'; x.textContent = 'Done'; x.onclick = () => { S.pickSeat = null; drawHall(); };
   top.appendChild(x); box.appendChild(top);
-  if (isC) box.appendChild(stateChips(S.cond || 'clean', st => { S.cond = st; store.set('cond', st); drawHall(); }, true));
-  else box.appendChild(stateChips(S.inf[id] || 'clean', st => { if (st === 'clean') delete S.inf[id]; else S.inf[id] = st; store.set('inf', S.inf); drawHall(); }, true));
+  if (isC) box.appendChild(stateChips(S.cond || 'clean', st => { if (st === 'random') st = rndState(); S.cond = st; store.set('cond', st); drawHall(); }, true));
+  else box.appendChild(stateChips(S.inf[id] || 'clean', st => { if (st === 'random') st = rndState(); if (st === 'clean') delete S.inf[id]; else S.inf[id] = st; store.set('inf', S.inf); drawHall(); }, true));
 }
+// a random influence is drawn at once, so every seat shows what it got
+function rndState(noClean) { const ids = Y.INFL.map(i => i.id).filter(k => !noClean || k !== 'clean'); return ids[Math.floor(Math.random() * ids.length)]; }
 function initWho() {
   [...$('seatMode').children].forEach(b => b.onclick = () => { S.seatMode = b.dataset.v; S.pickSeat = null; drawHall(); });
   $('allClean').onclick = () => { S.inf = {}; store.set('inf', S.inf); S.cond = 'clean'; store.set('cond', 'clean'); drawHall(); };
-  $('allRandom').onclick = () => { S.inf = {}; S.inst.forEach(id => S.inf[id] = 'random'); store.set('inf', S.inf); S.cond = Math.random() < .5 ? 'clean' : 'random'; store.set('cond', S.cond); drawHall(); };
+  $('allRandom').onclick = () => { S.inf = {}; S.inst.forEach(id => { const st = rndState(); if (st !== 'clean') S.inf[id] = st; }); store.set('inf', S.inf); S.cond = Math.random() < .5 ? 'clean' : rndState(true); store.set('cond', S.cond); drawHall(); };
 }
 function drawCond() {
   const box = $('condBox'); if (!box) { if ($('hall')) drawHall(); return; } box.innerHTML = '';
