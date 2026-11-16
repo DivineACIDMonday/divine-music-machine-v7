@@ -2970,6 +2970,52 @@ const ORC = (() => {
   }
   return { prepare, play, get ok() { return !!man && !failed; } };
 })();
+/* the orchestra pit comes alive while it plays: a seat lights up, sends out its own rings, and drops of light rise up like rain going the wrong way */
+const VIS = (() => {
+  let cv = null, cx = null, ev = [], rings = [], drops = [], glow = {}, raf2 = 0, pos = {}, box = null, els = {};
+  const UP = 150;   // room above the pit for the rising rain
+  function ensure() {
+    const svg = $('hall'); if (!svg) return false;
+    if (!cv) { cv = document.createElement('canvas'); cv.setAttribute('aria-hidden', 'true');
+      cv.style.cssText = 'position:absolute;pointer-events:none;mix-blend-mode:screen;z-index:2';
+      svg.parentNode.style.position = 'relative'; svg.parentNode.appendChild(cv); cx = cv.getContext('2d'); }
+    const pr = svg.parentNode.getBoundingClientRect(), r = svg.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
+    box = { x: r.left - pr.left, y: r.top - pr.top - UP, w: r.width, h: r.height + UP };
+    cv.style.left = box.x + 'px'; cv.style.top = box.y + 'px'; cv.style.width = box.w + 'px'; cv.style.height = box.h + 'px';
+    cv.width = Math.round(box.w * dpr); cv.height = Math.round(box.h * dpr); cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    pos = {}; els = {}; svg.querySelectorAll('.seat').forEach(g => { els[g.dataset.id] = g; const t = g.querySelector('text'), b = (t || g).getBoundingClientRect(), gb = g.getBoundingClientRect(); pos[g.dataset.id] = { x: b.left - r.left + b.width / 2, y: b.top - r.top + b.height / 2 + UP, s: Math.max(14, Math.min(gb.width, gb.height) / 3) }; });
+    return true;
+  }
+  const seatOf = id => pos[id] || pos[{ svn: 'vln1', svc: 'vc', shn: 'hn', stpt: 'tpt', stbn: 'tbn', eh: 'ob', bcl: 'cl', cbsn: 'bsn' }[id]];
+  function add(n, when) { ev.push({ id: n.id, at: when, v: n.v, d: n.d }); if (!raf2) loop(); }
+  function hex(c, a) { const n = parseInt(c.slice(1), 16); return 'rgba(' + (n >> 16) + ',' + (n >> 8 & 255) + ',' + (n & 255) + ',' + a + ')'; }
+  function loop() {
+    raf2 = requestAnimationFrame(loop);
+    if (!cx && !ensure()) return;
+    const now = AC ? AC.currentTime : 0, rest = [];
+    ev.forEach(e => { if (e.at > now) { rest.push(e); return; }
+      const p = seatOf(e.id); if (!p) return; const col = FAMHEX[fam(e.id)] || '#E8E0D0', lv = e.v / 127;
+      glow[e.id] = Math.min(1, (glow[e.id] || 0) * .6 + .5 + lv * .5);
+      if (rings.length < 160) rings.push({ x: p.x, y: p.y, r: p.s * .6, a: .25 + lv * .5, col, sp: 45 + lv * 70 });
+      if (drops.length < 420) for (let i = 0; i < 1 + (lv > .7 ? 1 : 0); i++) drops.push({ x: p.x + (Math.random() - .5) * p.s, y: p.y, vy: 35 + lv * 70 + Math.random() * 30, a: .5 + lv * .5, col, w: (Math.random() - .5) * 10, len: 8 + lv * 12 }); });
+    ev = rest;
+    const dt = 1 / 60; cx.clearRect(0, 0, box.w, box.h);
+    for (const id in glow) { const p = seatOf(id), g = glow[id]; if (p && g > .02) { const col = FAMHEX[fam(id)] || '#E8E0D0', rad = p.s * (1.4 + g);
+        const gr = cx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad); gr.addColorStop(0, hex(col, .55 * g)); gr.addColorStop(1, hex(col, 0)); cx.fillStyle = gr; cx.beginPath(); cx.arc(p.x, p.y, rad, 0, 7); cx.fill(); }
+      const el = els[id] || els[{ svn: 'vln1', svc: 'vc', shn: 'hn', stpt: 'tpt', stbn: 'tbn', eh: 'ob', bcl: 'cl', cbsn: 'bsn' }[id]];
+      glow[id] *= .93; if (glow[id] < .02) { delete glow[id]; if (el) el.style.filter = ''; } else if (el) el.style.filter = 'brightness(' + (1 + .5 * glow[id]).toFixed(2) + ')'; }
+    cx.lineWidth = 1.5;
+    rings = rings.filter(o => { o.r += o.sp * dt; o.a *= .965; if (o.a < .02) return false; cx.strokeStyle = hex(o.col, o.a); cx.beginPath(); cx.arc(o.x, o.y, o.r, 0, 7); cx.stroke(); return true; });
+    cx.lineCap = 'round'; cx.lineWidth = 2.5;
+    drops = drops.filter(o => { o.y -= o.vy * dt; o.x += o.w * dt; o.a *= .985; if (o.a < .03 || o.y < -20) return false;
+      cx.strokeStyle = hex(o.col, o.a); cx.beginPath(); cx.moveTo(o.x, o.y); cx.lineTo(o.x - o.w * .05, o.y + o.len); cx.stroke(); return true; });
+    if (!playing && !ev.length && !rings.length && !drops.length && !Object.keys(glow).length) { cancelAnimationFrame(raf2); raf2 = 0; cx.clearRect(0, 0, box.w, box.h); }
+  }
+  function start() { ev = []; ensure(); }
+  function clear() { ev = []; }
+  try { addEventListener('resize', () => { if (cv) ensure(); }); } catch (e) {}
+  return { add, start, clear, refresh: ensure };
+})();
 function noteOn(n, when) {
   if (ORC.ok) { const pan = AC.createStereoPanner ? AC.createStereoPanner() : null; let out = master;
     if (pan) { pan.pan.value = Math.max(-.9, Math.min(.9, (PAN[n.id] != null ? PAN[n.id] : 0) * 1.25)); pan.connect(master); out = pan; }
@@ -3020,11 +3066,11 @@ function play() {
 let RUN = 0;
 function startPlay(m, k) {
   if (!master) { master = AC.createGain(); master.gain.value = .5; master.connect(AC.destination); }
-  t0 = AC.currentTime + .15;
+  VIS.start(); t0 = AC.currentTime + .15;
   const tick = () => {
     const now = AC.currentTime - t0, horizon = now + .5;
     let budget = 160;
-    while (qi < queue.length && queue[qi].t < horizon && budget-- > 0) { const n = queue[qi++]; if (n.t >= now - .05) noteOn(n, t0 + Math.max(n.t, now)); }
+    while (qi < queue.length && queue[qi].t < horizon && budget-- > 0) { const n = queue[qi++]; if (n.t >= now - .05) { noteOn(n, t0 + Math.max(n.t, now)); VIS.add(n, t0 + Math.max(n.t, now)); } }
     if (qi >= queue.length && now > queue[queue.length - 1].t + 4) stop();
   };
   tick(); timer = setInterval(tick, 90);
@@ -3033,7 +3079,7 @@ function startPlay(m, k) {
   anim();
 }
 function stop() {
-  playing = false; clearInterval(timer); cancelAnimationFrame(raf);
+  playing = false; VIS.clear(); clearInterval(timer); cancelAnimationFrame(raf);
   if ($('play')) $('play').textContent = '▶ Listen';
   if (master && AC) { const g = master.gain.value; master.gain.setValueAtTime(g, AC.currentTime); master.gain.linearRampToValueAtTime(0, AC.currentTime + .08); const old = master; setTimeout(() => { try { old.disconnect(); } catch (e) {} }, 200); master = null; AC.close(); AC = null; }
   const h = $('head'); if (h) h.style.opacity = 0;
