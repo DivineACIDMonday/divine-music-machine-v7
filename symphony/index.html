@@ -115,6 +115,13 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 .seat text.inf{font:600 10px system-ui,sans-serif;fill:#130E11}
 .seat.off text.inf{fill:#C9B8AA}
 .seat.picked path{stroke:var(--tx);stroke-width:3}
+details.daw>summary{cursor:pointer;font-size:18px;list-style:none;min-height:30px;margin-top:6px}
+details.daw>summary::before{content:"+ ";color:var(--gold)}
+details.daw[open]>summary::before{content:"- "}
+details.daw{display:flex;flex-direction:column;gap:12px}
+.condseat{cursor:pointer}
+.presets .btn[aria-pressed=true]{border-color:var(--gold);box-shadow:0 0 0 1px var(--gold) inset;background:#2C2124}
+.condseat.picked circle{stroke:var(--tx);stroke-width:3}
 details.more>summary{cursor:pointer;font-size:20px;list-style:none;min-height:30px}
 details.more>summary::-webkit-details-marker{display:none}
 details.more>summary::before{content:"+ ";color:var(--gold)}
@@ -178,32 +185,30 @@ details.more[open]>summary::before{content:"- "}
   <span class="muted">One click and the machine picks everything. Or set three things below and press Conduct.</span>
 </section>
 
+<section class="step" id="sOrch">
+  <div class="sh"><span class="num serif">1</span><span class="st serif">Choose your orchestra</span><span class="muted">An era brings its own orchestra. Fine-tune the seats in the next step.</span></div>
+  <div class="presets" id="presets"></div>
+</section>
+
 <section class="step" id="sWho">
-  <div class="sh"><span class="num serif">1</span><span class="st serif">Who plays</span><span class="muted">Tap a seat to switch it on or off. Or give each musician an influence.</span></div>
+  <div class="sh"><span class="num serif">2</span><span class="st serif">Who plays</span><span class="muted">Tap a seat to switch it on or off. Or give each musician, and the conductor, an influence.</span></div>
   <div class="go"><span class="seg" id="seatMode"><button data-v="on">On or off</button><button data-v="inf">Give an influence</button></span><button class="btn" id="allClean">Everybody clean</button><button class="btn" id="allRandom">Random influences</button></div>
   <div class="orch">
-    <svg class="hall" id="hall" viewBox="0 0 640 380" role="group" aria-label="Orchestra seating"></svg>
+    <svg class="hall" id="hall" viewBox="0 0 640 396" role="group" aria-label="Orchestra seating"></svg>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="infbox hide" id="infBox"></div>
-      <div class="presets" id="presets"></div>
       <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Timpani</span><span><i style="background:var(--kb)"></i>Piano</span></div>
       <div class="count" id="count"></div>
       <label class="opt" id="bfoW"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
       <div id="bfoBox" class="hide"><div class="muted small" style="margin-bottom:6px">Only in Berlin Free Orchestra. Feelings pick fitting ones for you.</div><div class="chips" id="bfoChips"></div></div>
-      <div class="muted small">The era preset is chosen for you when you pick an era. Change anything you like after that.</div>
+      <div class="muted small">Tap the conductor to give the conductor a mood or an influence.</div>
     </div>
   </div>
-</section>
-
-<section class="step" id="sCond">
-  <div class="sh"><span class="num serif">2</span><span class="st serif">The conductor</span><span class="muted">A mood or an influence. A clear head keeps everyone together.</span></div>
-  <div id="condBox"></div>
 </section>
 
 <section class="step" id="sOcc">
   <div class="sh"><span class="num serif">3</span><span class="st serif">The occasion</span><span class="muted">What is the music for? This picks the form and the story.</span></div>
   <div class="occs" id="occs"></div>
-  <div class="go"><span class="muted">Era</span><div class="chips" id="eraChips"></div></div>
   <div class="go">
     <button class="btn gold big" id="compose">Conduct</button>
     <button class="btn" id="surprise" title="Random feeling, era, key, orchestra and form, then compose">⚄ Surprise me</button>
@@ -246,7 +251,7 @@ details.more[open]>summary::before{content:"- "}
 </details>
 
 <section class="step" id="s4" style="display:none">
-  <div class="sh"><span class="st serif">Your piece</span><span class="muted">One MIDI track per instrument, with articulation switching, CC1 dynamics and CC11 expression.</span></div>
+  <div class="sh"><span class="st serif">Your piece</span><span class="muted">Listen to it, or take it home as an MP3.</span></div>
   <div class="result" id="result">
     <div class="tabs" id="mvTabs"></div>
     <div class="strip" id="strip"><span class="head" id="head"></span></div>
@@ -254,10 +259,11 @@ details.more[open]>summary::before{content:"- "}
       <button class="btn" id="play">▶ Listen</button>
       <button class="btn" id="dlMp3">Download MP3</button>
       <span class="muted small" id="ptime">A preview with real orchestra samples (VSCO 2, free and open). In your DAW it sounds like your own orchestra.</span>
-      <span class="grow"></span>
-      <button class="btn gold" id="dlAll">Download full MIDI</button>
-      <button class="btn" id="dlZip">Download all tracks (zip)</button>
     </div>
+    <details class="daw" id="daw">
+    <summary class="serif">For your DAW: MIDI, one track per instrument</summary>
+    <div class="go"><button class="btn gold" id="dlAll">Download full MIDI</button><button class="btn" id="dlZip">Download all tracks (zip)</button>
+      <span class="muted small">With articulation switching, CC1 dynamics and CC11 expression.</span></div>
     <div class="check" id="check"></div>
     <div class="allsyn hide" id="allsyn">Every instrument plays on <select id="synAll" aria-label="Every instrument plays on"></select><span>or choose per instrument below. The synths get notes in the range they play.</span></div>
     <div class="tracks" id="tracks"></div>
@@ -293,9 +299,10 @@ details.more[open]>summary::before{content:"- "}
         <li>Any other sound works too: drag your own plugin onto a track and ignore the low keyswitch notes.</li>
       </ol>
     </div>
+    </details>
   </div>
 </section>
-<footer>© 2026 Divine Monday. All rights reserved. Pure rules of harmony and counterpoint, no samples and no AI inside. BBC Symphony Orchestra Discover is a product of Spitfire Audio. Berlin Free Orchestra is a product of Orchestral Tools. This app is not affiliated with either of them. · <a href="https://divineacidmonday.github.io/divine-music-machine-v7/legal/" style="color:inherit">Impressum · Datenschutz</a></footer>
+<footer>© 2026 Divine Monday. All rights reserved. Pure rules of harmony and counterpoint, no AI inside. The preview plays the free VSCO 2 Community Edition samples (CC0) by Versilian Studios. BBC Symphony Orchestra Discover is a product of Spitfire Audio. Berlin Free Orchestra is a product of Orchestral Tools. This app is not affiliated with either of them. · <a href="https://divineacidmonday.github.io/divine-music-machine-v7/legal/" style="color:inherit">Impressum · Datenschutz</a></footer>
 </div>
 <div class="modal hide" id="sm" role="dialog" aria-modal="true" aria-labelledby="smT">
   <div class="box">
@@ -2511,7 +2518,7 @@ function drawEras() {
   Object.entries(Y.ERAS).forEach(([id, e]) => {
     const b = document.createElement('button'); b.className = 'pick'; b.setAttribute('aria-pressed', S.era === id);
     b.innerHTML = '<span class="yr">' + e.years + '</span><h3 class="serif">' + e.name + '</h3><p>' + e.blurb + '</p>';
-    b.onclick = () => { S.era = id; store.set('era', id); S.inst = new Set(Y.PRESETS[id]); store.set('inst', [...S.inst]); drawEras(); drawEraChips(); drawHall(); drawSuite(); };
+    b.onclick = () => { S.era = id; store.set('era', id); S.preset = id; store.set('preset', id); S.inst = new Set(Y.PRESETS[id]); store.set('inst', [...S.inst]); drawEras(); drawEraChips(); drawHall(); drawSuite(); drawPresets(); };
     $('eras').appendChild(b);
   });
   drawEraChips();
@@ -2620,7 +2627,10 @@ function sector(r1, r2, a1, a2) {
 function drawHall() {
   const svg = $('hall'); let h = '';
   h += '<path d="M40 ' + CY + ' L600 ' + CY + '" stroke="#3B2D32" stroke-width="2"/>';
-  h += '<circle cx="' + CX + '" cy="' + CY + '" r="16" fill="#2A2024" stroke="#5A464C"/><text x="' + CX + '" y="' + (CY + 34) + '" text-anchor="middle" fill="#AE9E90" font-size="12" font-family="system-ui">conductor</text>';
+  { const cs = S.cond && S.cond !== 'clean' ? S.cond : null;
+    h += '<g class="condseat' + (S.pickSeat === '__cond' ? ' picked' : '') + '" role="button" tabindex="0" aria-label="Conductor: ' + INAME[S.cond || 'clean'] + '"><circle cx="' + CX + '" cy="' + CY + '" r="18" fill="' + (cs ? '#4A3A2A' : '#2A2024') + '" stroke="' + (cs ? '#D9A84E' : '#5A464C') + '" stroke-width="2"/>'
+      + '<text x="' + CX + '" y="' + (CY + 34) + '" text-anchor="middle" fill="#AE9E90" font-size="12" font-family="system-ui">conductor</text>'
+      + (cs ? '<text x="' + CX + '" y="' + (CY + 49) + '" text-anchor="middle" fill="#D9A84E" font-size="11" font-weight="600" font-family="system-ui">' + INAME[cs] + '</text>' : '') + '</g>'; }
   RINGS.forEach(ring => {
     const n = ring.ids.length, step = 180 / n;
     ring.ids.forEach((id, i) => {
@@ -2632,6 +2642,7 @@ function drawHall() {
   h += seat('timp', 'M270 18 h100 a10 10 0 0 1 10 10 v26 a10 10 0 0 1 -10 10 h-100 a10 10 0 0 1 -10 -10 v-26 a10 10 0 0 1 10 -10 z', 320, 41, 'Timpani');
   h += seat('pno', 'M22 40 h92 a10 10 0 0 1 10 10 v26 a10 10 0 0 1 -10 10 h-92 a10 10 0 0 1 -10 -10 v-26 a10 10 0 0 1 10 -10 z', 68, 63, 'Piano');
   svg.innerHTML = h;
+  { const cg = svg.querySelector('.condseat'); if (cg) { const t = () => { S.pickSeat = S.pickSeat === '__cond' ? null : '__cond'; drawHall(); }; cg.onclick = t; cg.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; } }
   svg.querySelectorAll('.seat').forEach(g => {
     const tog = () => { const id = g.dataset.id; if (S.seatMode === 'inf') { S.pickSeat = S.pickSeat === id ? null : id; drawHall(); return; } if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); };
     g.onclick = tog; g.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); tog(); } };
@@ -2651,9 +2662,11 @@ function seat(id, d, tx, ty, label) {
 function fam(id) { const g = IM[id].grp; return g === 'str' ? 'str' : g === 'ww' ? 'ww' : g === 'br' ? 'br' : g === 'perc' ? 'perc' : 'kb'; }
 function initBfo() { $('bfoOn').onchange = e => { S.bfo = e.target.checked; store.set('bfo', S.bfo); if (!S.bfo) Y.EXTRAS.forEach(id => S.inst.delete(id)); else { const fe = Y.FEELINGS[S.feel]; if (fe) fe.bfo.forEach(id => S.inst.add(id)); } store.set('inst', [...S.inst]); drawHall(); }; }
 function drawPresets() {
-  const P = [['Era preset', null], ['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Strings only', 'strings'], ['Everything', 'all'], ['Berlin Free: all 34', 'berlin']];
+  const P = [['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Strings only', 'strings'], ['Everything', 'all'], ['Berlin Free: all 34', 'berlin']];
   $('presets').innerHTML = '';
-  P.forEach(([n, k]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.onclick = () => { if (k === 'berlin') { S.bfo = true; store.set('bfo', true); } S.inst = new Set(Y.PRESETS[k || S.era]); store.set('inst', [...S.inst]); drawHall(); }; $('presets').appendChild(b); });
+  P.forEach(([n, k]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.setAttribute('aria-pressed', S.preset === k);
+    b.onclick = () => { if (k === 'berlin') { S.bfo = true; store.set('bfo', true); } if (Y.ERAS[k]) { S.era = k; store.set('era', k); drawEras(); drawSuite(); }
+      S.preset = k; store.set('preset', k); S.inst = new Set(Y.PRESETS[k]); store.set('inst', [...S.inst]); drawHall(); drawPresets(); }; $('presets').appendChild(b); });
 }
 
 /* who plays, the conductor, the occasion */
@@ -2681,7 +2694,7 @@ const OCC = [
   ['justbecause', 'Just because', 'No reason. The machine decides.', null, null, null],
 ];
 S.inf = store.get('inf', {}); if (S.inf === 'random') S.inf = {};
-S.cond = store.get('cond', 'clean'); S.occ = store.get('occ', null); S.arc = store.get('arc', null);
+S.cond = store.get('cond', 'clean'); S.preset = store.get('preset', null); S.occ = store.get('occ', null); S.arc = store.get('arc', null);
 S.seatMode = 'on'; S.pickSeat = null;
 function stateChips(cur, onPick, withRandom) {
   const box = document.createElement('div'); box.style.cssText = 'display:flex;flex-direction:column;gap:10px';
@@ -2696,21 +2709,23 @@ function stateChips(cur, onPick, withRandom) {
 }
 function drawInfBox() {
   const box = $('infBox'), id = S.pickSeat;
-  box.classList.toggle('hide', !(S.seatMode === 'inf' && id)); box.innerHTML = '';
-  if (S.seatMode !== 'inf' || !id) return;
+  const isC = id === '__cond';
+  box.classList.toggle('hide', !((S.seatMode === 'inf' || isC) && id)); box.innerHTML = '';
+  if ((S.seatMode !== 'inf' && !isC) || !id) return;
   const top = document.createElement('div'); top.className = 'go';
-  top.innerHTML = '<b class="serif" style="font-size:18px">' + IM[id].name + '</b><span class="grow"></span>';
+  top.innerHTML = '<b class="serif" style="font-size:18px">' + (isC ? 'The conductor' : IM[id].name) + '</b><span class="grow"></span>';
   const x = document.createElement('button'); x.className = 'btn'; x.textContent = 'Done'; x.onclick = () => { S.pickSeat = null; drawHall(); };
   top.appendChild(x); box.appendChild(top);
-  box.appendChild(stateChips(S.inf[id] || 'clean', st => { if (st === 'clean') delete S.inf[id]; else S.inf[id] = st; store.set('inf', S.inf); drawHall(); }, true));
+  if (isC) box.appendChild(stateChips(S.cond || 'clean', st => { S.cond = st; store.set('cond', st); drawHall(); }, true));
+  else box.appendChild(stateChips(S.inf[id] || 'clean', st => { if (st === 'clean') delete S.inf[id]; else S.inf[id] = st; store.set('inf', S.inf); drawHall(); }, true));
 }
 function initWho() {
   [...$('seatMode').children].forEach(b => b.onclick = () => { S.seatMode = b.dataset.v; S.pickSeat = null; drawHall(); });
-  $('allClean').onclick = () => { S.inf = {}; store.set('inf', S.inf); drawHall(); };
-  $('allRandom').onclick = () => { S.inf = {}; S.inst.forEach(id => S.inf[id] = 'random'); store.set('inf', S.inf); drawHall(); };
+  $('allClean').onclick = () => { S.inf = {}; store.set('inf', S.inf); S.cond = 'clean'; store.set('cond', 'clean'); drawHall(); };
+  $('allRandom').onclick = () => { S.inf = {}; S.inst.forEach(id => S.inf[id] = 'random'); store.set('inf', S.inf); S.cond = Math.random() < .5 ? 'clean' : 'random'; store.set('cond', S.cond); drawHall(); };
 }
 function drawCond() {
-  const box = $('condBox'); box.innerHTML = '';
+  const box = $('condBox'); if (!box) { if ($('hall')) drawHall(); return; } box.innerHTML = '';
   box.appendChild(stateChips(S.cond, st => { S.cond = st; store.set('cond', st); drawCond(); }, true));
 }
 function drawOcc() {
