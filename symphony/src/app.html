@@ -181,6 +181,13 @@ details.more[open]>summary::before{content:"- "}
   .pitcol .orch{grid-template-columns:1fr}
   .flowcol .occs{grid-template-columns:repeat(auto-fill,minmax(140px,1fr))}
 }
+.row1{flex-direction:row;flex-wrap:wrap;align-items:center;gap:10px 16px;padding:12px 16px}
+.row1 .sh{margin:0}
+.row1 .presets{display:flex;flex-wrap:wrap;gap:8px}
+#sWho{gap:8px;padding:12px 16px}
+#sWho .go{gap:6px}
+#sWho .go .btn,#sWho .seg button{min-height:34px;padding:5px 11px;font-size:14px}
+.row1 + .stage{margin-top:0}
 </style>
 </head>
 <body>
@@ -197,22 +204,21 @@ details.more[open]>summary::before{content:"- "}
   <span class="muted">One click and the machine picks everything. Or set three things below and press Conduct.</span>
 </section>
 
-<div class="stage">
-<div class="pitcol">
-<section class="step" id="sOrch">
-  <div class="sh"><span class="num serif">1</span><span class="st serif">Choose your orchestra</span><span class="muted">An era brings its own orchestra. Fine-tune the seats in the next step.</span></div>
+<section class="step row1" id="sOrch">
+  <div class="sh"><span class="num serif">1</span><span class="st serif">Choose your orchestra</span></div>
   <div class="presets" id="presets"></div>
 </section>
+<div class="stage">
+<div class="pitcol">
 
 <section class="step" id="sWho">
-  <div class="sh"><span class="num serif">2</span><span class="st serif">Who plays</span><span class="muted">Tap a seat to switch it on or off. Or give each musician, and the conductor, an influence.</span></div>
+  <div class="sh"><span class="num serif">2</span><span class="st serif">Who plays</span><span class="muted">Tap a seat, or the conductor.</span></div>
   <div class="go"><span class="seg" id="seatMode"><button data-v="on">On or off</button><button data-v="inf">Give an influence</button></span><button class="btn" id="allClean">Everybody clean</button><button class="btn" id="allRandom">Random influences</button></div>
   <div class="orch">
     <svg class="hall" id="hall" viewBox="0 0 640 396" role="group" aria-label="Orchestra seating"></svg>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Percussion</span><span><i style="background:var(--kb)"></i>Piano</span></div>
       <div class="count" id="count"></div>
-      <div class="muted small">Tap the conductor to give the conductor a mood or an influence.</div>
     </div>
   </div>
 </section>
