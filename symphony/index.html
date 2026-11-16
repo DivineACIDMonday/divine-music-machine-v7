@@ -3012,13 +3012,15 @@ const ORC = (() => {
 })();
 /* the orchestra pit comes alive while it plays: a seat lights up, sends out its own rings, and drops of light rise up like rain going the wrong way */
 const VIS = (() => {
-  let cv = null, cx = null, ev = [], rings = [], drops = [], glow = {}, raf2 = 0, pos = {}, box = null, els = {};
+  let cv = null, cx = null, ev = [], rings = [], drops = [], glow = {}, raf2 = 0, pos = {}, box = null, els = {}, pv = null, px = null, pw = 0, ph2 = 0;
   const UP = 150;   // room above the pit for the rising rain
   function ensure() {
     const svg = $('hall'); if (!svg) return false;
     if (!cv) { cv = document.createElement('canvas'); cv.setAttribute('aria-hidden', 'true');
       cv.style.cssText = 'position:absolute;pointer-events:none;mix-blend-mode:screen;z-index:2';
       svg.parentNode.style.position = 'relative'; svg.parentNode.appendChild(cv); cx = cv.getContext('2d'); }
+    if (!pv) { pv = document.createElement('canvas'); pv.setAttribute('aria-hidden', 'true'); pv.style.cssText = 'position:fixed;inset:0;width:100vw;height:100vh;pointer-events:none;mix-blend-mode:screen;z-index:50'; document.body.appendChild(pv); px = pv.getContext('2d'); }
+    { const dp = Math.min(2, window.devicePixelRatio || 1); pw = innerWidth; ph2 = innerHeight; pv.width = Math.round(pw * dp); pv.height = Math.round(ph2 * dp); px.setTransform(dp, 0, 0, dp, 0, 0); }
     const pr = svg.parentNode.getBoundingClientRect(), r = svg.getBoundingClientRect(), dpr = Math.min(2, window.devicePixelRatio || 1);
     box = { x: r.left - pr.left, y: r.top - pr.top - UP, w: r.width, h: r.height + UP };
     cv.style.left = box.x + 'px'; cv.style.top = box.y + 'px'; cv.style.width = box.w + 'px'; cv.style.height = box.h + 'px';
@@ -3037,7 +3039,7 @@ const VIS = (() => {
       const p = seatOf(e.id); if (!p) return; const col = FAMHEX[fam(e.id)] || '#E8E0D0', lv = e.v / 127;
       glow[e.id] = Math.min(1, (glow[e.id] || 0) * .6 + .5 + lv * .5);
       if (rings.length < 160) rings.push({ x: p.x, y: p.y, r: p.s * .6, a: .25 + lv * .5, col, sp: 45 + lv * 70 });
-      if (drops.length < 420) for (let i = 0; i < 1 + (lv > .7 ? 1 : 0); i++) drops.push({ x: p.x + (Math.random() - .5) * p.s, y: p.y, vy: 35 + lv * 70 + Math.random() * 30, a: .5 + lv * .5, col, w: (Math.random() - .5) * 10, len: 8 + lv * 12 }); });
+      if (drops.length < 500) for (let i = 0; i < 1 + (lv > .7 ? 1 : 0); i++) drops.push({ x: Math.random() * pw, y: ph2 + 10, vy: 120 + lv * 160 + Math.random() * 60, a: .25 + lv * .45, col, w: (Math.random() - .5) * 14, len: 10 + lv * 18 }); });
     ev = rest;
     const dt = 1 / 60; cx.clearRect(0, 0, box.w, box.h);
     for (const id in glow) { const p = seatOf(id), g = glow[id]; if (p && g > .02) { const col = FAMHEX[fam(id)] || '#E8E0D0', rad = p.s * (1.4 + g);
@@ -3046,10 +3048,10 @@ const VIS = (() => {
       glow[id] *= .93; if (glow[id] < .02) { delete glow[id]; if (el) el.style.filter = ''; } else if (el) el.style.filter = 'brightness(' + (1 + .5 * glow[id]).toFixed(2) + ')'; }
     cx.lineWidth = 1.5;
     rings = rings.filter(o => { o.r += o.sp * dt; o.a *= .965; if (o.a < .02) return false; cx.strokeStyle = hex(o.col, o.a); cx.beginPath(); cx.arc(o.x, o.y, o.r, 0, 7); cx.stroke(); return true; });
-    cx.lineCap = 'round'; cx.lineWidth = 2.5;
-    drops = drops.filter(o => { o.y -= o.vy * dt; o.x += o.w * dt; o.a *= .985; if (o.a < .03 || o.y < -20) return false;
-      cx.strokeStyle = hex(o.col, o.a); cx.beginPath(); cx.moveTo(o.x, o.y); cx.lineTo(o.x - o.w * .05, o.y + o.len); cx.stroke(); return true; });
-    if (!playing && !ev.length && !rings.length && !drops.length && !Object.keys(glow).length) { cancelAnimationFrame(raf2); raf2 = 0; cx.clearRect(0, 0, box.w, box.h); }
+    px.clearRect(0, 0, pw, ph2); px.lineCap = 'round'; px.lineWidth = 2;
+    drops = drops.filter(o => { o.y -= o.vy * dt; o.x += o.w * dt; o.a *= .996; if (o.a < .03 || o.y < -30) return false;
+      px.strokeStyle = hex(o.col, o.a); px.beginPath(); px.moveTo(o.x, o.y); px.lineTo(o.x - o.w * .05, o.y + o.len); px.stroke(); return true; });
+    if (!playing && !ev.length && !rings.length && !drops.length && !Object.keys(glow).length) { cancelAnimationFrame(raf2); raf2 = 0; cx.clearRect(0, 0, box.w, box.h); if (px) px.clearRect(0, 0, pw, ph2); }
   }
   function start() { ev = []; ensure(); }
   function clear() { ev = []; }
