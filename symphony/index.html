@@ -409,11 +409,15 @@ function mkChord(rootL, rootPc, q, ext, inv) {
   if (ext === 'M7' || ext === 'M9') { T.push(tn(rootL + 6, rootPc + 11)); sev = 3; }
   if (ext === '9' || ext === 'M9' || ext === 'a9') T.push(tn(rootL + 1, rootPc + 14));
   if (ext === 'a6') T.push(tn(rootL + 5, rootPc + 9));
+  // modern colours: chords in fourths, a cluster with the second, and the Petrushka chord (a second triad a tritone away)
+  if (ext === 'q4') { T.length = 0; T.push(tn(rootL, rootPc), tn(rootL + 3, rootPc + 5), tn(rootL + 6, rootPc + 10), tn(rootL + 2, rootPc + 15)); sev = -1; }
+  if (ext === 'c2') T.push(tn(rootL + 1, rootPc + 2));
+  if (ext === 'pt') T.push(tn(rootL + 3, rootPc + 6), tn(rootL + 5, rootPc + 10), tn(rootL, rootPc + 1));
   return { T, root: mod(rootPc, 12), q, ext: ext || '', bi: inv < T.length ? inv : 0, sev };
 }
 const NUMS = { I: 0, II: 1, III: 2, IV: 3, V: 4, VI: 5, VII: 6 };
-const TOKRE = /^(b|#)?(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(o|ø|h|\+)?(M9|M7|a6|a9|65|43|42|64|9|7|6)?$/;
-const INV = { '': [0, ''], '6': [1, ''], '64': [2, ''], '7': [0, '7'], '65': [1, '7'], '43': [2, '7'], '42': [3, '7'], '9': [0, '9'], 'M7': [0, 'M7'], 'M9': [0, 'M9'], 'a6': [0, 'a6'], 'a9': [0, 'a9'] };
+const TOKRE = /^(b|#)?(VII|VI|IV|V|III|II|I|vii|vi|iv|v|iii|ii|i)(o|ø|h|\+)?(M9|M7|a6|a9|q4|c2|pt|65|43|42|64|9|7|6)?$/;
+const INV = { '': [0, ''], '6': [1, ''], '64': [2, ''], '7': [0, '7'], '65': [1, '7'], '43': [2, '7'], '42': [3, '7'], '9': [0, '9'], 'M7': [0, 'M7'], 'M9': [0, 'M9'], 'a6': [0, 'a6'], 'a9': [0, 'a9'], 'q4': [0, 'q4'], 'c2': [0, 'c2'], 'pt': [0, 'pt'] };
 function parseTok(tok, K, plain) {
   let c;
   if (tok === 'Cad') { c = parseTok('I64', K, plain); c.cad = 1; c.fn = 'D'; return c; }
@@ -496,6 +500,21 @@ function flavor(s, era, r, mode, fl) {
       else if (t === 'ii6' && r() < .2) t = 'viio7/V';
       else if (t === 'vi' && (nx === 'IV' || nx === 'ii6' || nx === 'ii') && r() < .25) t = 'bVI';
       else if (t === 'IV' && nx === 'Cad' && r() < .4) t = 'Ger';
+    } else if (era === 'modern') {
+      if (t === 'I' && i > 0 && i < flat.length - 1 && r() < .55) t = pick(r, ['Ic2', 'Iq4', 'bII', 'Ic2']);
+      else if (t === 'IV' && r() < .6) t = pick(r, ['IVq4', 'IVc2', 'bVII']);
+      else if ((t === 'ii' || t === 'ii6') && r() < .6) t = pick(r, ['iiq4', 'bII']);
+      else if (t === 'vi' && r() < .5) t = pick(r, ['bVI', 'vic2']);
+      else if ((t === 'V' || t === 'V7') && nx !== 'I' && r() < .45) t = pick(r, ['Vpt', 'bVII', 'Vq4']);
+      else if (t === 'V7' && nx === 'I' && r() < .3) t = 'Vpt';
+    } else if (era === 'pop') {
+      // pop: plain triads you can sing to, IV instead of the classical cadence chords, a borrowed bVII now and then
+      if (t === 'Cad' || t === 'ii6' || t === 'ii' || t === 'ii65' || t === 'IV6' || t === 'iv' || t === 'N6' || t === 'Ger') t = 'IV';
+      else if (t === 'viio6' || t === 'viio7' || t === 'viio7/V' || t === 'V/V' || t === 'V7/V') t = 'V';
+      else if (t === 'iii' || t === 'I6') t = 'vi';
+      else if (t === 'V7' && nx !== 'I' && r() < .3) t = 'bVII';
+      else if (t === 'I' && i > 0 && r() < .2) t = 'Ia9';
+      else if (t === 'IV' && r() < .2) t = 'IVa9';
     } else if (era === 'impressionist') {
       if (t === 'I' && i > 0 && i < flat.length - 1 && r() < .6) t = mode === 'm' ? 'I7' : pick(r, ['IM7', 'Ia9', 'Ia6']);
       else if (t === 'IV' && r() < .6) t = mode === 'm' ? 'IV7' : 'IVM7';
@@ -2014,6 +2033,30 @@ function perform(c, parts) {
     if (d < .45) return !['brass', 'timp', 'dbl', 'col'].includes(role) && !['tpt', 'tbn', 'btbn', 'tba', 'timp', 'picc'].includes(inst.id);
     if (d < .68) return role !== 'timp' || ph.dyn > .6;
     return true; };
+  // the band and the engine room of the new eras
+  (() => {
+    const pop = x.era === 'pop', md = x.era === 'modern'; if (!pop && !md) return;
+    const E8 = PPQ / 2, push = (id, n) => { (parts[id] = parts[id] || []).push(n); };
+    if (pop && x.E.has('drums')) {
+      parts.drums = [];
+      c.phrases.forEach(ph => { if (ph.dyn < .3) return; const fill = ph.dyn >= .6;
+        for (let t = ph.t0; t < ph.t1; t += c.bar) { const last = t + c.bar >= ph.t1;
+          if (c.meter === 3) { push('drums', { t, dur: E8, m: 40, ph, role: 'guest', art: 'short' }); push('drums', { t: t + PPQ, dur: E8, m: 50, ph, role: 'guest', art: 'short' }); push('drums', { t: t + 2 * PPQ, dur: E8, m: 50, ph, role: 'guest', art: 'short' }); continue; }
+          push('drums', { t, dur: E8, m: 40, ph, role: 'guest', art: 'short' }); push('drums', { t: t + 2 * PPQ, dur: E8, m: 40, ph, role: 'guest', art: 'short' });
+          if (ph.dyn > .5) push('drums', { t: t + 2 * PPQ + E8, dur: E8, m: 40, ph, role: 'guest', art: 'short' });
+          push('drums', { t: t + PPQ, dur: E8, m: 50, ph, role: 'guest', art: 'short' });
+          if (last && fill) for (let k = 0; k < 4; k++) push('drums', { t: t + 3 * PPQ + k * PPQ / 4, dur: PPQ / 4, m: 50, ph, role: 'guest', art: 'short' });
+          else push('drums', { t: t + 3 * PPQ, dur: E8, m: 50, ph, role: 'guest', art: 'short' }); }
+        if (x.E.has('metals') && ph.dyn >= .55) push('metals', { t: ph.t0, dur: PPQ * 2, m: 52, ph, role: 'guest', art: 'long' }); });
+    }
+    if (md) {
+      // a stubborn ostinato in the drums and timpani: 3 + 3 + 2 eighths, in the loud phrases
+      c.phrases.forEach(ph => { if (ph.dyn < .5 || c.meter !== 4) return;
+        for (let t = ph.t0; t < ph.t1; t += c.bar) [0, 3, 6].forEach(k => {
+          if (x.E.has('drums')) push('drums', { t: t + k * E8, dur: E8, m: k ? 50 : 40, ph, role: 'guest', art: 'short' });
+          if (x.E.has('timp') && k === 0) { const ev = evAt(c.events, t); if (ev) { const ti = INST.find(i => i.id === 'timp'); let m = 48 + mod(ev.bass, 12); while (m > ti.hi) m -= 12; while (m < ti.lo) m += 12; push('timp', { t, dur: E8, m, ph, role: 'guest', art: 'short' }); } } }); });
+    }
+  })();
   // every seat you switched on gets to play: an instrument the arrangement left silent joins the loudest phrases in its own way
   (() => {
     const loud = c.phrases.slice().sort((a, b) => b.dyn - a.dyn), top = new Set(loud.slice(0, Math.max(1, Math.ceil(loud.length * .4))).map(ph => ph.idx));
@@ -2047,6 +2090,10 @@ function perform(c, parts) {
       const ph = n.ph, beatPos = (n.t % c.bar) / PPQ;
       const lv = lvl(ph, n.t, n.role);
       let v = 14 + 106 * lv + (beatPos === 0 ? 8 : beatPos === 2 && c.meter === 4 ? 3 : (n.t % PPQ) ? -5 : 0) + (r() * 8 - 4);
+      // modern: the accent jumps to the wrong place, in groups of 3 + 3 + 2 eighths
+      if (x.era === 'modern' && n.role !== 'guest') { const e8 = Math.round((n.t % c.bar) / (PPQ / 2)); v += (e8 === 3 || e8 === 6) ? 16 : beatPos === 0 ? -6 : 0; }
+      // pop: the band leans on 2 and 4
+      if (x.era === 'pop' && c.meter === 4 && (beatPos === 1 || beatPos === 3) && !(n.t % PPQ)) v += 5;
       if (n.art === 'short' || n.art === 'pizz') v += 5;
       if (n.acc) v += n.acc;
       if (n.roll) v = 50 + 60 * lv * (0.6 + 0.4 * ((n.t - ph.t0) / Math.max(1, ph.t1 - ph.t0)));
