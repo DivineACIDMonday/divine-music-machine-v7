@@ -674,6 +674,8 @@ const ERAS = {
   classical: { name: 'Classical', years: '1750 to 1820', blurb: 'Clear periods, Alberti figures, balanced phrases, wind pairs with horns and trumpets.', tex: 'repeated8', btex: 'drum8', rub: .04, amp: .12, melLo: 64, melHi: 89, melC: 76, appog: 0, ctr: .2, trill: 1 },
   romantic: { name: 'Romantic', years: '1820 to 1900', blurb: 'Long lines, rich chromatic harmony, horn calls, swelling dynamics and rubato.', tex: 'arpeggio', btex: 'held', rub: .1, amp: .2, melLo: 62, melHi: 91, melC: 76, appog: 1, ctr: .6, trill: 0 },
   impressionist: { name: 'Impressionist', years: '1890 to 1920', blurb: 'Colour chords, ninths and added sixths, soft washes, modal turns and floating time.', tex: 'sustain', btex: 'held', rub: .12, amp: .18, melLo: 64, melHi: 89, melC: 76, appog: 1, ctr: .3, trill: 0, avoid: [5, 11] },
+  modern: { name: 'Modern', years: '1900 to 1950', blurb: 'Clashing chords, two keys at once, stubborn ostinatos and accents on the wrong beat. Think Stravinsky and Bartok.', tex: 'repeated8', btex: 'drum8', rub: .05, amp: .25, melLo: 62, melHi: 91, melC: 76, appog: 0, ctr: .4, trill: 0 },
+  pop: { name: 'Pop orchestra', years: '1960 to now', blurb: 'Strings and brass over a band: piano, bass and drums with a backbeat, and chords you can sing along to.', tex: 'repeated8', btex: 'drum8', rub: .02, amp: .1, melLo: 62, melHi: 86, melC: 74, appog: 0, ctr: .25, trill: 0 },
 };
 Y.ERAS = ERAS;
 const INST = [
@@ -722,6 +724,8 @@ const PRESETS = {
   classical: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'tpt', 'timp'],
   romantic: INST.filter(i => i.id !== 'pno').map(i => i.id),
   impressionist: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'ob', 'cl', 'bsn', 'hn', 'pno'],
+  modern: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'picc', 'fl', 'ob', 'cl', 'bcl', 'bsn', 'cbsn', 'hn', 'tpt', 'tbn', 'tba', 'timp', 'xyl', 'glock', 'drums', 'metals', 'pno'],
+  pop: ['vln1', 'vln2', 'vla', 'vc', 'cb', 'fl', 'hn', 'tpt', 'tbn', 'pno', 'glock', 'drums', 'metals'],
   strings: ['vln1', 'vln2', 'vla', 'vc', 'cb'],
   all: INST.filter(i => !i.x).map(i => i.id),
   berlin: INST.map(i => i.id).filter(id => id !== 'pno' && id !== 'btbn').concat(['pno']),
@@ -2496,7 +2500,7 @@ const FEEL_PATH = {
   free: 'M2 10H30'
 };
 const fic = (k, cls) => '<svg class="fic' + (cls ? ' ' + cls : '') + '" viewBox="0 0 32 20" aria-hidden="true"><path d="' + FEEL_PATH[k || 'free'] + '"' + (k ? '' : ' stroke-dasharray="1 5"') + '/></svg>';
-const eraIcons = { baroque: '𝄞', classical: '♩', romantic: '♪', impressionist: '≈' };
+const eraIcons = { baroque: '𝄞', classical: '♩', romantic: '♪', impressionist: '≈', modern: '#', pop: '♫' };
 function drawFeels() {
   const box = $('feels'); box.innerHTML = '';
   const list = Object.entries(Y.FEELINGS).concat([[null, { name: 'Free choice', blurb: 'No feeling preset. You choose everything yourself.' }]]);
@@ -2720,7 +2724,7 @@ function seat(id, d, tx, ty, label) {
 function fam(id) { const g = IM[id].grp; return g === 'str' ? 'str' : g === 'ww' ? 'ww' : g === 'br' ? 'br' : g === 'perc' ? 'perc' : 'kb'; }
 function initBfo() { $('bfoOn').onchange = e => { S.bfo = e.target.checked; store.set('bfo', S.bfo); if (!S.bfo) Y.EXTRAS.forEach(id => S.inst.delete(id)); else { const fe = Y.FEELINGS[S.feel]; if (fe) fe.bfo.forEach(id => S.inst.add(id)); } store.set('inst', [...S.inst]); drawHall(); }; }
 function drawPresets() {
-  const P = [['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Strings only', 'strings'], ['Everything', 'all'], ['Berlin Free: all 34', 'berlin']];
+  const P = [['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Modern', 'modern'], ['Pop orchestra', 'pop'], ['Strings only', 'strings'], ['Everything', 'all'], ['Berlin Free: all 34', 'berlin']];
   $('presets').innerHTML = '';
   P.forEach(([n, k]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.setAttribute('aria-pressed', S.preset === k);
     b.onclick = () => { if (k === 'berlin') { S.bfo = true; store.set('bfo', true); } if (Y.ERAS[k]) { S.era = k; store.set('era', k); drawEras(); drawSuite(); }
