@@ -252,7 +252,7 @@ details.more[open]>summary::before{content:"- "}
     <div class="strip" id="strip"><span class="head" id="head"></span></div>
     <div class="go">
       <button class="btn" id="play">▶ Listen</button>
-      <span class="muted small" id="ptime">A rough sketch with simple synths. The real sound comes from BBC Discover.</span>
+      <span class="muted small" id="ptime">A preview with real orchestra samples (VSCO 2, free and open). In your DAW it sounds like your own orchestra.</span>
       <span class="grow"></span>
       <button class="btn gold" id="dlAll">Download full MIDI</button>
       <button class="btn" id="dlZip">Download all tracks (zip)</button>
@@ -700,7 +700,7 @@ function showResult() {
   m.secs.forEach(s => { if (!(s.label in labels)) labels[s.label] = SECCOL[k++ % SECCOL.length]; const d = document.createElement('div'); d.style.flex = (s.t1 - s.t0) + ' 0 0'; d.style.background = labels[s.label]; d.textContent = s.label; d.title = s.label + ' · ' + fmt(secs(m, s.t0)); strip.insertBefore(d, $('head')); });
   const ck = Y.check(m);
   $('check').innerHTML = m.title + ' · ' + m.tempo + ' bpm · ' + fmt(secs(m, m.end)) + ' · ' + ck.notes + ' notes · parallel fifths and octaves: <b>' + ck.parallels + '</b> · out of range: <b>' + ck.range + '</b> · ends on the tonic: <b>' + (ck.finalTonic ? 'yes' : 'no') + '</b>';
-  $('ptime').textContent = 'A rough sketch with simple synths. The real sound comes from BBC Discover.';
+  $('ptime').textContent = 'A preview with real orchestra samples (VSCO 2, free and open). In your DAW it sounds like your own orchestra.';
   const tr = $('tracks'); tr.innerHTML = '';
   m.tracks.forEach(t => {
     if (S.target === 'berlin' && t.id === 'btbn' && m.tracks.some(x => x.id === 'tbn')) return;
@@ -783,7 +783,50 @@ function noiseHit(n, when) {
   src.start(when, Math.random()); src.stop(when + P[3] + .05);
   if (kind === 'bd' || kind === 'tom') { const o = AC.createOscillator(), og = AC.createGain(); o.frequency.setValueAtTime(kind === 'bd' ? 90 : 160, when); o.frequency.exponentialRampToValueAtTime(kind === 'bd' ? 45 : 90, when + .2); og.gain.setValueAtTime(pk * .8, when); og.gain.exponentialRampToValueAtTime(.0005, when + P[3]); o.connect(og); og.connect(master); o.start(when); o.stop(when + P[3] + .05); }
 }
+/* the real orchestra for Listen: VSCO 2 Community Edition (CC0, Versilian Studios), loaded only when used */
+const ORC = (() => {
+  const ROOT = 'vsco/', G = { vln1: 'vln', vln2: 'vln', svn: 'svn', vla: 'vla', vc: 'vc', svc: 'vc', cb: 'cb', picc: 'picc', fl: 'fl', ob: 'ob', eh: 'ob', cl: 'cl', bcl: 'cl', bsn: 'bsn', cbsn: 'bsn',
+    hn: 'hn', shn: 'hn', tpt: 'tpt', stpt: 'tpt', tbn: 'tbn', stbn: 'tbn', btbn: 'tbn', tba: 'tba', timp: 'timp', glock: 'glock', xyl: 'xyl', mar: 'mar', pno: 'pno', drums: 'perc', metals: 'perc' };
+  const GAIN = { vln: .55, svn: .5, vla: .5, vc: .55, cb: .55, picc: .4, fl: .5, ob: .45, cl: .45, bsn: .5, hn: .5, tpt: .42, tbn: .45, tba: .5, timp: .75, glock: .35, xyl: .4, mar: .5, pno: .55, perc: .6 };
+  let man = null, failed = false; const buf = {}, busy = {};
+  const art = (g, n) => { const A = man[g]; if (!A) return null;
+    if (g === 'perc') return n.id === 'drums' ? (n.m < 48 ? 'bd' : n.m < 60 ? 'sn' : 'tom') : (n.m < 44 ? 'cym' : n.m < 60 ? 'cym' : 'tam');
+    const a = n.art === 'pizz' || n.art === 'trem' || n.art === 'short' ? n.art : 'long';
+    return A[a] ? a : A.long ? 'long' : A.hit ? 'hit' : Object.keys(A)[0]; };
+  const root = (g, a, m) => { const rs = man[g][a]; return g === 'perc' ? rs[0] : rs.reduce((b, x) => Math.abs(x - m) < Math.abs(b - m) ? x : b, rs[0]); };
+  const key = (g, a, r) => g + '_' + a + '_' + r;
+  function load(k) { if (buf[k] || busy[k]) return busy[k]; const ctx = AC; return busy[k] = fetch(ROOT + k + '.mp3').then(r => { if (!r.ok) throw 0; return r.arrayBuffer(); })
+    .then(b => new Promise((ok, no) => ctx.decodeAudioData(b, ok, no))).then(ab => { buf[k] = ab; delete busy[k]; }).catch(() => { delete busy[k]; }); }
+  async function prepare(notes, onProgress) {
+    if (failed) return false;
+    try { if (!man) { const r = await fetch(ROOT + 'manifest.json'); if (!r.ok) throw 0; man = await r.json(); } } catch (e) { failed = true; return false; }
+    const need = new Set();
+    notes.forEach(n => { const g = G[n.id]; if (!g || !man[g]) return; const a = art(g, n); if (a) need.add(key(g, a, root(g, a, n.m))); });
+    const ks = [...need]; let done = 0;
+    await Promise.race([Promise.all(ks.map(k => load(k).then(() => onProgress && onProgress(++done, ks.length)))), new Promise(ok => setTimeout(ok, 25000))]);
+    return true;
+  }
+  function play(n, when, out) {
+    if (!man) return false; const g = G[n.id]; if (!g || !man[g]) return false;
+    const a = art(g, n); if (!a) return false; const r = root(g, a, n.m), b = buf[key(g, a, r)]; if (!b) return false;
+    const src = AC.createBufferSource(), lp = AC.createBiquadFilter(), gn = AC.createGain();
+    src.buffer = b; if (g !== 'perc') src.playbackRate.value = Math.pow(2, (n.m - r) / 12);
+    const vel = n.v / 127, pk = GAIN[g] * Math.pow(vel, 1.5) * 2.4;
+    lp.type = 'lowpass'; lp.frequency.value = 1800 + vel * vel * 16000; lp.Q.value = .5;
+    const ring = a === 'hit' || a === 'pizz' || a === 'short' || g === 'perc';
+    const dur = Math.max(.05, n.d), rel = g === 'pno' ? .35 : ring ? .25 : (/^(vln|svn|vla|vc|cb)$/.test(g) ? .32 : .18);
+    const end = ring && g !== 'pno' ? when + b.duration / src.playbackRate.value : when + dur + rel;
+    gn.gain.setValueAtTime(pk, when);
+    if (!ring || g === 'pno') { gn.gain.setValueAtTime(pk, when + dur); gn.gain.linearRampToValueAtTime(0.0001, when + dur + rel); }
+    src.connect(lp); lp.connect(gn); gn.connect(out); src.start(when); src.stop(end + .05);
+    return true;
+  }
+  return { prepare, play, get ok() { return !!man && !failed; } };
+})();
 function noteOn(n, when) {
+  if (ORC.ok) { const pan = AC.createStereoPanner ? AC.createStereoPanner() : null; let out = master;
+    if (pan) { pan.pan.value = PAN[n.id] != null ? PAN[n.id] : 0; pan.connect(master); out = pan; }
+    if (ORC.play(n, when, out)) return; if (pan) pan.disconnect(); }
   if (n.id === 'drums' || n.id === 'metals') return noiseHit(n, when);
   const f = fam(n.id), V = VOICE[f], dur = Math.max(.06, n.d);
   const g = AC.createGain(), lp = AC.createBiquadFilter(), p = AC.createStereoPanner ? AC.createStereoPanner() : null;
@@ -822,7 +865,15 @@ function play() {
   queue = [];
   m.tracks.forEach(t => t.notes.forEach(n => queue.push({ id: t.id, t: (n.t - m.OFF) * k, d: n.dur * k, m: n.m, v: n.v, art: n.art })));
   queue.sort((a, b) => a.t - b.t); qi = 0;
-  t0 = AC.currentTime + .15; playing = true; $('play').textContent = '■ Stop';
+  playing = true; $('play').textContent = '■ Stop';
+  $('ptime').textContent = 'Seating the orchestra…';
+  const myRun = ++RUN;
+  ORC.prepare(queue, (d, t) => { if (myRun === RUN && playing) $('ptime').textContent = 'Seating the orchestra… ' + Math.round(d / t * 100) + ' %'; }).then(() => { if (myRun === RUN && playing) startPlay(m, k); });
+}
+let RUN = 0;
+function startPlay(m, k) {
+  if (!master) { master = AC.createGain(); master.gain.value = .5; master.connect(AC.destination); }
+  t0 = AC.currentTime + .15;
   const tick = () => {
     const now = AC.currentTime - t0, horizon = now + .5;
     let budget = 160;
