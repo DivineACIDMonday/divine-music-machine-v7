@@ -371,7 +371,7 @@ const FEEL_PATH = {
   free: 'M2 10H30'
 };
 const fic = (k, cls) => '<svg class="fic' + (cls ? ' ' + cls : '') + '" viewBox="0 0 32 20" aria-hidden="true"><path d="' + FEEL_PATH[k || 'free'] + '"' + (k ? '' : ' stroke-dasharray="1 5"') + '/></svg>';
-const eraIcons = { baroque: '𝄞', classical: '♩', romantic: '♪', impressionist: '≈', modern: '#', pop: '♫' };
+const eraIcons = { baroque: '𝄞', classical: '♩', romantic: '♪', impressionist: '≈', modern: '#', experimental: '*', pop: '♫' };
 function drawFeels() {
   const box = $('feels'); box.innerHTML = '';
   const list = Object.entries(Y.FEELINGS).concat([[null, { name: 'Free choice', blurb: 'No feeling preset. You choose everything yourself.' }]]);
@@ -595,7 +595,7 @@ function seat(id, d, tx, ty, label) {
 function fam(id) { const g = IM[id].grp; return g === 'str' ? 'str' : g === 'ww' ? 'ww' : g === 'br' ? 'br' : g === 'perc' ? 'perc' : 'kb'; }
 function initBfo() { $('bfoOn').onchange = e => { S.bfo = e.target.checked; store.set('bfo', S.bfo); if (!S.bfo) Y.EXTRAS.forEach(id => S.inst.delete(id)); else { const fe = Y.FEELINGS[S.feel]; if (fe) fe.bfo.forEach(id => S.inst.add(id)); } store.set('inst', [...S.inst]); drawHall(); }; }
 function drawPresets() {
-  const P = [['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Modern', 'modern'], ['Pop orchestra', 'pop'], ['Strings only', 'strings'], ['Everything', 'all'], ['Berlin Free: all 34', 'berlin']];
+  const P = [['Baroque', 'baroque'], ['Classical', 'classical'], ['Romantic', 'romantic'], ['Impressionist', 'impressionist'], ['Modern', 'modern'], ['Experimental', 'experimental'], ['Pop orchestra', 'pop'], ['Strings only', 'strings'], ['Everything', 'all'], ['Berlin Free: all 34', 'berlin']];
   $('presets').innerHTML = '';
   P.forEach(([n, k]) => { const b = document.createElement('button'); b.className = 'btn'; b.textContent = n; b.setAttribute('aria-pressed', S.preset === k);
     b.onclick = () => { if (k === 'berlin') { S.bfo = true; store.set('bfo', true); } if (Y.ERAS[k]) { S.era = k; store.set('era', k); drawEras(); drawSuite(); }
