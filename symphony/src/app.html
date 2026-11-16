@@ -197,7 +197,7 @@ details.more[open]>summary::before{content:"- "}
     <svg class="hall" id="hall" viewBox="0 0 640 396" role="group" aria-label="Orchestra seating"></svg>
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="infbox hide" id="infBox"></div>
-      <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Timpani</span><span><i style="background:var(--kb)"></i>Piano</span></div>
+      <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Percussion</span><span><i style="background:var(--kb)"></i>Piano</span></div>
       <div class="count" id="count"></div>
       <label class="opt" id="bfoW"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
       <div id="bfoBox" class="hide"><div class="muted small" style="margin-bottom:6px">Only in Berlin Free Orchestra. Feelings pick fitting ones for you.</div><div class="chips" id="bfoChips"></div></div>
@@ -541,7 +541,10 @@ function drawHall() {
       h += seat(id, sector(ring.r1, ring.r2, a1, a2), tx, ty, ring.short[i]);
     });
   });
-  h += seat('timp', 'M270 18 h100 a10 10 0 0 1 10 10 v26 a10 10 0 0 1 -10 10 h-100 a10 10 0 0 1 -10 -10 v-26 a10 10 0 0 1 10 -10 z', 320, 41, 'Timpani');
+  // the percussion row at the back: every percussion instrument its own seat
+  [['timp', 'Timpani'], ['glock', 'Glock'], ['xyl', 'Xylo'], ['mar', 'Marimba'], ['vib', 'Vibes'], ['bells', 'Bells'], ['drums', 'Drums'], ['metals', 'Cymbals']].forEach(([id, lb], i) => {
+    if (!IM[id]) return; const x = 140 + i * 61, y = 16, w = 56, hh = 40, r = 8;
+    h += seat(id, 'M' + (x + r) + ' ' + y + ' h' + (w - 2 * r) + ' a' + r + ' ' + r + ' 0 0 1 ' + r + ' ' + r + ' v' + (hh - 2 * r) + ' a' + r + ' ' + r + ' 0 0 1 -' + r + ' ' + r + ' h-' + (w - 2 * r) + ' a' + r + ' ' + r + ' 0 0 1 -' + r + ' -' + r + ' v-' + (hh - 2 * r) + ' a' + r + ' ' + r + ' 0 0 1 ' + r + ' -' + r + ' z', x + w / 2, y + hh / 2 + 1, lb); });
   h += seat('pno', 'M22 40 h92 a10 10 0 0 1 10 10 v26 a10 10 0 0 1 -10 10 h-92 a10 10 0 0 1 -10 -10 v-26 a10 10 0 0 1 10 -10 z', 68, 63, 'Piano');
   svg.innerHTML = h;
   { const cg = svg.querySelector('.condseat'); if (cg) { const t = () => { S.pickSeat = S.pickSeat === '__cond' ? null : '__cond'; drawHall(); }; cg.onclick = t; cg.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; } }
@@ -555,7 +558,7 @@ function drawHall() {
   $('count').textContent = S.inst.size + ' sections on, so ' + S.inst.size + ' MIDI tracks.';
   $('bfoOn').checked = S.bfo; $('bfoBox').classList.toggle('hide', !S.bfo);
   const bc = $('bfoChips'); bc.innerHTML = '';
-  Y.EXTRAS.forEach(id => { const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', S.inst.has(id)); b.innerHTML = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + FAMHEX[fam(id)] + ';margin-right:6px"></span>' + IM[id].name; b.onclick = () => { if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); }; bc.appendChild(b); });
+  Y.EXTRAS.filter(id => fam(id) !== 'perc').forEach(id => { const b = document.createElement('button'); b.className = 'chip'; b.setAttribute('aria-pressed', S.inst.has(id)); b.innerHTML = '<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + FAMHEX[fam(id)] + ';margin-right:6px"></span>' + IM[id].name; b.onclick = () => { if (S.inst.has(id)) S.inst.delete(id); else S.inst.add(id); store.set('inst', [...S.inst]); drawHall(); }; bc.appendChild(b); });
 }
 function seat(id, d, tx, ty, label) {
   const on = S.inst.has(id), col = FAMHEX[fam(id)], inf = S.inf[id] && S.inf[id] !== 'clean' ? S.inf[id] : null;
