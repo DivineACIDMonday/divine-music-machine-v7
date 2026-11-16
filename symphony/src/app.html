@@ -252,6 +252,7 @@ details.more[open]>summary::before{content:"- "}
     <div class="strip" id="strip"><span class="head" id="head"></span></div>
     <div class="go">
       <button class="btn" id="play">▶ Listen</button>
+      <button class="btn" id="dlMp3">Download MP3</button>
       <span class="muted small" id="ptime">A preview with real orchestra samples (VSCO 2, free and open). In your DAW it sounds like your own orchestra.</span>
       <span class="grow"></span>
       <button class="btn gold" id="dlAll">Download full MIDI</button>
@@ -753,16 +754,54 @@ $('dlZip').onclick = () => {
 
 /* preview synth */
 let AC = null, master = null, verb = null, timer = null, playing = false, t0 = 0, queue = [], qi = 0, raf = 0;
+function chain(ctx) {
+  const mst = ctx.createGain(); mst.gain.value = .5;
+  const comp = ctx.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4;
+  const vb = ctx.createConvolver();
+  const len = ctx.sampleRate * 2.6, ir = ctx.createBuffer(2, len, ctx.sampleRate);
+  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
+  vb.buffer = ir;
+  const wet = ctx.createGain(); wet.gain.value = .32;
+  mst.connect(comp); mst.connect(vb); vb.connect(wet); wet.connect(comp); comp.connect(ctx.destination);
+  return mst;
+}
 function setupAudio() {
   AC = new (window.AudioContext || window.webkitAudioContext)();
-  master = AC.createGain(); master.gain.value = .5;
-  const comp = AC.createDynamicsCompressor(); comp.threshold.value = -18; comp.ratio.value = 4;
-  verb = AC.createConvolver();
-  const len = AC.sampleRate * 2.6, ir = AC.createBuffer(2, len, AC.sampleRate);
-  for (let ch = 0; ch < 2; ch++) { const d = ir.getChannelData(ch); for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3.2); }
-  verb.buffer = ir;
-  const wet = AC.createGain(); wet.gain.value = .32;
-  master.connect(comp); master.connect(verb); verb.connect(wet); wet.connect(comp); comp.connect(AC.destination);
+  master = chain(AC);
+}
+/* the whole piece as one MP3: played silently in an offline room with the same orchestra */
+function loadLame() { return typeof lamejs !== 'undefined' ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'lame.js'; sc.onload = ok; sc.onerror = no; document.head.appendChild(sc); }); }
+async function downloadMp3() {
+  if (!RES) return; const b = $('dlMp3'), info = $('ptime'); b.disabled = true; if (playing) stop();
+  const keepAC = AC, keepMaster = master;
+  try {
+    const notes = []; let off = 0;
+    RES.movements.forEach(m => { const k = 60 / m.tempo / 480;
+      m.tracks.forEach(t => t.notes.forEach(n => notes.push({ id: t.id, t: off + (n.t - m.OFF) * k, d: n.dur * k, m: n.m, v: n.v, art: n.art })));
+      off += (m.end - m.OFF) * k + 3; });
+    const total = off + 2, SR = 44100;
+    info.textContent = 'Seating the orchestra…';
+    const ctx = new OfflineAudioContext(2, Math.ceil(total * SR), SR);
+    AC = ctx; master = chain(ctx);
+    await ORC.prepare(notes, (d, t) => { info.textContent = 'Seating the orchestra… ' + Math.round(d / t * 100) + ' %'; });
+    notes.forEach(n => { if (n.t >= 0) noteOn(n, n.t + .1); });
+    info.textContent = 'The orchestra plays the whole piece…';
+    const ab = await ctx.startRendering();
+    AC = keepAC; master = keepMaster;
+    let pk = 0; for (let c = 0; c < 2; c++) { const d = ab.getChannelData(c); for (let i = 0; i < d.length; i++) { const v = Math.abs(d[i]); if (v > pk) pk = v; } }
+    const g = pk > 0 ? .89 / pk : 1;
+    await loadLame();
+    const enc = new lamejs.Mp3Encoder(2, SR, 192), L = ab.getChannelData(0), Rr = ab.getChannelData(1), out = [], CH = 1152 * 40;
+    const i16 = (f, a, z) => { const o = new Int16Array(z - a); for (let i = a; i < z; i++) { const v = Math.max(-1, Math.min(1, f[i] * g)); o[i - a] = v < 0 ? v * 32768 : v * 32767; } return o; };
+    for (let i = 0; i < L.length; i += CH) { const e = Math.min(L.length, i + CH), mm = enc.encodeBuffer(i16(L, i, e), i16(Rr, i, e)); if (mm.length) out.push(new Uint8Array(mm));
+      if ((i / CH) % 20 === 0) { info.textContent = 'Making the MP3… ' + Math.round(i / L.length * 100) + ' %'; await new Promise(r => setTimeout(r, 0)); } }
+    const fl = enc.flush(); if (fl.length) out.push(new Uint8Array(fl));
+    const name = (RES.movements.length > 1 ? fileBase(RES.movements[0]).replace(/ I\. Allegro/, '').replace(/ \d+ bpm/, '') : fileBase(RES.movements[0])) + '.mp3';
+    const url = URL.createObjectURL(new Blob(out, { type: 'audio/mpeg' })), a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+    info.textContent = 'Your MP3 is ready: ' + name;
+  } catch (e) { AC = keepAC; master = keepMaster; info.textContent = 'The MP3 did not work this time. Try again.'; }
+  b.disabled = false;
 }
 const VOICE = {
   str: { type: 'sawtooth', cut: 2600, att: .09, gain: .09 }, ww: { type: 'triangle', cut: 3800, att: .04, gain: .14 },
@@ -892,6 +931,7 @@ function stop() {
   const h = $('head'); if (h) h.style.opacity = 0;
 }
 $('play').onclick = play;
+$('dlMp3').onclick = downloadMp3;
 $('compose').onclick = compose;
 $('surprise').onclick = openSM;
 $('surpriseTop').onclick = openSM;
