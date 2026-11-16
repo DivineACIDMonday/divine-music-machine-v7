@@ -115,6 +115,9 @@ footer{color:var(--mu);font-size:12.5px;text-align:center;padding:10px 0 20px}
 .seat text.inf{font:600 10px system-ui,sans-serif;fill:#130E11}
 .seat.off text.inf{fill:#C9B8AA}
 .seat.picked path{stroke:var(--tx);stroke-width:3}
+details#extras>summary{cursor:pointer;font-size:18px;list-style:none;min-height:30px}
+details#extras>summary::before{content:"+ ";color:var(--gold)}
+details#extras[open]>summary::before{content:"- "}
 details.daw>summary{cursor:pointer;font-size:18px;list-style:none;min-height:30px;margin-top:6px}
 details.daw>summary::before{content:"+ ";color:var(--gold)}
 details.daw[open]>summary::before{content:"- "}
@@ -207,11 +210,8 @@ details.more[open]>summary::before{content:"- "}
   <div class="orch">
     <svg class="hall" id="hall" viewBox="0 0 640 396" role="group" aria-label="Orchestra seating"></svg>
     <div style="display:flex;flex-direction:column;gap:12px">
-      <div class="infbox hide" id="infBox"></div>
       <div class="legend"><span><i style="background:var(--str)"></i>Strings</span><span><i style="background:var(--ww)"></i>Woodwinds</span><span><i style="background:var(--br)"></i>Brass</span><span><i style="background:var(--perc)"></i>Percussion</span><span><i style="background:var(--kb)"></i>Piano</span></div>
       <div class="count" id="count"></div>
-      <label class="opt" id="bfoW"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
-      <div id="bfoBox" class="hide"><div class="muted small" style="margin-bottom:6px">Only in Berlin Free Orchestra. Feelings pick fitting ones for you.</div><div class="chips" id="bfoChips"></div></div>
       <div class="muted small">Tap the conductor to give the conductor a mood or an influence.</div>
     </div>
   </div>
@@ -219,6 +219,12 @@ details.more[open]>summary::before{content:"- "}
 
 </div>
 <div class="flowcol">
+<div class="infbox hide" id="infBox"></div>
+<details class="step" id="extras">
+  <summary class="serif">Extra seats: solo players and more</summary>
+<label class="opt" id="bfoW"><input type="checkbox" id="bfoOn"> Berlin Free Orchestra extras</label>
+<div id="bfoBox" class="hide"><div class="muted small" style="margin-bottom:6px">Only in Berlin Free Orchestra. Feelings pick fitting ones for you.</div><div class="chips" id="bfoChips"></div></div>
+</details>
 <section class="step" id="sOcc">
   <div class="sh"><span class="num serif">3</span><span class="st serif">The occasion</span><span class="muted">What is the music for? This picks the form and the story.</span></div>
   <div class="occs" id="occs"></div>
@@ -630,8 +636,9 @@ function stateChips(cur, onPick, withRandom) {
 function drawInfBox() {
   const box = $('infBox'), id = S.pickSeat;
   const isC = id === '__cond';
-  box.classList.toggle('hide', !((S.seatMode === 'inf' || isC) && id)); box.innerHTML = '';
+  box.classList.toggle('hide', !((S.seatMode === 'inf' || isC) && id)); box.innerHTML = ''; if (!id) box.dataset.for = '';
   if ((S.seatMode !== 'inf' && !isC) || !id) return;
+  if (box.dataset.for !== id) { box.dataset.for = id; requestAnimationFrame(() => { try { box.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); } catch (e) {} }); }
   const top = document.createElement('div'); top.className = 'go';
   top.innerHTML = '<b class="serif" style="font-size:18px">' + (isC ? 'The conductor' : IM[id].name) + '</b><span class="grow"></span>';
   const x = document.createElement('button'); x.className = 'btn'; x.textContent = 'Done'; x.onclick = () => { S.pickSeat = null; drawHall(); };
