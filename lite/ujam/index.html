@@ -3651,6 +3651,15 @@ E.arrangeOf = function (song, si, salt) {
   if (plan.lead === 'chords' && plan.harm === 'pad') plan.harm = 'full'; // the chords lead: they really play
   if (plan.recipe === 'silent' && plan.harm === 'none') plan.harm = 'pad'; // drums wait: something else holds the room
   if (plan.noBeat && plan.stop === 'hit') plan.stop = 'gift';
+  if (g === 'acid' && song.arr) { // acid breathes: the drop hits with kick and 303, the lead comes later and leaves early; the break really breaks down
+    if (t === 'drop' && sec.bars >= 16 && !(o.lead && o.lead !== 'auto')) {
+      const L = sec.bars >= 32 ? 8 : 4; plan.enter.beat = 0; plan.enter.bass = 0;
+      plan.enter.melody = plan.enter.answer = Math.max(plan.enter.melody || 0, L);
+      if (plan.harm === 'full' || plan.padToo) plan.enter.pad = Math.max(plan.enter.pad || 0, sec.bars >= 32 ? 16 : 8);
+      if (sec.bars >= 32) plan.exit.melody = plan.exit.answer = sec.bars - 8; // whole phrases: the lead leaves 8 bars before the end
+    }
+    if (t === 'break' && sec.bars >= 8) { plan.enter.bass = 0; plan.enter.beat = sec.bars - (sec.bars >= 16 ? 4 : 2); if (plan.harm === 'none' && !o.harm) plan.harm = 'pad'; plan.stop = null; }
+  }
   { // entries only for what really plays here, and the first one starts right away
     const silent = (q) => (q === 'chords' || q === 'pad') && plan.harm === 'none' || q === 'beat' && plan.noBeat || plan.only && !plan.only.includes(q);
     for (const q of Object.keys(plan.enter)) if (silent(q)) delete plan.enter[q];
